@@ -25,11 +25,6 @@ public:
 	const int16_t calcOptiHashNum(size_t size, size_t entries) const;
 	const int16_t calcOptiHashNum(float fpr) const;
 
-	//todo: remove: Testing purposes
-	const HashManager &getHashMan(){
-		return multiHash;
-	}
-
 	virtual ~BloomFilterGenerator();
 private:
 	size_t filterSize;

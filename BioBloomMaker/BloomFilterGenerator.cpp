@@ -19,8 +19,6 @@
 #include <deque>
 #include <cassert>
 
-// todo: REFACTOR ME TO USE PASS AND RETURN BY REFERNCE C++ Style rather than C
-
 /*
  * Constructor:
  * User must specify kmer size used in sliding window and give it a list of
@@ -103,7 +101,6 @@ void BloomFilterGenerator::setFilterSize(size_t bits) {
 const vector<size_t> BloomFilterGenerator::addHashFuncs(int16_t numFunc) {
 	vector<size_t> seedVals;
 	for (int16_t i = 0; i < numFunc; ++i) {
-		// todo: Feature - Add support for more than just CityHash64
 		multiHash.addHashFunction("CityHash64", i);
 		hashFunctionNames.push_back("CityHash64");
 		seedVals.push_back(i);
@@ -146,5 +143,4 @@ const int16_t BloomFilterGenerator::calcOptiHashNum(float fpr) const {
 //destructor
 
 BloomFilterGenerator::~BloomFilterGenerator() {
-	// TODO Auto-generated destructor stub
 }

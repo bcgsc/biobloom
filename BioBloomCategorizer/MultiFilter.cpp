@@ -37,6 +37,5 @@ const vector<string> &MultiFilter::getFilterIds() const {
 }
 
 MultiFilter::~MultiFilter() {
-	// TODO Auto-generated destructor stub
 }
 

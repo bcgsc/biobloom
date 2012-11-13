@@ -32,6 +32,5 @@ const vector<size_t> &HashManager::multiHash(string const &kmer){
 }
 
 HashManager::~HashManager() {
-	// TODO Auto-generated destructor stub
 }
 
