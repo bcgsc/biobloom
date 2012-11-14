@@ -33,15 +33,6 @@ vector<string> convertInputString(const string &inputString)
 	return currentInfoFile;
 }
 
-/*
- * checks if file exists
- */
-bool fexists(const string &filename)
-{
-	ifstream ifile(filename.c_str());
-	return ifile;
-}
-
 int main(int argc, char *argv[])
 {
 

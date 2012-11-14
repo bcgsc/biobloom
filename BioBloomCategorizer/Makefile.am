@@ -8,4 +8,5 @@ BioBloomCategorizer_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a
 
 BioBloomCategorizer_SOURCES = BioBloomCategorizer.cpp \
-	MultiFilter.h MultiFilter.cpp
+	MultiFilter.h MultiFilter.cpp \
+	BioBloomClassifier.h BioBloomClassifier.cpp

@@ -26,16 +26,18 @@ public:
 	void setThreshold(int16_t threshold);
 	void setPercentThreshold(double threshold);
 	void filter(const vector<string> &inputFiles,
-			const string &outputDir) const;
+			const string &outputDir);
 	void filterPrintReads(const vector<string> &inputFiles,
-			const string &outputDir) const;
+			const string &outputDir);
 	virtual ~BioBloomClassifier();
 private:
 	void loadFilters(const vector<string> &filterFilePaths);
+	//todo: should be const qualifier, but getting a compilation bug
 	void printSummary(const string &outputDir,
 			boost::unordered_map<string, size_t> &aboveThreshold,
 			boost::unordered_map<string, size_t> &belowThreshold,
-			size_t totalReads) const;
+			size_t totalReads);
+	bool fexists(const string &filename) const;
 
 	//group filters with same hash signature
 	boost::unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > infoFiles;

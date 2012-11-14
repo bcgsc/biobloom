@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <sys/stat.h>
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths) :
 		minHit(2), percentMinHit(0.5), filterNum(filterFilePaths.size())
@@ -20,6 +21,15 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths) :
 void BioBloomClassifier::setThreshold(int16_t threshold)
 {
 	minHit = threshold;
+}
+
+/*
+ * checks if file exists
+ */
+bool BioBloomClassifier::fexists(const string &filename) const
+{
+	ifstream ifile(filename.c_str());
+	return ifile;
 }
 
 void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
@@ -85,7 +95,7 @@ void BioBloomClassifier::setPercentThreshold(double threshold)
 }
 
 void BioBloomClassifier::filter(const vector<string> &inputFiles,
-		const string &outputDir) const
+		const string &outputDir)
 {
 	//create directory structure if it does not exist
 	if (!fexists(outputDir)) {
@@ -103,11 +113,11 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 	size_t totalReads = 0;
 
 	//initialize variables and print filter ids
-	for (vector<string>::iterator j = hashSigs.begin(); j != hashSigs.end();
+	for (vector<string>::const_iterator j = hashSigs.begin(); j != hashSigs.end();
 			++j)
 	{
-		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::iterator i = idsInFilter.begin();
+		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			readStatusOutput << "\t" << *i << "_"
@@ -122,7 +132,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 	//gcc currently optimizes to print this before loading can complete
 	cout << "Filtering Start" << endl;
 
-	for (vector<string>::iterator it = inputFiles.begin();
+	for (vector<string>::const_iterator it = inputFiles.begin();
 			it != inputFiles.end(); ++it)
 	{
 		FastaReader sequence((*it).c_str(), FastaReader::NO_FOLD_CASE);
@@ -136,7 +146,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 			bool readOK = true;
 
 			//initialize hits to zero
-			for (vector<string>::iterator j = hashSigs.begin();
+			for (vector<string>::const_iterator j = hashSigs.begin();
 					j != hashSigs.end(); ++j)
 			{
 				const vector<string> &idsInFilter =
@@ -149,7 +159,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 			}
 
 			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-			for (vector<string>::iterator j = hashSigs.begin();
+			for (vector<string>::const_iterator j = hashSigs.begin();
 					j != hashSigs.end(); ++j)
 			{
 				//get filterIDs to iterate through has in a consistent order
@@ -201,7 +211,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 							<< endl;
 				}
 				int16_t totalHits = 0;
-				for (vector<string>::iterator j = hashSigs.begin();
+				for (vector<string>::const_iterator j = hashSigs.begin();
 						j != hashSigs.end(); ++j)
 				{
 					//update summary
@@ -228,8 +238,12 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 }
 
 void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
-		const string &outputDir) const
-{
+		const string &outputDir) {
+	//create directory structure if it does not exist
+	if (!fexists(outputDir)) {
+		mkdir(outputDir.c_str(), 0755);
+	}
+
 	ofstream readStatusOutput((outputDir + "readStatus.tsv").c_str(), ios::out);
 
 	//print header
@@ -249,18 +263,17 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 	outputFiles["multiMatch"] = multiMatch;
 
 	//initialize variables and print filter ids
-	for (vector<string>::iterator j = hashSigs.begin(); j != hashSigs.end();
+	for (vector<string>::const_iterator j = hashSigs.begin(); j != hashSigs.end();
 			++j)
 	{
-		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::iterator i = idsInFilter.begin();
+		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			boost::shared_ptr<ofstream> temp(
 					new ofstream((outputDir + *i + ".fasta").c_str(),
 							ios::out));
 			outputFiles[*i] = temp;
-			<< (*(infoFiles[*j].front())).getKmerSize();
 			readStatusOutput << "\t" << *i << "_"
 					<< (*(infoFiles[*j].front())).getKmerSize();
 			aboveThreshold[*i] = 0;
@@ -273,7 +286,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 	//gcc currently optimizes to print this before loading can complete
 	cout << "Filtering Start" << endl;
 
-	for (vector<string>::iterator it = inputFiles.begin();
+	for (vector<string>::const_iterator it = inputFiles.begin();
 			it != inputFiles.end(); ++it)
 	{
 		FastaReader sequence((*it).c_str(), FastaReader::NO_FOLD_CASE);
@@ -287,7 +300,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 			bool readOK = true;
 
 			//initialize hits to zero
-			for (vector<string>::iterator j = hashSigs.begin();
+			for (vector<string>::const_iterator j = hashSigs.begin();
 					j != hashSigs.end(); ++j)
 			{
 				const vector<string> &idsInFilter =
@@ -300,7 +313,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 			}
 
 			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-			for (vector<string>::iterator j = hashSigs.begin();
+			for (vector<string>::const_iterator j = hashSigs.begin();
 					j != hashSigs.end(); ++j)
 			{
 				//get filterIDs to iterate through has in a consistent order
@@ -352,7 +365,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 							<< endl;
 				}
 				int16_t totalHits = 0;
-				for (vector<string>::iterator j = hashSigs.begin();
+				for (vector<string>::const_iterator j = hashSigs.begin();
 						j != hashSigs.end(); ++j)
 				{
 					//update summary
@@ -377,12 +390,12 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 					(*outputFiles["multiMatch"]) << ">" << rec.id << "\n"
 							<< rec.seq << endl;
 				} else {
-					for (vector<string>::iterator j = hashSigs.begin();
+					for (vector<string>::const_iterator j = hashSigs.begin();
 							j != hashSigs.end(); ++j)
 					{
-						vector<string> idsInFilter =
+						const vector<string> idsInFilter =
 								(*filters[*j]).getFilterIds();
-						for (vector<string>::iterator i = idsInFilter.begin();
+						for (vector<string>::const_iterator i = idsInFilter.begin();
 								i != idsInFilter.end(); ++i)
 						{
 							if (hits[*i] >= minHit) {
@@ -399,11 +412,11 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 	}
 
 	//close sorting files
-	for (vector<string>::iterator j = hashSigs.begin(); j != hashSigs.end();
+	for (vector<string>::const_iterator j = hashSigs.begin(); j != hashSigs.end();
 			++j)
 	{
-		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::iterator i = idsInFilter.begin();
+		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			outputFiles[*i]->close();
@@ -424,16 +437,16 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 void BioBloomClassifier::printSummary(const string &outputDir,
 		boost::unordered_map<string, size_t> &aboveThreshold,
 		boost::unordered_map<string, size_t> &belowThreshold,
-		size_t totalReads) const
+		size_t totalReads)
 {
 	ofstream summaryOutput((outputDir + "summary.tsv").c_str(), ios::out);
 	summaryOutput << "type";
 	//initialize variables and print filter ids
-	for (vector<string>::iterator j = hashSigs.begin(); j != hashSigs.end();
+	for (vector<string>::const_iterator j = hashSigs.begin(); j != hashSigs.end();
 			++j)
 	{
-		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::iterator i = idsInFilter.begin();
+		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t" << *i << "_"
@@ -444,11 +457,11 @@ void BioBloomClassifier::printSummary(const string &outputDir,
 
 	//print summary information and close filehandles
 	summaryOutput << ">=" << minHit << "_proportion";
-	for (vector<string>::iterator j = hashSigs.begin(); j != hashSigs.end();
+	for (vector<string>::const_iterator j = hashSigs.begin(); j != hashSigs.end();
 			++j)
 	{
-		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::iterator i = idsInFilter.begin();
+		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t"
@@ -456,11 +469,11 @@ void BioBloomClassifier::printSummary(const string &outputDir,
 		}
 	}
 	summaryOutput << "\n<" << minHit << "_proportion";
-	for (vector<string>::iterator j = hashSigs.begin(); j != hashSigs.end();
+	for (vector<string>::const_iterator j = hashSigs.begin(); j != hashSigs.end();
 			++j)
 	{
-		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::iterator i = idsInFilter.begin();
+		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t"
@@ -468,11 +481,11 @@ void BioBloomClassifier::printSummary(const string &outputDir,
 		}
 	}
 	summaryOutput << "\n" << "0_proportion";
-	for (vector<string>::iterator j = hashSigs.begin(); j != hashSigs.end();
+	for (vector<string>::const_iterator j = hashSigs.begin(); j != hashSigs.end();
 			++j)
 	{
-		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::iterator i = idsInFilter.begin();
+		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t"
@@ -483,33 +496,33 @@ void BioBloomClassifier::printSummary(const string &outputDir,
 	}
 
 	summaryOutput << "\n>=" << minHit << "_reads";
-	for (vector<string>::iterator j = hashSigs.begin(); j != hashSigs.end();
+	for (vector<string>::const_iterator j = hashSigs.begin(); j != hashSigs.end();
 			++j)
 	{
-		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::iterator i = idsInFilter.begin();
+		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t" << aboveThreshold[*i];
 		}
 	}
 	summaryOutput << "\n<" << minHit << "_reads";
-	for (vector<string>::iterator j = hashSigs.begin(); j != hashSigs.end();
+	for (vector<string>::const_iterator j = hashSigs.begin(); j != hashSigs.end();
 			++j)
 	{
-		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::iterator i = idsInFilter.begin();
+		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t" << belowThreshold[*i];
 		}
 	}
 	summaryOutput << "\n" << "0_reads";
-	for (vector<string>::iterator j = hashSigs.begin(); j != hashSigs.end();
+	for (vector<string>::const_iterator j = hashSigs.begin(); j != hashSigs.end();
 			++j)
 	{
-		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::iterator i = idsInFilter.begin();
+		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t"
