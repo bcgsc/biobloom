@@ -68,7 +68,8 @@ int main(int argc, char **argv) {
 	assert(filter.contains("ATCGGGTCATCAACCAATAG"));
 	assert(filter.contains("ATCGGGTCATCAACCAATAA"));
 
-	assert(!filter.contains("ATCGGGTCATCAACCAATTT"));
+	assert(!filter.contains("ATCGGGTCATCAACCAATTA"));
+	assert(!filter.contains("ATCGGGTCATCAACCAATTC"));
 
 	//should be size of bf (amortized)
 	cout << memory_usage() - memUsage << "kb" << endl;
@@ -94,7 +95,7 @@ int main(int argc, char **argv) {
 	cout << memory_usage() - memUsage << "kb" << endl;
 
 	//check loading of stored filter
-	BloomFilter filter2(filename, hashMan);
+	BloomFilter filter2(filterSize, filename, hashMan);
 
 	//should be double size of bf (amortized)
 	cout << memory_usage() - memUsage << "kb" << endl;

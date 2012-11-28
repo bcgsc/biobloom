@@ -9,28 +9,33 @@
 #define BLOOMFILTER_H_
 #include "Common/HashManager.h"
 #include <string>
-#include <boost/dynamic_bitset.hpp>
 
 using namespace std;
+
+//todo: put this somewhere else it make sense
+static const size_t bitsPerChar = 0x08;
+static const unsigned char bitMask[0x08] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
+		0x40, 0x80 };
 
 class BloomFilter {
 public:
 	//for generating a new filter
-	BloomFilter(size_t const &filterSize, HashManager const &hashFns);
+	BloomFilter(size_t filterSize, HashManager const &hashFns);
 	void insert(string const &kmer);
 
 	//for storing/restoring the filter
 	void storeFilter(string const &filterFilePath) const;
-	BloomFilter(string const &filterFilePath, HashManager const &hashFns);
+	BloomFilter(size_t filterSize, string const &filterFilePath, HashManager const &hashFns);
 
 	const bool contains(string const &kmer);
 	const bool contains(vector<size_t> const &precomputed);
 
-	//bool contains(vector<size_t>); //If values have been pre-hashed
-
 	virtual ~BloomFilter();
 private:
-	boost::dynamic_bitset<> filter;
+	void initSize(size_t size);
+	char* filter;
+	size_t size;
+	size_t sizeInBytes;
 	HashManager multiHasher;
 };
 

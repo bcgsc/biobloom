@@ -66,8 +66,7 @@ void BloomFilterGenerator::generate(string fileName) {
 	//setup bloom filter
 	BloomFilter filter(filterSize, multiHash);
 
-
-	//for each file loop over all headers and obtain
+	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	for (boost::unordered_map<string, vector<string> >::iterator i =
 			fileNamesAndHeaders.begin(); i != fileNamesAndHeaders.end(); ++i) {
@@ -141,6 +140,5 @@ const int16_t BloomFilterGenerator::calcOptiHashNum(float fpr) const {
 }
 
 //destructor
-
 BloomFilterGenerator::~BloomFilterGenerator() {
 }

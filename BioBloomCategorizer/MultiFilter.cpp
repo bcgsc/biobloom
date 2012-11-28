@@ -8,11 +8,15 @@
 #include "MultiFilter.h"
 
 MultiFilter::MultiFilter(HashManager const &hashManager) :
-		hashMan(hashManager) {
+		hashMan(hashManager)
+{
 }
 
-void MultiFilter::addFilter(string const filterID, string const &filePath) {
-	boost::shared_ptr<BloomFilter> filter(new BloomFilter(filePath, hashMan));
+void MultiFilter::addFilter(size_t filterSize, string const &filterID,
+		string const &filePath)
+{
+	boost::shared_ptr<BloomFilter> filter(
+			new BloomFilter(filterSize, filePath, hashMan));
 	filters[filterID] = filter;
 	filterIDs.push_back(filterID);
 }
@@ -22,20 +26,24 @@ void MultiFilter::addFilter(string const filterID, string const &filePath) {
  * checks filters for kmer, hashing only single time
  */
 const boost::unordered_map<string, bool> &MultiFilter::multiContains(
-		string const &kmer) {
+		string const &kmer)
+{
 	const vector<size_t> &hashResults = hashMan.multiHash(kmer);
 
 	for (boost::unordered_map<string, boost::shared_ptr<BloomFilter> >::iterator it =
-			filters.begin(); it != filters.end(); ++it) {
+			filters.begin(); it != filters.end(); ++it)
+	{
 		tempResults[(*it).first] = ((*it).second)->contains(hashResults);
 	}
 	return tempResults;
 }
 
-const vector<string> &MultiFilter::getFilterIds() const {
+const vector<string> &MultiFilter::getFilterIds() const
+{
 	return filterIDs;
 }
 
-MultiFilter::~MultiFilter() {
+MultiFilter::~MultiFilter()
+{
 }
 

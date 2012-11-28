@@ -18,7 +18,8 @@ using namespace std;
 class MultiFilter {
 public:
 	MultiFilter(HashManager const &hashManager);
-	void addFilter(string const filterID, string const &filePath);
+	void addFilter(size_t filterSize, string const &filterID,
+			string const &filePath);
 	const boost::unordered_map<string, bool> &multiContains(string const &kmer);
 	const vector<string> &getFilterIds() const;
 	virtual ~MultiFilter();

@@ -87,9 +87,21 @@ int main(int argc, char *argv[])
 			break;
 		}
 		default: {
+			cout << (char) c << " - Option not recognized" << endl;
 			exit(1);
 		}
 		}
+	}
+
+	//Check needed options
+	if (rawInputFiles == "") {
+		cout << "Need Input File (-i)" << endl;
+		exit(1);
+	}
+
+	if (filtersFile == "") {
+		cout << "Need Filter File (-i)" << endl;
+		exit(1);
 	}
 
 	vector<string> filterFilePaths = convertInputString(filtersFile);
@@ -100,12 +112,9 @@ int main(int argc, char *argv[])
 
 	//filtering step
 	//create directory structure if it does not exist
-	if(printReads)
-	{
+	if (printReads) {
 		BBC.filterPrintReads(inputFiles, outputDir);
-	}
-	else
-	{
+	} else {
 		BBC.filter(inputFiles, outputDir);
 	}
 }

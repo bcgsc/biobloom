@@ -33,7 +33,6 @@ AC_LANG([C++])	#sets the auto conf to look for c++ headers
 AC_CHECK_HEADERS([boost/unordered/unordered_map.hpp])
 AC_CHECK_HEADERS([boost/property_tree/ptree.hpp])
 AC_CHECK_HEADERS([boost/property_tree/ini_parser.hpp])
-AC_CHECK_HEADERS([boost/dynamic_bitset.hpp])
 AC_CHECK_HEADERS([boost/tuple/tuple.hpp])
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -55,6 +54,7 @@ AC_CONFIG_FILES([
 		DataLayer/Makefile
 		BioBloomMaker/Makefile
 		BioBloomCategorizer/Makefile
+		Tests/Makefile
 ])
 AC_OUTPUT
 

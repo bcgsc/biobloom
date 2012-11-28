@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "i:f:p:o:k:n:", long_options,
+	while ((c = getopt_long(argc, argv, "i:f:p:o:k:n:g:", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'i': {
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
 		case 'f': {
 			stringstream convert(optarg);
 			if (!(convert >> fpr)) {
-				cout << "Error - Invalid set of bloom filter parameters! f: "
+				cerr << "Error - Invalid set of bloom filter parameters! f: "
 						<< optarg << endl;
 				return 0;
 			}
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
 		case 'k': {
 			stringstream convert(optarg);
 			if (!(convert >> kmerSize)) {
-				cout << "Error - Invalid set of bloom filter parameters! k: "
+				cerr << "Error - Invalid set of bloom filter parameters! k: "
 						<< optarg << endl;
 				return 0;
 			}
@@ -110,11 +110,14 @@ int main(int argc, char *argv[]) {
 		case 'g': {
 			stringstream convert(optarg);
 			if (!(convert >> hashNum)) {
-				cout << "Error - Invalid set of bloom filter parameters! g: "
+				cerr << "Error - Invalid set of bloom filter parameters! g: "
 						<< optarg << endl;
 				return 0;
 			}
 			break;
+		}
+		default: {
+			cerr << "Error - Invalid set option" << c << endl;
 		}
 		}
 	}
