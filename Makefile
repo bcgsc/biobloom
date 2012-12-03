@@ -109,7 +109,7 @@ CC = gcc
 CCDEPMODE = depmode=gcc3
 CFLAGS = -g -O2
 CPP = gcc -E
-CPPFLAGS = -I. -I/home/cjustin/arch/x86-64//include 
+CPPFLAGS = -I. -I/home/cjustin/arch/x86-64/include 
 CXX = g++
 CXXCPP = g++ -E
 CXXDEPMODE = depmode=gcc3
