@@ -11,16 +11,12 @@
 #include <sstream>
 #include <sys/stat.h>
 
-BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths) :
-		minHit(2), percentMinHit(0.5), filterNum(filterFilePaths.size())
+BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
+		int16_t minHit, double percentMinHit) :
+		minHit(minHit), percentMinHit(percentMinHit), filterNum(
+				filterFilePaths.size())
 {
 	loadFilters(filterFilePaths);
-	//set default threshold to 2
-}
-
-void BioBloomClassifier::setThreshold(int16_t threshold)
-{
-	minHit = threshold;
 }
 
 /*
@@ -91,20 +87,11 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 	cout << "Filter Loading Complete." << endl;
 }
 
-void BioBloomClassifier::setPercentThreshold(double threshold)
-{
-	percentMinHit = threshold;
-}
-
 void BioBloomClassifier::filter(const vector<string> &inputFiles,
-		const string &outputDir)
+		const string &outputPrefix)
 {
-	//create directory structure if it does not exist
-	if (!fexists(outputDir)) {
-		mkdir(outputDir.c_str(), 0755);
-	}
 
-	ofstream readStatusOutput((outputDir + "readStatus.tsv").c_str(), ios::out);
+	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
 
 	//print header
 	readStatusOutput << "readID\tseqSize";
@@ -222,8 +209,19 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 					for (vector<string>::const_iterator i = idsInFilter.begin();
 							i != idsInFilter.end(); ++i)
 					{
+						//print to file
 						readStatusOutput << "\t" << hits[*i];
-						if (hits[*i] >= minHit) {
+
+						//pick threshold, by percent or by absolute value
+						int16_t kmerSize =
+								(*(infoFiles[*j].front())).getKmerSize();
+						size_t threshold = size_t(
+								percentMinHit * (rec.seq.length() / kmerSize));
+						if (minHit > threshold) {
+							threshold = minHit;
+						}
+
+						if (hits[*i] >= threshold) {
 							++totalHits;
 							++aboveThreshold[*i];
 						} else if (hits[*i] != 0) {
@@ -236,18 +234,14 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 		}
 	}
 	cout << "Total Reads:" << totalReads << endl;
-	printSummary(outputDir, aboveThreshold, belowThreshold, totalReads);
+	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
 }
 
 void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
-		const string &outputDir)
+		const string &outputPrefix)
 {
-	//create directory structure if it does not exist
-	if (!fexists(outputDir)) {
-		mkdir(outputDir.c_str(), 0755);
-	}
 
-	ofstream readStatusOutput((outputDir + "readStatus.tsv").c_str(), ios::out);
+	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
 
 	//print header
 	readStatusOutput << "readID\tseqSize";
@@ -259,9 +253,10 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 
 	boost::unordered_map<string, boost::shared_ptr<ofstream> > outputFiles;
 	boost::shared_ptr<ofstream> noMatch(
-			new ofstream((outputDir + "noMatch.fasta").c_str(), ios::out));
+			new ofstream((outputPrefix + "noMatch.fastq").c_str(), ios::out));
 	boost::shared_ptr<ofstream> multiMatch(
-			new ofstream((outputDir + "multiMatch.fasta").c_str(), ios::out));
+			new ofstream((outputPrefix + "multiMatch.fastq").c_str(),
+					ios::out));
 	outputFiles["noMatch"] = noMatch;
 	outputFiles["multiMatch"] = multiMatch;
 
@@ -274,7 +269,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 				i != idsInFilter.end(); ++i)
 		{
 			boost::shared_ptr<ofstream> temp(
-					new ofstream((outputDir + *i + ".fasta").c_str(),
+					new ofstream((outputPrefix + *i + ".fastq").c_str(),
 							ios::out));
 			outputFiles[*i] = temp;
 			readStatusOutput << "\t" << *i << "_"
@@ -377,8 +372,19 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 					for (vector<string>::const_iterator i = idsInFilter.begin();
 							i != idsInFilter.end(); ++i)
 					{
+						//print read status
 						readStatusOutput << "\t" << hits[*i];
-						if (hits[*i] >= minHit) {
+
+						//pick threshold, by percent or by absolute value
+						int16_t kmerSize =
+								(*(infoFiles[*j].front())).getKmerSize();
+						size_t threshold = size_t(
+								percentMinHit * (rec.seq.length() / kmerSize));
+						if (minHit > threshold) {
+							threshold = minHit;
+						}
+
+						if (hits[*i] >= threshold) {
 							++totalHits;
 							++aboveThreshold[*i];
 						} else if (hits[*i] != 0) {
@@ -387,11 +393,11 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 					}
 				}
 				if (totalHits == 0) {
-					(*outputFiles["noMatch"]) << ">" << rec.id << "\n"
-							<< rec.seq << endl;
+					(*outputFiles["noMatch"]) << "@" << rec.id << "\n"
+							<< rec.seq << "\n+\n" << rec.qual << "\n" << endl;
 				} else if (totalHits > 1) {
-					(*outputFiles["multiMatch"]) << ">" << rec.id << "\n"
-							<< rec.seq << endl;
+					(*outputFiles["multiMatch"]) << "@" << rec.id << "\n"
+							<< rec.seq << "\n+\n" << rec.qual << "\n" << endl;
 				} else {
 					for (vector<string>::const_iterator j = hashSigs.begin();
 							j != hashSigs.end(); ++j)
@@ -402,9 +408,20 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 								idsInFilter.begin(); i != idsInFilter.end();
 								++i)
 						{
-							if (hits[*i] >= minHit) {
-								(*outputFiles[*i]) << ">" << rec.id << "\n"
-										<< rec.seq << endl;
+							//pick threshold, by percent or by absolute value
+							int16_t kmerSize =
+									(*(infoFiles[*j].front())).getKmerSize();
+							size_t threshold = size_t(
+									percentMinHit
+											* (rec.seq.length() / kmerSize));
+							if (minHit > threshold) {
+								threshold = minHit;
+							}
+
+							if (hits[*i] >= threshold) {
+								(*outputFiles[*i]) << "@" << rec.id << "\n"
+										<< rec.seq << "\n+\n" << rec.qual
+										<< "\n" << endl;
 								break;
 							}
 						}
@@ -429,7 +446,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 	outputFiles["noMatch"]->close();
 	outputFiles["multiMatch"]->close();
 	cout << "Total Reads:" << totalReads << endl;
-	printSummary(outputDir, aboveThreshold, belowThreshold, totalReads);
+	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
 }
 
 /*
@@ -438,11 +455,11 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
  * -percent reads over threshold
  * -total reads that don't hit filter at all
  */
-void BioBloomClassifier::printSummary(const string &outputDir,
+void BioBloomClassifier::printSummary(const string &outputPrefix,
 		boost::unordered_map<string, size_t> &aboveThreshold,
 		boost::unordered_map<string, size_t> &belowThreshold, size_t totalReads)
 {
-	ofstream summaryOutput((outputDir + "summary.tsv").c_str(), ios::out);
+	ofstream summaryOutput((outputPrefix + "_summary.tsv").c_str(), ios::out);
 	summaryOutput << "type";
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -459,7 +476,7 @@ void BioBloomClassifier::printSummary(const string &outputDir,
 	summaryOutput << "\n";
 
 	//print summary information and close filehandles
-	summaryOutput << ">=" << minHit << "_proportion";
+	summaryOutput << "\nHits";
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
@@ -471,7 +488,7 @@ void BioBloomClassifier::printSummary(const string &outputDir,
 					<< double(aboveThreshold[*i]) / double(totalReads);
 		}
 	}
-	summaryOutput << "\n<" << minHit << "_proportion";
+	summaryOutput << "\nMiss";
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
@@ -483,7 +500,7 @@ void BioBloomClassifier::printSummary(const string &outputDir,
 					<< double(belowThreshold[*i]) / double(totalReads);
 		}
 	}
-	summaryOutput << "\n" << "0_proportion";
+	summaryOutput << "\nConfidentMiss";
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
@@ -498,7 +515,7 @@ void BioBloomClassifier::printSummary(const string &outputDir,
 		}
 	}
 
-	summaryOutput << "\n>=" << minHit << "_reads";
+	summaryOutput << "\n\nHits";
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
@@ -509,7 +526,7 @@ void BioBloomClassifier::printSummary(const string &outputDir,
 			summaryOutput << "\t" << aboveThreshold[*i];
 		}
 	}
-	summaryOutput << "\n<" << minHit << "_reads";
+	summaryOutput << "\nMiss";
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
@@ -520,7 +537,7 @@ void BioBloomClassifier::printSummary(const string &outputDir,
 			summaryOutput << "\t" << belowThreshold[*i];
 		}
 	}
-	summaryOutput << "\n" << "0_reads";
+	summaryOutput << "\nConfidentMiss";
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{

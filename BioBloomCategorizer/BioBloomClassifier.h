@@ -22,13 +22,11 @@ using namespace std;
 
 class BioBloomClassifier {
 public:
-	BioBloomClassifier(const vector<string> &filterFilePaths);
-	void setThreshold(int16_t threshold);
-	void setPercentThreshold(double threshold);
-	void filter(const vector<string> &inputFiles,
-			const string &outputDir);
+	BioBloomClassifier(const vector<string> &filterFilePaths, int16_t minHit,
+			double percentMinHit);
+	void filter(const vector<string> &inputFiles, const string &outputPrefix);
 	void filterPrintReads(const vector<string> &inputFiles,
-			const string &outputDir);
+			const string &outputPrefix);
 	virtual ~BioBloomClassifier();
 private:
 	void loadFilters(const vector<string> &filterFilePaths);

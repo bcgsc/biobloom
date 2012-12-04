@@ -33,6 +33,30 @@ vector<string> convertInputString(const string &inputString)
 	return currentInfoFile;
 }
 
+void printHelpDialog()
+{
+	static const char dialog[] =
+			"Usage: BioBloomCategorizer [OPTION]... -f [FILTERFIlE] [FILE]...\n"
+					"Categorize Sequences. The input format may be FASTA, FASTQ,\n"
+					"qseq, export, SAM or BAM format and compressed with gz, bz2 or xz\n"
+					"and may be tarred.\n"
+					"\n"
+					"  -p, --prefix           Output prefix to use. Otherwise will output\n"
+					"                         to current directory.\n"
+					"  -t, --min_hit_thr      Minimum Hit Threshold Value. Uses absolute\n"
+					"                         hit number of read to categorize. [2]\n"
+					"  -f, --filter_files     List of filter files to use.\n"
+					"                         Eg. \"filter1.bf filter2.bf\"\n"
+					"  -m, --min_hit_pro      Minimum Hit Proportion Threshold Value. Uses\n"
+					"                         Proportion of hits to categorize. [0.25]\n"
+					"  -o, --output_fastq     Output reads in FastQ files.\n"
+					"  -h, --help             Display this dialog."
+					"\n"
+					"Report bugs to <cjustin@bcgsc.ca>.";
+	cerr << dialog << endl;
+	exit(0);
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -41,80 +65,99 @@ int main(int argc, char *argv[])
 
 	//command line variables
 	string rawInputFiles = "";
-	string outputDir = "";
+	string outputPrefix = "";
 	string filtersFile = "";
 	int16_t minHit = 2;
+	double percentHit = 0.25;
 	bool printReads = false;
+	bool die = false;
 
 	//long form arguments
-	//each option format { "optionName", necessary option or not, I have no idea, 'symbol'}
-	static struct option long_options[] = { { "input_files", 1, NULL, 'i' }, {
-			"output_dir", 0, NULL, 'o' }, { "filters", 1, NULL, 'f' }, {
-			"min_hit", 0, NULL, 'm' }, { "print_fasta", 1, NULL, 'p' }, { NULL,
-			0, NULL, 0 } };
+	static struct option long_options[] = { { "prefix", 0, NULL, 'p' }, {
+			"min_hit_thr", 0, NULL, 't' }, { "min_hit_per", 0, NULL, 'm' }, {
+			"output_fastq", 0, NULL, 'o' }, { "filter_files", 1, NULL, 'f' }, {
+			"help", 0, NULL, 'h' }, { NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "i:f:o:k:m:p", long_options,
+	while ((c = getopt_long(argc, argv, "f:t:om:p:h", long_options,
 			&option_index)) != -1)
 	{
 		switch (c) {
-		case 'i': {
-			rawInputFiles = optarg;
+		case 'm': {
+			stringstream convert(optarg);
+			if (!(convert >> percentHit)) {
+				cerr << "Error - Invalid parameter! m: " << optarg << endl;
+				return 0;
+			}
+			if (percentHit > 1) {
+				cerr << "Error -m cannot be greater than 1 " << optarg << endl;
+				return 0;
+			}
+			break;
+		}
+		case 't': {
+			stringstream convert(optarg);
+			if (!(convert >> minHit)) {
+				cerr << "Error - Invalid parameter! t: " << optarg << endl;
+				return 0;
+			}
 			break;
 		}
 		case 'f': {
 			filtersFile = optarg;
 			break;
 		}
-		case 'o': {
-			outputDir = optarg;
-			if (outputDir.at(outputDir.length() - 1) != '/') {
-				outputDir = outputDir + '/';
-			}
-			break;
-		}
-		case 'm': {
-			stringstream convert(optarg);
-			if (!(convert >> minHit)) {
-				cout << "Error - Invalid parameter! m: " << optarg << endl;
-				return 0;
-			}
-			break;
-		}
 		case 'p': {
+			outputPrefix = optarg;
+			break;
+		}
+		case 'h': {
+			printHelpDialog();
+			break;
+		}
+		case '0': {
 			printReads = true;
 			break;
 		}
 		default: {
-			cout << (char) c << " - Option not recognized" << endl;
-			exit(1);
+			die = true;
+			break;
 		}
 		}
-	}
-
-	//Check needed options
-	if (rawInputFiles == "") {
-		cout << "Need Input File (-i)" << endl;
-		exit(1);
-	}
-
-	if (filtersFile == "") {
-		cout << "Need Filter File (-i)" << endl;
-		exit(1);
 	}
 
 	vector<string> filterFilePaths = convertInputString(filtersFile);
 	vector<string> inputFiles = convertInputString(rawInputFiles);
 
+	while (optind < argc) {
+		inputFiles.push_back(argv[optind]);
+		optind++;
+	}
+
+	//Check needed options
+	if (inputFiles.size() == 0) {
+		cerr << "Need Input File" << endl;
+		die = true;
+	}
+
+	if (filterFilePaths.size() == 0) {
+		cerr << "Need Filter File (-f)" << endl;
+		die = true;
+	}
+	if (die) {
+		cerr << "Try '--help' for more information.\n";
+		exit(EXIT_FAILURE);
+	}
+
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths);
+	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit);
 
 	//filtering step
 	//create directory structure if it does not exist
 	if (printReads) {
-		BBC.filterPrintReads(inputFiles, outputDir);
+		BBC.filterPrintReads(inputFiles, outputPrefix);
 	} else {
-		BBC.filter(inputFiles, outputDir);
+		BBC.filter(inputFiles, outputPrefix);
 	}
 }
