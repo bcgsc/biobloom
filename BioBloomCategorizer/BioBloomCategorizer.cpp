@@ -36,23 +36,23 @@ vector<string> convertInputString(const string &inputString)
 void printHelpDialog()
 {
 	static const char dialog[] =
-			"Usage: BioBloomCategorizer [OPTION]... -f [FILTERFIlE] [FILE]...\n"
-					"Categorize Sequences. The input format may be FASTA, FASTQ,\n"
-					"qseq, export, SAM or BAM format and compressed with gz, bz2 or xz\n"
-					"and may be tarred.\n"
+			"Usage: BioBloomCategorizer [OPTION]... -f \"[FILTER1], [FILTER2]...\" [FILE]...\n"
+					"Categorize Sequences. The input format may be FASTA, FASTQ, qseq,\n"
+					"export, SAM or BAM format and compressed with gz, bz2 or xz and\n"
+					"may be tarred.\n"
 					"\n"
-					"  -p, --prefix           Output prefix to use. Otherwise will output\n"
+					"  -p, --prefix=N         Output prefix to use. Otherwise will output\n"
 					"                         to current directory.\n"
-					"  -t, --min_hit_thr      Minimum Hit Threshold Value. Uses absolute\n"
+					"  -t, --min_hit_thr=N    Minimum Hit Threshold Value. Uses absolute\n"
 					"                         hit number of read to categorize. [2]\n"
-					"  -f, --filter_files     List of filter files to use.\n"
+					"  -f, --filter_files=N   List of filter files to use.\n"
 					"                         Eg. \"filter1.bf filter2.bf\"\n"
-					"  -m, --min_hit_pro      Minimum Hit Proportion Threshold Value. Uses\n"
+					"  -m, --min_hit_pro=N    Minimum Hit Proportion Threshold Value. Uses\n"
 					"                         Proportion of hits to categorize. [0.25]\n"
-					"  -o, --output_fastq     Output reads in FastQ files.\n"
+					"  -o, --output_fastq     Output categorized reads in FastQ files.\n"
 					"  -h, --help             Display this dialog."
 					"\n"
-					"Report bugs to <cjustin@bcgsc.ca>.";
+					"Report bugs to <cjustin@bcgsc.ca>.\n";
 	cerr << dialog << endl;
 	exit(0);
 }
