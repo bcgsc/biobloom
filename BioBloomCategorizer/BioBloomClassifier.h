@@ -27,6 +27,9 @@ public:
 	void filter(const vector<string> &inputFiles, const string &outputPrefix);
 	void filterPrintReads(const vector<string> &inputFiles,
 			const string &outputPrefix);
+	void filterPair(const string &file1, const string &file2,
+			const string &outputPrefix);
+
 	virtual ~BioBloomClassifier();
 private:
 	void loadFilters(const vector<string> &filterFilePaths);

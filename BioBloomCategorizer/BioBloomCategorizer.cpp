@@ -155,9 +155,10 @@ int main(int argc, char *argv[])
 
 	//filtering step
 	//create directory structure if it does not exist
-	if (printReads) {
-		BBC.filterPrintReads(inputFiles, outputPrefix);
-	} else {
-		BBC.filter(inputFiles, outputPrefix);
-	}
+	BBC.filterPair(inputFiles[0], inputFiles[1], outputPrefix);
+//	if (printReads) {
+//		BBC.filterPrintReads(inputFiles, outputPrefix);
+//	} else {
+//		BBC.filter(inputFiles, outputPrefix);
+//	}
 }
