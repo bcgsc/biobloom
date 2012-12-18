@@ -421,7 +421,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 							if (hits[*i] >= threshold) {
 								(*outputFiles[*i]) << "@" << rec.id << "\n"
 										<< rec.seq << "\n+\n" << rec.qual
-										<< "\n" << endl;
+										<< endl;
 								break;
 							}
 						}

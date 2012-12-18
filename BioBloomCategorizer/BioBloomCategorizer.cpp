@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 			printHelpDialog();
 			break;
 		}
-		case '0': {
+		case 'o': {
 			printReads = true;
 			break;
 		}
