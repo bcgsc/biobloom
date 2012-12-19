@@ -592,7 +592,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 	//check if files exist
 
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
-	FastaReader sequence2(file1.c_str(), FastaReader::NO_FOLD_CASE);
+	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
 	FastqRecord rec1;
 	FastqRecord rec2;
 	//hits results stored in hashmap of filternames and hits
@@ -601,40 +601,39 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 	while (sequence1 >> rec1 && sequence2 >> rec2) {
 		cout << rec1.seq << endl;
 		cout << rec2.seq << endl;
-	}
-//		//split reads into kmerSizes specified (ignore trailing bases)
-//
-//		//for skipping bad reads
-//		bool readOK = true;
-//
-//		//initialize hits to zero
-//		for (vector<string>::const_iterator j = hashSigs.begin();
-//				j != hashSigs.end(); ++j)
-//		{
-//			const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
-//			for (vector<string>::const_iterator i = idsInFilter.begin();
-//					i != idsInFilter.end(); ++i)
-//			{
-//				hits[*i] = 0;
-//			}
-//		}
-//
-//		//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-//		for (vector<string>::const_iterator j = hashSigs.begin();
-//				j != hashSigs.end(); ++j)
-//		{
-//			//get filterIDs to iterate through has in a consistent order
-//			const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
-//
-//			//get kmersize for set of info files
-//			int16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
-//			size_t currentKmerNum = 0;
-//
-//			//Establish tiling pattern
-//			int16_t startModifier = (rec.seq.length() % kmerSize) / 2;
-//
-//			ReadsProcessor proc(kmerSize);
-//			//cut read into kmer size given
+
+		//split reads into kmerSizes specified (ignore trailing bases)
+		//for skipping bad reads
+		bool readOK = true;
+
+		//initialize hits to zero
+		for (vector<string>::const_iterator j = hashSigs.begin();
+				j != hashSigs.end(); ++j)
+		{
+			const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
+			for (vector<string>::const_iterator i = idsInFilter.begin();
+					i != idsInFilter.end(); ++i)
+			{
+				hits[*i] = 0;
+			}
+		}
+
+		//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
+		for (vector<string>::const_iterator j = hashSigs.begin();
+				j != hashSigs.end(); ++j)
+		{
+			//get filterIDs to iterate through has in a consistent order
+			const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
+
+			//get kmersize for set of info files
+			int16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
+			size_t currentKmerNum = 0;
+
+			//Establish tiling pattern
+			int16_t startModifier = (rec.seq.length() % kmerSize) / 2;
+
+			ReadsProcessor proc(kmerSize);
+			//cut read into kmer size given
 //			while (rec.seq.length() >= (currentKmerNum + 1) * kmerSize) {
 //
 //				const string &currentKmer = proc.prepSeq(rec.seq,
@@ -698,10 +697,37 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 //				}
 //			}
 //			readStatusOutput << "\n";
-//		}
-//	}
+		}
+	}
 //	cout << "Total Reads:" << totalReads << endl;
 //	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
+}
+
+void checkSeq()
+{
+	while (rec.seq.length() >= (currentKmerNum + 1) * kmerSize) {
+		const string &currentKmer = proc.prepSeq(rec.seq,
+				currentKmerNum * kmerSize + startModifier);
+
+		//check to see if string is invalid
+		if (!currentKmer.empty()) {
+			const boost::unordered_map<string, bool> &results =
+					filters[*j]->multiContains(currentKmer);
+
+			//record hit number in order
+			for (vector<string>::const_iterator i = idsInFilter.begin();
+					i != idsInFilter.end(); ++i)
+			{
+				if (results.find(*i)->second) {
+					++hits[*i];
+				}
+			}
+s		} else {
+			readOK = false;
+			break;
+		}
+		++currentKmerNum;
+	}
 }
 
 BioBloomClassifier::~BioBloomClassifier()

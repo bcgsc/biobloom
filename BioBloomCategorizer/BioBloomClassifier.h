@@ -38,6 +38,7 @@ private:
 			boost::unordered_map<string, size_t> &aboveThreshold,
 			boost::unordered_map<string, size_t> &belowThreshold,
 			size_t totalReads);
+	void checkSeq();
 	bool fexists(const string &filename) const;
 
 	//group filters with same hash signature
