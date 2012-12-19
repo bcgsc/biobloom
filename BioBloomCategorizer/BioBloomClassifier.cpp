@@ -593,11 +593,15 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
 	FastaReader sequence2(file1.c_str(), FastaReader::NO_FOLD_CASE);
-	FastqRecord rec;
+	FastqRecord rec1;
+	FastqRecord rec2;
 	//hits results stored in hashmap of filternames and hits
 	boost::unordered_map<string, size_t> hits(filterNum);
 
-//	while (sequence >> rec) {
+	while (sequence1 >> rec1 && sequence2 >> rec2) {
+		cout << rec1.seq << endl;
+		cout << rec2.seq << endl;
+	}
 //		//split reads into kmerSizes specified (ignore trailing bases)
 //
 //		//for skipping bad reads
