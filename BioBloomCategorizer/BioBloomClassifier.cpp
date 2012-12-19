@@ -394,10 +394,10 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 				}
 				if (totalHits == 0) {
 					(*outputFiles["noMatch"]) << "@" << rec.id << "\n"
-							<< rec.seq << "\n+\n" << rec.qual << "\n" << endl;
+							<< rec.seq << "\n+\n" << rec.qual << endl;
 				} else if (totalHits > 1) {
 					(*outputFiles["multiMatch"]) << "@" << rec.id << "\n"
-							<< rec.seq << "\n+\n" << rec.qual << "\n" << endl;
+							<< rec.seq << "\n+\n" << rec.qual << endl;
 				} else {
 					for (vector<string>::const_iterator j = hashSigs.begin();
 							j != hashSigs.end(); ++j)
