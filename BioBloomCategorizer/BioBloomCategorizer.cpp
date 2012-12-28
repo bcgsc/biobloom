@@ -51,9 +51,9 @@ void printHelpDialog()
 					"  -m, --min_hit_pro=N    Minimum Hit Proportion Threshold Value. Uses\n"
 					"                         Proportion of hits to categorize. [0.25]\n"
 					"  -o, --output_fastq     Output categorized reads in FastQ files.\n"
-					"  -h, --help             Display this dialog."
+					"  -h, --help             Display this dialog.\nw"
 					"\n"
-					"Report bugs to <cjustin@bcgsc.ca>.\n";
+					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(0);
 }

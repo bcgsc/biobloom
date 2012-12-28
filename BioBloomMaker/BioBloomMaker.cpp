@@ -18,17 +18,20 @@ void printHelpDialog()
 {
 	static const char dialog[] =
 			"Usage: BioBloomMaker -p [FILTERID] [OPTION]... [FILE]...\n"
-					"Creates a bf and txt file from a list of fasta files.\n"
+					"Creates a bf and txt file from a list of fasta files. The input sequences are\n"
+					"cut into a k-mers with a sliding window and their hash signatures are inserted\n"
+					"into a bloom filter.\n"
 					"\n"
 					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.02]\n"
-					"  -p, --file_prefix=N    Filename Prefix and filter ID. Required option.\n"
+					"  -p, --file_prefix=N    Filename prefix and filter ID. Required option.\n"
 					"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
-					"  -g, --hash_num=N       Set number of hash functions to use in filter instead of\n"
-					"                         of automatically finding optimal number of hash functions."
-					"  -k, --output_fastq     K-mer size along reference to use to create filter. [25]\n"
-					"  -h, --help             Display this dialog."
+					"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
+					"                         of automatically using calculated optimal number of\n"
+					"                         functions.\n"
+					"  -k, --output_fastq     K-mer size to use to create filter.[25]\n"
+					"  -h, --help             Display this dialog.\n"
 					"\n"
-					"Report bugs to <cjustin@bcgsc.ca>.\n";
+					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(0);
 }
@@ -57,11 +60,12 @@ int main(int argc, char *argv[])
 					"output_dir", optional_argument, NULL, 'o' }, {
 					"hash_num", 0, NULL, 'g' }, {
 					"kmer_size", 1, NULL, 'k' }, {
+					"help", no_argument, NULL, 'h' }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:h", long_options,
 			&option_index)) != -1)
 	{
 		switch (c) {
@@ -105,6 +109,10 @@ int main(int argc, char *argv[])
 						<< optarg << endl;
 				return 0;
 			}
+			break;
+		}
+		case 'h': {
+			printHelpDialog();
 			break;
 		}
 		default: {
