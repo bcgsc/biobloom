@@ -14,8 +14,8 @@ using namespace std;
 
 class BloomFilterGenerator {
 public:
-	BloomFilterGenerator(
-			boost::unordered_map<string, vector<string> > const &filenames,
+	explicit BloomFilterGenerator(
+			vector<string> const &filenames,
 			int16_t kmer);
 	void generate(string filename);
 	void setFilterSize(size_t bits);

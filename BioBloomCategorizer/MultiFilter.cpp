@@ -21,7 +21,7 @@ void MultiFilter::addFilter(size_t filterSize, string const &filterID,
 	filterIDs.push_back(filterID);
 }
 
-//todo: implement partial hash function hashing (ie. Only half the number of hashing  values for one filter)
+//todo: implement partial hash function hashing (ie. Only half the number of hashing values for one filter)
 /*
  * checks filters for kmer, hashing only single time
  */

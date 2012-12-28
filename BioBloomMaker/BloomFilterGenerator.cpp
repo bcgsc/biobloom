@@ -24,25 +24,21 @@
  * User must specify kmer size used in sliding window and give it a list of
  * filenames with corresponding headers to make filter from.
  */
-BloomFilterGenerator::BloomFilterGenerator(
-		boost::unordered_map<string, vector<string> > const &filenames,
+BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 		int16_t kmer) :
-		kmerSize(kmer), expectedEntries(0), filterSize(0) {
+		kmerSize(kmer), expectedEntries(0), filterSize(0)
+{
 
-	//todo : add check for headers actually existing in file
 	//for each file loop over all headers and obtain max number of elements
-	for (boost::unordered_map<string, vector<string> >::const_iterator i =
-			filenames.begin(); i != filenames.end(); ++i) {
+	for (vector<string>::const_iterator i = filenames.begin();
+			i != filenames.end(); ++i)
+	{
 		//if no header is used assume user wants all
-		WindowedFileParser parser((*i).first, kmerSize);
-		if ((*i).second.size() == 0) {
-			fileNamesAndHeaders[i->first] = parser.getHeaders();
-		} else {
-			vector<string> temp(i->second);
-			fileNamesAndHeaders[i->first] = temp;
-		}
-		for (vector<string>::iterator j = fileNamesAndHeaders[i->first].begin();
-				j != fileNamesAndHeaders[i->first].end(); ++j) {
+		WindowedFileParser parser(*i, kmerSize);
+		fileNamesAndHeaders[i] = parser.getHeaders();
+		for (vector<string>::iterator j = fileNamesAndHeaders[*i].begin();
+				j != fileNamesAndHeaders[*i].end(); ++j)
+		{
 			//subtract kmer size for max number of possible kmers
 			expectedEntries += parser.getSequenceSize(*j) - kmerSize;
 		}
@@ -55,7 +51,8 @@ BloomFilterGenerator::BloomFilterGenerator(
  *
  * Outputs to fileName path
  */
-void BloomFilterGenerator::generate(string fileName) {
+void BloomFilterGenerator::generate(string fileName)
+{
 
 	//need the number of hash functions used to be greater than 0
 	assert(!hashFunctionNames.empty());
@@ -69,10 +66,12 @@ void BloomFilterGenerator::generate(string fileName) {
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	for (boost::unordered_map<string, vector<string> >::iterator i =
-			fileNamesAndHeaders.begin(); i != fileNamesAndHeaders.end(); ++i) {
+			fileNamesAndHeaders.begin(); i != fileNamesAndHeaders.end(); ++i)
+	{
 		WindowedFileParser parser(i->first, kmerSize);
 		for (vector<string>::iterator j = i->second.begin();
-				j != i->second.end(); ++j) {
+				j != i->second.end(); ++j)
+		{
 			parser.setLocationByHeader(*j);
 			//object to process reads
 			//insert elements into filter
@@ -89,7 +88,8 @@ void BloomFilterGenerator::generate(string fileName) {
 }
 
 //setters
-void BloomFilterGenerator::setFilterSize(size_t bits) {
+void BloomFilterGenerator::setFilterSize(size_t bits)
+{
 	filterSize = bits;
 }
 
@@ -97,7 +97,8 @@ void BloomFilterGenerator::setFilterSize(size_t bits) {
  * Adds numFunc number of seed values to be used in filter
  * Returns the seed values used
  */
-const vector<size_t> BloomFilterGenerator::addHashFuncs(int16_t numFunc) {
+const vector<size_t> BloomFilterGenerator::addHashFuncs(int16_t numFunc)
+{
 	vector<size_t> seedVals;
 	for (int16_t i = 0; i < numFunc; ++i) {
 		multiHash.addHashFunction("CityHash64", i);
@@ -112,11 +113,13 @@ const vector<size_t> BloomFilterGenerator::addHashFuncs(int16_t numFunc) {
 /*
  * Returns the maximum possible number of expected filter entries based on inputs
  */
-const size_t BloomFilterGenerator::getExpectedEntries() const {
+const size_t BloomFilterGenerator::getExpectedEntries() const
+{
 	return expectedEntries;
 }
 
-const vector<string> BloomFilterGenerator::getHashFuncNames() const {
+const vector<string> BloomFilterGenerator::getHashFuncNames() const
+{
 	return hashFunctionNames;
 }
 
@@ -128,17 +131,20 @@ const vector<string> BloomFilterGenerator::getHashFuncNames() const {
  * to achieve lowest FPR for a given ratio of filter size and entries
  */
 const int16_t BloomFilterGenerator::calcOptiHashNum(size_t size,
-		size_t entries) const {
+		size_t entries) const
+{
 	return int16_t(((double) size / (double) entries) * log(2));
 }
 
 /*
  * Calculation assumes optimal ratio of bytes per entry given a fpr
  */
-const int16_t BloomFilterGenerator::calcOptiHashNum(float fpr) const {
+const int16_t BloomFilterGenerator::calcOptiHashNum(float fpr) const
+{
 	return int16_t(-log(fpr) / log(2));
 }
 
 //destructor
-BloomFilterGenerator::~BloomFilterGenerator() {
+BloomFilterGenerator::~BloomFilterGenerator()
+{
 }

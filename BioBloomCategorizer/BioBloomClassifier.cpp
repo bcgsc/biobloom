@@ -19,15 +19,6 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 	loadFilters(filterFilePaths);
 }
 
-/*
- * checks if file exists
- */
-bool BioBloomClassifier::fexists(const string &filename) const
-{
-	ifstream ifile(filename.c_str());
-	return ifile;
-}
-
 void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 {
 	cout << "Starting to Load Filters." << endl;
@@ -82,9 +73,9 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 					info->getFilterID(), *it);
 			infoFiles[hashSig.str()] = tempVect;
 		}
-		cout << "Loaded Filter: " + info->getFilterID() << endl;
+		cerr << "Loaded Filter: " + info->getFilterID() << endl;
 	}
-	cout << "Filter Loading Complete." << endl;
+	cerr << "Filter Loading Complete." << endl;
 }
 
 void BioBloomClassifier::filter(const vector<string> &inputFiles,
@@ -151,43 +142,9 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 			for (vector<string>::const_iterator j = hashSigs.begin();
 					j != hashSigs.end(); ++j)
 			{
-				//get filterIDs to iterate through has in a consistent order
-				const vector<string> &idsInFilter =
-						(*filters[*j]).getFilterIds();
-
-				//get kmersize for set of info files
-				int16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
-				size_t currentKmerNum = 0;
-
-				//Establish tiling pattern
-				int16_t startModifier = (rec.seq.length() % kmerSize) / 2;
-
-				ReadsProcessor proc(kmerSize);
-				//cut read into kmer size given
-				while (rec.seq.length() >= (currentKmerNum + 1) * kmerSize) {
-
-					const string &currentKmer = proc.prepSeq(rec.seq,
-							currentKmerNum * kmerSize + startModifier);
-
-					//check to see if string is invalid
-					if (!currentKmer.empty()) {
-						const boost::unordered_map<string, bool> &results =
-								filters[*j]->multiContains(currentKmer);
-
-						//record hit number in order
-						for (vector<string>::const_iterator i =
-								idsInFilter.begin(); i != idsInFilter.end();
-								++i)
-						{
-							if (results.find(*i)->second) {
-								++hits[*i];
-							}
-						}
-					} else {
-						readOK = false;
-						break;
-					}
-					++currentKmerNum;
+				if (!evaluateRead(rec, *j, hits)) {
+					readOK = false;
+					break;
 				}
 			}
 
@@ -314,46 +271,11 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 			for (vector<string>::const_iterator j = hashSigs.begin();
 					j != hashSigs.end(); ++j)
 			{
-				//get filterIDs to iterate through has in a consistent order
-				const vector<string> &idsInFilter =
-						(*filters[*j]).getFilterIds();
-
-				//get kmersize for set of info files
-				int16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
-				size_t currentKmerNum = 0;
-
-				//Establish tiling pattern
-				int16_t startModifier = (rec.seq.length() % kmerSize) / 2;
-
-				ReadsProcessor proc(kmerSize);
-				//cut read into kmer size given
-				while (rec.seq.length() >= (currentKmerNum + 1) * kmerSize) {
-
-					const string &currentKmer = proc.prepSeq(rec.seq,
-							currentKmerNum * kmerSize + startModifier);
-
-					//check to see if string is invalid
-					if (!currentKmer.empty()) {
-						const boost::unordered_map<string, bool> &results =
-								filters[*j]->multiContains(currentKmer);
-
-						//record hit number in order
-						for (vector<string>::const_iterator i =
-								idsInFilter.begin(); i != idsInFilter.end();
-								++i)
-						{
-							if (results.find(*i)->second) {
-								++hits[*i];
-							}
-						}
-					} else {
-						readOK = false;
-						break;
-					}
-					++currentKmerNum;
+				if (!evaluateRead(rec, *j, hits)) {
+					readOK = false;
+					break;
 				}
 			}
-
 			if (readOK) {
 				//print readID
 				readStatusOutput << rec.id << "\t" << rec.seq.length();
@@ -555,10 +477,15 @@ void BioBloomClassifier::printSummary(const string &outputPrefix,
 
 /*
  * Filters reads -> uses paired end information
+ * Assumes only one hash signature exists (load only filters with same
+ * hash functions)
  */
 void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 		const string &outputPrefix)
 {
+	//check if output folder exists
+	string tempStr = outputPrefix.substr(0, outputPrefix.find_last_of("/"));
+	folderCheck(tempStr);
 
 	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
 
@@ -570,6 +497,22 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 	boost::unordered_map<string, size_t> belowThreshold;
 	size_t totalReads = 0;
 
+	boost::unordered_map<string, boost::shared_ptr<ofstream> > outputFiles;
+	boost::shared_ptr<ofstream> noMatch1(
+			new ofstream((outputPrefix + "noMatch1.fastq").c_str(), ios::out));
+	boost::shared_ptr<ofstream> noMatch2(
+			new ofstream((outputPrefix + "noMatch2.fastq").c_str(), ios::out));
+	boost::shared_ptr<ofstream> multiMatch1(
+			new ofstream((outputPrefix + "multiMatch.fastq").c_str(),
+					ios::out));
+	boost::shared_ptr<ofstream> multiMatch2(
+			new ofstream((outputPrefix + "multiMatch.fastq").c_str(),
+					ios::out));
+	outputFiles["noMatch1"] = noMatch1;
+	outputFiles["noMatch2"] = noMatch2;
+	outputFiles["multiMatch1"] = multiMatch1;
+	outputFiles["multiMatch2"] = multiMatch2;
+
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
@@ -578,30 +521,35 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
+			boost::shared_ptr<ofstream> temp1(
+					new ofstream((outputPrefix + *i + "2.fastq").c_str(),
+							ios::out));
+			boost::shared_ptr<ofstream> temp2(
+					new ofstream((outputPrefix + *i + "2.fastq").c_str(),
+							ios::out));
+			outputFiles[*i + "1"] = temp1;
+			outputFiles[*i + "2"] = temp2;
 			readStatusOutput << "\t" << *i << "_"
 					<< (*(infoFiles[*j].front())).getKmerSize();
-			aboveThreshold[*i] = 0;
-			belowThreshold[*i] = 0;
+			aboveThreshold[*i + "1"] = 0;
+			belowThreshold[*i + "2"] = 0;
 		}
 	}
 	readStatusOutput << "\n";
 
+	//Todo: make sure this prints out only when filters are loaded
 	//gcc currently optimizes to print this before loading can complete
-	cerr << "Filtering Start" << endl;
-
-	//check if files exist
+	cerr << "Filtering Start" << "\n";
 
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
 	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
 	FastqRecord rec1;
 	FastqRecord rec2;
-	//hits results stored in hashmap of filternames and hits
-	boost::unordered_map<string, size_t> hits(filterNum);
+	//hits results stored in hashmap of filter names and hits
+	boost::unordered_map<string, size_t> hits1(filterNum);
+	boost::unordered_map<string, size_t> hits2(filterNum);
 
 	while (sequence1 >> rec1 && sequence2 >> rec2) {
-		cout << rec1.seq << endl;
-		cout << rec2.seq << endl;
-
 		//split reads into kmerSizes specified (ignore trailing bases)
 		//for skipping bad reads
 		bool readOK = true;
@@ -614,7 +562,8 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 			for (vector<string>::const_iterator i = idsInFilter.begin();
 					i != idsInFilter.end(); ++i)
 			{
-				hits[*i] = 0;
+				hits1[*i] = 0;
+				hits2[*i] = 0;
 			}
 		}
 
@@ -622,97 +571,191 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 		for (vector<string>::const_iterator j = hashSigs.begin();
 				j != hashSigs.end(); ++j)
 		{
-			//get filterIDs to iterate through has in a consistent order
-			const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
+			string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
+			string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
+			if (tempStr1 == tempStr2) {
+				if (!evaluateRead(rec1, *j, hits1)
+						|| !evaluateRead(rec2, *j, hits2))
+				{
+					readOK = false;
+					break;
+				}
+			} else {
+				cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
+						<< tempStr2 << endl;
+				exit(1);
+			}
+		}
 
-			//get kmersize for set of info files
-			int16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
-			size_t currentKmerNum = 0;
+		//print readID
+		readStatusOutput << rec1.id << "\t" << rec1.seq.length();
 
-			//Establish tiling pattern
-			int16_t startModifier = (rec.seq.length() % kmerSize) / 2;
+		++totalReads;
+		if (totalReads % 100000 == 0) {
+			cout << "Currently Reading Read Number: " << totalReads << endl;
+		}
+		if (readOK) {
+			int16_t totalHits = 0;
+			for (vector<string>::const_iterator j = hashSigs.begin();
+					j != hashSigs.end(); ++j)
+			{
+				//update summary
+				const vector<string> &idsInFilter =
+						(*filters[*j]).getFilterIds();
+				for (vector<string>::const_iterator i = idsInFilter.begin();
+						i != idsInFilter.end(); ++i)
+				{
+					//print read status
+					readStatusOutput << "\t" << hits1[*i] << '/' << hits2[*i];
 
-			ReadsProcessor proc(kmerSize);
-			//cut read into kmer size given
-//			while (rec.seq.length() >= (currentKmerNum + 1) * kmerSize) {
-//
-//				const string &currentKmer = proc.prepSeq(rec.seq,
-//						currentKmerNum * kmerSize + startModifier);
-//
-//				//check to see if string is invalid
-//				if (!currentKmer.empty()) {
-//					const boost::unordered_map<string, bool> &results =
-//							filters[*j]->multiContains(currentKmer);
-//
-//					//record hit number in order
-//					for (vector<string>::const_iterator i = idsInFilter.begin();
-//							i != idsInFilter.end(); ++i)
-//					{
-//						if (results.find(*i)->second) {
-//							++hits[*i];
-//						}
-//					}
-//				} else {
-//					readOK = false;
-//					break;
-//				}
-//				++currentKmerNum;
-//			}
-//		}
-//
-//		if (readOK) {
-//			//print readID
-//			readStatusOutput << rec.id << "\t" << rec.seq.length();
-//			++totalReads;
-//			if (totalReads % 1000000 == 0) {
-//				cout << "Currently Reading Read Number: " << totalReads << endl;
-//			}
-//			int16_t totalHits = 0;
-//			for (vector<string>::const_iterator j = hashSigs.begin();
-//					j != hashSigs.end(); ++j)
-//			{
-//				//update summary
-//				const vector<string> &idsInFilter =
-//						(*filters[*j]).getFilterIds();
-//				for (vector<string>::const_iterator i = idsInFilter.begin();
-//						i != idsInFilter.end(); ++i)
-//				{
-//					//print to file
-//					readStatusOutput << "\t" << hits[*i];
-//
-//					//pick threshold, by percent or by absolute value
-//					int16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
-//					size_t threshold = size_t(
-//							percentMinHit * (rec.seq.length() / kmerSize));
-//					if (minHit > threshold) {
-//						threshold = minHit;
-//					}
-//
-//					if (hits[*i] >= threshold) {
-//						++totalHits;
-//						++aboveThreshold[*i];
-//					} else if (hits[*i] != 0) {
-//						++belowThreshold[*i];
-//					}
-//				}
-//			}
-//			readStatusOutput << "\n";
+					//pick threshold, by percent or by absolute value
+					int16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
+					size_t threshold1 = size_t(
+							percentMinHit * (rec1.seq.length() / kmerSize));
+					size_t threshold2 = size_t(
+							percentMinHit * (rec2.seq.length() / kmerSize));
+					if (minHit > threshold1) {
+						threshold1 = minHit;
+					}
+					if (minHit > threshold2) {
+						threshold2 = minHit;
+					}
+
+					if (hits1[*i] >= threshold1 && hits2[*i] >= threshold2) {
+						++totalHits;
+						++aboveThreshold[*i];
+					} else if (hits1[*i] != 0 && hits2[*i] != 0) {
+						++belowThreshold[*i];
+					}
+				}
+			}
+			if (totalHits == 0) {
+				(*outputFiles["noMatch1"]) << "@" << rec1.id << "\n" << rec1.seq
+						<< "\n+\n" << rec1.qual << "\n";
+				(*outputFiles["noMatch2"]) << "@" << rec2.id << "\n" << rec2.seq
+						<< "\n+\n" << rec2.qual << "\n";
+			} else if (totalHits > 1) {
+				(*outputFiles["multiMatch1"]) << "@" << rec1.id << "\n"
+						<< rec1.seq << "\n+\n" << rec1.qual << "\n";
+				(*outputFiles["multiMatch2"]) << "@" << rec2.id << "\n"
+						<< rec2.seq << "\n+\n" << rec2.qual << "\n";
+			} else {
+				for (vector<string>::const_iterator j = hashSigs.begin();
+						j != hashSigs.end(); ++j)
+				{
+					const vector<string> idsInFilter =
+							(*filters[*j]).getFilterIds();
+					for (vector<string>::const_iterator i = idsInFilter.begin();
+							i != idsInFilter.end(); ++i)
+					{
+						//pick threshold, by percent or by absolute value
+						int16_t kmerSize =
+								(*(infoFiles[*j].front())).getKmerSize();
+						size_t threshold1 = size_t(
+								percentMinHit * (rec1.seq.length() / kmerSize));
+						size_t threshold2 = size_t(
+								percentMinHit * (rec2.seq.length() / kmerSize));
+						if (minHit > threshold1) {
+							threshold1 = minHit;
+						}
+						if (minHit > threshold2) {
+							threshold2 = minHit;
+						}
+
+						if (hits1[*i] >= threshold1 && hits2[*i] >= threshold2)
+						{
+							(*outputFiles[*i + "1"]) << "@" << rec1.id << "\n"
+									<< rec1.seq << "\n+\n" << rec1.qual << "\n";
+							(*outputFiles[*i + "2"]) << "@" << rec2.id << "\n"
+									<< rec2.seq << "\n+\n" << rec2.qual << "\n";
+							break;
+						}
+					}
+				}
+			}
+		} else {
+			for (vector<string>::const_iterator j = hashSigs.begin();
+					j != hashSigs.end(); ++j)
+			{
+				const vector<string> &idsInFilter =
+						(*filters[*j]).getFilterIds();
+				for (vector<string>::const_iterator i = idsInFilter.begin();
+						i != idsInFilter.end(); ++i)
+				{
+					//print read status
+					readStatusOutput << "\t" << "na/na";
+				}
+			}
+			(*outputFiles["noMatch1"]) << "@" << rec1.id << "\n" << rec1.seq
+					<< "\n+\n" << rec1.qual << "\n";
+			(*outputFiles["noMatch2"]) << "@" << rec2.id << "\n" << rec2.seq
+					<< "\n+\n" << rec2.qual << "\n";
+
+		}
+		readStatusOutput << "\n";
+	}
+	if(!(sequence2 >> rec2) && sequence1.eof() && sequence2.eof())
+	{
+		cerr << "error: eof bit not flipped. Input files may be different lengths" << endl;
+	}
+
+	//close sorting files
+	for (vector<string>::const_iterator j = hashSigs.begin();
+			j != hashSigs.end(); ++j)
+	{
+		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		for (vector<string>::const_iterator i = idsInFilter.begin();
+				i != idsInFilter.end(); ++i)
+		{
+			outputFiles[*i + "1"]->flush();
+			outputFiles[*i + "2"]->close();
+			outputFiles[*i + "1"]->flush();
+			outputFiles[*i + "2"]->close();
 		}
 	}
-//	cout << "Total Reads:" << totalReads << endl;
-//	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
+	outputFiles["noMatch1"]->flush();
+	outputFiles["noMatch1"]->close();
+	outputFiles["noMatch2"]->flush();
+	outputFiles["noMatch2"]->close();
+	outputFiles["multiMatch1"]->flush();
+	outputFiles["multiMatch1"]->close();
+	outputFiles["multiMatch2"]->flush();
+	outputFiles["multiMatch2"]->close();
+	cout << "Total Reads:" << totalReads << endl;
+	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
 }
 
-void checkSeq()
+/*
+ * For a single read evaluate hits for a single hash signature
+ * Returns true if read is valid (no ambiguity characters)
+ * Updates hits value to number of hits (hashSig is used to as key)
+ */
+bool BioBloomClassifier::evaluateRead(const FastqRecord &rec,
+		const string &hashSig, boost::unordered_map<string, size_t> &hits)
 {
+	bool readOK = true;
+
+	//get filterIDs to iterate through has in a consistent order
+	const vector<string> &idsInFilter = (*filters[hashSig]).getFilterIds();
+
+	//get kmersize for set of info files
+	int16_t kmerSize = (*(infoFiles[hashSig].front())).getKmerSize();
+
+	//Establish tiling pattern
+	int16_t startModifier1 = (rec.seq.length() % kmerSize) / 2;
+	size_t currentKmerNum = 0;
+
+	ReadsProcessor proc(kmerSize);
+	//cut read into kmer size given
 	while (rec.seq.length() >= (currentKmerNum + 1) * kmerSize) {
+
 		const string &currentKmer = proc.prepSeq(rec.seq,
-				currentKmerNum * kmerSize + startModifier);
+				currentKmerNum * kmerSize + startModifier1);
 
 		//check to see if string is invalid
 		if (!currentKmer.empty()) {
 			const boost::unordered_map<string, bool> &results =
-					filters[*j]->multiContains(currentKmer);
+					filters[hashSig]->multiContains(currentKmer);
 
 			//record hit number in order
 			for (vector<string>::const_iterator i = idsInFilter.begin();
@@ -722,11 +765,42 @@ void checkSeq()
 					++hits[*i];
 				}
 			}
-s		} else {
+		} else {
 			readOK = false;
 			break;
 		}
 		++currentKmerNum;
+	}
+	return readOK;
+}
+
+//helper methods
+
+/*
+ * checks if file exists
+ */
+bool BioBloomClassifier::fexists(const string &filename) const
+{
+	ifstream ifile(filename.c_str());
+	return ifile;
+}
+
+/*
+ * checks if folder exists
+ */
+void BioBloomClassifier::folderCheck(const string &path) const
+{
+	struct stat sb;
+
+	if (stat(path.c_str(), &sb) == 0) {
+		if (!S_ISDIR(sb.st_mode)) {
+			cerr << "Output folder: File exists with this name. " << path
+					<< endl;
+			exit(1);
+		}
+	} else {
+		cerr << "Output folder: Does not exist. " << path << endl;
+		exit(1);
 	}
 }
 

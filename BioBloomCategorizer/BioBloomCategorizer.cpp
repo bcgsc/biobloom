@@ -17,10 +17,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "BioBloomClassifier.h"
+#include "DataLayer/Options.h"
 using namespace std;
 
 /*
- * Parses input string into seperate strings, returning a vector.
+ * Parses input string into separate strings, returning a vector.
  */
 vector<string> convertInputString(const string &inputString)
 {
@@ -59,6 +60,7 @@ void printHelpDialog()
 
 int main(int argc, char *argv[])
 {
+	opt::chastityFilter = false;
 
 	//switch statement variable
 	int c;
@@ -73,10 +75,15 @@ int main(int argc, char *argv[])
 	bool die = false;
 
 	//long form arguments
-	static struct option long_options[] = { { "prefix", 0, NULL, 'p' }, {
-			"min_hit_thr", 0, NULL, 't' }, { "min_hit_per", 0, NULL, 'm' }, {
-			"output_fastq", 0, NULL, 'o' }, { "filter_files", 1, NULL, 'f' }, {
-			"help", 0, NULL, 'h' }, { NULL, 0, NULL, 0 } };
+	static struct option long_options[] = {
+			{
+					"prefix", optional_argument, NULL, 'p' }, {
+					"min_hit_thr", optional_argument, NULL, 't' }, {
+					"min_hit_per", optional_argument, NULL, 'm' }, {
+					"output_fastq", no_argument, NULL, 'o' }, {
+					"filter_files", required_argument, NULL, 'f' }, {
+					"help", no_argument, NULL, 'h' }, {
+					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
@@ -140,7 +147,6 @@ int main(int argc, char *argv[])
 		cerr << "Need Input File" << endl;
 		die = true;
 	}
-
 	if (filterFilePaths.size() == 0) {
 		cerr << "Need Filter File (-f)" << endl;
 		die = true;
@@ -155,7 +161,7 @@ int main(int argc, char *argv[])
 
 	//filtering step
 	//create directory structure if it does not exist
-	BBC.filterPair(inputFiles[0], inputFiles[1], outputPrefix);
+	BBC.filterPair(inputFiles[0], inputFiles[1], outputPrefix + "_");
 //	if (printReads) {
 //		BBC.filterPrintReads(inputFiles, outputPrefix);
 //	} else {

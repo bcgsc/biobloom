@@ -38,8 +38,10 @@ private:
 			boost::unordered_map<string, size_t> &aboveThreshold,
 			boost::unordered_map<string, size_t> &belowThreshold,
 			size_t totalReads);
-	void checkSeq();
 	bool fexists(const string &filename) const;
+	void folderCheck(const string &path) const;
+	bool evaluateRead(const FastqRecord &rec, const string &hashSig,
+			boost::unordered_map<string, size_t> &hits);
 
 	//group filters with same hash signature
 	boost::unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > infoFiles;

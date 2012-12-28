@@ -14,11 +14,11 @@
 #include <boost/property_tree/ini_parser.hpp>
 
 BloomFilterInfo::BloomFilterInfo(string const &filterID, int16_t kmerSize,
-		float desiredFPR, size_t numEntries,
-		const boost::unordered_map<string, vector<string> > &seqSrcs,
+		float desiredFPR, size_t numEntries, const vector<string> &seqSrcs,
 		int16_t hashNum) :
 		filterID(filterID), kmerSize(kmerSize), desiredFPR(desiredFPR), seqSrcs(
-				seqSrcs), hashNum(hashNum) {
+				seqSrcs), hashNum(hashNum)
+{
 	runInfo.numEntries = numEntries;
 	runInfo.size = calcOptimalSize(numEntries, desiredFPR, hashNum);
 }
@@ -27,7 +27,8 @@ BloomFilterInfo::BloomFilterInfo(string const &filterID, int16_t kmerSize,
  * loads bloom filter information from a file
  */
 //Todo: convert to having variables stored in property tree for more modularity
-BloomFilterInfo::BloomFilterInfo(string const &fileName) {
+BloomFilterInfo::BloomFilterInfo(string const &fileName)
+{
 	boost::property_tree::ptree pt;
 	boost::property_tree::ini_parser::read_ini(fileName, pt);
 	filterID = pt.get<string>("user_input_options.filter_id");
@@ -48,7 +49,8 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName) {
 }
 
 //todo: change so that class is not mutable after object construction
-void BloomFilterInfo::addHashFunction(const string &fnName, size_t seed) {
+void BloomFilterInfo::addHashFunction(const string &fnName, size_t seed)
+{
 	runInfo.hashFunctions.push_back(fnName);
 	runInfo.seeds.push_back(seed);
 }
@@ -56,7 +58,8 @@ void BloomFilterInfo::addHashFunction(const string &fnName, size_t seed) {
 /*
  * Prints out INI format file
  */
-void BloomFilterInfo::printInfoFile(const string &fileName) const {
+void BloomFilterInfo::printInfoFile(const string &fileName) const
+{
 
 	//calcuate actual FPR
 	float maxFPR = calcApproxFPR(runInfo.size, runInfo.numEntries,
@@ -77,21 +80,11 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const {
 			<< "\nsequence_sources=";
 	//print out sources as a list
 	size_t tempCounter = 0;
-	for (boost::unordered_map<string, vector<string> >::const_iterator it =
-			seqSrcs.begin(); it != seqSrcs.end(); ++it) {
-		output << (*it).first;
-		vector<string> temp = (*it).second;
-		for (vector<string>::const_iterator it2 = temp.begin();
-				it2 != temp.end(); ++it2) {
-			output << " " << (*it2);
-		}
-		//print closing quotes
-		tempCounter++;
-		if (tempCounter == seqSrcs.size()) {
-			output << "";
-		} else {
-			output << ", ";
-		}
+	for (vector<string>::const_iterator it = seqSrcs.begin();
+			it != seqSrcs.end(); ++it)
+	{
+		output << *it;
+		output << " ";
 	}
 
 	//runtime determined options
@@ -107,20 +100,23 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const {
 
 //getters
 
-const int16_t BloomFilterInfo::getKmerSize() const {
+const int16_t BloomFilterInfo::getKmerSize() const
+{
 	return kmerSize;
 }
 
 /*
  * returns a unique string representing the hash function and seeds used
  */
-const string BloomFilterInfo::getSeedHashSigniture() const {
+const string BloomFilterInfo::getSeedHashSigniture() const
+{
 	stringstream ss;
 	ss << "hash_functions=";
 	//print out hash functions as a list
 	int16_t tempCounter = 0;
 	for (vector<string>::const_iterator it = runInfo.hashFunctions.begin();
-			it != runInfo.hashFunctions.end(); ++it) {
+			it != runInfo.hashFunctions.end(); ++it)
+	{
 		ss << (*it);
 		//print closing quotes
 		++tempCounter;
@@ -133,7 +129,8 @@ const string BloomFilterInfo::getSeedHashSigniture() const {
 	ss << "\nseeds=";
 	tempCounter = 0;
 	for (vector<size_t>::const_iterator it = runInfo.seeds.begin();
-			it != runInfo.seeds.end(); ++it) {
+			it != runInfo.seeds.end(); ++it)
+	{
 		ss << *it;
 		++tempCounter;
 		if (tempCounter != runInfo.seeds.size()) {
@@ -143,46 +140,37 @@ const string BloomFilterInfo::getSeedHashSigniture() const {
 	return ss.str();
 }
 
-const size_t BloomFilterInfo::getCalcuatedFilterSize() const {
+const size_t BloomFilterInfo::getCalcuatedFilterSize() const
+{
 	return runInfo.size;
 }
 
-const vector<string> &BloomFilterInfo::getHashFunctionNames() const {
+const vector<string> &BloomFilterInfo::getHashFunctionNames() const
+{
 	return runInfo.hashFunctions;
 
 }
 
-const vector<size_t> &BloomFilterInfo::getSeedValues() const {
+const vector<size_t> &BloomFilterInfo::getSeedValues() const
+{
 	return runInfo.seeds;
 }
 
-const string &BloomFilterInfo::getFilterID() const {
+const string &BloomFilterInfo::getFilterID() const
+{
 	return filterID;
 }
 
-const boost::unordered_map<string, vector<string> > BloomFilterInfo::convertSeqSrcString(
-		string const &seqSrcStr) const {
-	boost::unordered_map<string, vector<string> > inputs;
-	vector<string> currentList;
+const vector<string> BloomFilterInfo::convertSeqSrcString(
+		string const &seqSrcStr) const
+{
+	vector<string> inputs;
 	string currentFileName = "";
 	string temp;
 	stringstream converter(seqSrcStr);
 	while (converter >> temp) {
-
-		if (temp.at(temp.length() - 1) == ',') {
-			temp.resize(temp.length() - 1);
-			currentList.push_back(temp);
-			inputs[currentFileName] = currentList;
-			currentFileName = "";
-		} else {
-			if (currentFileName.empty()) {
-				currentFileName = temp;
-			} else {
-				currentList.push_back(temp);
-			}
-		}
+		inputs.push_back(temp);
 	}
-	inputs[currentFileName] = currentList;
 	return inputs;
 }
 
@@ -190,7 +178,8 @@ const boost::unordered_map<string, vector<string> > BloomFilterInfo::convertSeqS
  * converts string obtained from hash values in info file and converts to list
  */
 const vector<string> BloomFilterInfo::convertHashFuncString(
-		const string &hashFnStr) const {
+		const string &hashFnStr) const
+{
 	vector<string> fnNames;
 	string temp;
 	stringstream converter(hashFnStr);
@@ -208,7 +197,8 @@ const vector<string> BloomFilterInfo::convertHashFuncString(
  * converts string obtained from seeds in info file and converts to list
  */
 const vector<size_t> BloomFilterInfo::convertSeedString(
-		const string &seedStr) const {
+		const string &seedStr) const
+{
 	vector<size_t> seedVal;
 	string temp;
 	stringstream converter(seedStr);
@@ -233,7 +223,8 @@ const vector<size_t> BloomFilterInfo::convertSeedString(
  * Value uses approximated FPR formula
  */
 const float BloomFilterInfo::calcApproxFPR(size_t size, size_t numEntr,
-		int16_t hashFunctNum) const {
+		int16_t hashFunctNum) const
+{
 	return pow(
 			1.0 - exp(-double(hashFunctNum) * double(numEntr) / double(size)),
 			hashFunctNum);
@@ -246,7 +237,8 @@ const float BloomFilterInfo::calcApproxFPR(size_t size, size_t numEntr,
  * see http://en.wikipedia.org/wiki/Bloom_filter
  */
 //Todo: Remove? not currently used.
-const size_t BloomFilterInfo::calcOptimalSize(size_t entries, float fpr) const {
+const size_t BloomFilterInfo::calcOptimalSize(size_t entries, float fpr) const
+{
 	size_t non64ApproxVal = size_t(entries * -log(fpr) / pow(log(2), 2));
 	return non64ApproxVal + (64 - non64ApproxVal % 64);
 }
@@ -258,7 +250,8 @@ const size_t BloomFilterInfo::calcOptimalSize(size_t entries, float fpr) const {
  * see http://en.wikipedia.org/wiki/Bloom_filter
  */
 const size_t BloomFilterInfo::calcOptimalSize(size_t entries, float fpr,
-		int16_t hashNum) const {
+		int16_t hashNum) const
+{
 	size_t non64ApproxVal = size_t(
 			-double(entries) * double(hashNum)
 					/ log(1.0 - pow(fpr, float(1 / (float(hashNum))))));
@@ -266,7 +259,8 @@ const size_t BloomFilterInfo::calcOptimalSize(size_t entries, float fpr,
 	return non64ApproxVal + (64 - non64ApproxVal % 64);
 }
 
-BloomFilterInfo::~BloomFilterInfo() {
+BloomFilterInfo::~BloomFilterInfo()
+{
 	// TODO Auto-generated destructor stub
 }
 

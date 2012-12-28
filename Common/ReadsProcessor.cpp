@@ -1,6 +1,6 @@
 /*
  * ReadsProcessor.cpp
- * Contains methods for formatting sequnces to place into bloom filter
+ * Contains methods for formatting sequences to place into bloom filter
  *
  *  Created on: Aug 8, 2012
  *      Author: cjustin

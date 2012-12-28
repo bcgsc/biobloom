@@ -14,75 +14,66 @@
 #include <getopt.h>
 using namespace std;
 
-/*
- * Parses the input string to store each files name with a list of headers
- * in a map full of vectors
- */
-//todo: resolve the fact that this code is also found in BloomFilterInfo
-boost::unordered_map<string, vector<string> > convertInputString(
-		const string &inputString) {
-	boost::unordered_map<string, vector<string> > inputs;
-	vector<string> currentList;
-	string currentFileName = "";
-	string temp;
-	stringstream converter(inputString);
-	while (converter >> temp) {
-		if (temp.at(temp.length() - 1) == ',') {
-			temp.resize(temp.length() - 1);
-			if (currentFileName.empty()) {
-				currentFileName = temp;
-			} else {
-				currentList.push_back(temp);
-			}
-			inputs[currentFileName] = currentList;
-			currentFileName = "";
-		} else {
-			if (currentFileName.empty()) {
-				currentFileName = temp;
-			} else {
-				currentList.push_back(temp);
-			}
-		}
-	}
-	inputs[currentFileName] = currentList;
-	return inputs;
+void printHelpDialog()
+{
+	static const char dialog[] =
+			"Usage: BioBloomMaker -p [FILTERID] [OPTION]... [FILE]...\n"
+					"Creates a bf and txt file from a list of fasta files.\n"
+					"\n"
+					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.02]\n"
+					"  -p, --file_prefix=N    Filename and filter ID. Required.\n"
+					"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
+					"  -g, --hash_num=N       Set number of hash functions to use in filter instead of\n"
+					"                         of automatically finding optimal number of hash functions."
+					"  -k, --output_fastq     K-mer size along reference to use to create filter. [25]\n"
+					"  -h, --help             Display this dialog."
+					"\n"
+					"Report bugs to <cjustin@bcgsc.ca>.\n";
+	cerr << dialog << endl;
+	exit(0);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
+
+	bool die = false;
 
 	//switch statement variable
 	int c;
 
 	//command line variables
-	string rawInputFiles = "";
-	double fpr = 1;
+	double fpr = 0.02;
 	string filterPrefix = "";
 	string outputDir = "";
-	int16_t kmerSize = 0;
+	int16_t kmerSize = 25;
 	int16_t hashNum = 0;
 
 	//long form arguments
 	//each option format { "optionName", necessary option or not, I have no idea, 'symbol'}
-	static struct option long_options[] = { { "input_file_statement", 1, NULL,
-			'i' }, { "false_positive_rate", 1, NULL, 'f' }, { "file_prefix", 1,
-			NULL, 'p' }, { "output_dir", 0, NULL, 'o' }, { "separate", 0, NULL,
-			's' }, { "hash_num", 0, NULL, 'g' }, { "kmer_size", 1, NULL, 'k' },
-			{ NULL, 0, NULL, 0 } };
+	static struct option long_options[] = {
+			{
+					"fal_pos_rate", required_argument, NULL, 'f' }, {
+					"file_prefix", required_argument, NULL, 'p' }, {
+					"output_dir", optional_argument, NULL, 'o' }, {
+					"hash_num", 0, NULL, 'g' }, {
+					"kmer_size", 1, NULL, 'k' }, {
+					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "i:f:p:o:k:n:g:", long_options,
-			&option_index)) != -1) {
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:", long_options,
+			&option_index)) != -1)
+	{
 		switch (c) {
-		case 'i': {
-			rawInputFiles = optarg;
-			break;
-		}
 		case 'f': {
 			stringstream convert(optarg);
 			if (!(convert >> fpr)) {
 				cerr << "Error - Invalid set of bloom filter parameters! f: "
 						<< optarg << endl;
+				return 0;
+			}
+			if (fpr > 1) {
+				cerr << "Error -f cannot be greater than 1 " << optarg << endl;
 				return 0;
 			}
 			break;
@@ -117,13 +108,30 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 		default: {
-			cerr << "Error - Invalid set option" << c << endl;
+			die = true;
+			break;
 		}
 		}
 	}
 
-	boost::unordered_map<string, vector<string> > inputFiles =
-			convertInputString(rawInputFiles);
+	//Stores fasta input file names
+	vector<string> inputFiles;
+
+	while (optind < argc) {
+		inputFiles.push_back(argv[optind]);
+		optind++;
+	}
+
+	//Check needed options
+	if (inputFiles.size() == 0) {
+		cerr << "Need Input File" << endl;
+		die = true;
+	}
+	if (die) {
+		cerr << "Try '--help' for more information.\n";
+		exit(EXIT_FAILURE);
+	}
+
 	//create filter
 	BloomFilterGenerator filterGen(inputFiles, kmerSize);
 

@@ -18,8 +18,7 @@ using namespace std;
 class BloomFilterInfo {
 public:
 	explicit BloomFilterInfo(string const &filterID, int16_t kmerSize,
-			float desiredFPR, size_t numEntries,
-			const boost::unordered_map<string, vector<string> > &seqSrcs,
+			float desiredFPR, size_t numEntries, const vector<string> &seqSrcs,
 			int16_t hashNum);
 	explicit BloomFilterInfo(string const &fileName);
 	void addHashFunction(const string &fnName, size_t seed);
@@ -39,7 +38,7 @@ private:
 	string filterID;
 	int16_t kmerSize;
 	float desiredFPR;
-	boost::unordered_map<string, vector<string> > seqSrcs;
+	vector<string> seqSrcs;
 	int16_t hashNum;
 
 //determined at run time
@@ -52,8 +51,7 @@ private:
 
 	runtime runInfo;
 
-	const boost::unordered_map<string, vector<string> > convertSeqSrcString(
-			const string &seqSrcStr) const;
+	const vector<string> convertSeqSrcString(const string &seqSrcStr) const;
 	const vector<string> convertHashFuncString(const string &hashFnStr) const;
 	const vector<size_t> convertSeedString(const string &seedStr) const;
 	const float calcApproxFPR(size_t size, size_t numEntr,
