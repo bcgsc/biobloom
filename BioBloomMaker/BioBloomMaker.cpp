@@ -21,7 +21,7 @@ void printHelpDialog()
 					"Creates a bf and txt file from a list of fasta files.\n"
 					"\n"
 					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.02]\n"
-					"  -p, --file_prefix=N    Filename and filter ID. Required.\n"
+					"  -p, --file_prefix=N    Filename Prefix and filter ID. Required option.\n"
 					"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
 					"  -g, --hash_num=N       Set number of hash functions to use in filter instead of\n"
 					"                         of automatically finding optimal number of hash functions."
@@ -125,6 +125,10 @@ int main(int argc, char *argv[])
 	//Check needed options
 	if (inputFiles.size() == 0) {
 		cerr << "Need Input File" << endl;
+		die = true;
+	}
+	if (filterPrefix.size() == 0) {
+		cerr << "Need Filter Prefix ID" << endl;
 		die = true;
 	}
 	if (die) {
