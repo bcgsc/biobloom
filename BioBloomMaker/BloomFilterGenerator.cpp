@@ -35,7 +35,7 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 	{
 		//if no header is used assume user wants all
 		WindowedFileParser parser(*i, kmerSize);
-		fileNamesAndHeaders[i] = parser.getHeaders();
+		fileNamesAndHeaders[*i] = parser.getHeaders();
 		for (vector<string>::iterator j = fileNamesAndHeaders[*i].begin();
 				j != fileNamesAndHeaders[*i].end(); ++j)
 		{
