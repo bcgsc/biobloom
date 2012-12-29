@@ -517,7 +517,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				i != idsInFilter.end(); ++i)
 		{
 			boost::shared_ptr<ofstream> temp1(
-					new ofstream((outputPrefix + "_" + *i + "2.fastq").c_str(),
+					new ofstream((outputPrefix + "_" + *i + "1.fastq").c_str(),
 							ios::out));
 			boost::shared_ptr<ofstream> temp2(
 					new ofstream((outputPrefix + "_" + *i + "2.fastq").c_str(),
