@@ -51,7 +51,7 @@ void printHelpDialog()
 					"                         Proportion of hits to categorize. [0.25]\n"
 					"  -o, --output_fastq     Output categorized reads in FastQ files.\n"
 					"  -e, --paired_mode      Uses paired-end information. Does not work\n"
-					"                         with BAM or SAM files."
+					"                         with BAM or SAM files.\n"
 					"  -h, --help             Display this dialog.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
