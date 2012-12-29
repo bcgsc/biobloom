@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
 
 	//output info
 	info.printInfoFile(outputDir + filterPrefix + ".txt");
-	cout << "Filter Creation Complete" << endl;
+	cerr << "Filter Creation Complete" << endl;
 
 	return 0;
 }

@@ -108,7 +108,6 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 	}
 	readStatusOutput << "\n";
 
-
 	cerr << "Filtering Start" << endl;
 
 	for (vector<string>::const_iterator it = inputFiles.begin();
@@ -209,9 +208,9 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 
 	boost::unordered_map<string, boost::shared_ptr<ofstream> > outputFiles;
 	boost::shared_ptr<ofstream> noMatch(
-			new ofstream((outputPrefix + "noMatch.fastq").c_str(), ios::out));
+			new ofstream((outputPrefix + "_noMatch.fastq").c_str(), ios::out));
 	boost::shared_ptr<ofstream> multiMatch(
-			new ofstream((outputPrefix + "multiMatch.fastq").c_str(),
+			new ofstream((outputPrefix + "_multiMatch.fastq").c_str(),
 					ios::out));
 	outputFiles["noMatch"] = noMatch;
 	outputFiles["multiMatch"] = multiMatch;
@@ -225,7 +224,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 				i != idsInFilter.end(); ++i)
 		{
 			boost::shared_ptr<ofstream> temp(
-					new ofstream((outputPrefix + *i + ".fastq").c_str(),
+					new ofstream((outputPrefix + "_" + *i + ".fastq").c_str(),
 							ios::out));
 			outputFiles[*i] = temp;
 			readStatusOutput << "\t" << *i << "_"
@@ -376,8 +375,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
  */
 void BioBloomClassifier::printSummary(const string &outputPrefix,
 		boost::unordered_map<string, size_t> &aboveThreshold,
-		boost::unordered_map<string, size_t> &belowThreshold,
-		size_t totalReads)
+		boost::unordered_map<string, size_t> &belowThreshold, size_t totalReads)
 {
 	ofstream summaryOutput((outputPrefix + "_summary.tsv").c_str(), ios::out);
 	summaryOutput << "type";
@@ -496,14 +494,14 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	boost::unordered_map<string, boost::shared_ptr<ofstream> > outputFiles;
 	boost::shared_ptr<ofstream> noMatch1(
-			new ofstream((outputPrefix + "noMatch1.fastq").c_str(), ios::out));
+			new ofstream((outputPrefix + "_noMatch1.fastq").c_str(), ios::out));
 	boost::shared_ptr<ofstream> noMatch2(
-			new ofstream((outputPrefix + "noMatch2.fastq").c_str(), ios::out));
+			new ofstream((outputPrefix + "_noMatch2.fastq").c_str(), ios::out));
 	boost::shared_ptr<ofstream> multiMatch1(
-			new ofstream((outputPrefix + "multiMatch.fastq").c_str(),
+			new ofstream((outputPrefix + "_multiMatch.fastq").c_str(),
 					ios::out));
 	boost::shared_ptr<ofstream> multiMatch2(
-			new ofstream((outputPrefix + "multiMatch.fastq").c_str(),
+			new ofstream((outputPrefix + "_multiMatch.fastq").c_str(),
 					ios::out));
 	outputFiles["noMatch1"] = noMatch1;
 	outputFiles["noMatch2"] = noMatch2;
@@ -519,10 +517,10 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				i != idsInFilter.end(); ++i)
 		{
 			boost::shared_ptr<ofstream> temp1(
-					new ofstream((outputPrefix + *i + "2.fastq").c_str(),
+					new ofstream((outputPrefix + "_" + *i + "2.fastq").c_str(),
 							ios::out));
 			boost::shared_ptr<ofstream> temp2(
-					new ofstream((outputPrefix + *i + "2.fastq").c_str(),
+					new ofstream((outputPrefix + "_" + *i + "2.fastq").c_str(),
 							ios::out));
 			outputFiles[*i + "1"] = temp1;
 			outputFiles[*i + "2"] = temp2;
@@ -533,8 +531,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 		}
 	}
 	readStatusOutput << "\n";
-
-
 
 	cerr << "Filtering Start" << "\n";
 
