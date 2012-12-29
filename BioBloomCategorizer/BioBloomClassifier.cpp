@@ -687,7 +687,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 		}
 		readStatusOutput << "\n";
 	}
-	if (!(sequence2 >> rec2) && sequence1.eof() && sequence2.eof()) {
+	if ( sequence2 >> rec2 && sequence1.eof() && sequence2.eof()) {
 		cerr
 				<< "error: eof bit not flipped. Input files may be different lengths"
 				<< endl;
@@ -861,7 +861,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 		}
 		readStatusOutput << "\n";
 	}
-	if (!(sequence2 >> rec2) && sequence1.eof() && sequence2.eof()) {
+	if ( sequence2 >> rec2 && sequence1.eof() && sequence2.eof()) {
 		cerr
 				<< "error: eof bit not flipped. Input files may be different lengths"
 				<< endl;
