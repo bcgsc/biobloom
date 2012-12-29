@@ -12,7 +12,6 @@
 
 using namespace std;
 
-//todo: put this somewhere else it make sense
 static const size_t bitsPerChar = 0x08;
 static const unsigned char bitMask[0x08] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
 		0x40, 0x80 };

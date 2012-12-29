@@ -130,6 +130,7 @@ const vector<string> BloomFilterGenerator::getHashFuncNames() const
  * Calculation will return optimal number of hash functions
  * to achieve lowest FPR for a given ratio of filter size and entries
  */
+//NOTE: Not currently used.
 const int16_t BloomFilterGenerator::calcOptiHashNum(size_t size,
 		size_t entries) const
 {

@@ -25,7 +25,6 @@ public:
 	virtual ~HashManager();
 private:
 	//the base hash class
-	//todo: move hash functions to somewhere more logical, not in header?
 	class Hash {
 	public:
 		Hash() {

@@ -108,8 +108,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 	}
 	readStatusOutput << "\n";
 
-	//Todo: make sure this prints out only when filters are loaded
-	//gcc currently optimizes to print this before loading can complete
+
 	cerr << "Filtering Start" << endl;
 
 	for (vector<string>::const_iterator it = inputFiles.begin();
@@ -237,8 +236,6 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 	}
 	readStatusOutput << "\n";
 
-	//Todo: make sure this prints out only when filters are loaded
-	//gcc currently optimizes to print this before loading can complete
 	cerr << "Filtering Start" << endl;
 
 	for (vector<string>::const_iterator it = inputFiles.begin();
@@ -379,7 +376,8 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
  */
 void BioBloomClassifier::printSummary(const string &outputPrefix,
 		boost::unordered_map<string, size_t> &aboveThreshold,
-		boost::unordered_map<string, size_t> &belowThreshold, size_t totalReads)
+		boost::unordered_map<string, size_t> &belowThreshold,
+		size_t totalReads)
 {
 	ofstream summaryOutput((outputPrefix + "_summary.tsv").c_str(), ios::out);
 	summaryOutput << "type";
@@ -387,7 +385,7 @@ void BioBloomClassifier::printSummary(const string &outputPrefix,
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
-		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+		const vector<string> &idsInFilter = filters[*j]->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
@@ -472,7 +470,6 @@ void BioBloomClassifier::printSummary(const string &outputPrefix,
 		}
 	}
 	summaryOutput.close();
-
 }
 
 /*
@@ -480,8 +477,8 @@ void BioBloomClassifier::printSummary(const string &outputPrefix,
  * Assumes only one hash signature exists (load only filters with same
  * hash functions)
  */
-void BioBloomClassifier::filterPairPrint(const string &file1, const string &file2,
-		const string &outputPrefix)
+void BioBloomClassifier::filterPairPrint(const string &file1,
+		const string &file2, const string &outputPrefix)
 {
 	//check if output folder exists
 	string tempStr = outputPrefix.substr(0, outputPrefix.find_last_of("/"));
@@ -537,8 +534,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1, const string &file
 	}
 	readStatusOutput << "\n";
 
-	//Todo: make sure this prints out only when filters are loaded
-	//gcc currently optimizes to print this before loading can complete
+
+
 	cerr << "Filtering Start" << "\n";
 
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
@@ -694,9 +691,10 @@ void BioBloomClassifier::filterPairPrint(const string &file1, const string &file
 		}
 		readStatusOutput << "\n";
 	}
-	if(!(sequence2 >> rec2) && sequence1.eof() && sequence2.eof())
-	{
-		cerr << "error: eof bit not flipped. Input files may be different lengths" << endl;
+	if (!(sequence2 >> rec2) && sequence1.eof() && sequence2.eof()) {
+		cerr
+				<< "error: eof bit not flipped. Input files may be different lengths"
+				<< endl;
 	}
 
 	//close sorting files
@@ -763,8 +761,6 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 	}
 	readStatusOutput << "\n";
 
-	//Todo: make sure this prints out only when filters are loaded
-	//gcc currently optimizes to print this before loading can complete
 	cerr << "Filtering Start" << "\n";
 
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
@@ -869,9 +865,10 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 		}
 		readStatusOutput << "\n";
 	}
-	if(!(sequence2 >> rec2) && sequence1.eof() && sequence2.eof())
-	{
-		cerr << "error: eof bit not flipped. Input files may be different lengths" << endl;
+	if (!(sequence2 >> rec2) && sequence1.eof() && sequence2.eof()) {
+		cerr
+				<< "error: eof bit not flipped. Input files may be different lengths"
+				<< endl;
 	}
 	cout << "Total Reads:" << totalReads << endl;
 	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);

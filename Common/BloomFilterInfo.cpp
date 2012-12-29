@@ -236,7 +236,7 @@ const float BloomFilterInfo::calcApproxFPR(size_t size, size_t numEntr,
  * assuming optimal # of hash functions used
  * see http://en.wikipedia.org/wiki/Bloom_filter
  */
-//Todo: Remove? not currently used.
+//NOTE: Not currently used.
 const size_t BloomFilterInfo::calcOptimalSize(size_t entries, float fpr) const
 {
 	size_t non64ApproxVal = size_t(entries * -log(fpr) / pow(log(2), 2));
@@ -261,6 +261,5 @@ const size_t BloomFilterInfo::calcOptimalSize(size_t entries, float fpr,
 
 BloomFilterInfo::~BloomFilterInfo()
 {
-	// TODO Auto-generated destructor stub
 }
 

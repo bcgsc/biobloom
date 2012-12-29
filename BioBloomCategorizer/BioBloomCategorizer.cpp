@@ -4,7 +4,6 @@
  *  Created on: Sep 7, 2012
  *      Author: cjustin
  */
-//todo: refactor into additional class
 //todo: UNIT TESTS!
 #include <sstream>
 #include <string>

@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 	BloomFilterInfo info(filterPrefix, kmerSize, fpr, entryNum, inputFiles,
 			hashNum);
 
-	//get calcuated size of Filter
+	//get calculated size of Filter
 	size_t filterSize = info.getCalcuatedFilterSize();
 
 	//Add seed to bloom filter and get them for info file
@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
 
 	//output filter
 	filterGen.generate(outputDir + filterPrefix + ".bf");
-	//set hashfunction info
+	//set hash function info
 	vector<string> hashFunctions = filterGen.getHashFuncNames();
 
 	for (int16_t i = 0; i < hashNum; ++i) {

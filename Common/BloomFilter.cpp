@@ -24,8 +24,7 @@ BloomFilter::BloomFilter(size_t filterSize, HashManager const &hashFns) :
 /*
  * Loads the filter (file is a .bf file) from path specified
  */
-//todo: OptPot: add decompression/compression support for loading speed
-//todo: OptPot: change to forked process for loading speed
+//todo: OptPot: add piped decompression/compression support for loading speed
 BloomFilter::BloomFilter(size_t filterSize, string const &filterFilePath,
 		HashManager const &hashFns) :
 		size(filterSize), multiHasher(hashFns)
