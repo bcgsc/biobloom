@@ -26,7 +26,6 @@ public:
 	const vector<string> getHeaders() const;
 	void setLocationByHeader( const string &header);
 	const size_t getSequenceSize( const string &header);
-	const deque<char> &getNextDeq();
 	const string &getNextSeq();
 	const bool notEndOfSeqeunce();
 
@@ -48,7 +47,6 @@ private:
 	string currentHeader;
 	size_t currentCharNumber;
 	size_t currentLinePos;
-//	deque<char> window;
 	string window;
 	string currentString;
 	ReadsProcessor proc;
@@ -58,9 +56,6 @@ private:
 
 	//helper methods
 	void initializeIndex(string const &fileName);
-//	unordered_map<string, fastaIndexValue> generateInternalIndex();
-//	unordered_map<string, fastaIndexValue> loadInternalIndex(
-//			ifstream indexFile);
 
 };
 

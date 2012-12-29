@@ -8,26 +8,29 @@
  */
 #include "WindowedFileParser.h"
 #include <sstream>
+#include "DataLayer/FastaIndex.h"
 
 WindowedFileParser::WindowedFileParser(string const &fileName,
 		int16_t windowSize) :
-		windowSize(windowSize), proc(ReadsProcessor(windowSize)) {
+		windowSize(windowSize), proc(ReadsProcessor(windowSize))
+{
 	fastaFileHandle.open(fileName.c_str(), ifstream::in);
 	assert(fastaFileHandle);
 
 //create in memory index
-	WindowedFileParser::initializeIndex(fileName + ".fai");
+	WindowedFileParser::initializeIndex(fileName);
 	currentHeader = "";
 	setLocationByHeader(headers[0]);
 }
 
-const vector<string> WindowedFileParser::getHeaders() const {
+const vector<string> WindowedFileParser::getHeaders() const
+{
 	return headers;
 }
 
 //sets the location in the file to the start of the sequence given a header
-//todo: Figure out how to handle code breaking on using header that does not exist
-void WindowedFileParser::setLocationByHeader(string const &header) {
+void WindowedFileParser::setLocationByHeader(string const &header)
+{
 	sequenceNotEnd = true;
 	currentHeader = header;
 	fastaFileHandle.seekg(fastaIndex[header].start, ios::beg);
@@ -36,13 +39,15 @@ void WindowedFileParser::setLocationByHeader(string const &header) {
 	getline(fastaFileHandle, currentString);
 	while ((currentString.length() < windowSize)
 			&& (currentCharNumber < fastaIndex[currentHeader].size)
-			&& getline(fastaFileHandle, bufferString)) {
+			&& getline(fastaFileHandle, bufferString))
+	{
 		currentString += bufferString;
 	}
 	currentLinePos = 0;
 }
 
-const size_t WindowedFileParser::getSequenceSize(string const &header) {
+const size_t WindowedFileParser::getSequenceSize(string const &header)
+{
 	return fastaIndex[header].size;
 }
 
@@ -52,7 +57,8 @@ const size_t WindowedFileParser::getSequenceSize(string const &header) {
  * Return the next string in sliding window, also cleans and formats
  * sequences using ReadProcessor
  */
-const string &WindowedFileParser::getNextSeq() {
+const string &WindowedFileParser::getNextSeq()
+{
 	if (currentString.length() < windowSize + currentLinePos) {
 		currentString.erase(0, currentLinePos);
 		currentLinePos = 0;
@@ -61,7 +67,8 @@ const string &WindowedFileParser::getNextSeq() {
 		while (fastaFileHandle.is_open()
 				&& (currentString.length() < windowSize)
 				&& (currentCharNumber < fastaIndex[currentHeader].size)
-				&& getline(fastaFileHandle, bufferString)) {
+				&& getline(fastaFileHandle, bufferString))
+		{
 			currentString += bufferString;
 		}
 		//if there is not enough sequence for a full kmer
@@ -74,17 +81,37 @@ const string &WindowedFileParser::getNextSeq() {
 	return proc.prepSeq(currentString, currentLinePos++);
 }
 
-const bool WindowedFileParser::notEndOfSeqeunce() {
+const bool WindowedFileParser::notEndOfSeqeunce()
+{
 	return sequenceNotEnd;
 }
 
-void WindowedFileParser::initializeIndex(string const &fileName) {
+/*
+ * Initializes fasta index in memory. Will output index if not present.
+ * Input file refers to input fasta file not the index file.
+ */
+void WindowedFileParser::initializeIndex(string const &fileName)
+{
+	string faiFile = fileName + ".fai";
 	//look for fasta index file
 	//append .fai to end of filename
 	ifstream indexFile;
-	indexFile.open(fileName.c_str(), ifstream::in);
-	assert(indexFile);
-	//todo: Automatically generate index file or make it each time as needed?
+	indexFile.open(faiFile.c_str(), ifstream::in);
+	if (!indexFile)
+	{
+		cerr << "Fasta files used must be indexed." << endl;
+		exit(1);
+	}
+	//todo: fix automatic fasta index generation
+//	if (!indexFile) {
+//		cerr << fileName << " fasta index not found, generating..." << endl;
+//		FastaIndex indexer;
+//		indexer.index(fileName);
+//		ofstream indexFileOutput(faiFile.c_str(), ios::out);
+//		indexFileOutput << indexer;
+//		indexFileOutput.flush();
+//		indexFileOutput.close();
+//	}
 
 	string line;
 	//read file and populate index struct
@@ -103,7 +130,8 @@ void WindowedFileParser::initializeIndex(string const &fileName) {
 	}
 }
 
-WindowedFileParser::~WindowedFileParser() {
-//	fastaFileHandle.close();
+WindowedFileParser::~WindowedFileParser()
+{
+	fastaFileHandle.close();
 }
 
