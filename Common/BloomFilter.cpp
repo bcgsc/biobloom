@@ -9,6 +9,7 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <sys/stat.h>
 
 //todo: Performance optimization potential: make size of bitset a power of 2
 /* De novo filter constructor.
@@ -30,6 +31,16 @@ BloomFilter::BloomFilter(size_t filterSize, string const &filterFilePath,
 		size(filterSize), multiHasher(hashFns)
 {
 	initSize(size);
+
+	//Check file size is correct size
+	struct stat sb;
+	stat(filterFilePath.c_str(), &sb);
+	if (sb.st_size != filterSize / 8) {
+		cerr << "Error: " << filterFilePath
+				<< " does not match size given by its information file. Size: "
+				<< sb.st_size << "/" << filterSize / 8 << " bytes." << endl;
+		exit(1);
+	}
 
 	//load in blocks to a vector
 	ifstream binaryFile(filterFilePath.c_str(), ios::binary);
