@@ -25,7 +25,6 @@ BloomFilter::BloomFilter(size_t filterSize, HashManager const &hashFns) :
 /*
  * Loads the filter (file is a .bf file) from path specified
  */
-//todo: OptPot: add piped decompression/compression support for loading speed
 BloomFilter::BloomFilter(size_t filterSize, string const &filterFilePath,
 		HashManager const &hashFns) :
 		size(filterSize), multiHasher(hashFns)
@@ -82,17 +81,19 @@ void BloomFilter::insert(string const &kmer)
 
 /*
  * Stores the filter as a binary file to the path specified
+ * Stores uncompressed because the random data tend to
+ * compress poorly anyway
  */
 void BloomFilter::storeFilter(string const &filterFilePath) const
 {
 	ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
 
-	//todo: OptPot: send data to a compression stream to decrease bytes needed to be written
-
+	assert(myFile.good());
 	//write out each block
 	for (int i = 0; i < sizeInBytes; i++) {
 		myFile << filter[i];
 	}
+	assert(myFile.good());
 	myFile.close();
 }
 

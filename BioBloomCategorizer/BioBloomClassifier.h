@@ -23,7 +23,7 @@ using namespace std;
 class BioBloomClassifier {
 public:
 	BioBloomClassifier(const vector<string> &filterFilePaths, int16_t minHit,
-			double percentMinHit);
+			double percentMinHit, int16_t maxHitValue);
 	void filter(const vector<string> &inputFiles, const string &outputPrefix);
 	void filterPrintReads(const vector<string> &inputFiles,
 			const string &outputPrefix);
@@ -35,11 +35,14 @@ public:
 	virtual ~BioBloomClassifier();
 private:
 	void loadFilters(const vector<string> &filterFilePaths);
-	//todo: should be const qualifier, but getting a compilation bug
-	void printSummary(const string &outputDir,
+	//Todo: should be const qualified, need to refactor function
+	void printSummary(const string &outputPrefix,
 			boost::unordered_map<string, size_t> &aboveThreshold,
 			boost::unordered_map<string, size_t> &belowThreshold,
 			size_t totalReads);
+	void printCountSummary(const string &outputPrefix,
+			boost::unordered_map<string, vector<size_t> > &rawHits,
+			size_t total);
 	bool fexists(const string &filename) const;
 	void folderCheck(const string &path) const;
 	bool evaluateRead(const FastqRecord &rec, const string &hashSig,
@@ -52,6 +55,7 @@ private:
 	int16_t minHit;
 	double percentMinHit;
 	int16_t filterNum;
+	int16_t maxHitValue;
 };
 
 #endif /* BIOBLOOMCLASSIFIER_H_ */

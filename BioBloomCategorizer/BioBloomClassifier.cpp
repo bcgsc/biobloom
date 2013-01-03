@@ -12,13 +12,17 @@
 #include <sys/stat.h>
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
-		int16_t minHit, double percentMinHit) :
+		int16_t minHit, double percentMinHit, int16_t maxHitValue) :
 		minHit(minHit), percentMinHit(percentMinHit), filterNum(
-				filterFilePaths.size())
+				filterFilePaths.size()), maxHitValue(maxHitValue)
 {
 	loadFilters(filterFilePaths);
 }
 
+/*
+ * Loads list of filters into memory
+ * todo: Implement non-block I/O when loading multiple filters at once
+ */
 void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 {
 	cout << "Starting to Load Filters." << endl;
@@ -92,6 +96,8 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 	boost::unordered_map<string, size_t> belowThreshold;
 	size_t totalReads = 0;
 
+	boost::unordered_map<string, vector<size_t> > rawHits;
+
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
@@ -104,6 +110,15 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 					<< (*(infoFiles[*j].front())).getKmerSize();
 			aboveThreshold[*i] = 0;
 			belowThreshold[*i] = 0;
+
+			//initialize rawHits
+			vector<size_t> temp(maxHitValue);
+			int16_t counter = 0;
+			rawHits[*i] = temp;
+			while (counter < maxHitValue) {
+				rawHits[*i][counter] = 0;
+				counter++;
+			}
 		}
 	}
 	readStatusOutput << "\n";
@@ -182,14 +197,33 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 						} else if (hits[*i] != 0) {
 							++belowThreshold[*i];
 						}
+
+						//modify total reads
+						if (rawHits[*i].size() > hits[*i]) {
+							rawHits[*i][hits[*i]]++;
+						}
 					}
 				}
-				readStatusOutput << "\n";
+			} else {
+				for (vector<string>::const_iterator j = hashSigs.begin();
+						j != hashSigs.end(); ++j)
+				{
+					const vector<string> &idsInFilter =
+							(*filters[*j]).getFilterIds();
+					for (vector<string>::const_iterator i = idsInFilter.begin();
+							i != idsInFilter.end(); ++i)
+					{
+						//print read status
+						readStatusOutput << "\t" << "na";
+					}
+				}
 			}
+			readStatusOutput << "\n";
 		}
 	}
 	cout << "Total Reads:" << totalReads << endl;
 	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
+	printCountSummary(outputPrefix, rawHits, totalReads);
 }
 
 void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
@@ -205,6 +239,8 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 	boost::unordered_map<string, size_t> aboveThreshold;
 	boost::unordered_map<string, size_t> belowThreshold;
 	size_t totalReads = 0;
+
+	boost::unordered_map<string, vector<size_t> > rawHits;
 
 	boost::unordered_map<string, boost::shared_ptr<ofstream> > outputFiles;
 	boost::shared_ptr<ofstream> noMatch(
@@ -231,6 +267,15 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 					<< (*(infoFiles[*j].front())).getKmerSize();
 			aboveThreshold[*i] = 0;
 			belowThreshold[*i] = 0;
+
+			//initialize rawHits
+			vector<size_t> tempCount(maxHitValue);
+			int16_t counter = 0;
+			rawHits[*i] = tempCount;
+			while (counter < maxHitValue) {
+				rawHits[*i][counter] = 0;
+				counter++;
+			}
 		}
 	}
 	readStatusOutput << "\n";
@@ -308,6 +353,10 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 						} else if (hits[*i] != 0) {
 							++belowThreshold[*i];
 						}
+						//modify total reads
+						if (rawHits[*i].size() > hits[*i]) {
+							rawHits[*i][hits[*i]]++;
+						}
 					}
 				}
 				if (totalHits == 0) {
@@ -345,8 +394,23 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 						}
 					}
 				}
-				readStatusOutput << "\n";
+			} else {
+				for (vector<string>::const_iterator j = hashSigs.begin();
+						j != hashSigs.end(); ++j)
+				{
+					const vector<string> &idsInFilter =
+							(*filters[*j]).getFilterIds();
+					for (vector<string>::const_iterator i = idsInFilter.begin();
+							i != idsInFilter.end(); ++i)
+					{
+						//print read status
+						readStatusOutput << "\t" << "na";
+					}
+				}
+				(*outputFiles["noMatch"]) << "@" << rec.id << "\n" << rec.seq
+						<< "\n+\n" << rec.qual << "\n";
 			}
+			readStatusOutput << "\n";
 		}
 	}
 
@@ -474,6 +538,7 @@ void BioBloomClassifier::printSummary(const string &outputPrefix,
  * Filters reads -> uses paired end information
  * Assumes only one hash signature exists (load only filters with same
  * hash functions)
+ * Prints reads into seperate files
  */
 void BioBloomClassifier::filterPairPrint(const string &file1,
 		const string &file2, const string &outputPrefix)
@@ -494,9 +559,11 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	boost::unordered_map<string, boost::shared_ptr<ofstream> > outputFiles;
 	boost::shared_ptr<ofstream> noMatch1(
-			new ofstream((outputPrefix + "_noMatch_1.fastq").c_str(), ios::out));
+			new ofstream((outputPrefix + "_noMatch_1.fastq").c_str(),
+					ios::out));
 	boost::shared_ptr<ofstream> noMatch2(
-			new ofstream((outputPrefix + "_noMatch_2.fastq").c_str(), ios::out));
+			new ofstream((outputPrefix + "_noMatch_2.fastq").c_str(),
+					ios::out));
 	boost::shared_ptr<ofstream> multiMatch1(
 			new ofstream((outputPrefix + "_multiMatch_1.fastq").c_str(),
 					ios::out));
@@ -507,6 +574,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	outputFiles["noMatch2"] = noMatch2;
 	outputFiles["multiMatch1"] = multiMatch1;
 	outputFiles["multiMatch2"] = multiMatch2;
+
+	boost::unordered_map<string, vector<size_t> > rawHits;
 
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -528,6 +597,15 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 					<< (*(infoFiles[*j].front())).getKmerSize();
 			aboveThreshold[*i + "1"] = 0;
 			belowThreshold[*i + "2"] = 0;
+
+			//initialize rawHits
+			vector<size_t> tempCount(maxHitValue);
+			int16_t counter = 0;
+			rawHits[*i] = tempCount;
+			while (counter < maxHitValue) {
+				rawHits[*i][counter] = 0;
+				counter++;
+			}
 		}
 	}
 	readStatusOutput << "\n";
@@ -620,6 +698,10 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 					} else if (hits1[*i] != 0 && hits2[*i] != 0) {
 						++belowThreshold[*i];
 					}
+					//modify total reads
+					if (rawHits[*i].size() > hits1[*i] + hits2[*i]) {
+						rawHits[*i][hits1[*i] + hits2[*i]]++;
+					}
 				}
 			}
 			if (totalHits == 0) {
@@ -683,11 +765,10 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 					<< "\n+\n" << rec1.qual << "\n";
 			(*outputFiles["noMatch2"]) << "@" << rec2.id << "\n" << rec2.seq
 					<< "\n+\n" << rec2.qual << "\n";
-
 		}
 		readStatusOutput << "\n";
 	}
-	if ( sequence2 >> rec2 && sequence1.eof() && sequence2.eof()) {
+	if (sequence2 >> rec2 && sequence1.eof() && sequence2.eof()) {
 		cerr
 				<< "error: eof bit not flipped. Input files may be different lengths"
 				<< endl;
@@ -741,6 +822,8 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 	boost::unordered_map<string, size_t> belowThreshold;
 	size_t totalReads = 0;
 
+	boost::unordered_map<string, vector<size_t> > rawHits;
+
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
@@ -753,6 +836,15 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 					<< (*(infoFiles[*j].front())).getKmerSize();
 			aboveThreshold[*i + "1"] = 0;
 			belowThreshold[*i + "2"] = 0;
+
+			//initialize rawHits
+			vector<size_t> tempCount(maxHitValue);
+			int16_t counter = 0;
+			rawHits[*i] = tempCount;
+			while (counter < maxHitValue) {
+				rawHits[*i][counter] = 0;
+				counter++;
+			}
 		}
 	}
 	readStatusOutput << "\n";
@@ -843,6 +935,10 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 					} else if (hits1[*i] != 0 && hits2[*i] != 0) {
 						++belowThreshold[*i];
 					}
+					//modify total reads
+					if (rawHits[*i].size() > hits1[*i] + hits2[*i]) {
+						rawHits[*i][hits1[*i] + hits2[*i]]++;
+					}
 				}
 			}
 		} else {
@@ -861,7 +957,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 		}
 		readStatusOutput << "\n";
 	}
-	if ( sequence2 >> rec2 && sequence1.eof() && sequence2.eof()) {
+	if (sequence2 >> rec2 && sequence1.eof() && sequence2.eof()) {
 		cerr
 				<< "error: eof bit not flipped. Input files may be different lengths"
 				<< endl;
@@ -917,6 +1013,57 @@ bool BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 		++currentKmerNum;
 	}
 	return readOK;
+}
+
+void BioBloomClassifier::printCountSummary(const string &outputPrefix,
+		boost::unordered_map<string, vector<size_t> > &rawHits, size_t total)
+{
+	if (maxHitValue > 0) {
+		ofstream summaryOutput((outputPrefix + "_rawCounts.tsv").c_str(),
+				ios::out);
+		summaryOutput << "type";
+		//initialize variables and print filter ids
+		for (vector<string>::const_iterator j = hashSigs.begin();
+				j != hashSigs.end(); ++j)
+		{
+			const vector<string> &idsInFilter = filters[*j]->getFilterIds();
+			for (vector<string>::const_iterator i = idsInFilter.begin();
+					i != idsInFilter.end(); ++i)
+			{
+				summaryOutput << "\t" << *i << "_"
+						<< (*(infoFiles[*j].front())).getKmerSize();
+			}
+		}
+		summaryOutput << "\n";
+
+		int16_t currentHitVal = 0;
+		size_t runningTotal = 0;
+
+		while (currentHitVal < maxHitValue) {
+			summaryOutput << currentHitVal;
+			for (vector<string>::const_iterator j = hashSigs.begin();
+					j != hashSigs.end(); ++j)
+			{
+				const vector<string> &idsInFilter = filters[*j]->getFilterIds();
+				for (vector<string>::const_iterator i = idsInFilter.begin();
+						i != idsInFilter.end(); ++i)
+				{
+					if (rawHits[*i].size() < currentHitVal) {
+						summaryOutput << "\t0";
+					} else {
+						runningTotal += rawHits[*i][currentHitVal];
+						summaryOutput << "\t" << rawHits[*i][currentHitVal];
+					}
+				}
+			}
+			summaryOutput << "\n";
+			currentHitVal++;
+		}
+		summaryOutput << ">" << maxHitValue << "\t" << total - runningTotal
+				<< "\n";
+		summaryOutput.flush();
+		summaryOutput.close();
+	}
 }
 
 //helper methods

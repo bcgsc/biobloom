@@ -52,6 +52,9 @@ void printHelpDialog()
 					"  -o, --output_fastq     Output categorized reads in FastQ files.\n"
 					"  -e, --paired_mode      Uses paired-end information. Does not work\n"
 					"                         with BAM or SAM files.\n"
+					"  -c, --counts=N         Outputs summary of raw counts of user\n"
+					"                         specified hit counts to each filter of each\n"
+					"                         read or read-pair. [0]\n"
 					"  -h, --help             Display this dialog.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
@@ -75,6 +78,7 @@ int main(int argc, char *argv[])
 	bool printReads = false;
 	bool die = false;
 	bool paired = false;
+	int16_t rawCounts = 0;
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -85,12 +89,13 @@ int main(int argc, char *argv[])
 					"output_fastq", no_argument, NULL, 'o' }, {
 					"filter_files", required_argument, NULL, 'f' }, {
 					"paired_mode", no_argument, NULL, 'e' }, {
+					"counts", no_argument, NULL, 'c' }, {
 					"help", no_argument, NULL, 'h' }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:t:om:p:he", long_options,
+	while ((c = getopt_long(argc, argv, "f:t:om:p:hec:", long_options,
 			&option_index)) != -1)
 	{
 		switch (c) {
@@ -132,6 +137,14 @@ int main(int argc, char *argv[])
 		}
 		case 'e': {
 			paired = true;
+			break;
+		}
+		case 'c': {
+			stringstream convert(optarg);
+			if (!(convert >> rawCounts)) {
+				cerr << "Error - Invalid parameter! c: " << optarg << endl;
+				return 0;
+			}
 			break;
 		}
 		default: {
@@ -178,15 +191,15 @@ int main(int argc, char *argv[])
 	}
 
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit);
+	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts);
 
 	//filtering step
 	//create directory structure if it does not exist
 	if (paired) {
 		if (printReads) {
-			BBC.filterPair(inputFiles[0], inputFiles[1], outputPrefix);
-		} else {
 			BBC.filterPairPrint(inputFiles[0], inputFiles[1], outputPrefix);
+		} else {
+			BBC.filterPair(inputFiles[0], inputFiles[1], outputPrefix);
 		}
 	} else {
 		if (printReads) {
