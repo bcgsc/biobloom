@@ -95,6 +95,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 	boost::unordered_map<string, size_t> aboveThreshold;
 	boost::unordered_map<string, size_t> belowThreshold;
 	size_t totalReads = 0;
+	size_t nonATCG = 0;
 
 	boost::unordered_map<string, vector<size_t> > rawHits;
 
@@ -205,6 +206,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 					}
 				}
 			} else {
+				nonATCG++;
 				for (vector<string>::const_iterator j = hashSigs.begin();
 						j != hashSigs.end(); ++j)
 				{
@@ -223,7 +225,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 	}
 	cout << "Total Reads:" << totalReads << endl;
 	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
-	printCountSummary(outputPrefix, rawHits, totalReads);
+	printCountSummary(outputPrefix, rawHits, totalReads, nonATCG);
 }
 
 void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
@@ -239,6 +241,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 	boost::unordered_map<string, size_t> aboveThreshold;
 	boost::unordered_map<string, size_t> belowThreshold;
 	size_t totalReads = 0;
+	size_t nonATCG = 0;
 
 	boost::unordered_map<string, vector<size_t> > rawHits;
 
@@ -395,6 +398,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 					}
 				}
 			} else {
+				nonATCG++;
 				for (vector<string>::const_iterator j = hashSigs.begin();
 						j != hashSigs.end(); ++j)
 				{
@@ -429,6 +433,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 	outputFiles["multiMatch"]->close();
 	cout << "Total Reads:" << totalReads << endl;
 	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
+	printCountSummary(outputPrefix, rawHits, totalReads, nonATCG);
 }
 
 /*
@@ -556,6 +561,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	boost::unordered_map<string, size_t> aboveThreshold;
 	boost::unordered_map<string, size_t> belowThreshold;
 	size_t totalReads = 0;
+	size_t nonATCG = 0;
 
 	boost::unordered_map<string, boost::shared_ptr<ofstream> > outputFiles;
 	boost::shared_ptr<ofstream> noMatch1(
@@ -749,6 +755,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				}
 			}
 		} else {
+			nonATCG++;
 			for (vector<string>::const_iterator j = hashSigs.begin();
 					j != hashSigs.end(); ++j)
 			{
@@ -798,6 +805,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	outputFiles["multiMatch2"]->close();
 	cout << "Total Reads:" << totalReads << endl;
 	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
+	printCountSummary(outputPrefix, rawHits, totalReads, nonATCG);
 }
 
 /*
@@ -821,6 +829,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 	boost::unordered_map<string, size_t> aboveThreshold;
 	boost::unordered_map<string, size_t> belowThreshold;
 	size_t totalReads = 0;
+	size_t nonATCG = 0;
 
 	boost::unordered_map<string, vector<size_t> > rawHits;
 
@@ -942,6 +951,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 				}
 			}
 		} else {
+			nonATCG++;
 			for (vector<string>::const_iterator j = hashSigs.begin();
 					j != hashSigs.end(); ++j)
 			{
@@ -964,6 +974,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 	}
 	cout << "Total Reads:" << totalReads << endl;
 	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
+	printCountSummary(outputPrefix, rawHits, totalReads, nonATCG);
 }
 
 /*
@@ -1015,8 +1026,12 @@ bool BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	return readOK;
 }
 
+/*
+ * Prints raw read counts file
+ */
 void BioBloomClassifier::printCountSummary(const string &outputPrefix,
-		boost::unordered_map<string, vector<size_t> > &rawHits, size_t total)
+		boost::unordered_map<string, vector<size_t> > &rawHits, size_t total,
+		size_t nonATCG)
 {
 	if (maxHitValue > 0) {
 		ofstream summaryOutput((outputPrefix + "_rawCounts.tsv").c_str(),
@@ -1039,6 +1054,9 @@ void BioBloomClassifier::printCountSummary(const string &outputPrefix,
 		int16_t currentHitVal = 0;
 		size_t runningTotal = 0;
 
+		//reads with non ATCG characters
+		summaryOutput << "NonATGC" << "\t" << nonATCG << "\n";
+
 		while (currentHitVal < maxHitValue) {
 			summaryOutput << currentHitVal;
 			for (vector<string>::const_iterator j = hashSigs.begin();
@@ -1059,8 +1077,8 @@ void BioBloomClassifier::printCountSummary(const string &outputPrefix,
 			summaryOutput << "\n";
 			currentHitVal++;
 		}
-		summaryOutput << ">" << maxHitValue << "\t" << total - runningTotal
-				<< "\n";
+		summaryOutput << ">" << maxHitValue << "\t"
+				<< total - runningTotal - nonATCG << "\n";
 		summaryOutput.flush();
 		summaryOutput.close();
 	}
