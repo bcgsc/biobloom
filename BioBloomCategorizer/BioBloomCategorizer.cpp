@@ -94,6 +94,7 @@ int main(int argc, char *argv[])
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
+	//Todo: add checks for duplicate options being set
 	int option_index = 0;
 	while ((c = getopt_long(argc, argv, "f:t:om:p:hec:", long_options,
 			&option_index)) != -1)
