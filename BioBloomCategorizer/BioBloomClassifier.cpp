@@ -832,11 +832,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 		const string &outputPrefix)
 {
-	//check if output folder exists
-	if (outputPrefix.find('/') != string::npos) {
-		string tempStr = outputPrefix.substr(0, outputPrefix.find_last_of("/"));
-		folderCheck(tempStr);
-	}
+
 
 	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
 
@@ -1111,25 +1107,6 @@ bool BioBloomClassifier::fexists(const string &filename) const
 {
 	ifstream ifile(filename.c_str());
 	return ifile;
-}
-
-/*
- * checks if folder exists
- */
-void BioBloomClassifier::folderCheck(const string &path) const
-{
-	struct stat sb;
-
-	if (stat(path.c_str(), &sb) == 0) {
-		if (!S_ISDIR(sb.st_mode)) {
-			cerr << "Error: Output folder - file exists with this name. "
-					<< path << endl;
-			exit(1);
-		}
-	} else {
-		cerr << "Error: Output folder does not exist. " << path << endl;
-		exit(1);
-	}
 }
 
 BioBloomClassifier::~BioBloomClassifier()

@@ -44,7 +44,6 @@ private:
 			boost::unordered_map<string, vector<size_t> > &rawHits,
 			size_t total, size_t nonATCG);
 	bool fexists(const string &filename) const;
-	void folderCheck(const string &path) const;
 	bool evaluateRead(const FastqRecord &rec, const string &hashSig,
 			boost::unordered_map<string, size_t> &hits);
 

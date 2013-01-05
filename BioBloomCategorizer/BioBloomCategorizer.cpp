@@ -33,6 +33,22 @@ vector<string> convertInputString(const string &inputString)
 	return currentInfoFile;
 }
 
+void folderCheck(const string &path) const
+{
+	struct stat sb;
+
+	if (stat(path.c_str(), &sb) == 0) {
+		if (!S_ISDIR(sb.st_mode)) {
+			cerr << "Error: Output folder - file exists with this name. "
+					<< path << endl;
+			exit(1);
+		}
+	} else {
+		cerr << "Error: Output folder does not exist. " << path << endl;
+		exit(1);
+	}
+}
+
 void printHelpDialog()
 {
 	static const char dialog[] =
@@ -179,16 +195,21 @@ int main(int argc, char *argv[])
 
 	//Check needed options
 	if (inputFiles.size() == 0) {
-		cerr << "Need Input File" << endl;
+		cerr << "Error: Need Input File" << endl;
 		die = true;
 	}
 	if (filterFilePaths.size() == 0) {
-		cerr << "Need Filter File (-f)" << endl;
+		cerr << "Error: Need Filter File (-f)" << endl;
 		die = true;
 	}
 	if (die) {
 		cerr << "Try '--help' for more information.\n";
 		exit(EXIT_FAILURE);
+	}
+	//check if output folder exists
+	if (outputPrefix.find('/') != string::npos) {
+		string tempStr = outputPrefix.substr(0, outputPrefix.find_last_of("/"));
+		folderCheck(tempStr);
 	}
 
 	//load filters
