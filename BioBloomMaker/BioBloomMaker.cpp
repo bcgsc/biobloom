@@ -23,7 +23,7 @@ void printHelpDialog()
 					"into a bloom filter.\n"
 					"\n"
 					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.02]\n"
-					"  -p, --file_prefix=N    Filename prefix and filter ID. Required option.\n"
+					"  -p, --file_prefix=N    Filter prefix and filter ID. Required option.\n"
 					"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
 					"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
 					"                         of automatically using calculated optimal number of\n"
@@ -137,6 +137,10 @@ int main(int argc, char *argv[])
 	}
 	if (filterPrefix.size() == 0) {
 		cerr << "Need Filter Prefix ID" << endl;
+		die = true;
+	}
+	if (filterPrefix.find('/') != string::npos) {
+		cerr << "Prefix ID cannot have '/' characters" << endl;
 		die = true;
 	}
 	if (die) {
