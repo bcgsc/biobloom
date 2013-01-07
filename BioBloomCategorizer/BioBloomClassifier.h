@@ -31,6 +31,8 @@ public:
 			const string &outputPrefix);
 	void filterPairPrint(const string &file1, const string &file2,
 			const string &outputPrefix);
+	void filterPairBAM(const string &file, const string &outputPrefix);
+	void filterPairBAMPrint(const string &file, const string &outputPrefix);
 
 	virtual ~BioBloomClassifier();
 private:

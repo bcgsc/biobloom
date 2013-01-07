@@ -113,7 +113,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 				i != idsInFilter.end(); ++i)
 		{
 			readStatusOutput << "\t" << *i << "_"
-			<< (*(infoFiles[*j].front())).getKmerSize();
+					<< (*(infoFiles[*j].front())).getKmerSize();
 			aboveThreshold[*i] = 0;
 			belowThreshold[*i] = 0;
 
@@ -149,7 +149,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 					j != hashSigs.end(); ++j)
 			{
 				const vector<string> &idsInFilter =
-				(*filters[*j]).getFilterIds();
+						(*filters[*j]).getFilterIds();
 				for (vector<string>::const_iterator i = idsInFilter.begin();
 						i != idsInFilter.end(); ++i)
 				{
@@ -167,21 +167,21 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 				}
 			}
 
+			//print readID
+			readStatusOutput << rec.id << "\t" << rec.seq.length();
+
+			++totalReads;
+			if (totalReads % 1000000 == 0) {
+				cout << "Currently Reading Read Number: " << totalReads << endl;
+			}
 			if (readOK) {
-				//print readID
-				readStatusOutput << rec.id << "\t" << rec.seq.length();
-				++totalReads;
-				if (totalReads % 1000000 == 0) {
-					cout << "Currently Reading Read Number: " << totalReads
-					<< endl;
-				}
 				int16_t totalHits = 0;
 				for (vector<string>::const_iterator j = hashSigs.begin();
 						j != hashSigs.end(); ++j)
 				{
 					//update summary
 					const vector<string> &idsInFilter =
-					(*filters[*j]).getFilterIds();
+							(*filters[*j]).getFilterIds();
 					for (vector<string>::const_iterator i = idsInFilter.begin();
 							i != idsInFilter.end(); ++i)
 					{
@@ -190,7 +190,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 
 						//pick threshold, by percent or by absolute value
 						int16_t kmerSize =
-						(*(infoFiles[*j].front())).getKmerSize();
+								(*(infoFiles[*j].front())).getKmerSize();
 						size_t threshold = size_t(
 								percentMinHit * (rec.seq.length() / kmerSize));
 						if (minHit > threshold) {
@@ -216,7 +216,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 						j != hashSigs.end(); ++j)
 				{
 					const vector<string> &idsInFilter =
-					(*filters[*j]).getFilterIds();
+							(*filters[*j]).getFilterIds();
 					for (vector<string>::const_iterator i = idsInFilter.begin();
 							i != idsInFilter.end(); ++i)
 					{
@@ -278,7 +278,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 							ios::out));
 			outputFiles[*i] = temp;
 			readStatusOutput << "\t" << *i << "_"
-			<< (*(infoFiles[*j].front())).getKmerSize();
+					<< (*(infoFiles[*j].front())).getKmerSize();
 			aboveThreshold[*i] = 0;
 			belowThreshold[*i] = 0;
 
@@ -314,7 +314,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 					j != hashSigs.end(); ++j)
 			{
 				const vector<string> &idsInFilter =
-				(*filters[*j]).getFilterIds();
+						(*filters[*j]).getFilterIds();
 				for (vector<string>::const_iterator i = idsInFilter.begin();
 						i != idsInFilter.end(); ++i)
 				{
@@ -331,21 +331,21 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 					break;
 				}
 			}
+
+			//print readID
+			readStatusOutput << rec.id << "\t" << rec.seq.length();
+			++totalReads;
+			if (totalReads % 1000000 == 0) {
+				cout << "Currently Reading Read Number: " << totalReads << endl;
+			}
 			if (readOK) {
-				//print readID
-				readStatusOutput << rec.id << "\t" << rec.seq.length();
-				++totalReads;
-				if (totalReads % 1000000 == 0) {
-					cout << "Currently Reading Read Number: " << totalReads
-					<< endl;
-				}
 				int16_t totalHits = 0;
 				for (vector<string>::const_iterator j = hashSigs.begin();
 						j != hashSigs.end(); ++j)
 				{
 					//update summary
 					const vector<string> &idsInFilter =
-					(*filters[*j]).getFilterIds();
+							(*filters[*j]).getFilterIds();
 					for (vector<string>::const_iterator i = idsInFilter.begin();
 							i != idsInFilter.end(); ++i)
 					{
@@ -354,7 +354,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 
 						//pick threshold, by percent or by absolute value
 						int16_t kmerSize =
-						(*(infoFiles[*j].front())).getKmerSize();
+								(*(infoFiles[*j].front())).getKmerSize();
 						size_t threshold = size_t(
 								percentMinHit * (rec.seq.length() / kmerSize));
 						if (minHit > threshold) {
@@ -375,34 +375,34 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 				}
 				if (totalHits == 0) {
 					(*outputFiles["noMatch"]) << "@" << rec.id << "\n"
-					<< rec.seq << "\n+\n" << rec.qual << endl;
+							<< rec.seq << "\n+\n" << rec.qual << endl;
 				} else if (totalHits > 1) {
 					(*outputFiles["multiMatch"]) << "@" << rec.id << "\n"
-					<< rec.seq << "\n+\n" << rec.qual << endl;
+							<< rec.seq << "\n+\n" << rec.qual << endl;
 				} else {
 					for (vector<string>::const_iterator j = hashSigs.begin();
 							j != hashSigs.end(); ++j)
 					{
 						const vector<string> idsInFilter =
-						(*filters[*j]).getFilterIds();
+								(*filters[*j]).getFilterIds();
 						for (vector<string>::const_iterator i =
 								idsInFilter.begin(); i != idsInFilter.end();
 								++i)
 						{
 							//pick threshold, by percent or by absolute value
 							int16_t kmerSize =
-							(*(infoFiles[*j].front())).getKmerSize();
+									(*(infoFiles[*j].front())).getKmerSize();
 							size_t threshold = size_t(
 									percentMinHit
-									* (rec.seq.length() / kmerSize));
+											* (rec.seq.length() / kmerSize));
 							if (minHit > threshold) {
 								threshold = minHit;
 							}
 
 							if (hits[*i] >= threshold) {
 								(*outputFiles[*i]) << "@" << rec.id << "\n"
-								<< rec.seq << "\n+\n" << rec.qual
-								<< endl;
+										<< rec.seq << "\n+\n" << rec.qual
+										<< endl;
 								break;
 							}
 						}
@@ -414,7 +414,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 						j != hashSigs.end(); ++j)
 				{
 					const vector<string> &idsInFilter =
-					(*filters[*j]).getFilterIds();
+							(*filters[*j]).getFilterIds();
 					for (vector<string>::const_iterator i = idsInFilter.begin();
 							i != idsInFilter.end(); ++i)
 					{
@@ -423,7 +423,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 					}
 				}
 				(*outputFiles["noMatch"]) << "@" << rec.id << "\n" << rec.seq
-				<< "\n+\n" << rec.qual << "\n";
+						<< "\n+\n" << rec.qual << "\n";
 			}
 			readStatusOutput << "\n";
 		}
@@ -450,12 +450,12 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 	printCountSummary(outputPrefix, rawHits, totalReads, nonATCG);
 }
 
-	/*
-	 * Prints summary information:
-	 * -total reads over/under threshold
-	 * -percent reads over threshold
-	 * -total reads that don't hit filter at all
-	 */
+/*
+ * Prints summary information:
+ * -total reads over/under threshold
+ * -percent reads over threshold
+ * -total reads that don't hit filter at all
+ */
 void BioBloomClassifier::printSummary(const string &outputPrefix,
 		boost::unordered_map<string, size_t> &aboveThreshold,
 		boost::unordered_map<string, size_t> &belowThreshold, size_t totalReads)
@@ -833,7 +833,6 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 		const string &outputPrefix)
 {
 
-
 	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
 
 	//print header
@@ -856,7 +855,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 				i != idsInFilter.end(); ++i)
 		{
 			readStatusOutput << "\t" << *i << "_"
-			<< (*(infoFiles[*j].front())).getKmerSize();
+					<< (*(infoFiles[*j].front())).getKmerSize();
 			aboveThreshold[*i + "1"] = 0;
 			belowThreshold[*i + "2"] = 0;
 
@@ -915,7 +914,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 				}
 			} else {
 				cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
-				<< tempStr2 << endl;
+						<< tempStr2 << endl;
 				exit(1);
 			}
 		}
@@ -933,7 +932,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 			{
 				//update summary
 				const vector<string> &idsInFilter =
-				(*filters[*j]).getFilterIds();
+						(*filters[*j]).getFilterIds();
 				for (vector<string>::const_iterator i = idsInFilter.begin();
 						i != idsInFilter.end(); ++i)
 				{
@@ -970,7 +969,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 					j != hashSigs.end(); ++j)
 			{
 				const vector<string> &idsInFilter =
-				(*filters[*j]).getFilterIds();
+						(*filters[*j]).getFilterIds();
 				for (vector<string>::const_iterator i = idsInFilter.begin();
 						i != idsInFilter.end(); ++i)
 				{
@@ -983,19 +982,19 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 	}
 	if (sequence2 >> rec2 && sequence1.eof() && sequence2.eof()) {
 		cerr
-		<< "error: eof bit not flipped. Input files may be different lengths"
-		<< endl;
+				<< "error: eof bit not flipped. Input files may be different lengths"
+				<< endl;
 	}
 	cout << "Total Reads:" << totalReads << endl;
 	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
 	printCountSummary(outputPrefix, rawHits, totalReads, nonATCG);
 }
 
-	/*
-	 * For a single read evaluate hits for a single hash signature
-	 * Returns true if read is valid (no ambiguity characters)
-	 * Updates hits value to number of hits (hashSig is used to as key)
-	 */
+/*
+ * For a single read evaluate hits for a single hash signature
+ * Returns true if read is valid (no ambiguity characters)
+ * Updates hits value to number of hits (hashSig is used to as key)
+ */
 bool BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 		const string &hashSig, boost::unordered_map<string, size_t> &hits)
 {
