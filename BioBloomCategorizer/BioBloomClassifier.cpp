@@ -85,12 +85,6 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 void BioBloomClassifier::filter(const vector<string> &inputFiles,
 		const string &outputPrefix)
 {
-	//check if output folder exists
-	if (outputPrefix.find('/') != string::npos) {
-		string tempStr = outputPrefix.substr(0, outputPrefix.find_last_of("/"));
-		folderCheck(tempStr);
-	}
-
 	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
 
 	//print header
@@ -236,12 +230,6 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 		const string &outputPrefix)
 {
-
-	//check if output folder exists
-	if (outputPrefix.find('/') != string::npos) {
-		string tempStr = outputPrefix.substr(0, outputPrefix.find_last_of("/"));
-		folderCheck(tempStr);
-	}
 
 	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
 
@@ -562,12 +550,6 @@ void BioBloomClassifier::printSummary(const string &outputPrefix,
 void BioBloomClassifier::filterPairPrint(const string &file1,
 		const string &file2, const string &outputPrefix)
 {
-	//check if output folder exists
-	if (outputPrefix.find('/') != string::npos) {
-		string tempStr = outputPrefix.substr(0, outputPrefix.find_last_of("/"));
-		folderCheck(tempStr);
-	}
-
 	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
 
 	//print header

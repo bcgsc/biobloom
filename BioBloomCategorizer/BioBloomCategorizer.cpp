@@ -33,7 +33,7 @@ vector<string> convertInputString(const string &inputString)
 	return currentInfoFile;
 }
 
-void folderCheck(const string &path) const
+void folderCheck(const string &path)
 {
 	struct stat sb;
 
