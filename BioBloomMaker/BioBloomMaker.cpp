@@ -28,7 +28,7 @@ void printHelpDialog()
 					"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
 					"                         of automatically using calculated optimal number of\n"
 					"                         functions.\n"
-					"  -k, --output_fastq     K-mer size to use to create filter.[25]\n"
+					"  -k, --kmer_size        K-mer size to use to create filter. [25]\n"
 					"  -h, --help             Display this dialog.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
