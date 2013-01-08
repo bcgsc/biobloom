@@ -14,16 +14,15 @@ using namespace std;
 
 class BloomFilterGenerator {
 public:
-	explicit BloomFilterGenerator(
-			vector<string> const &filenames,
-			int16_t kmer);
+	explicit BloomFilterGenerator(vector<string> const &filenames,
+			uint16_t kmer);
 	void generate(string filename);
 	void setFilterSize(size_t bits);
-	const vector<size_t> addHashFuncs(int16_t numFunc);
+	const vector<size_t> addHashFuncs(uint16_t numFunc);
 	const size_t getExpectedEntries() const;
 	const vector<string> getHashFuncNames() const;
-	const int16_t calcOptiHashNum(size_t size, size_t entries) const;
-	const int16_t calcOptiHashNum(float fpr) const;
+	const uint16_t calcOptiHashNum(size_t size, size_t entries) const;
+	const uint16_t calcOptiHashNum(float fpr) const;
 
 	virtual ~BloomFilterGenerator();
 private:

@@ -13,9 +13,9 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
-BloomFilterInfo::BloomFilterInfo(string const &filterID, int16_t kmerSize,
+BloomFilterInfo::BloomFilterInfo(string const &filterID, uint16_t kmerSize,
 		float desiredFPR, size_t numEntries, const vector<string> &seqSrcs,
-		int16_t hashNum) :
+		uint16_t hashNum) :
 		filterID(filterID), kmerSize(kmerSize), desiredFPR(desiredFPR), seqSrcs(
 				seqSrcs), hashNum(hashNum)
 {
@@ -32,7 +32,7 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 	boost::property_tree::ptree pt;
 	boost::property_tree::ini_parser::read_ini(fileName, pt);
 	filterID = pt.get<string>("user_input_options.filter_id");
-	kmerSize = pt.get<int16_t>("user_input_options.kmer_size");
+	kmerSize = pt.get<uint16_t>("user_input_options.kmer_size");
 	desiredFPR = pt.get<float>("user_input_options.desired_false_positve_rate");
 	string tempSeqSrcs = pt.get<string>("user_input_options.sequence_sources");
 	seqSrcs = convertSeqSrcString(tempSeqSrcs);
@@ -100,7 +100,7 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const
 
 //getters
 
-const int16_t BloomFilterInfo::getKmerSize() const
+const uint16_t BloomFilterInfo::getKmerSize() const
 {
 	return kmerSize;
 }
@@ -113,7 +113,7 @@ const string BloomFilterInfo::getSeedHashSigniture() const
 	stringstream ss;
 	ss << "hash_functions=";
 	//print out hash functions as a list
-	int16_t tempCounter = 0;
+	uint16_t tempCounter = 0;
 	for (vector<string>::const_iterator it = runInfo.hashFunctions.begin();
 			it != runInfo.hashFunctions.end(); ++it)
 	{
@@ -223,7 +223,7 @@ const vector<size_t> BloomFilterInfo::convertSeedString(
  * Value uses approximated FPR formula
  */
 const float BloomFilterInfo::calcApproxFPR(size_t size, size_t numEntr,
-		int16_t hashFunctNum) const
+		uint16_t hashFunctNum) const
 {
 	return pow(
 			1.0 - exp(-double(hashFunctNum) * double(numEntr) / double(size)),
@@ -250,7 +250,7 @@ const size_t BloomFilterInfo::calcOptimalSize(size_t entries, float fpr) const
  * see http://en.wikipedia.org/wiki/Bloom_filter
  */
 const size_t BloomFilterInfo::calcOptimalSize(size_t entries, float fpr,
-		int16_t hashNum) const
+		uint16_t hashNum) const
 {
 	size_t non64ApproxVal = size_t(
 			-double(entries) * double(hashNum)

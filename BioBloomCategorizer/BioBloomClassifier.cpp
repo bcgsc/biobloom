@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
-		int16_t minHit, double percentMinHit, int16_t maxHitValue) :
+		size_t minHit, double percentMinHit, size_t maxHitValue) :
 		minHit(minHit), percentMinHit(percentMinHit), filterNum(
 				filterFilePaths.size()), maxHitValue(maxHitValue)
 {
@@ -113,7 +113,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 
 			//initialize rawHits
 			vector<size_t> temp(maxHitValue);
-			int16_t counter = 0;
+			uint16_t counter = 0;
 			rawHits[*i] = temp;
 			while (counter < maxHitValue) {
 				rawHits[*i][counter] = 0;
@@ -169,7 +169,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 				cout << "Currently Reading Read Number: " << totalReads << endl;
 			}
 			if (readOK) {
-				int16_t totalHits = 0;
+				uint16_t totalHits = 0;
 				for (vector<string>::const_iterator j = hashSigs.begin();
 						j != hashSigs.end(); ++j)
 				{
@@ -183,7 +183,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 						readStatusOutput << "\t" << hits[*i];
 
 						//pick threshold, by percent or by absolute value
-						int16_t kmerSize =
+						uint16_t kmerSize =
 								(*(infoFiles[*j].front())).getKmerSize();
 						size_t threshold = size_t(
 								percentMinHit * (rec.seq.length() / kmerSize));
@@ -272,7 +272,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 
 			//initialize rawHits
 			vector<size_t> tempCount(maxHitValue);
-			int16_t counter = 0;
+			uint16_t counter = 0;
 			rawHits[*i] = tempCount;
 			while (counter < maxHitValue) {
 				rawHits[*i][counter] = 0;
@@ -327,7 +327,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 				cout << "Currently Reading Read Number: " << totalReads << endl;
 			}
 			if (readOK) {
-				int16_t totalHits = 0;
+				uint16_t totalHits = 0;
 				for (vector<string>::const_iterator j = hashSigs.begin();
 						j != hashSigs.end(); ++j)
 				{
@@ -341,7 +341,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 						readStatusOutput << "\t" << hits[*i];
 
 						//pick threshold, by percent or by absolute value
-						int16_t kmerSize =
+						uint16_t kmerSize =
 								(*(infoFiles[*j].front())).getKmerSize();
 						size_t threshold = size_t(
 								percentMinHit * (rec.seq.length() / kmerSize));
@@ -378,7 +378,7 @@ void BioBloomClassifier::filterPrintReads(const vector<string> &inputFiles,
 								++i)
 						{
 							//pick threshold, by percent or by absolute value
-							int16_t kmerSize =
+							uint16_t kmerSize =
 									(*(infoFiles[*j].front())).getKmerSize();
 							size_t threshold = size_t(
 									percentMinHit
@@ -604,7 +604,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 			//initialize rawHits
 			vector<size_t> tempCount(maxHitValue);
-			int16_t counter = 0;
+			uint16_t counter = 0;
 			rawHits[*i] = tempCount;
 			while (counter < maxHitValue) {
 				rawHits[*i][counter] = 0;
@@ -670,7 +670,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 			cout << "Currently Reading Read Number: " << totalReads << endl;
 		}
 		if (readOK) {
-			int16_t totalHits = 0;
+			uint16_t totalHits = 0;
 			for (vector<string>::const_iterator j = hashSigs.begin();
 					j != hashSigs.end(); ++j)
 			{
@@ -684,7 +684,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 					readStatusOutput << "\t" << hits1[*i] << '/' << hits2[*i];
 
 					//pick threshold, by percent or by absolute value
-					int16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
+					uint16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
 					size_t threshold1 = size_t(
 							percentMinHit * (rec1.seq.length() / kmerSize));
 					size_t threshold2 = size_t(
@@ -728,7 +728,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 							i != idsInFilter.end(); ++i)
 					{
 						//pick threshold, by percent or by absolute value
-						int16_t kmerSize =
+						uint16_t kmerSize =
 								(*(infoFiles[*j].front())).getKmerSize();
 						size_t threshold1 = size_t(
 								percentMinHit * (rec1.seq.length() / kmerSize));
@@ -843,7 +843,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 
 			//initialize rawHits
 			vector<size_t> tempCount(maxHitValue);
-			int16_t counter = 0;
+			uint16_t counter = 0;
 			rawHits[*i] = tempCount;
 			while (counter < maxHitValue) {
 				rawHits[*i][counter] = 0;
@@ -922,7 +922,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 					readStatusOutput << "\t" << hits1[*i] << '/' << hits2[*i];
 
 					//pick threshold, by percent or by absolute value
-					int16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
+					uint16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
 					size_t threshold1 = size_t(
 							percentMinHit * (rec1.seq.length() / kmerSize));
 					size_t threshold2 = size_t(
@@ -986,10 +986,10 @@ bool BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	const vector<string> &idsInFilter = (*filters[hashSig]).getFilterIds();
 
 	//get kmersize for set of info files
-	int16_t kmerSize = (*(infoFiles[hashSig].front())).getKmerSize();
+	uint16_t kmerSize = (*(infoFiles[hashSig].front())).getKmerSize();
 
 	//Establish tiling pattern
-	int16_t startModifier1 = (rec.seq.length() % kmerSize) / 2;
+	uint16_t startModifier1 = (rec.seq.length() % kmerSize) / 2;
 	size_t currentKmerNum = 0;
 
 	ReadsProcessor proc(kmerSize);
@@ -1046,7 +1046,7 @@ void BioBloomClassifier::printCountSummary(const string &outputPrefix,
 		}
 		summaryOutput << "\n";
 
-		int16_t currentHitVal = 0;
+		uint16_t currentHitVal = 0;
 		size_t runningTotal = 0;
 
 		//reads with non ATCG characters

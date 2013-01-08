@@ -48,8 +48,8 @@ int main(int argc, char *argv[])
 	double fpr = 0.02;
 	string filterPrefix = "";
 	string outputDir = "";
-	int16_t kmerSize = 25;
-	int16_t hashNum = 0;
+	uint16_t kmerSize = 25;
+	uint16_t hashNum = 0;
 
 	//long form arguments
 	//each option format { "optionName", necessary option or not, I have no idea, 'symbol'}
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 	//set hash function info
 	vector<string> hashFunctions = filterGen.getHashFuncNames();
 
-	for (int16_t i = 0; i < hashNum; ++i) {
+	for (uint16_t i = 0; i < hashNum; ++i) {
 		info.addHashFunction(hashFunctions[i], seeds[i]);
 	}
 

@@ -11,7 +11,7 @@
 #include "DataLayer/FastaIndex.h"
 
 WindowedFileParser::WindowedFileParser(string const &fileName,
-		int16_t windowSize) :
+		uint16_t windowSize) :
 		windowSize(windowSize), proc(ReadsProcessor(windowSize))
 {
 	fastaFileHandle.open(fileName.c_str(), ifstream::in);

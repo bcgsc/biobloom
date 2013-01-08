@@ -17,16 +17,16 @@ using namespace std;
 
 class BloomFilterInfo {
 public:
-	explicit BloomFilterInfo(string const &filterID, int16_t kmerSize,
+	explicit BloomFilterInfo(string const &filterID, uint16_t kmerSize,
 			float desiredFPR, size_t numEntries, const vector<string> &seqSrcs,
-			int16_t hashNum);
+			uint16_t hashNum);
 	explicit BloomFilterInfo(string const &fileName);
 	void addHashFunction(const string &fnName, size_t seed);
 	void printInfoFile(const string &fileName) const;
 	virtual ~BloomFilterInfo();
 
 	//getters
-	const int16_t getKmerSize() const;
+	const uint16_t getKmerSize() const;
 	const size_t getCalcuatedFilterSize() const;
 	const vector<string> &getHashFunctionNames() const;
 	const vector<size_t> &getSeedValues() const;
@@ -36,10 +36,10 @@ public:
 private:
 	//user specified input
 	string filterID;
-	int16_t kmerSize;
+	uint16_t kmerSize;
 	float desiredFPR;
 	vector<string> seqSrcs;
-	int16_t hashNum;
+	uint16_t hashNum;
 
 //determined at run time
 	struct runtime {
@@ -55,10 +55,10 @@ private:
 	const vector<string> convertHashFuncString(const string &hashFnStr) const;
 	const vector<size_t> convertSeedString(const string &seedStr) const;
 	const float calcApproxFPR(size_t size, size_t numEntr,
-			int16_t hashFunctNum) const;
+			uint16_t hashFunctNum) const;
 	const size_t calcOptimalSize(size_t entries, float fpr) const;
 	const size_t calcOptimalSize(size_t entries, float fpr,
-			int16_t hashNum) const;
+			uint16_t hashNum) const;
 };
 
 #endif /* BLOOMFILTERINFO_H_ */

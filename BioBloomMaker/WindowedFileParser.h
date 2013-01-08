@@ -22,7 +22,7 @@ using namespace boost;
 class WindowedFileParser {
 public:
 	//constructor/destructor
-	explicit WindowedFileParser(const string &fileName, int16_t windowSize);
+	explicit WindowedFileParser(const string &fileName, uint16_t windowSize);
 	const vector<string> getHeaders() const;
 	void setLocationByHeader( const string &header);
 	const size_t getSequenceSize( const string &header);

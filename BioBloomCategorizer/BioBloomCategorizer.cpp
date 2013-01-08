@@ -89,12 +89,12 @@ int main(int argc, char *argv[])
 	string rawInputFiles = "";
 	string outputPrefix = "";
 	string filtersFile = "";
-	int16_t minHit = 2;
+	size_t minHit = 2;
 	double percentHit = 0.25;
 	bool printReads = false;
 	bool die = false;
 	bool paired = false;
-	int16_t rawCounts = 0;
+	size_t rawCounts = 0;
 
 	//long form arguments
 	static struct option long_options[] = {

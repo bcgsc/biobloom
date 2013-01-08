@@ -14,7 +14,7 @@
 /*
  * Needed for use of optimized char* returning prepSeq
  */
-ReadsProcessor::ReadsProcessor(int16_t windowSize) :
+ReadsProcessor::ReadsProcessor(uint16_t windowSize) :
 		kmerSize(windowSize), emptyResult(""), halfKmerSize(
 				windowSize / 2 + windowSize % 2) {
 	outputFwd.resize(windowSize);
@@ -31,7 +31,7 @@ ReadsProcessor::ReadsProcessor(int16_t windowSize) :
  */
 const string &ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 
-	int16_t outputIndex = 0;
+	uint16_t outputIndex = 0;
 	size_t revIndex = position + kmerSize - 1;
 
 	// determines which compliment to use

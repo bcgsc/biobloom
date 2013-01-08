@@ -25,7 +25,7 @@
  * filenames with corresponding headers to make filter from.
  */
 BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
-		int16_t kmer) :
+		uint16_t kmer) :
 		kmerSize(kmer), expectedEntries(0), filterSize(0)
 {
 
@@ -97,10 +97,10 @@ void BloomFilterGenerator::setFilterSize(size_t bits)
  * Adds numFunc number of seed values to be used in filter
  * Returns the seed values used
  */
-const vector<size_t> BloomFilterGenerator::addHashFuncs(int16_t numFunc)
+const vector<size_t> BloomFilterGenerator::addHashFuncs(uint16_t numFunc)
 {
 	vector<size_t> seedVals;
-	for (int16_t i = 0; i < numFunc; ++i) {
+	for (uint16_t i = 0; i < numFunc; ++i) {
 		multiHash.addHashFunction("CityHash64", i);
 		hashFunctionNames.push_back("CityHash64");
 		seedVals.push_back(i);
@@ -131,18 +131,18 @@ const vector<string> BloomFilterGenerator::getHashFuncNames() const
  * to achieve lowest FPR for a given ratio of filter size and entries
  */
 //NOTE: Not currently used.
-const int16_t BloomFilterGenerator::calcOptiHashNum(size_t size,
+const uint16_t BloomFilterGenerator::calcOptiHashNum(size_t size,
 		size_t entries) const
 {
-	return int16_t(((double) size / (double) entries) * log(2));
+	return uint16_t(((double) size / (double) entries) * log(2));
 }
 
 /*
  * Calculation assumes optimal ratio of bytes per entry given a fpr
  */
-const int16_t BloomFilterGenerator::calcOptiHashNum(float fpr) const
+const uint16_t BloomFilterGenerator::calcOptiHashNum(float fpr) const
 {
-	return int16_t(-log(fpr) / log(2));
+	return uint16_t(-log(fpr) / log(2));
 }
 
 //destructor

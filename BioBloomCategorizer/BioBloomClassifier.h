@@ -22,8 +22,8 @@ using namespace std;
 
 class BioBloomClassifier {
 public:
-	BioBloomClassifier(const vector<string> &filterFilePaths, int16_t minHit,
-			double percentMinHit, int16_t maxHitValue);
+	BioBloomClassifier(const vector<string> &filterFilePaths, size_t minHit,
+			double percentMinHit, size_t maxHitValue);
 	void filter(const vector<string> &inputFiles, const string &outputPrefix);
 	void filterPrintReads(const vector<string> &inputFiles,
 			const string &outputPrefix);
@@ -53,10 +53,10 @@ private:
 	boost::unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > infoFiles;
 	boost::unordered_map<string, boost::shared_ptr<MultiFilter> > filters;
 	vector<string> hashSigs;
-	int16_t minHit;
+	size_t minHit;
 	double percentMinHit;
-	int16_t filterNum;
-	int16_t maxHitValue;
+	uint8_t filterNum;
+	size_t maxHitValue;
 };
 
 #endif /* BIOBLOOMCLASSIFIER_H_ */

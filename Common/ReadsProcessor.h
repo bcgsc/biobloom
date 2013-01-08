@@ -15,15 +15,15 @@ using namespace std;
 class ReadsProcessor {
 public:
 
-	ReadsProcessor(int16_t windowSize);
+	ReadsProcessor(uint16_t windowSize);
 	const string &prepSeq(string const &sequence, size_t position);
 	virtual ~ReadsProcessor();
 private:
 	string outputFwd; //containers preventing reallocation of mem
 	string outputRev; //containers preventing reallocation of mem
 	string emptyResult;
-	int16_t kmerSize;
-	int16_t halfKmerSize;
+	uint16_t kmerSize;
+	uint16_t halfKmerSize;
 };
 
 #endif /* READSPROCESSOR_H_ */
