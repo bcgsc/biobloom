@@ -71,6 +71,9 @@ void printHelpDialog()
 					"  -c, --counts=N         Outputs summary of raw counts of user\n"
 					"                         specified hit counts to each filter of each\n"
 					"                         read or read-pair. [0]\n"
+			        "      --chastity         discard and do not evaluate unchaste reads.\n"
+			        "      --no-chastity      do not discard and evaluate unchaste reads.\n"
+			        "                         [default]\n"
 					"  -h, --help             Display this dialog.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
@@ -96,6 +99,7 @@ int main(int argc, char *argv[])
 	bool paired = false;
 	size_t rawCounts = 0;
 
+	//todo Finish chasity options
 	//long form arguments
 	static struct option long_options[] = {
 			{
@@ -107,6 +111,8 @@ int main(int argc, char *argv[])
 					"paired_mode", no_argument, NULL, 'e' }, {
 					"counts", no_argument, NULL, 'c' }, {
 					"help", no_argument, NULL, 'h' }, {
+					"chastity", no_argument, NULL }, {
+					"no-chastity", no_argument, NULL }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step

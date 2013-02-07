@@ -972,6 +972,270 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 	printCountSummary(outputPrefix, rawHits, totalReads, nonATCG);
 }
 
+///*
+// * Filters reads -> uses paired end information
+// * Assumes only one hash signature exists (load only filters with same
+// * hash functions)
+// * Prints reads into seperate files
+// */
+//void BioBloomClassifier::filterPairBAMPrint(const string &file, const string &outputPrefix)
+//{
+//	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
+//
+//	//print header
+//	readStatusOutput << "readID\tseqSize";
+//
+//	//variables for storing results summary
+//	boost::unordered_map<string, size_t> aboveThreshold;
+//	boost::unordered_map<string, size_t> belowThreshold;
+//	size_t totalReads = 0;
+//	size_t nonATCG = 0;
+//
+//	boost::unordered_map<string, boost::shared_ptr<ofstream> > outputFiles;
+//	boost::shared_ptr<ofstream> noMatch1(
+//			new ofstream((outputPrefix + "_noMatch_1.fastq").c_str(),
+//					ios::out));
+//	boost::shared_ptr<ofstream> noMatch2(
+//			new ofstream((outputPrefix + "_noMatch_2.fastq").c_str(),
+//					ios::out));
+//	boost::shared_ptr<ofstream> multiMatch1(
+//			new ofstream((outputPrefix + "_multiMatch_1.fastq").c_str(),
+//					ios::out));
+//	boost::shared_ptr<ofstream> multiMatch2(
+//			new ofstream((outputPrefix + "_multiMatch_2.fastq").c_str(),
+//					ios::out));
+//	outputFiles["noMatch1"] = noMatch1;
+//	outputFiles["noMatch2"] = noMatch2;
+//	outputFiles["multiMatch1"] = multiMatch1;
+//	outputFiles["multiMatch2"] = multiMatch2;
+//
+//	boost::unordered_map<string, vector<size_t> > rawHits;
+//
+//	//initialize variables and print filter ids
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j)
+//	{
+//		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i)
+//		{
+//			boost::shared_ptr<ofstream> temp1(
+//					new ofstream((outputPrefix + "_" + *i + "_1.fastq").c_str(),
+//							ios::out));
+//			boost::shared_ptr<ofstream> temp2(
+//					new ofstream((outputPrefix + "_" + *i + "_2.fastq").c_str(),
+//							ios::out));
+//			outputFiles[*i + "1"] = temp1;
+//			outputFiles[*i + "2"] = temp2;
+//			readStatusOutput << "\t" << *i << "_"
+//					<< (*(infoFiles[*j].front())).getKmerSize();
+//			aboveThreshold[*i + "1"] = 0;
+//			belowThreshold[*i + "2"] = 0;
+//
+//			//initialize rawHits
+//			vector<size_t> tempCount(maxHitValue);
+//			uint16_t counter = 0;
+//			rawHits[*i] = tempCount;
+//			while (counter < maxHitValue) {
+//				rawHits[*i][counter] = 0;
+//				counter++;
+//			}
+//		}
+//	}
+//	readStatusOutput << "\n";
+//
+//	cerr << "Filtering Start" << "\n";
+//
+//	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
+//	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
+//	FastqRecord rec1;
+//	FastqRecord rec2;
+//	//hits results stored in hashmap of filter names and hits
+//	boost::unordered_map<string, size_t> hits1(filterNum);
+//	boost::unordered_map<string, size_t> hits2(filterNum);
+//
+//	while (sequence1 >> rec1 && sequence2 >> rec2) {
+//		//split reads into kmerSizes specified (ignore trailing bases)
+//		//for skipping bad reads
+//		bool readOK = true;
+//
+//		//initialize hits to zero
+//		for (vector<string>::const_iterator j = hashSigs.begin();
+//				j != hashSigs.end(); ++j)
+//		{
+//			const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
+//			for (vector<string>::const_iterator i = idsInFilter.begin();
+//					i != idsInFilter.end(); ++i)
+//			{
+//				hits1[*i] = 0;
+//				hits2[*i] = 0;
+//			}
+//		}
+//
+//		//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
+//		for (vector<string>::const_iterator j = hashSigs.begin();
+//				j != hashSigs.end(); ++j)
+//		{
+//			string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
+//			string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
+//			if (tempStr1 == tempStr2) {
+//				if (!evaluateRead(rec1, *j, hits1)
+//						|| !evaluateRead(rec2, *j, hits2))
+//				{
+//					readOK = false;
+//					break;
+//				}
+//			} else {
+//				cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
+//						<< tempStr2 << endl;
+//				exit(1);
+//			}
+//		}
+//
+//		//print readID
+//		readStatusOutput << rec1.id << "\t" << rec1.seq.length();
+//
+//		++totalReads;
+//		if (totalReads % 100000 == 0) {
+//			cout << "Currently Reading Read Number: " << totalReads << endl;
+//		}
+//		if (readOK) {
+//			uint16_t totalHits = 0;
+//			for (vector<string>::const_iterator j = hashSigs.begin();
+//					j != hashSigs.end(); ++j)
+//			{
+//				//update summary
+//				const vector<string> &idsInFilter =
+//						(*filters[*j]).getFilterIds();
+//				for (vector<string>::const_iterator i = idsInFilter.begin();
+//						i != idsInFilter.end(); ++i)
+//				{
+//					//print read status
+//					readStatusOutput << "\t" << hits1[*i] << '/' << hits2[*i];
+//
+//					//pick threshold, by percent or by absolute value
+//					uint16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
+//					size_t threshold1 = size_t(
+//							percentMinHit * (rec1.seq.length() / kmerSize));
+//					size_t threshold2 = size_t(
+//							percentMinHit * (rec2.seq.length() / kmerSize));
+//					if (minHit > threshold1) {
+//						threshold1 = minHit;
+//					}
+//					if (minHit > threshold2) {
+//						threshold2 = minHit;
+//					}
+//
+//					if (hits1[*i] >= threshold1 && hits2[*i] >= threshold2) {
+//						++totalHits;
+//						++aboveThreshold[*i];
+//					} else if (hits1[*i] != 0 && hits2[*i] != 0) {
+//						++belowThreshold[*i];
+//					}
+//					//modify total reads
+//					if (rawHits[*i].size() > hits1[*i] + hits2[*i]) {
+//						rawHits[*i][hits1[*i] + hits2[*i]]++;
+//					}
+//				}
+//			}
+//			if (totalHits == 0) {
+//				(*outputFiles["noMatch1"]) << "@" << rec1.id << "\n" << rec1.seq
+//						<< "\n+\n" << rec1.qual << "\n";
+//				(*outputFiles["noMatch2"]) << "@" << rec2.id << "\n" << rec2.seq
+//						<< "\n+\n" << rec2.qual << "\n";
+//			} else if (totalHits > 1) {
+//				(*outputFiles["multiMatch1"]) << "@" << rec1.id << "\n"
+//						<< rec1.seq << "\n+\n" << rec1.qual << "\n";
+//				(*outputFiles["multiMatch2"]) << "@" << rec2.id << "\n"
+//						<< rec2.seq << "\n+\n" << rec2.qual << "\n";
+//			} else {
+//				for (vector<string>::const_iterator j = hashSigs.begin();
+//						j != hashSigs.end(); ++j)
+//				{
+//					const vector<string> idsInFilter =
+//							(*filters[*j]).getFilterIds();
+//					for (vector<string>::const_iterator i = idsInFilter.begin();
+//							i != idsInFilter.end(); ++i)
+//					{
+//						//pick threshold, by percent or by absolute value
+//						uint16_t kmerSize =
+//								(*(infoFiles[*j].front())).getKmerSize();
+//						size_t threshold1 = size_t(
+//								percentMinHit * (rec1.seq.length() / kmerSize));
+//						size_t threshold2 = size_t(
+//								percentMinHit * (rec2.seq.length() / kmerSize));
+//						if (minHit > threshold1) {
+//							threshold1 = minHit;
+//						}
+//						if (minHit > threshold2) {
+//							threshold2 = minHit;
+//						}
+//
+//						if (hits1[*i] >= threshold1 && hits2[*i] >= threshold2)
+//						{
+//							(*outputFiles[*i + "1"]) << "@" << rec1.id << "\n"
+//									<< rec1.seq << "\n+\n" << rec1.qual << "\n";
+//							(*outputFiles[*i + "2"]) << "@" << rec2.id << "\n"
+//									<< rec2.seq << "\n+\n" << rec2.qual << "\n";
+//							break;
+//						}
+//					}
+//				}
+//			}
+//		} else {
+//			nonATCG++;
+//			for (vector<string>::const_iterator j = hashSigs.begin();
+//					j != hashSigs.end(); ++j)
+//			{
+//				const vector<string> &idsInFilter =
+//						(*filters[*j]).getFilterIds();
+//				for (vector<string>::const_iterator i = idsInFilter.begin();
+//						i != idsInFilter.end(); ++i)
+//				{
+//					//print read status
+//					readStatusOutput << "\t" << "na/na";
+//				}
+//			}
+//			(*outputFiles["noMatch1"]) << "@" << rec1.id << "\n" << rec1.seq
+//					<< "\n+\n" << rec1.qual << "\n";
+//			(*outputFiles["noMatch2"]) << "@" << rec2.id << "\n" << rec2.seq
+//					<< "\n+\n" << rec2.qual << "\n";
+//		}
+//		readStatusOutput << "\n";
+//	}
+//	if (sequence2 >> rec2 && sequence1.eof() && sequence2.eof()) {
+//		cerr
+//				<< "error: eof bit not flipped. Input files may be different lengths"
+//				<< endl;
+//	}
+//
+//	//close sorting files
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j)
+//	{
+//		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i)
+//		{
+//			outputFiles[*i + "1"]->flush();
+//			outputFiles[*i + "2"]->close();
+//			outputFiles[*i + "1"]->flush();
+//			outputFiles[*i + "2"]->close();
+//		}
+//	}
+//	outputFiles["noMatch1"]->flush();
+//	outputFiles["noMatch1"]->close();
+//	outputFiles["noMatch2"]->flush();
+//	outputFiles["noMatch2"]->close();
+//	outputFiles["multiMatch1"]->flush();
+//	outputFiles["multiMatch1"]->close();
+//	outputFiles["multiMatch2"]->flush();
+//	outputFiles["multiMatch2"]->close();
+//	cout << "Total Reads:" << totalReads << endl;
+//	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
+//	printCountSummary(outputPrefix, rawHits, totalReads, nonATCG);
+//}
+
 /*
  * For a single read evaluate hits for a single hash signature
  * Returns true if read is valid (no ambiguity characters)
