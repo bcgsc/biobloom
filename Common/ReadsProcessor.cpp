@@ -150,6 +150,136 @@ const string &ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 	return outputFwd;
 }
 
+//const string &ReadsProcessor::prepSeqAmbigPos(string const &sequence, vector<size_t> &ambigPos) {
+//
+//	size_t outputIndex = 0;
+//	size_t revIndex = kmerSize - 1;
+//
+//	// determines which compliment to use
+//	// parse through string converting and checking for lower-case and non ATCG characters
+//	// half the length of seq because after this point will be palindromic and is not worth checking
+//	for (size_t index = 0; outputIndex < halfKmerSize; ++index) {
+//		//modify the forward
+//		switch (sequence[index]) {
+//		case 'A':
+//		case 'a':
+//			outputFwd[outputIndex] = 'A';
+//			break;
+//		case 'C':
+//		case 'c':
+//			outputFwd[outputIndex] = 'C';
+//			break;
+//		case 'G':
+//		case 'g':
+//			outputFwd[outputIndex] = 'G';
+//			break;
+//		case 'T':
+//		case 't':
+//			outputFwd[outputIndex] = 'T';
+//			break;
+//		default:
+//			outputFwd[outputIndex] = 'N';
+//			ambigPos.push_back(outputIndex);
+//			break;
+//		}
+//
+//		//modify the reverse
+//		switch (sequence[revIndex]) {
+//		case 'A':
+//		case 'a':
+//			outputRev[outputIndex] = 'T';
+//			break;
+//		case 'C':
+//		case 'c':
+//			outputRev[outputIndex] = 'G';
+//			break;
+//		case 'G':
+//		case 'g':
+//			outputRev[outputIndex] = 'C';
+//			break;
+//		case 'T':
+//		case 't':
+//			outputRev[outputIndex] = 'A';
+//			break;
+//		default:
+//			outputFwd[outputIndex] = 'N';
+//			ambigPos.push_back(outputIndex);
+//			break;
+//		}
+//
+//		//compare and convert if not already established
+//		//forward is smaller
+//		if (outputFwd[outputIndex] < outputRev[outputIndex]) {
+//			//finish off sequence
+//			++index;
+//			++outputIndex;
+//			for (; outputIndex < kmerSize; ++index) {
+//				switch (sequence[index]) {
+//				case 'A':
+//				case 'a':
+//					outputFwd[outputIndex] = 'A';
+//					break;
+//				case 'C':
+//				case 'c':
+//					outputFwd[outputIndex] = 'C';
+//					break;
+//				case 'G':
+//				case 'g':
+//					outputFwd[outputIndex] = 'G';
+//					break;
+//				case 'T':
+//				case 't':
+//					outputFwd[outputIndex] = 'T';
+//					break;
+//				default:
+//					outputFwd[outputIndex] = 'N';
+//					ambigPos.push_back(outputIndex);
+//					break;
+//				}
+//				++outputIndex;
+//			}
+//			return outputFwd;
+//		}
+//		//reverse is smaller
+//		else if (outputFwd[outputIndex] > outputRev[outputIndex]) {
+//			//finish off sequence
+//			--revIndex;
+//			++outputIndex;
+//			for (; outputIndex < kmerSize; --revIndex) {
+//				switch (sequence[revIndex]) {
+//				case 'A':
+//				case 'a':
+//					outputRev[outputIndex] = 'T';
+//					break;
+//				case 'C':
+//				case 'c':
+//					outputRev[outputIndex] = 'G';
+//					break;
+//				case 'G':
+//				case 'g':
+//					outputRev[outputIndex] = 'C';
+//					break;
+//				case 'T':
+//				case 't':
+//					outputRev[outputIndex] = 'A';
+//					break;
+//				default:
+//					outputFwd[outputIndex] = 'N';
+//					ambigPos.push_back(outputIndex);
+//					break;
+//				}
+//				++outputIndex;
+//			}
+//			return outputRev;
+//		}
+//		++outputIndex;
+//		--revIndex;
+//		ambigPos.pop_back();
+//	}
+//	//palamdromic
+//	return outputFwd;
+//}
+
 ReadsProcessor::~ReadsProcessor() {
 }
 

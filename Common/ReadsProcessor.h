@@ -17,6 +17,7 @@ public:
 
 	ReadsProcessor(uint16_t windowSize);
 	const string &prepSeq(string const &sequence, size_t position);
+//	const string &prepSeqAmbigPos(string const &sequence, vector<size_t> &ambigPos);
 	virtual ~ReadsProcessor();
 private:
 	string outputFwd; //containers preventing reallocation of mem

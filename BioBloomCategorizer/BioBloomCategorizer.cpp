@@ -59,21 +59,23 @@ void printHelpDialog()
 					"\n"
 					"  -p, --prefix=N         Output prefix to use. Otherwise will output\n"
 					"                         to current directory.\n"
-					"  -t, --min_hit_thr=N    Minimum Hit Threshold Value. Uses absolute\n"
-					"                         hit number of read to categorize. [2]\n"
+					"  -t, --min_hit_thr=N    Minimum Hit Threshold Value. The absolute\n"
+					"                         hit number needed for a hit to be considered\n"
+					"                         a match.[2]\n"
+					"  -m, --min_hit_pro=N    Minimum Hit Proportion Threshold Value. The\n"
+					"                         Proportion needed for a hit to be considered\n"
+					"                         a match. [0.2]\n"
 					"  -f, --filter_files=N   List of filter files to use. Required option.\n"
 					"                         Eg. \"filter1.bf filter2.bf\"\n"
-					"  -m, --min_hit_pro=N    Minimum Hit Proportion Threshold Value. Uses\n"
-					"                         Proportion of hits to categorize. [0.25]\n"
 					"  -o, --output_fastq     Output categorized reads in FastQ files.\n"
 					"  -e, --paired_mode      Uses paired-end information. Does not work\n"
 					"                         with BAM or SAM files.\n"
 					"  -c, --counts=N         Outputs summary of raw counts of user\n"
 					"                         specified hit counts to each filter of each\n"
 					"                         read or read-pair. [0]\n"
-			        "      --chastity         discard and do not evaluate unchaste reads.\n"
-			        "      --no-chastity      do not discard and evaluate unchaste reads.\n"
-			        "                         [default]\n"
+					"      --chastity         Discard and do not evaluate unchaste reads.\n"
+					"      --no-chastity      Do not discard and evaluate unchaste reads.\n"
+					"                         [default]\n"
 					"  -h, --help             Display this dialog.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
@@ -93,7 +95,7 @@ int main(int argc, char *argv[])
 	string outputPrefix = "";
 	string filtersFile = "";
 	size_t minHit = 2;
-	double percentHit = 0.25;
+	double percentHit = 0.2;
 	bool printReads = false;
 	bool die = false;
 	bool paired = false;
@@ -231,7 +233,7 @@ int main(int argc, char *argv[])
 		}
 	} else {
 		if (printReads) {
-			BBC.filterPrintReads(inputFiles, outputPrefix);
+			BBC.filterPrint(inputFiles, outputPrefix);
 		} else {
 			BBC.filter(inputFiles, outputPrefix);
 		}
