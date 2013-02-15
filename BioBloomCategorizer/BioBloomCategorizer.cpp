@@ -11,10 +11,7 @@
 #include "boost/unordered/unordered_map.hpp"
 #include "Common/HashManager.h"
 #include <vector>
-#include <iostream>
-#include <fstream>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include "BioBloomClassifier.h"
 #include "DataLayer/Options.h"
 using namespace std;
@@ -52,7 +49,7 @@ void folderCheck(const string &path)
 void printHelpDialog()
 {
 	static const char dialog[] =
-			"Usage: BioBloomCategorizer [OPTION]... -f \"[FILTER1] [FILTER2]...\" [FILE]...\n"
+			"Usage: BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
 					"Categorize Sequences. The input format may be FASTA, FASTQ, qseq,\n"
 					"export, SAM or BAM format and compressed with gz, bz2 or xz and\n"
 					"may be tarred.\n"
@@ -61,15 +58,17 @@ void printHelpDialog()
 					"                         to current directory.\n"
 					"  -t, --min_hit_thr=N    Minimum Hit Threshold Value. The absolute\n"
 					"                         hit number needed for a hit to be considered\n"
-					"                         a match.[2]\n"
+					"                         a match. [2]\n"
 					"  -m, --min_hit_pro=N    Minimum Hit Proportion Threshold Value. The\n"
 					"                         Proportion needed for a hit to be considered\n"
 					"                         a match. [0.2]\n"
 					"  -f, --filter_files=N   List of filter files to use. Required option.\n"
 					"                         Eg. \"filter1.bf filter2.bf\"\n"
 					"  -o, --output_fastq     Output categorized reads in FastQ files.\n"
-					"  -e, --paired_mode      Uses paired-end information. Does not work\n"
-					"                         with BAM or SAM files.\n"
+					"  -e, --paired_mode      Uses paired-end information. For BAM or\n"
+					"                         SAM file if they are poorly ordered, memory\n"
+					"                         usage will be much larger than normal.\n"
+					"                         Sorting by read name may be needed.\n"
 					"  -c, --counts=N         Outputs summary of raw counts of user\n"
 					"                         specified hit counts to each filter of each\n"
 					"                         read or read-pair. [0]\n"
@@ -187,15 +186,23 @@ int main(int argc, char *argv[])
 		optind++;
 	}
 
+	bool pairedBAMSAM = false;
+
 	//check validity of inputs for paired end mode
 	if (paired) {
-		if (inputFiles.size() != 2
-				|| inputFiles[0].substr(inputFiles[0].size() - 4) == "bam"
-				|| inputFiles[1].substr(inputFiles[0].size() - 4) == "bam")
+
+		if (inputFiles.size() == 1
+				&& (inputFiles[0].substr(inputFiles[0].size() - 4) != "bam"
+						|| inputFiles[0].substr(inputFiles[0].size() - 4)
+								!= "sam"))
 		{
+			pairedBAMSAM = true;
+		} else if (inputFiles.size() == 2) {
+			pairedBAMSAM = false;
+		} else {
 			cerr << "Usage of paired end mode:\n"
-					<< "BioBloomCategorizer [OPTION]... -f \"[FILTER1] [FILTER2]...\" [FILEPAIR1] [FILEPAIR2]\n"
-					<< "BAM or SAM files do not currently work with this option."
+					<< "BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [FILEPAIR1] [FILEPAIR2]\n"
+					<< "or BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [PAIREDBAMSAM]\n"
 					<< endl;
 			exit(1);
 		}
@@ -227,9 +234,17 @@ int main(int argc, char *argv[])
 	//create directory structure if it does not exist
 	if (paired) {
 		if (printReads) {
-			BBC.filterPairPrint(inputFiles[0], inputFiles[1], outputPrefix);
+			if (pairedBAMSAM) {
+				BBC.filterPairBAMPrint(inputFiles[0], outputPrefix);
+			} else {
+				BBC.filterPairPrint(inputFiles[0], inputFiles[1], outputPrefix);
+			}
 		} else {
-			BBC.filterPair(inputFiles[0], inputFiles[1], outputPrefix);
+			if (pairedBAMSAM) {
+				BBC.filterPairBAM(inputFiles[0], outputPrefix);
+			} else {
+				BBC.filterPair(inputFiles[0], inputFiles[1], outputPrefix);
+			}
 		}
 	} else {
 		if (printReads) {

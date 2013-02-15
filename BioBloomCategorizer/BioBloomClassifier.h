@@ -47,7 +47,7 @@ private:
 	bool fexists(const string &filename) const;
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, size_t> &hits);
-	void initSummaryVars(vector<string> &hashSigs, ofstream &readStatusOutput,
+	const string initSummaryVars(vector<string> &hashSigs,
 			unordered_map<string, size_t> &aboveThreshold,
 			unordered_map<string, size_t> &belowThreshold,
 			unordered_map<string, vector<size_t> > &rawHits);

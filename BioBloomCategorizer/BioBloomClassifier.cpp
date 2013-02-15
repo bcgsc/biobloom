@@ -10,6 +10,7 @@
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
+#include "Common/gzstream.h"
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		size_t minHit, double percentMinHit, size_t maxHitValue) :
@@ -37,8 +38,9 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 	size_t totalReads = 0;
 
 	//print out header info and initialize variables
-	initSummaryVars(hashSigs, readStatusOutput, aboveThreshold, belowThreshold,
-			rawHits);
+	readStatusOutput
+			<< initSummaryVars(hashSigs, aboveThreshold, belowThreshold,
+					rawHits);
 
 	cerr << "Filtering Start" << endl;
 
@@ -79,6 +81,10 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 					belowThreshold, rawHits);
 		}
 	}
+
+	readStatusOutput.flush();
+	readStatusOutput.close();
+
 	cerr << "Total Reads:" << totalReads << endl;
 	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
 	printCountSummary(outputPrefix, rawHits, totalReads);
@@ -131,8 +137,9 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	}
 
 	//print out header info and initialize variables for summary
-	initSummaryVars(hashSigs, readStatusOutput, aboveThreshold, belowThreshold,
-			rawHits);
+	readStatusOutput
+			<< initSummaryVars(hashSigs, aboveThreshold, belowThreshold,
+					rawHits);
 
 	cerr << "Filtering Start" << endl;
 
@@ -170,6 +177,9 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 					<< "\n+\n" << rec.qual << endl;
 		}
 	}
+
+	readStatusOutput.flush();
+	readStatusOutput.close();
 
 	//close sorting files
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -211,8 +221,9 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 	size_t totalReads = 0;
 
 	//print out header info and initialize variables for summary
-	initSummaryVars(hashSigs, readStatusOutput, aboveThreshold, belowThreshold,
-			rawHits);
+	readStatusOutput
+			<< initSummaryVars(hashSigs, aboveThreshold, belowThreshold,
+					rawHits);
 
 	cerr << "Filtering Start" << "\n";
 
@@ -305,6 +316,10 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 				<< "error: eof bit not flipped. Input files may be different lengths"
 				<< endl;
 	}
+
+	readStatusOutput.flush();
+	readStatusOutput.close();
+
 	cerr << "Total Reads:" << totalReads << endl;
 	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
 	printCountSummary(outputPrefix, rawHits, totalReads);
@@ -319,7 +334,8 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 void BioBloomClassifier::filterPairPrint(const string &file1,
 		const string &file2, const string &outputPrefix)
 {
-	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
+	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(),
+			ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -366,8 +382,9 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	}
 
 	//print out header info and initialize variables for summary
-	initSummaryVars(hashSigs, readStatusOutput, aboveThreshold, belowThreshold,
-			rawHits);
+	readStatusOutput
+			<< initSummaryVars(hashSigs, aboveThreshold, belowThreshold,
+					rawHits);
 
 	cerr << "Filtering Start" << "\n";
 
@@ -428,6 +445,9 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				<< endl;
 	}
 
+	readStatusOutput.flush();
+	readStatusOutput.close();
+
 	//close sorting files
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
@@ -464,7 +484,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 void BioBloomClassifier::filterPairBAMPrint(const string &file,
 		const string &outputPrefix)
 {
-	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
+	ogzstream readStatusOutput((outputPrefix + "_status.tsv.gz").c_str(),
+			ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -513,8 +534,9 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	}
 
 	//print out header info and initialize variables for summary
-	initSummaryVars(hashSigs, readStatusOutput, aboveThreshold, belowThreshold,
-			rawHits);
+	readStatusOutput
+			<< initSummaryVars(hashSigs, aboveThreshold, belowThreshold,
+					rawHits);
 
 	cerr << "Filtering Start" << "\n";
 
@@ -529,8 +551,12 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 			string readID = rec.id.substr(0, rec.id.length() - 2);
 			if (unPairedReads.find(readID) != unPairedReads.end()) {
 
-				const FastqRecord &rec1 = rec.id.at(rec.id.length() - 1) == '1' ? rec : unPairedReads[readID];
-				const FastqRecord &rec2 = rec.id.at(rec.id.length() - 1) == '2' ? rec : unPairedReads[readID];
+				const FastqRecord &rec1 =
+						rec.id.at(rec.id.length() - 1) == '1' ?
+								rec : unPairedReads[readID];
+				const FastqRecord &rec2 =
+						rec.id.at(rec.id.length() - 1) == '2' ?
+								rec : unPairedReads[readID];
 
 				++totalReads;
 				if (totalReads % 100000 == 0) {
@@ -574,11 +600,17 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 						<< rec1.seq << "\n+\n" << rec1.qual << endl;
 				(*outputFiles[outputFileName + "2"]) << "@" << rec2.id << "\n"
 						<< rec2.seq << "\n+\n" << rec2.qual << endl;
+
+				//clean up reads
+				unPairedReads.erase(readID);
+
 			} else {
 				unPairedReads[readID] = rec;
 			}
 		}
 	}
+
+	readStatusOutput.flush();
 
 	//close sorting files
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -602,6 +634,104 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	outputFiles[multiMatch + "1"]->close();
 	outputFiles[multiMatch + "2"]->flush();
 	outputFiles[multiMatch + "2"]->close();
+	cerr << "Total Reads:" << totalReads << endl;
+	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
+	printCountSummary(outputPrefix, rawHits, totalReads);
+}
+
+/*
+ * Filters reads -> uses paired end information
+ * Assumes only one hash signature exists (load only filters with same
+ * hash functions)
+ */
+void BioBloomClassifier::filterPairBAM(const string &file,
+		const string &outputPrefix)
+{
+	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
+
+	//variables for storing results summary
+	unordered_map<string, size_t> aboveThreshold;
+	unordered_map<string, size_t> belowThreshold;
+	unordered_map<string, vector<size_t> > rawHits;
+
+	unordered_map<string, FastqRecord> unPairedReads;
+
+	size_t totalReads = 0;
+
+	//print out header info and initialize variables for summary
+	readStatusOutput
+			<< initSummaryVars(hashSigs, aboveThreshold, belowThreshold,
+					rawHits);
+
+	cerr << "Filtering Start" << "\n";
+
+	FastaReader sequence(file.c_str(), FastaReader::NO_FOLD_CASE);
+	//hits results stored in hashmap of filter names and hits
+	unordered_map<string, size_t> hits1(filterNum);
+	unordered_map<string, size_t> hits2(filterNum);
+
+	while (!sequence.eof()) {
+		FastqRecord rec;
+		if (sequence >> rec) {
+			string readID = rec.id.substr(0, rec.id.length() - 2);
+			if (unPairedReads.find(readID) != unPairedReads.end()) {
+
+				const FastqRecord &rec1 =
+						rec.id.at(rec.id.length() - 1) == '1' ?
+								rec : unPairedReads[readID];
+				const FastqRecord &rec2 =
+						rec.id.at(rec.id.length() - 1) == '2' ?
+								rec : unPairedReads[readID];
+
+				++totalReads;
+				if (totalReads % 100000 == 0) {
+					cerr << "Currently Reading Read Number: " << totalReads
+							<< endl;
+				}
+
+				//initialize hits to zero
+				initHits(hits1);
+				initHits(hits2);
+
+				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
+				for (vector<string>::const_iterator j = hashSigs.begin();
+						j != hashSigs.end(); ++j)
+				{
+					string tempStr1 = rec1.id.substr(0,
+							rec1.id.find_last_of("/"));
+					string tempStr2 = rec2.id.substr(0,
+							rec2.id.find_last_of("/"));
+					if (tempStr1 == tempStr2) {
+						evaluateRead(rec1, *j, hits1);
+						evaluateRead(rec2, *j, hits2);
+					} else {
+						cerr << "Read IDs do not match" << "\n" << tempStr1
+								<< "\n" << tempStr2 << endl;
+						exit(1);
+					}
+				}
+
+				//print hit results to read status
+				readStatusOutput
+						<< getReadStatStrPair(readID, rec1.seq.length(),
+								rec2.seq.length(), hits1, hits2);
+
+				//Evaluate hit data and record for summary
+				updateSummaryDataPair(rec1.seq.length(), rec2.seq.length(),
+						hits1, hits2, aboveThreshold, belowThreshold, rawHits);
+
+				//clean up reads
+				unPairedReads.erase(readID);
+
+			} else {
+				unPairedReads[readID] = rec;
+			}
+		}
+	}
+
+	readStatusOutput.flush();
+	readStatusOutput.close();
+
 	cerr << "Total Reads:" << totalReads << endl;
 	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
 	printCountSummary(outputPrefix, rawHits, totalReads);
@@ -884,13 +1014,12 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
  * Initializes Summary Variables. Also prints heads for read status.
  */
 //Todo: move printing of read status heads to other function?
-void BioBloomClassifier::initSummaryVars(vector<string> &hashSigs,
-		ofstream &readStatusOutput,
+const string BioBloomClassifier::initSummaryVars(vector<string> &hashSigs,
 		unordered_map<string, size_t> &aboveThreshold,
 		unordered_map<string, size_t> &belowThreshold,
 		unordered_map<string, vector<size_t> > &rawHits)
 {
-	//print header
+	stringstream readStatusOutput;
 	readStatusOutput << "readID\tseqSize";
 
 	//initialize variables and print filter ids
@@ -917,6 +1046,7 @@ void BioBloomClassifier::initSummaryVars(vector<string> &hashSigs,
 		}
 	}
 	readStatusOutput << "\n";
+	return readStatusOutput.str();
 }
 
 /*
