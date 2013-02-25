@@ -24,10 +24,8 @@ int main(int argc, char **argv) {
 
 	//test BloomFilterGenerator
 
-	boost::unordered_map<string, vector<string> > filenames;
-	vector<string> temp;
-	temp.push_back("NC_000913.2");
-	filenames[fileName] = temp;
+	vector<string> filenames;
+	filenames.push_back("NC_000913.2");
 	//test count
 	BloomFilterGenerator gen(filenames, 20);
 

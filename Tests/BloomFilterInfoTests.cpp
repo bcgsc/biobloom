@@ -17,10 +17,8 @@ int main(int argc, char **argv) {
 
 	string infoFile = "/home/cjustin/workspace/TestData/20120820_HG19_Chr21.txt";
 
-	boost::unordered::unordered_map<string, vector<string> > map;
-	vector<string> headers;
-	headers.push_back("chr21");
-	map["/home/pubseq/genomes/9606/hg19/bwa_ind/genome/human.fasta"] = headers;
+	vector<string> map;
+	map[0] = "/home/pubseq/genomes/9606/hg19/bwa_ind/genome/human.fasta";
 	BloomFilterInfo info("HG19_chr21", 33, 0.02, 47000000, map, 6);
 	info.addHashFunction("CityHash64", 0);
 	info.addHashFunction("CityHash64", 1);

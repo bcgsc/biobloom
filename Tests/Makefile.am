@@ -1,4 +1,5 @@
 bin_PROGRAMS = BloomFilterTests \
+	BloomFilterCategorizerTests \
 	BloomFilterMakerTests \
 	WindowedParser \
 	BloomFilterInfoTests \
@@ -27,5 +28,12 @@ BloomFilterMakerTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a
 BloomFilterMakerTests_SOURCES = BloomFilterMakerTests.cpp
 BloomFilterMakerTests_CPPFLAGS = -I$(top_srcdir)/BioBloomMaker \
+	-I$(top_srcdir)/Common \
+	-I$(top_srcdir)/DataLayer
+
+BloomFilterCategorizerTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
+	$(top_builddir)/Common/libcommon.a
+BloomFilterCategorizerTests_SOURCES = BloomFilterCategorizerTests.cpp
+BloomFilterCategorizerTests_CPPFLAGS = -I$(top_srcdir)/BioBloomCategorizer \
 	-I$(top_srcdir)/Common \
 	-I$(top_srcdir)/DataLayer
