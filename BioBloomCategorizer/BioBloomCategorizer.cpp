@@ -73,8 +73,7 @@ void printHelpDialog()
 					"                         specified hit counts to each filter of each\n"
 					"                         read or read-pair. [0]\n"
 					"      --chastity         Discard and do not evaluate unchaste reads.\n"
-					"      --no-chastity      Do not discard and evaluate unchaste reads.\n"
-					"                         [default]\n"
+					"      --no-chastity      Do not discard unchaste reads. [default]\n"
 					"  -h, --help             Display this dialog.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
