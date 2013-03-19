@@ -397,7 +397,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	while (sequence1 >> rec1 && sequence2 >> rec2) {
 		++totalReads;
-		if (totalReads % 100000 == 0) {
+		if (totalReads % 1000000 == 0) {
 			cerr << "Currently Reading Read Number: " << totalReads << endl;
 		}
 
@@ -558,7 +558,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 								rec : unPairedReads[readID];
 
 				++totalReads;
-				if (totalReads % 100000 == 0) {
+				if (totalReads % 1000000 == 0) {
 					cerr << "Currently Reading Read Number: " << totalReads
 							<< endl;
 				}
@@ -683,7 +683,7 @@ void BioBloomClassifier::filterPairBAM(const string &file,
 								rec : unPairedReads[readID];
 
 				++totalReads;
-				if (totalReads % 100000 == 0) {
+				if (totalReads % 1000000 == 0) {
 					cerr << "Currently Reading Read Number: " << totalReads
 							<< endl;
 				}
