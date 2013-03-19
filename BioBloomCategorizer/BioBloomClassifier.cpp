@@ -236,7 +236,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 
 	while (sequence1 >> rec1 && sequence2 >> rec2) {
 		++totalReads;
-		if (totalReads % 100000 == 0) {
+		if (totalReads % 1000000 == 0) {
 			cerr << "Currently Reading Read Number: " << totalReads << endl;
 		}
 
