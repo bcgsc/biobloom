@@ -112,10 +112,10 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 
 	unordered_map<string, shared_ptr<ofstream> > outputFiles;
 	shared_ptr<ofstream> no_match(
-			new ofstream((outputPrefix + "_" + noMatch + ".fastq.gz").c_str(),
+			new ofstream((outputPrefix + "_" + noMatch + ".fastq").c_str(),
 					ios::out));
 	shared_ptr<ofstream> multi_match(
-			new ofstream((outputPrefix + "_" + multiMatch + ".fastq.gz").c_str(),
+			new ofstream((outputPrefix + "_" + multiMatch + ".fastq").c_str(),
 					ios::out));
 	outputFiles[noMatch] = no_match;
 	outputFiles[multiMatch] = multi_match;
@@ -129,7 +129,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				i != idsInFilter.end(); ++i)
 		{
 			shared_ptr<ofstream> temp(
-					new ofstream((outputPrefix + "_" + *i + ".fastq.gz").c_str(),
+					new ofstream((outputPrefix + "_" + *i + ".fastq").c_str(),
 							ios::out));
 			outputFiles[*i] = temp;
 		}
@@ -345,16 +345,16 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	unordered_map<string, shared_ptr<ofstream> > outputFiles;
 	shared_ptr<ofstream> noMatch1(
-			new ofstream((outputPrefix + "_" + noMatch + "_1.fastq.gz").c_str(),
+			new ofstream((outputPrefix + "_" + noMatch + "_1.fastq").c_str(),
 					ios::out));
 	shared_ptr<ofstream> noMatch2(
-			new ofstream((outputPrefix + "_" + noMatch + "_2.fastq.gz").c_str(),
+			new ofstream((outputPrefix + "_" + noMatch + "_2.fastq").c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch1(
-			new ofstream((outputPrefix + "_" + multiMatch + "_1.fastq.gz").c_str(),
+			new ofstream((outputPrefix + "_" + multiMatch + "_1.fastq").c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch2(
-			new ofstream((outputPrefix + "_" + multiMatch + "_2.fastq.gz").c_str(),
+			new ofstream((outputPrefix + "_" + multiMatch + "_2.fastq").c_str(),
 					ios::out));
 	outputFiles[noMatch + "1"] = noMatch1;
 	outputFiles[noMatch + "2"] = noMatch2;
@@ -370,10 +370,10 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				i != idsInFilter.end(); ++i)
 		{
 			shared_ptr<ofstream> temp1(
-					new ofstream((outputPrefix + "_" + *i + "_1.fastq.gz").c_str(),
+					new ofstream((outputPrefix + "_" + *i + "_1.fastq").c_str(),
 							ios::out));
 			shared_ptr<ofstream> temp2(
-					new ofstream((outputPrefix + "_" + *i + "_2.fastq.gz").c_str(),
+					new ofstream((outputPrefix + "_" + *i + "_2.fastq").c_str(),
 							ios::out));
 			outputFiles[*i + "1"] = temp1;
 			outputFiles[*i + "2"] = temp2;
@@ -497,16 +497,16 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 
 	unordered_map<string, shared_ptr<ofstream> > outputFiles;
 	shared_ptr<ofstream> noMatch1(
-			new ofstream((outputPrefix + "_" + noMatch + "_1.fastq.gz").c_str(),
+			new ofstream((outputPrefix + "_" + noMatch + "_1.fastq").c_str(),
 					ios::out));
 	shared_ptr<ofstream> noMatch2(
-			new ofstream((outputPrefix + "_" + noMatch + "_2.fastq.gz").c_str(),
+			new ofstream((outputPrefix + "_" + noMatch + "_2.fastq").c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch1(
-			new ofstream((outputPrefix + "_" + multiMatch + "_1.fastq.gz").c_str(),
+			new ofstream((outputPrefix + "_" + multiMatch + "_1.fastq").c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch2(
-			new ofstream((outputPrefix + "_" + multiMatch + "_2.fastq.gz").c_str(),
+			new ofstream((outputPrefix + "_" + multiMatch + "_2.fastq").c_str(),
 					ios::out));
 	outputFiles[noMatch + "1"] = noMatch1;
 	outputFiles[noMatch + "2"] = noMatch2;
@@ -522,10 +522,10 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 				i != idsInFilter.end(); ++i)
 		{
 			shared_ptr<ofstream> temp1(
-					new ofstream((outputPrefix + "_" + *i + "_1.fastq.gz").c_str(),
+					new ofstream((outputPrefix + "_" + *i + "_1.fastq").c_str(),
 							ios::out));
 			shared_ptr<ofstream> temp2(
-					new ofstream((outputPrefix + "_" + *i + "_2.fastq.gz").c_str(),
+					new ofstream((outputPrefix + "_" + *i + "_2.fastq").c_str(),
 							ios::out));
 			outputFiles[*i + "1"] = temp1;
 			outputFiles[*i + "2"] = temp2;
