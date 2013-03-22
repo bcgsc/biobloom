@@ -99,7 +99,6 @@ int main(int argc, char *argv[])
 	bool paired = false;
 	size_t rawCounts = 0;
 
-	//todo Finish chasity options
 	//long form arguments
 	static struct option long_options[] = {
 			{
@@ -111,8 +110,8 @@ int main(int argc, char *argv[])
 					"paired_mode", no_argument, NULL, 'e' }, {
 					"counts", no_argument, NULL, 'c' }, {
 					"help", no_argument, NULL, 'h' }, {
-					"chastity", no_argument, NULL }, {
-					"no-chastity", no_argument, NULL }, {
+					"chastity", no_argument, &opt::chastityFilter, 1 }, {
+					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
@@ -121,6 +120,7 @@ int main(int argc, char *argv[])
 	while ((c = getopt_long(argc, argv, "f:t:om:p:hec:", long_options,
 			&option_index)) != -1)
 	{
+		istringstream arg(optarg != NULL ? optarg : "");
 		switch (c) {
 		case 'm': {
 			stringstream convert(optarg);
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 			}
 			break;
 		}
-		default: {
+		case '?': {
 			die = true;
 			break;
 		}
@@ -189,7 +189,6 @@ int main(int argc, char *argv[])
 
 	//check validity of inputs for paired end mode
 	if (paired) {
-
 		if (inputFiles.size() == 1
 				&& (inputFiles[0].substr(inputFiles[0].size() - 4) != "bam"
 						|| inputFiles[0].substr(inputFiles[0].size() - 4)
