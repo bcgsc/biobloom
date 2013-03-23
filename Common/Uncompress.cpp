@@ -116,49 +116,13 @@ static int uncompress(const char *path)
 	}
 }
 
-///** Open a pipe to compress to specified file.
+///** Open a pipe to compress the specified file.
 // * Not thread safe.
 // * @return a file descriptor
 // */
-////@TODO: REFACTOR AND UNDERSTAND ME BETTER
 //static int compress(const char *path)
 //{
-//    int f1[2], f2[2];
-//	char buff;
 //
-//	if (pipe(f1) != -1)
-//		return -1;
-//
-//	if (pipe(f2) != -1)
-//		return -1;
-//
-//	if (fork() == 0) {
-//	    close(f1[0]);
-//		return f1[1];
-//	} else {
-//		if (fork() == 0) {
-//			close(0);
-//			dup2(f1[0], STDIN_FILENO);
-//			close(1);
-//			dup2(f2[1], 0);
-//			execlp("gzip", "-c", "-f", NULL);
-//			perror("gzip");
-//			_exit(EXIT_FAILURE);
-//		} else {
-//			if (fork() == 0) {
-//				struct stat st;
-//				close(0);
-//				dup2(f2[0], 1);
-//				char * buffer;
-//				int stream1 = fdopen (f2[0], "r");
-//				int stream2 = fopen(path, "w");
-//				char* c;
-//				while (fread(buffer, sizeof(char), st.st_size, stream1) != EOF)
-//					fprintf(stream2, c);
-//				_exit(EXIT_FAILURE);
-//			}
-//		}
-//	}
 //}
 
 /** Open a pipe to uncompress the specified file.
@@ -174,18 +138,34 @@ static FILE* funcompress(const char* path)
 	return fdopen(fd, "r");
 }
 
-///** Open a pipe to compress the specified file.
-// * @return a FILE pointer
-// */
-//static FILE* fcompress(const char* path)
-//{
-//	int fd = compress(path);
-//	if (fd == -1) {
-//		perror(path);
-//		exit(EXIT_FAILURE);
-//	}
-//	return fdopen(fd, "w");
-//}
+/** Open a pipe to compress the specified file.
+ * @return a FILE pointer
+ */
+static FILE* fcompress(FILE* stream)
+{
+	int fd[2];
+	pid_t pid;
+
+	if (pipe(fd)) { /* TODO: handle error */ }
+
+	pid = fork();
+	if (pid < 0) { /* TODO: handle error */ }
+
+	if (pid == 0)
+	{
+	   dup2(fd[0], STDIN_FILENO);
+	   dup2(fd[1], fileno(stream));
+
+	   execlp("cat", "cat", NULL);
+	   exit(0);
+	}
+	else
+	{
+	close(fd[0]);
+	   /* We are the parent... */
+	   return fdopen(fd[1], "w");
+	}
+}
 
 typedef FILE* (*fopen_t)(const char *path, const char *mode);
 
@@ -213,11 +193,10 @@ FILE *fopen(const char *path, const char *mode)
 		fclose(stream);
 		return funcompress(path);
 	}
-//	else if(stream && zcatExecOut(path) != NULL && string(mode) == "w")
-//	{
-//		fclose(stream);
-//		return fcompress(path);
-//	}
+	else if(stream && zcatExecOut(path) != NULL && string(mode) == "w")
+	{
+		return fcompress(stream);
+	}
 	else {
 		return stream;
 	}
@@ -247,11 +226,10 @@ FILE *fopen64(const char *path, const char *mode)
 		fclose(stream);
 		return funcompress(path);
 	}
-//	else if(stream && zcatExecOut(path) != NULL && string(mode) == "w")
-//	{
-//		fclose(stream);
-//		return fcompress(path);
-//	}
+	else if(stream && zcatExecOut(path) != NULL && string(mode) == "w")
+	{
+		return fcompress(stream);
+	}
 	else {
 		return stream;
 	}
