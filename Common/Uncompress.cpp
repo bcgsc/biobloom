@@ -144,9 +144,10 @@ static int compress(int filedesc, const char *path)
 	if (pid == 0) {
 		close(fd[1]); //writing end of pipe not needed
 		dup2(fd[0], STDIN_FILENO);   // make pipe input go to stdin
+		close(fd[0]);
 	    dup2(filedesc, STDOUT_FILENO);   // make stdout go to file
+	    close(filedesc);
 	    execlp(arg0, arg0, arg1, NULL);
-	    close(filedesc); //flush the stream
 		perror(arg0);
 		_exit(EXIT_FAILURE);
 	} else {
