@@ -9,10 +9,12 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cassert>
 
 using namespace std;
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 	string filename = "test.txt.gz";
 
 	//TEST IS NOT WORKING, couldn't get gzip to print to file
@@ -22,10 +24,11 @@ int main(int argc, char **argv) {
 	testfile << "test" << endl;
 	testfile.close();
 	//read in file with extension .gz as compressed file
-//	ifstream testfile2(filename.c_str(), ios::in);
-//	string temp;
-//	testfile2 >> temp;
-//	cout << temp << endl;
+	ifstream testfile2(filename.c_str(), ios::in);
+	string temp;
+	testfile2 >> temp;
+	assert(temp == "test");
+	cout << "Assert passes - Tests Pass" << endl;
 	//remove file
-//	remove(filename.c_str());
+	remove(filename.c_str());
 }

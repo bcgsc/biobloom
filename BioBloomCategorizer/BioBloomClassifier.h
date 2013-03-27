@@ -24,16 +24,14 @@ using namespace boost;
 class BioBloomClassifier {
 public:
 	BioBloomClassifier(const vector<string> &filterFilePaths, size_t minHit,
-			double percentMinHit, size_t maxHitValue);
-	void filter(const vector<string> &inputFiles, const string &outputPrefix);
-	void filterPrint(const vector<string> &inputFiles,
-			const string &outputPrefix);
-	void filterPair(const string &file1, const string &file2,
-			const string &outputPrefix);
-	void filterPairPrint(const string &file1, const string &file2,
-			const string &outputPrefix);
-	void filterPairBAM(const string &file, const string &outputPrefix);
-	void filterPairBAMPrint(const string &file, const string &outputPrefix);
+			double percentMinHit, size_t maxHitValue,
+			const string &outputPrefix, const string &outputPostFix);
+	void filter(const vector<string> &inputFiles);
+	void filterPrint(const vector<string> &inputFiles);
+	void filterPair(const string &file1, const string &file2);
+	void filterPairPrint(const string &file1, const string &file2);
+	void filterPairBAM(const string &file);
+	void filterPairBAMPrint(const string &file);
 
 	virtual ~BioBloomClassifier();
 private:
@@ -77,6 +75,8 @@ private:
 	double percentMinHit;
 	uint8_t filterNum;
 	size_t maxHitValue;
+	const string &postfix;
+	const string &prefix;
 
 	//Todo: is this really better than hard-coding them in the class?
 	const string noMatch;

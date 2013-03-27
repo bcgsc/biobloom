@@ -72,6 +72,7 @@ void printHelpDialog()
 					"  -c, --counts=N         Outputs summary of raw counts of user\n"
 					"                         specified hit counts to each filter of each\n"
 					"                         read or read-pair. [0]\n"
+					"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
 					"      --chastity         Discard and do not evaluate unchaste reads.\n"
 					"      --no-chastity      Do not discard unchaste reads. [default]\n"
 					"  -h, --help             Display this dialog.\n"
@@ -98,6 +99,7 @@ int main(int argc, char *argv[])
 	bool die = false;
 	bool paired = false;
 	size_t rawCounts = 0;
+	string filePostfix = "";
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -110,6 +112,7 @@ int main(int argc, char *argv[])
 					"paired_mode", no_argument, NULL, 'e' }, {
 					"counts", no_argument, NULL, 'c' }, {
 					"help", no_argument, NULL, 'h' }, {
+					"gz_output", no_argument, NULL, 'g' }, {
 					"chastity", no_argument, &opt::chastityFilter, 1 }, {
 					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
 					NULL, 0, NULL, 0 } };
@@ -117,7 +120,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:t:om:p:hec:", long_options,
+	while ((c = getopt_long(argc, argv, "f:t:om:p:hec:g", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -168,6 +171,10 @@ int main(int argc, char *argv[])
 				cerr << "Error - Invalid parameter! c: " << optarg << endl;
 				return 0;
 			}
+			break;
+		}
+		case 'g': {
+			filePostfix = ".gz";
 			break;
 		}
 		case '?': {
@@ -226,29 +233,29 @@ int main(int argc, char *argv[])
 	}
 
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts);
+	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts, outputPrefix, filePostfix);
 
 	//filtering step
 	//create directory structure if it does not exist
 	if (paired) {
 		if (printReads) {
 			if (pairedBAMSAM) {
-				BBC.filterPairBAMPrint(inputFiles[0], outputPrefix);
+				BBC.filterPairBAMPrint(inputFiles[0]);
 			} else {
-				BBC.filterPairPrint(inputFiles[0], inputFiles[1], outputPrefix);
+				BBC.filterPairPrint(inputFiles[0], inputFiles[1]);
 			}
 		} else {
 			if (pairedBAMSAM) {
-				BBC.filterPairBAM(inputFiles[0], outputPrefix);
+				BBC.filterPairBAM(inputFiles[0]);
 			} else {
-				BBC.filterPair(inputFiles[0], inputFiles[1], outputPrefix);
+				BBC.filterPair(inputFiles[0], inputFiles[1]);
 			}
 		}
 	} else {
 		if (printReads) {
-			BBC.filterPrint(inputFiles, outputPrefix);
+			BBC.filterPrint(inputFiles);
 		} else {
-			BBC.filter(inputFiles, outputPrefix);
+			BBC.filter(inputFiles);
 		}
 	}
 

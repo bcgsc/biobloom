@@ -12,10 +12,12 @@
 #include <sys/stat.h>
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
-		size_t minHit, double percentMinHit, size_t maxHitValue) :
+		size_t minHit, double percentMinHit, size_t maxHitValue,
+		const string &prefix, const string &outputPostFix) :
 		minHit(minHit), percentMinHit(percentMinHit), filterNum(
 				filterFilePaths.size()), maxHitValue(maxHitValue), noMatch(
-				"noMatch"), multiMatch("multiMatch")
+				"noMatch"), multiMatch("multiMatch"), prefix(prefix), postfix(
+				outputPostFix)
 {
 	loadFilters(filterFilePaths);
 }
@@ -24,10 +26,9 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
  * Loads list of filters into memory
  * todo: Implement non-block I/O when loading multiple filters at once
  */
-void BioBloomClassifier::filter(const vector<string> &inputFiles,
-		const string &outputPrefix)
+void BioBloomClassifier::filter(const vector<string> &inputFiles)
 {
-	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -85,8 +86,8 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
 	readStatusOutput.close();
 
 	cerr << "Total Reads:" << totalReads << endl;
-	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
-	printCountSummary(outputPrefix, rawHits, totalReads);
+	printSummary(prefix, aboveThreshold, belowThreshold, totalReads);
+	printCountSummary(prefix, rawHits, totalReads);
 }
 
 /*
@@ -95,11 +96,10 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles,
  * hash functions)
  * Prints reads into seperate files
  */
-void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
-		const string &outputPrefix)
+void BioBloomClassifier::filterPrint(const vector<string> &inputFiles)
 {
 
-	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
 
 	bool printReads = 1;
 
@@ -112,10 +112,10 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 
 	unordered_map<string, shared_ptr<ofstream> > outputFiles;
 	shared_ptr<ofstream> no_match(
-			new ofstream((outputPrefix + "_" + noMatch + ".fastq").c_str(),
+			new ofstream((prefix + "_" + noMatch + ".fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> multi_match(
-			new ofstream((outputPrefix + "_" + multiMatch + ".fastq").c_str(),
+			new ofstream((prefix + "_" + multiMatch + ".fastq" + postfix).c_str(),
 					ios::out));
 	outputFiles[noMatch] = no_match;
 	outputFiles[multiMatch] = multi_match;
@@ -129,7 +129,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				i != idsInFilter.end(); ++i)
 		{
 			shared_ptr<ofstream> temp(
-					new ofstream((outputPrefix + "_" + *i + ".fastq").c_str(),
+					new ofstream((prefix + "_" + *i + ".fastq" + postfix).c_str(),
 							ios::out));
 			outputFiles[*i] = temp;
 		}
@@ -197,8 +197,8 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	outputFiles[multiMatch]->flush();
 	outputFiles[multiMatch]->close();
 	cerr << "Total Reads:" << totalReads << endl;
-	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
-	printCountSummary(outputPrefix, rawHits, totalReads);
+	printSummary(prefix, aboveThreshold, belowThreshold, totalReads);
+	printCountSummary(prefix, rawHits, totalReads);
 }
 
 /*
@@ -206,11 +206,10 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
  * Assumes only one hash signature exists (load only filters with same
  * hash functions)
  */
-void BioBloomClassifier::filterPair(const string &file1, const string &file2,
-		const string &outputPrefix)
+void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 {
 
-	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -320,8 +319,8 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
 	readStatusOutput.close();
 
 	cerr << "Total Reads:" << totalReads << endl;
-	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
-	printCountSummary(outputPrefix, rawHits, totalReads);
+	printSummary(prefix, aboveThreshold, belowThreshold, totalReads);
+	printCountSummary(prefix, rawHits, totalReads);
 }
 
 /*
@@ -331,10 +330,9 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2,
  * prints reads
  */
 void BioBloomClassifier::filterPairPrint(const string &file1,
-		const string &file2, const string &outputPrefix)
+		const string &file2)
 {
-	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(),
-			ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -345,16 +343,16 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	unordered_map<string, shared_ptr<ofstream> > outputFiles;
 	shared_ptr<ofstream> noMatch1(
-			new ofstream((outputPrefix + "_" + noMatch + "_1.fastq").c_str(),
+			new ofstream((prefix + "_" + noMatch + "_1.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> noMatch2(
-			new ofstream((outputPrefix + "_" + noMatch + "_2.fastq").c_str(),
+			new ofstream((prefix + "_" + noMatch + "_2.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch1(
-			new ofstream((outputPrefix + "_" + multiMatch + "_1.fastq").c_str(),
+			new ofstream((prefix + "_" + multiMatch + "_1.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch2(
-			new ofstream((outputPrefix + "_" + multiMatch + "_2.fastq").c_str(),
+			new ofstream((prefix + "_" + multiMatch + "_2.fastq" + postfix).c_str(),
 					ios::out));
 	outputFiles[noMatch + "1"] = noMatch1;
 	outputFiles[noMatch + "2"] = noMatch2;
@@ -370,10 +368,10 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				i != idsInFilter.end(); ++i)
 		{
 			shared_ptr<ofstream> temp1(
-					new ofstream((outputPrefix + "_" + *i + "_1.fastq").c_str(),
+					new ofstream((prefix + "_" + *i + "_1.fastq" + postfix).c_str(),
 							ios::out));
 			shared_ptr<ofstream> temp2(
-					new ofstream((outputPrefix + "_" + *i + "_2.fastq").c_str(),
+					new ofstream((prefix + "_" + *i + "_2.fastq" + postfix).c_str(),
 							ios::out));
 			outputFiles[*i + "1"] = temp1;
 			outputFiles[*i + "2"] = temp2;
@@ -470,8 +468,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	outputFiles[multiMatch + "2"]->flush();
 	outputFiles[multiMatch + "2"]->close();
 	cerr << "Total Reads:" << totalReads << endl;
-	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
-	printCountSummary(outputPrefix, rawHits, totalReads);
+	printSummary(prefix, aboveThreshold, belowThreshold, totalReads);
+	printCountSummary(prefix, rawHits, totalReads);
 }
 
 /*
@@ -480,11 +478,9 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
  * hash functions)
  * Prints reads into seperate files
  */
-void BioBloomClassifier::filterPairBAMPrint(const string &file,
-		const string &outputPrefix)
+void BioBloomClassifier::filterPairBAMPrint(const string &file)
 {
-	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(),
-			ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -497,16 +493,16 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 
 	unordered_map<string, shared_ptr<ofstream> > outputFiles;
 	shared_ptr<ofstream> noMatch1(
-			new ofstream((outputPrefix + "_" + noMatch + "_1.fastq").c_str(),
+			new ofstream((prefix + "_" + noMatch + "_1.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> noMatch2(
-			new ofstream((outputPrefix + "_" + noMatch + "_2.fastq").c_str(),
+			new ofstream((prefix + "_" + noMatch + "_2.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch1(
-			new ofstream((outputPrefix + "_" + multiMatch + "_1.fastq").c_str(),
+			new ofstream((prefix + "_" + multiMatch + "_1.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch2(
-			new ofstream((outputPrefix + "_" + multiMatch + "_2.fastq").c_str(),
+			new ofstream((prefix + "_" + multiMatch + "_2.fastq" + postfix).c_str(),
 					ios::out));
 	outputFiles[noMatch + "1"] = noMatch1;
 	outputFiles[noMatch + "2"] = noMatch2;
@@ -522,10 +518,10 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 				i != idsInFilter.end(); ++i)
 		{
 			shared_ptr<ofstream> temp1(
-					new ofstream((outputPrefix + "_" + *i + "_1.fastq").c_str(),
+					new ofstream((prefix + "_" + *i + "_1.fastq" + postfix).c_str(),
 							ios::out));
 			shared_ptr<ofstream> temp2(
-					new ofstream((outputPrefix + "_" + *i + "_2.fastq").c_str(),
+					new ofstream((prefix + "_" + *i + "_2.fastq" + postfix).c_str(),
 							ios::out));
 			outputFiles[*i + "1"] = temp1;
 			outputFiles[*i + "2"] = temp2;
@@ -634,8 +630,8 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	outputFiles[multiMatch + "2"]->flush();
 	outputFiles[multiMatch + "2"]->close();
 	cerr << "Total Reads:" << totalReads << endl;
-	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
-	printCountSummary(outputPrefix, rawHits, totalReads);
+	printSummary(prefix, aboveThreshold, belowThreshold, totalReads);
+	printCountSummary(prefix, rawHits, totalReads);
 }
 
 /*
@@ -643,10 +639,9 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
  * Assumes only one hash signature exists (load only filters with same
  * hash functions)
  */
-void BioBloomClassifier::filterPairBAM(const string &file,
-		const string &outputPrefix)
+void BioBloomClassifier::filterPairBAM(const string &file)
 {
-	ofstream readStatusOutput((outputPrefix + "_status.tsv").c_str(), ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -732,8 +727,8 @@ void BioBloomClassifier::filterPairBAM(const string &file,
 	readStatusOutput.close();
 
 	cerr << "Total Reads:" << totalReads << endl;
-	printSummary(outputPrefix, aboveThreshold, belowThreshold, totalReads);
-	printCountSummary(outputPrefix, rawHits, totalReads);
+	printSummary(prefix, aboveThreshold, belowThreshold, totalReads);
+	printCountSummary(prefix, rawHits, totalReads);
 }
 
 /*
@@ -804,11 +799,11 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
  * -percent reads over threshold
  * -total reads that don't hit filter at all
  */
-void BioBloomClassifier::printSummary(const string &outputPrefix,
+void BioBloomClassifier::printSummary(const string &prefix,
 		unordered_map<string, size_t> &aboveThreshold,
 		unordered_map<string, size_t> &belowThreshold, size_t totalReads)
 {
-	ofstream summaryOutput((outputPrefix + "_summary.tsv").c_str(), ios::out);
+	ofstream summaryOutput((prefix + "_summary.tsv" + postfix).c_str(), ios::out);
 	summaryOutput << "type";
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -904,11 +899,11 @@ void BioBloomClassifier::printSummary(const string &outputPrefix,
 /*
  * Prints raw read counts file
  */
-void BioBloomClassifier::printCountSummary(const string &outputPrefix,
+void BioBloomClassifier::printCountSummary(const string &prefix,
 		unordered_map<string, vector<size_t> > &rawHits, size_t total)
 {
 	if (maxHitValue > 0) {
-		ofstream summaryOutput((outputPrefix + "_rawCounts.tsv").c_str(),
+		ofstream summaryOutput((prefix + "_rawCounts.tsv" + postfix).c_str(),
 				ios::out);
 		summaryOutput << "type";
 		//initialize variables and print filter ids

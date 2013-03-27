@@ -24,44 +24,37 @@ using namespace std;
 
 static const char* wgetExec(const string& path)
 {
-	return
-		startsWith(path, "http://") ? "wget -O-" :
-		startsWith(path, "https://") ? "wget -O-" :
-		startsWith(path, "ftp://") ? "wget -O-" :
-		NULL;
+	return startsWith(path, "http://") ? "wget -O-" :
+			startsWith(path, "https://") ? "wget -O-" :
+			startsWith(path, "ftp://") ? "wget -O-" : NULL;
 }
 
 static const char* zcatExec(const string& path)
 {
-	return
-		endsWith(path, ".ar") ? "ar -p" :
-		endsWith(path, ".tar") ? "tar -xOf" :
-		endsWith(path, ".tar.Z") ? "tar -zxOf" :
-		endsWith(path, ".tar.gz") ? "tar -zxOf" :
-		endsWith(path, ".tar.bz2") ? "tar -jxOf" :
-		endsWith(path, ".tar.xz") ?
-			"tar --use-compress-program=xzdec -xOf" :
-		endsWith(path, ".Z") ? "gunzip -c" :
-		endsWith(path, ".gz") ? "gunzip -c" :
-		endsWith(path, ".bz2") ? "bunzip2 -c" :
-		endsWith(path, ".xz") ? "xzdec -c" :
-		endsWith(path, ".zip") ? "unzip -p" :
-		endsWith(path, ".bam") ? "samtools view -h" :
-		endsWith(path, ".jf") ? "jellyfish dump" :
-		endsWith(path, ".jfq") ? "jellyfish qdump" :
-		endsWith(path, ".sra") ? "fastq-dump -Z --split-spot" :
-		endsWith(path, ".url") ? "wget -O- -i" :
-		NULL;
+	return endsWith(path, ".ar") ? "ar -p" :
+			endsWith(path, ".tar") ? "tar -xOf" :
+			endsWith(path, ".tar.Z") ? "tar -zxOf" :
+			endsWith(path, ".tar.gz") ? "tar -zxOf" :
+			endsWith(path, ".tar.bz2") ? "tar -jxOf" :
+			endsWith(path, ".tar.xz") ?
+					"tar --use-compress-program=xzdec -xOf" :
+			endsWith(path, ".Z") ? "gunzip -c" :
+			endsWith(path, ".gz") ? "gunzip -c" :
+			endsWith(path, ".bz2") ? "bunzip2 -c" :
+			endsWith(path, ".xz") ? "xzdec -c" :
+			endsWith(path, ".zip") ? "unzip -p" :
+			endsWith(path, ".bam") ? "samtools view -h" :
+			endsWith(path, ".jf") ? "jellyfish dump" :
+			endsWith(path, ".jfq") ? "jellyfish qdump" :
+			endsWith(path, ".sra") ? "fastq-dump -Z --split-spot" :
+			endsWith(path, ".url") ? "wget -O- -i" : NULL;
 }
 
 //Todo: add additional situations for output
 static const char* zcatExecOut(const string& path)
 {
-	return
-		endsWith(path, ".gz") ? "gzip" :
-		NULL;
+	return endsWith(path, ".gz") ? "gzip -c" : NULL;
 }
-
 
 extern "C" {
 
@@ -80,7 +73,7 @@ static int uncompress(const char *path)
 		return -1;
 	int err = setCloexec(fd[0]);
 	assert(err == 0);
-	(void)err;
+	(void) err;
 
 	char arg0[16], arg1[16], arg2[16];
 	int n = sscanf(zcat, "%s %s %s", arg0, arg1, arg2);
@@ -116,14 +109,51 @@ static int uncompress(const char *path)
 	}
 }
 
-///** Open a pipe to compress the specified file.
-// * Not thread safe.
-// * @return a file descriptor
-// */
-//static int compress(const char *path)
-//{
-//
-//}
+/** Open a pipe to compress the specified file.
+ * Not thread safe.
+ * @return a file descriptor
+ */
+static int compress(int filedesc, const char *path)
+{
+	const char *zcat = zcatExecOut(path);
+
+	int fd[2];
+	if (pipe(fd) == -1)
+		return -1;
+	int err = setCloexec(fd[0]);
+	assert(err == 0);
+	(void) err;
+
+	char arg0[16], arg1[16];
+	int n = sscanf(zcat, "%s %s %s", arg0, arg1);
+	assert(n == 2);
+
+	/* It would be more portable to use fork than vfork, but fork can
+	 * fail with ENOMEM when the process calling fork is using a lot
+	 * of memory. A workaround for this problem is to set
+	 * sysctl vm.overcommit_memory=1
+	 */
+#if HAVE_WORKING_VFORK
+	pid_t pid = vfork();
+#else
+	pid_t pid = fork();
+#endif
+	if (pid == -1)
+		return -1;
+
+	if (pid == 0) {
+		close(fd[1]); //writing end of pipe not needed
+		dup2(fd[0], STDIN_FILENO);   // make pipe input go to stdin
+	    dup2(filedesc, STDOUT_FILENO);   // make stdout go to file
+	    execlp(arg0, arg0, arg1, NULL);
+	    close(filedesc); //flush the stream
+		perror(arg0);
+		_exit(EXIT_FAILURE);
+	} else {
+		close(fd[0]); //reading end of pipe not needed
+		return fd[1]; //return writing end of pipe
+	}
+}
 
 /** Open a pipe to uncompress the specified file.
  * @return a FILE pointer
@@ -141,30 +171,14 @@ static FILE* funcompress(const char* path)
 /** Open a pipe to compress the specified file.
  * @return a FILE pointer
  */
-static FILE* fcompress(FILE* stream)
+static FILE* fcompress(FILE* stream, const char *path)
 {
-	int fd[2];
-	pid_t pid;
-
-	if (pipe(fd)) { /* TODO: handle error */ }
-
-	pid = fork();
-	if (pid < 0) { /* TODO: handle error */ }
-
-	if (pid == 0)
-	{
-	   dup2(fd[0], STDIN_FILENO);
-	   dup2(fd[1], fileno(stream));
-
-	   execlp("cat", "cat", NULL);
-	   exit(0);
+	int fd = compress(fileno(stream), path);
+	if (fd == -1) {
+		//@todo add appropriate error
+		exit(EXIT_FAILURE);
 	}
-	else
-	{
-	close(fd[0]);
-	   /* We are the parent... */
-	   return fdopen(fd[1], "w");
-	}
+	return fdopen(fd, "w");
 }
 
 typedef FILE* (*fopen_t)(const char *path, const char *mode);
@@ -176,7 +190,7 @@ FILE *fopen(const char *path, const char *mode)
 {
 	static fopen_t real_fopen;
 	if (real_fopen == NULL)
-		real_fopen = (fopen_t)dlsym(RTLD_NEXT, "fopen");
+		real_fopen = (fopen_t) dlsym(RTLD_NEXT, "fopen");
 	if (real_fopen == NULL) {
 		fprintf(stderr, "error: dlsym fopen: %s\n", dlerror());
 		exit(EXIT_FAILURE);
@@ -185,19 +199,15 @@ FILE *fopen(const char *path, const char *mode)
 	// open a web address
 	if (wgetExec(path) != NULL)
 		return funcompress(path);
-	
+
 	// to check if the file exists, we need to attempt to open it
 	FILE* stream = real_fopen(path, mode);
-	if (stream && zcatExec(path) != NULL && string(mode) == "r")
-	{
+	if (stream && zcatExec(path) != NULL && string(mode) == "r") {
 		fclose(stream);
 		return funcompress(path);
-	}
-	else if(stream && zcatExecOut(path) != NULL && string(mode) == "w")
-	{
-		return fcompress(stream);
-	}
-	else {
+	} else if (stream && zcatExecOut(path) != NULL && string(mode) == "w") {
+		return fcompress(stream, path);
+	} else {
 		return stream;
 	}
 }
@@ -209,7 +219,7 @@ FILE *fopen64(const char *path, const char *mode)
 {
 	static fopen_t real_fopen64;
 	if (real_fopen64 == NULL)
-		real_fopen64 = (fopen_t)dlsym(RTLD_NEXT, "fopen64");
+		real_fopen64 = (fopen_t) dlsym(RTLD_NEXT, "fopen64");
 	if (real_fopen64 == NULL) {
 		fprintf(stderr, "error: dlsym fopen64: %s\n", dlerror());
 		exit(EXIT_FAILURE);
@@ -218,19 +228,15 @@ FILE *fopen64(const char *path, const char *mode)
 	// open a web address
 	if (wgetExec(path) != NULL)
 		return funcompress(path);
-	
+
 	// to check if the file exists, we need to attempt to open it
 	FILE* stream = real_fopen64(path, mode);
-	if (stream && zcatExec(path) != NULL && string(mode) == "r")
-	{
+	if (stream && zcatExec(path) != NULL && string(mode) == "r") {
 		fclose(stream);
 		return funcompress(path);
-	}
-	else if(stream && zcatExecOut(path) != NULL && string(mode) == "w")
-	{
-		return fcompress(stream);
-	}
-	else {
+	} else if (stream && zcatExecOut(path) != NULL && string(mode) == "w") {
+		return fcompress(stream, path);
+	} else {
 		return stream;
 	}
 }
@@ -244,7 +250,7 @@ int open(const char *path, int flags, mode_t mode)
 {
 	static open_t real_open;
 	if (real_open == NULL)
-		real_open = (open_t)dlsym(RTLD_NEXT, "open");
+		real_open = (open_t) dlsym(RTLD_NEXT, "open");
 	if (real_open == NULL) {
 		fprintf(stderr, "error: dlsym open: %s\n", dlerror());
 		exit(EXIT_FAILURE);
@@ -253,19 +259,17 @@ int open(const char *path, int flags, mode_t mode)
 	// open a web address
 	if (wgetExec(path) != NULL)
 		return uncompress(path);
-	
+
 	// to check if the file exists, we need to attempt to open it
 	int filedesc = real_open(path, flags, mode);
-	if (filedesc >= 0 && zcatExec(path) != NULL && mode == ios::in)
-	{
+	if (filedesc >= 0 && zcatExec(path) != NULL && mode == ios::in) {
 		close(filedesc);
 		return uncompress(path);
 	}
-//	else if(filedesc >= 0  && zcatExecOut(path) != NULL && mode == ios::out)
-//	{
-//		close(filedesc);
-//		return compress(path);
-//	}
+	else if(filedesc >= 0  && zcatExecOut(path) != NULL && mode == ios::out)
+	{
+		return compress(filedesc, path);
+	}
 	else {
 		return filedesc;
 	}
@@ -274,7 +278,6 @@ int open(const char *path, int flags, mode_t mode)
 } // extern "C"
 
 #endif // HAVE_LIBDL
-
 /** Initialize the uncompress module. */
 bool uncompress_init()
 {
