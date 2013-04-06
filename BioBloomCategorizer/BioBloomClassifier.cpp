@@ -28,7 +28,8 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
  */
 void BioBloomClassifier::filter(const vector<string> &inputFiles)
 {
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
+			ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -99,7 +100,8 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 void BioBloomClassifier::filterPrint(const vector<string> &inputFiles)
 {
 
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
+			ios::out);
 
 	bool printReads = 1;
 
@@ -115,7 +117,8 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles)
 			new ofstream((prefix + "_" + noMatch + ".fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> multi_match(
-			new ofstream((prefix + "_" + multiMatch + ".fastq" + postfix).c_str(),
+			new ofstream(
+					(prefix + "_" + multiMatch + ".fastq" + postfix).c_str(),
 					ios::out));
 	outputFiles[noMatch] = no_match;
 	outputFiles[multiMatch] = multi_match;
@@ -129,7 +132,8 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles)
 				i != idsInFilter.end(); ++i)
 		{
 			shared_ptr<ofstream> temp(
-					new ofstream((prefix + "_" + *i + ".fastq" + postfix).c_str(),
+					new ofstream(
+							(prefix + "_" + *i + ".fastq" + postfix).c_str(),
 							ios::out));
 			outputFiles[*i] = temp;
 		}
@@ -209,7 +213,8 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles)
 void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 {
 
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
+			ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -332,7 +337,8 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 void BioBloomClassifier::filterPairPrint(const string &file1,
 		const string &file2)
 {
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
+			ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -343,16 +349,20 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	unordered_map<string, shared_ptr<ofstream> > outputFiles;
 	shared_ptr<ofstream> noMatch1(
-			new ofstream((prefix + "_" + noMatch + "_1.fastq" + postfix).c_str(),
+			new ofstream(
+					(prefix + "_" + noMatch + "_1.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> noMatch2(
-			new ofstream((prefix + "_" + noMatch + "_2.fastq" + postfix).c_str(),
+			new ofstream(
+					(prefix + "_" + noMatch + "_2.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch1(
-			new ofstream((prefix + "_" + multiMatch + "_1.fastq" + postfix).c_str(),
+			new ofstream(
+					(prefix + "_" + multiMatch + "_1.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch2(
-			new ofstream((prefix + "_" + multiMatch + "_2.fastq" + postfix).c_str(),
+			new ofstream(
+					(prefix + "_" + multiMatch + "_2.fastq" + postfix).c_str(),
 					ios::out));
 	outputFiles[noMatch + "1"] = noMatch1;
 	outputFiles[noMatch + "2"] = noMatch2;
@@ -368,10 +378,12 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				i != idsInFilter.end(); ++i)
 		{
 			shared_ptr<ofstream> temp1(
-					new ofstream((prefix + "_" + *i + "_1.fastq" + postfix).c_str(),
+					new ofstream(
+							(prefix + "_" + *i + "_1.fastq" + postfix).c_str(),
 							ios::out));
 			shared_ptr<ofstream> temp2(
-					new ofstream((prefix + "_" + *i + "_2.fastq" + postfix).c_str(),
+					new ofstream(
+							(prefix + "_" + *i + "_2.fastq" + postfix).c_str(),
 							ios::out));
 			outputFiles[*i + "1"] = temp1;
 			outputFiles[*i + "2"] = temp2;
@@ -480,7 +492,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
  */
 void BioBloomClassifier::filterPairBAMPrint(const string &file)
 {
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
+			ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -493,16 +506,20 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file)
 
 	unordered_map<string, shared_ptr<ofstream> > outputFiles;
 	shared_ptr<ofstream> noMatch1(
-			new ofstream((prefix + "_" + noMatch + "_1.fastq" + postfix).c_str(),
+			new ofstream(
+					(prefix + "_" + noMatch + "_1.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> noMatch2(
-			new ofstream((prefix + "_" + noMatch + "_2.fastq" + postfix).c_str(),
+			new ofstream(
+					(prefix + "_" + noMatch + "_2.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch1(
-			new ofstream((prefix + "_" + multiMatch + "_1.fastq" + postfix).c_str(),
+			new ofstream(
+					(prefix + "_" + multiMatch + "_1.fastq" + postfix).c_str(),
 					ios::out));
 	shared_ptr<ofstream> multiMatch2(
-			new ofstream((prefix + "_" + multiMatch + "_2.fastq" + postfix).c_str(),
+			new ofstream(
+					(prefix + "_" + multiMatch + "_2.fastq" + postfix).c_str(),
 					ios::out));
 	outputFiles[noMatch + "1"] = noMatch1;
 	outputFiles[noMatch + "2"] = noMatch2;
@@ -518,10 +535,12 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file)
 				i != idsInFilter.end(); ++i)
 		{
 			shared_ptr<ofstream> temp1(
-					new ofstream((prefix + "_" + *i + "_1.fastq" + postfix).c_str(),
+					new ofstream(
+							(prefix + "_" + *i + "_1.fastq" + postfix).c_str(),
 							ios::out));
 			shared_ptr<ofstream> temp2(
-					new ofstream((prefix + "_" + *i + "_2.fastq" + postfix).c_str(),
+					new ofstream(
+							(prefix + "_" + *i + "_2.fastq" + postfix).c_str(),
 							ios::out));
 			outputFiles[*i + "1"] = temp1;
 			outputFiles[*i + "2"] = temp2;
@@ -641,7 +660,8 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file)
  */
 void BioBloomClassifier::filterPairBAM(const string &file)
 {
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(), ios::out);
+	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
+			ios::out);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -803,7 +823,8 @@ void BioBloomClassifier::printSummary(const string &prefix,
 		unordered_map<string, size_t> &aboveThreshold,
 		unordered_map<string, size_t> &belowThreshold, size_t totalReads)
 {
-	ofstream summaryOutput((prefix + "_summary.tsv" + postfix).c_str(), ios::out);
+	ofstream summaryOutput((prefix + "_summary.tsv" + postfix).c_str(),
+			ios::out);
 	summaryOutput << "type";
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -975,34 +996,102 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	//get kmersize for set of info files
 	uint16_t kmerSize = (*(infoFiles[hashSig].front())).getKmerSize();
 
+	const uint8_t tileModifier = 3;
+
 	//Establish tiling pattern
-	uint16_t startModifier1 = (rec.seq.length() % kmerSize) / 2;
+	uint16_t startModifier1 = (rec.seq.length() % (kmerSize + tileModifier))
+			/ 2;
 	size_t currentKmerNum = 0;
 
 	ReadsProcessor proc(kmerSize);
 	//cut read into kmer size given
-	while (rec.seq.length() >= (currentKmerNum + 1) * kmerSize) {
+	while (rec.seq.length() >= (currentKmerNum + 1) * (kmerSize + tileModifier))
+	{
+		unordered_map<string, bool> tempResults;
+		for (vector<string>::const_iterator i = idsInFilter.begin();
+				i != idsInFilter.end(); ++i)
+		{
+			tempResults[*i] = true;
+		}
 
-		const string &currentKmer = proc.prepSeq(rec.seq,
-				currentKmerNum * kmerSize + startModifier1);
+		for (uint8_t i = 0; i < tileModifier; ++i) {
+			const string &currentKmer = proc.prepSeq(rec.seq,
+					currentKmerNum * kmerSize + startModifier1 + tileModifier);
 
-		//check to see if string is invalid
-		if (!currentKmer.empty()) {
-			const unordered_map<string, bool> &results =
-					filters[hashSig]->multiContains(currentKmer);
+			//check to see if string is invalid
+			if (!currentKmer.empty()) {
+				const unordered_map<string, bool> &results =
+						filters[hashSig]->multiContains(currentKmer);
 
-			//record hit number in order
-			for (vector<string>::const_iterator i = idsInFilter.begin();
-					i != idsInFilter.end(); ++i)
-			{
-				if (results.find(*i)->second) {
-					++hits[*i];
+				for (vector<string>::const_iterator i = idsInFilter.begin();
+						i != idsInFilter.end(); ++i)
+				{
+					if (!results.find(*i)->second) {
+						tempResults[*i] = false;
+					}
 				}
+			} else {
+				for (vector<string>::const_iterator i = idsInFilter.begin();
+						i != idsInFilter.end(); ++i)
+				{
+					tempResults[*i] = false;
+				}
+			}
+		}
+		//record hit number in order
+		for (vector<string>::const_iterator i = idsInFilter.begin();
+				i != idsInFilter.end(); ++i)
+		{
+			if (tempResults.find(*i)->second) {
+				++hits[*i];
 			}
 		}
 		++currentKmerNum;
 	}
 }
+
+///*
+// * For a single read evaluate hits for a single hash signature
+// * Sections with ambiguity bases are treated as misses
+// * Updates hits value to number of hits (hashSig is used to as key)
+// */
+//void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
+//		const string &hashSig, unordered_map<string, size_t> &hits)
+//{
+//	//get filterIDs to iterate through has in a consistent order
+//	const vector<string> &idsInFilter = (*filters[hashSig]).getFilterIds();
+//
+//	//get kmersize for set of info files
+//	uint16_t kmerSize = (*(infoFiles[hashSig].front())).getKmerSize();
+//
+//	//Establish tiling pattern
+//	uint16_t startModifier1 = (rec.seq.length() % kmerSize) / 2;
+//	size_t currentKmerNum = 0;
+//
+//	ReadsProcessor proc(kmerSize);
+//	//cut read into kmer size given
+//	while (rec.seq.length() >= (currentKmerNum + 1) * kmerSize) {
+//
+//		const string &currentKmer = proc.prepSeq(rec.seq,
+//				currentKmerNum * kmerSize + startModifier1);
+//
+//		//check to see if string is invalid
+//		if (!currentKmer.empty()) {
+//			const unordered_map<string, bool> &results =
+//					filters[hashSig]->multiContains(currentKmer);
+//
+//			//record hit number in order
+//			for (vector<string>::const_iterator i = idsInFilter.begin();
+//					i != idsInFilter.end(); ++i)
+//			{
+//				if (results.find(*i)->second) {
+//					++hits[*i];
+//				}
+//			}
+//		}
+//		++currentKmerNum;
+//	}
+//}
 
 /*
  * Initializes Summary Variables. Also prints heads for read status.
