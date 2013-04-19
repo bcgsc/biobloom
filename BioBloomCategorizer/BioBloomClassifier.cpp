@@ -1079,7 +1079,7 @@ const string BioBloomClassifier::getReadStatStr(string const &readID,
 				i != idsInFilter.end(); ++i)
 		{
 			//print to file
-			str << str << "\t" << hits[*i];
+			str << "\t" << hits[*i];
 		}
 	}
 	str << "\n";
