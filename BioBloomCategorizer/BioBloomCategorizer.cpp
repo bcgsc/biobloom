@@ -64,7 +64,8 @@ void printHelpDialog()
 					"                         a match. [0.2]\n"
 					"  -f, --filter_files=N   List of filter files to use. Required option.\n"
 					"                         Eg. \"filter1.bf filter2.bf\"\n"
-					"  -o, --output_fastq     Output categorized reads in FastQ files.\n"
+					//@TODO impliment fastq or fasta format printout
+					"  -o, --output='fq','fa' Output categorized reads in Fasta/Fastq files.\n"
 					"  -e, --paired_mode      Uses paired-end information. For BAM or\n"
 					"                         SAM file if they are poorly ordered, memory\n"
 					"                         usage will be much larger than normal.\n"
@@ -106,7 +107,7 @@ int main(int argc, char *argv[])
 			{
 					"prefix", optional_argument, NULL, 'p' }, {
 					"min_hit_thr", optional_argument, NULL, 't' }, {
-					"min_hit_per", optional_argument, NULL, 'm' }, {
+					"min_hit_pro", optional_argument, NULL, 'm' }, {
 					"output_fastq", no_argument, NULL, 'o' }, {
 					"filter_files", required_argument, NULL, 'f' }, {
 					"paired_mode", no_argument, NULL, 'e' }, {
