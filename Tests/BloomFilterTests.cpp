@@ -106,8 +106,21 @@ int main(int argc, char **argv) {
 	assert(filter2.contains("ATCGGGTCATCAACCAATAG"));
 	assert(filter2.contains("ATCGGGTCATCAACCAATAA"));
 	assert(!filter2.contains("ATCGGGTCATCAACCAATTT"));
-
 	cout << "premade bf tests done" << endl;
+
+	//memory leak tests
+	BloomFilter* filter3 = new BloomFilter(filterSize, hashMan);
+	cout << memory_usage() - memUsage << "kb" << endl;
+	delete(filter3);
+	cout << memory_usage() - memUsage << "kb" << endl;
+
+//	vector<vector<int> > test(1, vector<int>(1, 1));
+
+//	vector<BloomFilter> test;
+//	test.push_back(filter2);
+
+	cout << "memory leak prevention tests done" << endl;
+	cout << memory_usage() - memUsage << "kb" << endl;
 
 	cout << "done" << endl;
 	return 0;

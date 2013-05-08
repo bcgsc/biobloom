@@ -119,10 +119,7 @@ const bool BloomFilter::contains(vector<size_t> const &values)
 	return true;
 }
 
-/*
- * need to cleanup dynamically allocated filter
- */
 BloomFilter::~BloomFilter()
 {
-	delete (filter);
+	delete[] filter;
 }

@@ -31,6 +31,8 @@ public:
 
 	virtual ~BloomFilter();
 private:
+	BloomFilter(const BloomFilter&);
+	BloomFilter& operator=(const BloomFilter&);
 	void initSize(size_t size);
 	char* filter;
 	size_t size;
