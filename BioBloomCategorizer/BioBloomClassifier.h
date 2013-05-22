@@ -25,7 +25,7 @@ class BioBloomClassifier {
 public:
 	BioBloomClassifier(const vector<string> &filterFilePaths, size_t minHit,
 			double percentMinHit, size_t maxHitValue,
-			const string &outputPrefix, const string &outputPostFix);
+			const string &outputPrefix, const string &outputPostFix, uint8_t tileModifier);
 	void filter(const vector<string> &inputFiles);
 	void filterPrint(const vector<string> &inputFiles);
 	void filterPair(const string &file1, const string &file2);
@@ -44,7 +44,7 @@ private:
 			unordered_map<string, vector<size_t> > &rawHits, size_t total);
 	bool fexists(const string &filename) const;
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, size_t> &hits);
+			unordered_map<string, size_t> &hits, uint8_t tileModifier);
 	const string initSummaryVars(vector<string> &hashSigs,
 			unordered_map<string, size_t> &aboveThreshold,
 			unordered_map<string, size_t> &belowThreshold,
@@ -77,6 +77,7 @@ private:
 	size_t maxHitValue;
 	const string &postfix;
 	const string &prefix;
+	const uint8_t tileModifier;
 
 	//Todo: is this really better than hard-coding them in the class?
 	const string noMatch;
