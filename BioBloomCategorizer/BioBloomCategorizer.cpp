@@ -74,6 +74,10 @@ void printHelpDialog()
 					"                         specified hit counts to each filter of each\n"
 					"                         read or read-pair. [0]\n"
 					"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
+					"  -r, --redundant=N      The number of redundant tiles to use. Lowers\n"
+					"                         effective false positive rate at the cost of\n"
+					"                         time. Also causes effective kmer length to\n"
+					"                         increase by N. [0]"
 					"      --chastity         Discard and do not evaluate unchaste reads.\n"
 					"      --no-chastity      Do not discard unchaste reads. [default]\n"
 					"  -h, --help             Display this dialog.\n"
@@ -101,6 +105,7 @@ int main(int argc, char *argv[])
 	bool paired = false;
 	size_t rawCounts = 0;
 	string filePostfix = "";
+	size_t tileModifier = 0;
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -114,6 +119,7 @@ int main(int argc, char *argv[])
 					"counts", no_argument, NULL, 'c' }, {
 					"help", no_argument, NULL, 'h' }, {
 					"gz_output", no_argument, NULL, 'g' }, {
+					"redundant", required_argument, NULL, 'r' }, {
 					"chastity", no_argument, &opt::chastityFilter, 1 }, {
 					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
 					NULL, 0, NULL, 0 } };
@@ -121,7 +127,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:t:om:p:hec:g", long_options,
+	while ((c = getopt_long(argc, argv, "f:t:om:p:hec:gr:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -164,6 +170,14 @@ int main(int argc, char *argv[])
 		}
 		case 'e': {
 			paired = true;
+			break;
+		}
+		case 'r': {
+			stringstream convert(optarg);
+			if (!(convert >> tileModifier)) {
+				cerr << "Error - Invalid parameter! r: " << optarg << endl;
+				return 0;
+			}
 			break;
 		}
 		case 'c': {
@@ -234,7 +248,7 @@ int main(int argc, char *argv[])
 	}
 
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts, outputPrefix, filePostfix);
+	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts, outputPrefix, filePostfix, tileModifier);
 
 	//filtering step
 	//create directory structure if it does not exist
