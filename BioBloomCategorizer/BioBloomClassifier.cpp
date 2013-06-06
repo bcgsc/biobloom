@@ -757,7 +757,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
  */
 void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 {
-	cout << "Starting to Load Filters." << endl;
+	cerr << "Starting to Load Filters." << endl;
 	//load up files
 	for (vector<string>::const_iterator it = filterFilePaths.begin();
 			it != filterFilePaths.end(); ++it)
@@ -1010,7 +1010,6 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	{
 		unordered_map<string, bool> tempResults;
 		vector<string> filterIDs = idsInFilter;
-		vector<string> tempFilterIDs;
 
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
@@ -1020,11 +1019,12 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 
 		for (uint8_t j = 0; j <= tileModifier; ++j) {
 			const string &currentKmer = proc.prepSeq(rec.seq, currentLoc + startModifier + j);
+			vector<string> tempFilterIDs;
 
 			//check to see if string is invalid
 			if (!currentKmer.empty()) {
 				const unordered_map<string, bool> &results =
-						filters[hashSig]->multiContains(currentKmer);
+						filters[hashSig]->multiContains(currentKmer, filterIDs);
 
 				for (vector<string>::iterator i = filterIDs.begin();
 						i != filterIDs.end(); ++i)
