@@ -38,6 +38,23 @@ const boost::unordered_map<string, bool> &MultiFilter::multiContains(
 	return tempResults;
 }
 
+/*
+ * checks filters for kmer, given a list of filterIDs, hashing only single time
+ */
+const boost::unordered_map<string, bool> &MultiFilter::multiContains(
+		string const &kmer, vector<string> const &tempFilters)
+{
+	const vector<size_t> &hashResults = hashMan.multiHash(kmer);
+
+	for (vector<string>::const_iterator it =
+			tempFilters.begin(); it != tempFilters.end(); ++it)
+	{
+		tempResults[*it] = filters[*it]->contains(hashResults);
+	}
+	return tempResults;
+}
+
+
 const vector<string> &MultiFilter::getFilterIds() const
 {
 	return filterIDs;

@@ -1009,6 +1009,9 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	while (rec.seq.length() >= currentLoc + kmerSize + tileModifier)
 	{
 		unordered_map<string, bool> tempResults;
+		vector<string> filterIDs = idsInFilter;
+		vector<string> tempFilterIDs;
+
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
@@ -1023,20 +1026,24 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 				const unordered_map<string, bool> &results =
 						filters[hashSig]->multiContains(currentKmer);
 
-				for (vector<string>::const_iterator i = idsInFilter.begin();
-						i != idsInFilter.end(); ++i)
+				for (vector<string>::iterator i = filterIDs.begin();
+						i != filterIDs.end(); ++i)
 				{
 					if (!results.find(*i)->second) {
 						tempResults[*i] = false;
 					}
+					else {
+						tempFilterIDs.push_back(*i);
+					}
 				}
 			} else {
-				for (vector<string>::const_iterator i = idsInFilter.begin();
-						i != idsInFilter.end(); ++i)
+				for (vector<string>::iterator i = filterIDs.begin();
+						i != filterIDs.end(); ++i)
 				{
 					tempResults[*i] = false;
 				}
 			}
+			filterIDs = tempFilterIDs;
 		}
 		//record hit number in order
 		for (vector<string>::const_iterator i = idsInFilter.begin();
@@ -1049,49 +1056,6 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 		currentLoc += kmerSize + tileModifier;
 	}
 }
-
-///*
-// * For a single read evaluate hits for a single hash signature
-// * Sections with ambiguity bases are treated as misses
-// * Updates hits value to number of hits (hashSig is used to as key)
-// */
-//void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
-//		const string &hashSig, unordered_map<string, size_t> &hits)
-//{
-//	//get filterIDs to iterate through has in a consistent order
-//	const vector<string> &idsInFilter = (*filters[hashSig]).getFilterIds();
-//
-//	//get kmersize for set of info files
-//	uint16_t kmerSize = (*(infoFiles[hashSig].front())).getKmerSize();
-//
-//	//Establish tiling pattern
-//	uint16_t startModifier1 = (rec.seq.length() % kmerSize) / 2;
-//	size_t currentKmerNum = 0;
-//
-//	ReadsProcessor proc(kmerSize);
-//	//cut read into kmer size given
-//	while (rec.seq.length() >= (currentKmerNum + 1) * kmerSize) {
-//
-//		const string &currentKmer = proc.prepSeq(rec.seq,
-//				currentKmerNum * kmerSize + startModifier1);
-//
-//		//check to see if string is invalid
-//		if (!currentKmer.empty()) {
-//			const unordered_map<string, bool> &results =
-//					filters[hashSig]->multiContains(currentKmer);
-//
-//			//record hit number in order
-//			for (vector<string>::const_iterator i = idsInFilter.begin();
-//					i != idsInFilter.end(); ++i)
-//			{
-//				if (results.find(*i)->second) {
-//					++hits[*i];
-//				}
-//			}
-//		}
-//		++currentKmerNum;
-//	}
-//}
 
 /*
  * Initializes Summary Variables. Also prints heads for read status.

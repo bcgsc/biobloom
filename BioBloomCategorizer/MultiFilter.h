@@ -21,6 +21,8 @@ public:
 	void addFilter(size_t filterSize, string const &filterID,
 			string const &filePath);
 	const boost::unordered_map<string, bool> &multiContains(string const &kmer);
+	const boost::unordered_map<string, bool> &multiContains(string const &kmer,
+			vector<string> const &tempFilters);
 	const vector<string> &getFilterIds() const;
 	virtual ~MultiFilter();
 private:
