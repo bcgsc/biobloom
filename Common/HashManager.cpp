@@ -32,5 +32,8 @@ const vector<size_t> &HashManager::multiHash(string const &kmer){
 }
 
 HashManager::~HashManager() {
+	for (unsigned short i = 0; i < hashFuncs.size(); ++i) {
+		delete hashFuncs[i];
+	}
 }
 
