@@ -33,7 +33,6 @@ private:
 			seedVal = seedValue;
 		}
 		virtual const size_t operator()(string const &kmer) const=0;
-		virtual const size_t operator()(string* kmer) const=0;
 		virtual ~Hash() {
 		}
 	protected:
@@ -48,9 +47,6 @@ private:
 		}
 		const size_t operator()(string const &kmer) const {
 			return CityHash64WithSeed(kmer.c_str(), kmer.length(), seedVal);
-		}
-		const size_t operator()(string* kmer) const {
-			return CityHash64WithSeed(kmer->c_str(), kmer->length(), seedVal);
 		}
 		virtual ~CityHash64() {
 		}
