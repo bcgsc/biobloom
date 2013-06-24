@@ -16,14 +16,13 @@
 #include "DataLayer/FastaReader.h"
 #include "Common/ReadsProcessor.h"
 #include "Common/Uncompress.h"
-#include "Common/HashManager.h"
 
 using namespace std;
 using namespace boost;
 
 class BioBloomClassifier {
 public:
-	BioBloomClassifier(const vector<string> &filterFilePaths, size_t minHit,
+	explicit BioBloomClassifier(const vector<string> &filterFilePaths, size_t minHit,
 			double percentMinHit, size_t maxHitValue,
 			const string &outputPrefix, const string &outputPostFix, uint8_t tileModifier);
 	void filter(const vector<string> &inputFiles);

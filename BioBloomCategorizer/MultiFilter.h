@@ -17,7 +17,7 @@ using namespace std;
 
 class MultiFilter {
 public:
-	MultiFilter(boost::shared_ptr<HashManager> const &hashManager);
+	MultiFilter(vector<string> const &hashFn, vector<size_t> const &seeds);
 	void addFilter(size_t filterSize, string const &filterID,
 			string const &filePath);
 	const boost::unordered_map<string, bool> &multiContains(string const &kmer);
@@ -30,7 +30,7 @@ private:
 	boost::unordered_map<string, bool> tempResults;
 
 	boost::unordered_map<string, boost::shared_ptr<BloomFilter> > filters;
-	boost::shared_ptr<HashManager> hashMan;
+	HashManager hashMan;
 	vector<string> filterIDs;
 };
 

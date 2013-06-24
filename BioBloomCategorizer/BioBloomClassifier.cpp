@@ -737,19 +737,8 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 		} else {
 			vector<shared_ptr<BloomFilterInfo> > tempVect;
 			tempVect.push_back(info);
-			vector<size_t>::const_iterator seeds =
-					info->getSeedValues().begin();
-			//Create HashManager for MultiFilter
-			shared_ptr<HashManager> hashMan(new HashManager());
-			for (vector<string>::const_iterator hashFn =
-					info->getHashFunctionNames().begin();
-					hashFn != info->getHashFunctionNames().end(); ++hashFn)
-			{
-				hashMan->addHashFunction(*hashFn, *seeds);
-				++seeds;
-			}
 			hashSigs.push_back(hashSig.str());
-			shared_ptr<MultiFilter> temp(new MultiFilter(hashMan));
+			shared_ptr<MultiFilter> temp(new MultiFilter(info->getHashFunctionNames(), info->getSeedValues()));
 			filters[hashSig.str()] = temp;
 			filters[hashSig.str()]->addFilter(info->getCalcuatedFilterSize(),
 					info->getFilterID(), *it);
@@ -990,6 +979,7 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 			}
 			filterIDs = tempFilterIDs;
 		}
+
 		//record hit number in order
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
