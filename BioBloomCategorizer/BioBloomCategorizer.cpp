@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 	bool paired = false;
 	size_t rawCounts = 0;
 	string filePostfix = "";
-	size_t tileModifier = 0;
+	uint8_t tileModifier = 0;
 
 	//long form arguments
 	static struct option long_options[] = {

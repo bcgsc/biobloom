@@ -7,7 +7,7 @@
 
 #include "MultiFilter.h"
 
-MultiFilter::MultiFilter(HashManager const &hashManager) :
+MultiFilter::MultiFilter(boost::shared_ptr<HashManager> const &hashManager) :
 		hashMan(hashManager)
 {
 }
@@ -16,7 +16,7 @@ void MultiFilter::addFilter(size_t filterSize, string const &filterID,
 		string const &filePath)
 {
 	boost::shared_ptr<BloomFilter> filter(
-			new BloomFilter(filterSize, filePath, hashMan));
+			new BloomFilter(filterSize, filePath, *hashMan));
 	filters[filterID] = filter;
 	filterIDs.push_back(filterID);
 }
@@ -28,7 +28,7 @@ void MultiFilter::addFilter(size_t filterSize, string const &filterID,
 const boost::unordered_map<string, bool> &MultiFilter::multiContains(
 		string const &kmer)
 {
-	const vector<size_t> &hashResults = hashMan.multiHash(kmer);
+	const vector<size_t> &hashResults = hashMan->multiHash(kmer);
 
 	for (boost::unordered_map<string, boost::shared_ptr<BloomFilter> >::iterator it =
 			filters.begin(); it != filters.end(); ++it)
@@ -44,7 +44,7 @@ const boost::unordered_map<string, bool> &MultiFilter::multiContains(
 const boost::unordered_map<string, bool> &MultiFilter::multiContains(
 		string const &kmer, vector<string> const &tempFilters)
 {
-	const vector<size_t> &hashResults = hashMan.multiHash(kmer);
+	const vector<size_t> &hashResults = hashMan->multiHash(kmer);
 
 	for (vector<string>::const_iterator it =
 			tempFilters.begin(); it != tempFilters.end(); ++it)

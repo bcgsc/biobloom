@@ -740,12 +740,12 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 			vector<size_t>::const_iterator seeds =
 					info->getSeedValues().begin();
 			//Create HashManager for MultiFilter
-			HashManager hashMan;
+			shared_ptr<HashManager> hashMan(new HashManager());
 			for (vector<string>::const_iterator hashFn =
 					info->getHashFunctionNames().begin();
 					hashFn != info->getHashFunctionNames().end(); ++hashFn)
 			{
-				hashMan.addHashFunction(*hashFn, *seeds);
+				hashMan->addHashFunction(*hashFn, *seeds);
 				++seeds;
 			}
 			hashSigs.push_back(hashSig.str());
@@ -960,14 +960,14 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 			tempResults[*i] = true;
 		}
 
-		cout << 1 << endl;
-
 		for (uint8_t j = 0; j <= tileModifier; ++j) {
+
 			const string &currentKmer = proc.prepSeq(rec.seq, currentLoc + startModifier + j);
 			vector<string> tempFilterIDs;
 
 			//check to see if string is invalid
 			if (!currentKmer.empty()) {
+
 				const unordered_map<string, bool> &results =
 						filters[hashSig]->multiContains(currentKmer, filterIDs);
 
