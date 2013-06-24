@@ -10,6 +10,7 @@
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
+#include "Common/Dynamicofstream.h"
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		size_t minHit, double percentMinHit, size_t maxHitValue,
@@ -28,8 +29,7 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
  */
 void BioBloomClassifier::filter(const vector<string> &inputFiles)
 {
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
-			ios::out);
+	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -80,7 +80,6 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 		}
 	}
 
-	readStatusOutput.flush();
 	readStatusOutput.close();
 
 	cerr << "Total Reads:" << totalReads << endl;
@@ -97,8 +96,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 void BioBloomClassifier::filterPrint(const vector<string> &inputFiles)
 {
 
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
-			ios::out);
+	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	bool printReads = 1;
 
@@ -178,7 +176,6 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles)
 		}
 	}
 
-	readStatusOutput.flush();
 	readStatusOutput.close();
 
 	//close sorting files
@@ -210,8 +207,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles)
 void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 {
 
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
-			ios::out);
+	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -278,7 +274,6 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 				<< endl;
 	}
 
-	readStatusOutput.flush();
 	readStatusOutput.close();
 
 	cerr << "Total Reads:" << totalReads << endl;
@@ -295,8 +290,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 void BioBloomClassifier::filterPairPrint(const string &file1,
 		const string &file2)
 {
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
-			ios::out);
+	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -412,7 +406,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				<< endl;
 	}
 
-	readStatusOutput.flush();
 	readStatusOutput.close();
 
 	//close sorting files
@@ -450,8 +443,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
  */
 void BioBloomClassifier::filterPairBAMPrint(const string &file)
 {
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
-			ios::out);
+	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -582,7 +574,6 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file)
 		}
 	}
 
-	readStatusOutput.flush();
 
 	//close sorting files
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -618,8 +609,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file)
  */
 void BioBloomClassifier::filterPairBAM(const string &file)
 {
-	ofstream readStatusOutput((prefix + "_status.tsv" + postfix).c_str(),
-			ios::out);
+	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//variables for storing results summary
 	unordered_map<string, size_t> aboveThreshold;
@@ -701,7 +691,6 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 		}
 	}
 
-	readStatusOutput.flush();
 	readStatusOutput.close();
 
 	cerr << "Total Reads:" << totalReads << endl;
@@ -781,8 +770,7 @@ void BioBloomClassifier::printSummary(const string &prefix,
 		unordered_map<string, size_t> &aboveThreshold,
 		unordered_map<string, size_t> &belowThreshold, size_t totalReads)
 {
-	ofstream summaryOutput((prefix + "_summary.tsv" + postfix).c_str(),
-			ios::out);
+	Dynamicofstream summaryOutput(prefix + "_summary.tsv" + postfix);
 	summaryOutput << "type";
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -882,8 +870,7 @@ void BioBloomClassifier::printCountSummary(const string &prefix,
 		unordered_map<string, vector<size_t> > &rawHits, size_t total)
 {
 	if (maxHitValue > 0) {
-		ofstream summaryOutput((prefix + "_rawCounts.tsv" + postfix).c_str(),
-				ios::out);
+		Dynamicofstream summaryOutput(prefix + "_rawCounts.tsv");
 		summaryOutput << "type";
 		//initialize variables and print filter ids
 		for (vector<string>::const_iterator j = hashSigs.begin();
@@ -924,7 +911,6 @@ void BioBloomClassifier::printCountSummary(const string &prefix,
 		}
 		summaryOutput << ">" << maxHitValue << "\t" << total - runningTotal
 				<< "\n";
-		summaryOutput.flush();
 		summaryOutput.close();
 	}
 }
@@ -945,7 +931,6 @@ bool BioBloomClassifier::fexists(const string &filename) const
  * Sections with ambiguity bases are treated as misses
  * Updates hits value to number of hits (hashSig is used to as key)
  */
-//@Todo: Implement in more efficient way (if read has a miss no
 void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 		const string &hashSig, unordered_map<string, size_t> &hits,
 		uint8_t tileModifier)
@@ -974,6 +959,8 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 		{
 			tempResults[*i] = true;
 		}
+
+		cout << 1 << endl;
 
 		for (uint8_t j = 0; j <= tileModifier; ++j) {
 			const string &currentKmer = proc.prepSeq(rec.seq, currentLoc + startModifier + j);

@@ -6,6 +6,7 @@ libcommon_a_SOURCES = \
 	BloomFilter.cpp BloomFilter.h \
 	BloomFilterInfo.cpp BloomFilterInfo.h \
 	city.cc city.h \
+	Dynamicofstream.cpp Dynamicofstream.h \
 	Fcontrol.cpp Fcontrol.h \
 	gzstream.C gzstream.h \
 	HashManager.cpp HashManager.h \

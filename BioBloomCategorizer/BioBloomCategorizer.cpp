@@ -273,5 +273,4 @@ int main(int argc, char *argv[])
 			BBC.filter(inputFiles);
 		}
 	}
-
 }
