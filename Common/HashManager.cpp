@@ -20,10 +20,10 @@ void HashManager::addHashFunction(string const &functionName,
 				<< " hash function name not recognized.";
 		exit(0);
 	}
-	tempHashValues.resize(hashFuncs.size());
 }
 
-const vector<size_t> &HashManager::multiHash(string const &kmer){
+vector<size_t> &HashManager::multiHash(string const &kmer) const{
+	vector<size_t> tempHashValues(hashFuncs.size());
 	for (unsigned short i = 0; i < hashFuncs.size(); ++i) {
 		//dereference functor call
 		tempHashValues[i] = (*hashFuncs[i])(kmer);

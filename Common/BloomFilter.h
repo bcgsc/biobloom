@@ -19,7 +19,7 @@ static const unsigned char bitMask[0x08] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
 class BloomFilter {
 public:
 	//for generating a new filter
-	BloomFilter(size_t filterSize, HashManager const &hashFns);
+	explicit BloomFilter(size_t filterSize, HashManager const &hashFns);
 	void insert(string const &kmer);
 
 	//for storing/restoring the filter
@@ -37,7 +37,7 @@ private:
 	char* filter;
 	size_t size;
 	size_t sizeInBytes;
-	HashManager multiHasher;
+	const HashManager &multiHasher;
 };
 
 #endif /* BLOOMFILTER_H_ */
