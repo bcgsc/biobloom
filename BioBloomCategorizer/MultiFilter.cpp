@@ -8,8 +8,7 @@
 #include "MultiFilter.h"
 
 MultiFilter::MultiFilter(vector<string> const &hashFn,
-		vector<size_t> const &seeds) :
-		hashMan(HashManager())
+		vector<size_t> const &seeds)
 {
 	vector<size_t>::const_iterator seedsItr = seeds.begin();
 	//Create HashManager for MultiFilter
@@ -19,7 +18,6 @@ MultiFilter::MultiFilter(vector<string> const &hashFn,
 		hashMan.addHashFunction(*hashFnItr, *seedsItr);
 		++seedsItr;
 	}
-
 }
 
 void MultiFilter::addFilter(size_t filterSize, string const &filterID,

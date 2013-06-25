@@ -28,7 +28,6 @@ public:
 private:
 	//so don't have to reallocated memory multiple times
 	boost::unordered_map<string, bool> tempResults;
-
 	boost::unordered_map<string, boost::shared_ptr<BloomFilter> > filters;
 	HashManager hashMan;
 	vector<string> filterIDs;
