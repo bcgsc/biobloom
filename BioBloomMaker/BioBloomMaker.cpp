@@ -12,7 +12,21 @@
 #include "Common/BloomFilterInfo.h"
 #include <boost/unordered/unordered_map.hpp>
 #include <getopt.h>
+#include "config.h"
+
 using namespace std;
+
+#define PROGRAM "biobloom_maker"
+
+void printVersion()
+{
+	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"
+	"Written by Justin Chu.\n"
+	"\n"
+	"Copyright 2013 Canada's Michael Smith Genome Science Centre\n";
+	cerr << printVersion << endl;
+	exit(EXIT_SUCCESS);
+}
 
 void printHelpDialog()
 {
@@ -65,7 +79,7 @@ int main(int argc, char *argv[])
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:h", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hv", long_options,
 			&option_index)) != -1)
 	{
 		switch (c) {
@@ -113,6 +127,10 @@ int main(int argc, char *argv[])
 		}
 		case 'h': {
 			printHelpDialog();
+			break;
+		}
+		case 'v': {
+			printVersion();
 			break;
 		}
 		default: {

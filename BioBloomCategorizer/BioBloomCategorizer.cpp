@@ -18,7 +18,7 @@
 
 using namespace std;
 
-#define PROGRAM "BBC"
+#define PROGRAM "biobloom_categorizer"
 
 void printVersion()
 {
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:t:o:m:p:hec:gr:", long_options,
+	while ((c = getopt_long(argc, argv, "f:t:o:m:p:hec:gr:v", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
