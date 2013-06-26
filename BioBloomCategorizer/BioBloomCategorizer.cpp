@@ -14,7 +14,21 @@
 #include <sys/stat.h>
 #include "BioBloomClassifier.h"
 #include "DataLayer/Options.h"
+#include "config.h"
+
 using namespace std;
+
+#define PROGRAM "BBC"
+
+void printVersion()
+{
+	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"
+	"Written by Justin Chu.\n"
+	"\n"
+	"Copyright 2013 Canada's Michael Smith Genome Science Centre\n";
+	cerr << printVersion << endl;
+	exit(EXIT_SUCCESS);
+}
 
 /*
  * Parses input string into separate strings, returning a vector.
@@ -48,7 +62,7 @@ void folderCheck(const string &path)
 
 void printHelpDialog()
 {
-	static const char dialog[] =
+	const char dialog[] =
 			"Usage: BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
 					"Categorize Sequences. The input format may be FASTA, FASTQ, qseq,\n"
 					"export, SAM or BAM format and compressed with gz, bz2 or xz and\n"
@@ -80,11 +94,12 @@ void printHelpDialog()
 					"                         increase by N. [0]"
 					"      --chastity         Discard and do not evaluate unchaste reads.\n"
 					"      --no-chastity      Do not discard unchaste reads. [default]\n"
+					"  -v  --version          Display version information.\n"
 					"  -h, --help             Display this dialog.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])
@@ -100,7 +115,7 @@ int main(int argc, char *argv[])
 	string filtersFile = "";
 	size_t minHit = 2;
 	double percentHit = 0.2;
-	bool printReads = false;
+	string outputReadType = "";
 	bool die = false;
 	bool paired = false;
 	size_t rawCounts = 0;
@@ -113,7 +128,7 @@ int main(int argc, char *argv[])
 					"prefix", optional_argument, NULL, 'p' }, {
 					"min_hit_thr", optional_argument, NULL, 't' }, {
 					"min_hit_pro", optional_argument, NULL, 'm' }, {
-					"output_fastq", no_argument, NULL, 'o' }, {
+					"output", required_argument, NULL, 'o' }, {
 					"filter_files", required_argument, NULL, 'f' }, {
 					"paired_mode", no_argument, NULL, 'e' }, {
 					"counts", no_argument, NULL, 'c' }, {
@@ -122,12 +137,13 @@ int main(int argc, char *argv[])
 					"redundant", required_argument, NULL, 'r' }, {
 					"chastity", no_argument, &opt::chastityFilter, 1 }, {
 					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
+					"version", no_argument, NULL, 0 }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:t:om:p:hec:gr:", long_options,
+	while ((c = getopt_long(argc, argv, "f:t:o:m:p:hec:gr:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -136,11 +152,11 @@ int main(int argc, char *argv[])
 			stringstream convert(optarg);
 			if (!(convert >> percentHit)) {
 				cerr << "Error - Invalid parameter! m: " << optarg << endl;
-				return 0;
+				exit(EXIT_FAILURE);
 			}
 			if (percentHit > 1) {
 				cerr << "Error -m cannot be greater than 1 " << optarg << endl;
-				return 0;
+				exit(EXIT_FAILURE);
 			}
 			break;
 		}
@@ -148,7 +164,7 @@ int main(int argc, char *argv[])
 			stringstream convert(optarg);
 			if (!(convert >> minHit)) {
 				cerr << "Error - Invalid parameter! t: " << optarg << endl;
-				return 0;
+				exit(EXIT_FAILURE);
 			}
 			break;
 		}
@@ -165,7 +181,17 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'o': {
-			printReads = true;
+			stringstream convert(optarg);
+			if (!(convert >> outputReadType)) {
+				cerr << "Error - Invalid parameter! o: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			if (outputReadType != ("fa" || "fq")) {
+				cerr
+						<< "Error - File output type must be fq or fa. Option given:"
+						<< optarg << endl;
+				exit(EXIT_FAILURE);
+			}
 			break;
 		}
 		case 'e': {
@@ -176,7 +202,7 @@ int main(int argc, char *argv[])
 			stringstream convert(optarg);
 			if (!(convert >> tileModifier)) {
 				cerr << "Error - Invalid parameter! r: " << optarg << endl;
-				return 0;
+				exit(EXIT_FAILURE);
 			}
 			break;
 		}
@@ -184,12 +210,16 @@ int main(int argc, char *argv[])
 			stringstream convert(optarg);
 			if (!(convert >> rawCounts)) {
 				cerr << "Error - Invalid parameter! c: " << optarg << endl;
-				return 0;
+				exit(EXIT_FAILURE);
 			}
 			break;
 		}
 		case 'g': {
 			filePostfix = ".gz";
+			break;
+		}
+		case 'v': {
+			printVersion();
 			break;
 		}
 		case '?': {
@@ -248,29 +278,18 @@ int main(int argc, char *argv[])
 	}
 
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts, outputPrefix, filePostfix, tileModifier);
+	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts,
+			outputPrefix, filePostfix, tileModifier);
 
 	//filtering step
 	//create directory structure if it does not exist
 	if (paired) {
-		if (printReads) {
-			if (pairedBAMSAM) {
-				BBC.filterPairBAMPrint(inputFiles[0]);
-			} else {
-				BBC.filterPairPrint(inputFiles[0], inputFiles[1]);
-			}
+		if (pairedBAMSAM) {
+			BBC.filterPairBAM(inputFiles[0], outputReadType);
 		} else {
-			if (pairedBAMSAM) {
-				BBC.filterPairBAM(inputFiles[0]);
-			} else {
-				BBC.filterPair(inputFiles[0], inputFiles[1]);
-			}
+			BBC.filterPair(inputFiles[0], inputFiles[1], outputReadType);
 		}
 	} else {
-		if (printReads) {
-			BBC.filterPrint(inputFiles);
-		} else {
-			BBC.filter(inputFiles);
-		}
+		BBC.filter(inputFiles, outputReadType);
 	}
 }
