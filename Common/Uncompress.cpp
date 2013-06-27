@@ -50,12 +50,6 @@ static const char* zcatExec(const string& path)
 			endsWith(path, ".url") ? "wget -O- -i" : NULL;
 }
 
-//Todo: add additional situations for output
-static const char* zcatExecOut(const string& path)
-{
-	return endsWith(path, ".gz") ? "gzip -c" : NULL;
-}
-
 extern "C" {
 
 /** Open a pipe to uncompress the specified file.
@@ -109,53 +103,6 @@ static int uncompress(const char *path)
 	}
 }
 
-/** Open a pipe to compress the specified file.
- * Not thread safe.
- * @return a file descriptor
- */
-static int compress(int filedesc, const char *path)
-{
-	const char *zcat = zcatExecOut(path);
-
-	int fd[2];
-	if (pipe(fd) == -1)
-		return -1;
-	int err = setCloexec(fd[0]);
-	assert(err == 0);
-	(void) err;
-
-	char arg0[16], arg1[16];
-	int n = sscanf(zcat, "%s %s %s", arg0, arg1);
-	assert(n == 2);
-
-	/* It would be more portable to use fork than vfork, but fork can
-	 * fail with ENOMEM when the process calling fork is using a lot
-	 * of memory. A workaround for this problem is to set
-	 * sysctl vm.overcommit_memory=1
-	 */
-#if HAVE_WORKING_VFORK
-	pid_t pid = vfork();
-#else
-	pid_t pid = fork();
-#endif
-	if (pid == -1)
-		return -1;
-
-	if (pid == 0) {
-		close(fd[1]); //writing end of pipe not needed
-		dup2(fd[0], STDIN_FILENO);   // make pipe input go to stdin
-		close(fd[0]);
-	    dup2(filedesc, STDOUT_FILENO);   // make stdout go to file
-	    close(filedesc);
-	    execlp(arg0, arg0, arg1, NULL);
-		perror(arg0);
-		_exit(EXIT_FAILURE);
-	} else {
-		close(fd[0]); //reading end of pipe not needed
-		return fd[1]; //return writing end of pipe
-	}
-}
-
 /** Open a pipe to uncompress the specified file.
  * @return a FILE pointer
  */
@@ -167,19 +114,6 @@ static FILE* funcompress(const char* path)
 		exit(EXIT_FAILURE);
 	}
 	return fdopen(fd, "r");
-}
-
-/** Open a pipe to compress the specified file.
- * @return a FILE pointer
- */
-static FILE* fcompress(FILE* stream, const char *path)
-{
-	int fd = compress(fileno(stream), path);
-	if (fd == -1) {
-		//@todo add appropriate error
-		exit(EXIT_FAILURE);
-	}
-	return fdopen(fd, "w");
 }
 
 typedef FILE* (*fopen_t)(const char *path, const char *mode);
@@ -206,9 +140,7 @@ FILE *fopen(const char *path, const char *mode)
 	if (stream && zcatExec(path) != NULL && string(mode) == "r") {
 		fclose(stream);
 		return funcompress(path);
-	} else if (stream && zcatExecOut(path) != NULL && string(mode) == "w") {
-		return fcompress(stream, path);
-	} else {
+	}else {
 		return stream;
 	}
 }
@@ -235,8 +167,6 @@ FILE *fopen64(const char *path, const char *mode)
 	if (stream && zcatExec(path) != NULL && string(mode) == "r") {
 		fclose(stream);
 		return funcompress(path);
-	} else if (stream && zcatExecOut(path) != NULL && string(mode) == "w") {
-		return fcompress(stream, path);
 	} else {
 		return stream;
 	}
@@ -266,10 +196,6 @@ int open(const char *path, int flags, mode_t mode)
 	if (filedesc >= 0 && zcatExec(path) != NULL && mode == ios::in) {
 		close(filedesc);
 		return uncompress(path);
-	}
-	else if(filedesc >= 0  && zcatExecOut(path) != NULL && mode == ios::out)
-	{
-		return compress(filedesc, path);
 	}
 	else {
 		return filedesc;
