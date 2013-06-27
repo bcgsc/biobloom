@@ -26,7 +26,7 @@ void printVersion()
 	"Written by Justin Chu.\n"
 	"\n"
 	"Copyright 2013 Canada's Michael Smith Genome Science Centre\n";
-	cerr << printVersion << endl;
+	cerr << VERSION_MESSAGE << endl;
 	exit(EXIT_SUCCESS);
 }
 
