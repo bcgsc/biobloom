@@ -102,16 +102,6 @@ void WindowedFileParser::initializeIndex(string const &fileName)
 		cerr << "Fasta files used must be indexed." << endl;
 		exit(1);
 	}
-	//todo: fix automatic fasta index generation
-//	if (!indexFile) {
-//		cerr << fileName << " fasta index not found, generating..." << endl;
-//		FastaIndex indexer;
-//		indexer.index(fileName);
-//		ofstream indexFileOutput(faiFile.c_str(), ios::out);
-//		indexFileOutput << indexer;
-//		indexFileOutput.flush();
-//		indexFileOutput.close();
-//	}
 
 	string line;
 	//read file and populate index struct

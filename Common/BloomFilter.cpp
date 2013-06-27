@@ -11,7 +11,6 @@
 #include <iostream>
 #include <sys/stat.h>
 
-//todo: Performance optimization potential: make size of bitset a power of 2
 /* De novo filter constructor.
  * precondition: filterSize must be a multiple of 64
  */

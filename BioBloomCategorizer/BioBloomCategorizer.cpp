@@ -78,7 +78,6 @@ void printHelpDialog()
 					"                         a match. [0.2]\n"
 					"  -f, --filter_files=N   List of filter files to use. Required option.\n"
 					"                         Eg. \"filter1.bf filter2.bf\"\n"
-					//@TODO impliment fastq or fasta format printout
 					"  -o, --output='fq','fa' Output categorized reads in Fasta/Fastq files.\n"
 					"  -e, --paired_mode      Uses paired-end information. For BAM or\n"
 					"                         SAM file if they are poorly ordered, memory\n"
@@ -284,12 +283,24 @@ int main(int argc, char *argv[])
 	//filtering step
 	//create directory structure if it does not exist
 	if (paired) {
-		if (pairedBAMSAM) {
-			BBC.filterPairBAM(inputFiles[0], outputReadType);
+		if (outputReadType != "") {
+			if (pairedBAMSAM) {
+				BBC.filterPairBAMPrint(inputFiles[0], outputReadType);
+			} else {
+				BBC.filterPairPrint(inputFiles[0], inputFiles[1], outputReadType);
+			}
 		} else {
-			BBC.filterPair(inputFiles[0], inputFiles[1], outputReadType);
+			if (pairedBAMSAM) {
+				BBC.filterPairBAM(inputFiles[0]);
+			} else {
+				BBC.filterPair(inputFiles[0], inputFiles[1]);
+			}
 		}
 	} else {
-		BBC.filter(inputFiles, outputReadType);
+		if (outputReadType != "") {
+			BBC.filterPrint(inputFiles, outputReadType);
+		} else {
+			BBC.filter(inputFiles);
+		}
 	}
 }

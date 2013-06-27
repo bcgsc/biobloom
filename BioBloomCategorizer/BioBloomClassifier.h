@@ -22,49 +22,31 @@ using namespace boost;
 
 class BioBloomClassifier {
 public:
-	explicit BioBloomClassifier(const vector<string> &filterFilePaths, size_t minHit,
-			double percentMinHit, size_t maxHitValue,
-			const string &outputPrefix, const string &outputPostFix, uint8_t tileModifier);
+	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
+			size_t minHit, double percentMinHit, size_t maxHitValue,
+			const string &outputPrefix, const string &outputPostFix,
+			uint8_t tileModifier);
 	void filter(const vector<string> &inputFiles);
-	void filterPrint(const vector<string> &inputFiles);
+	void filterPrint(const vector<string> &inputFiles,
+			const string &outputType);
 	void filterPair(const string &file1, const string &file2);
-	void filterPairPrint(const string &file1, const string &file2);
+	void filterPairPrint(const string &file1, const string &file2,
+			const string &outputType);
 	void filterPairBAM(const string &file);
-	void filterPairBAMPrint(const string &file);
-
+	void filterPairBAMPrint(const string &file, const string &outputType);
 	virtual ~BioBloomClassifier();
 private:
 	void loadFilters(const vector<string> &filterFilePaths);
-	//Todo: should be const qualified, need to refactor function
-	void printSummary(const string &outputPrefix,
-			unordered_map<string, size_t> &aboveThreshold,
-			unordered_map<string, size_t> &belowThreshold, size_t totalReads);
-	void printCountSummary(const string &outputPrefix,
-			unordered_map<string, vector<size_t> > &rawHits, size_t total);
 	bool fexists(const string &filename) const;
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, size_t> &hits, uint8_t tileModifier);
-	const string initSummaryVars(vector<string> &hashSigs,
-			unordered_map<string, size_t> &aboveThreshold,
-			unordered_map<string, size_t> &belowThreshold,
-			unordered_map<string, vector<size_t> > &rawHits);
+	const string getReadSummaryHeader(const vector<string> &hashSigs);
 	void initHits(unordered_map<string, size_t> &hits);
 	const string getReadStatStr(string const &readID, size_t readLength,
 			unordered_map<string, size_t> &hits);
 	const string getReadStatStrPair(string const &readID, size_t readLength1,
 			size_t readLength2, unordered_map<string, size_t> &hits1,
 			unordered_map<string, size_t> &hits2);
-	const string updateSummaryData(size_t seqLen,
-			unordered_map<string, size_t> &hits,
-			unordered_map<string, size_t> &aboveThreshold,
-			unordered_map<string, size_t> &belowThreshold,
-			unordered_map<string, vector<size_t> > &rawHits);
-	const string updateSummaryDataPair(size_t seqLen1, size_t seqLen2,
-			unordered_map<string, size_t> &hits1,
-			unordered_map<string, size_t> &hits2,
-			unordered_map<string, size_t> &aboveThreshold,
-			unordered_map<string, size_t> &belowThreshold,
-			unordered_map<string, vector<size_t> > &rawHits);
 
 	//group filters with same hash signature
 	unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > infoFiles;

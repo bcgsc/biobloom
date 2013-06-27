@@ -35,11 +35,6 @@ int main(int argc, char **argv) {
 	testParser.setLocationByHeader("chr21");
 
 //todo: more tests needed for windowed parser (take a look at header file)
-//	string seq = testParser.getNext();
-//	while (!seq.empty()) {
-//		cout << seq;
-//		seq = testParser.getNext();
-//	}
 
 	//Windowed Parser Tests done
 	cout << "Windowed Parser Tests Done." << endl;
