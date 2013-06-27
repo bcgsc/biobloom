@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 				cerr << "Error - Invalid parameter! o: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
-			if (outputReadType != ("fa" || "fq")) {
+			if (!(outputReadType == "fa" || outputReadType == "fq")) {
 				cerr
 						<< "Error - File output type must be fq or fa. Option given:"
 						<< optarg << endl;
