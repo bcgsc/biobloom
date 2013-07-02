@@ -22,7 +22,7 @@ void HashManager::addHashFunction(string const &functionName,
 	}
 }
 
-vector<size_t> &HashManager::multiHash(string const &kmer) const{
+vector<size_t> HashManager::multiHash(string const &kmer) const{
 	vector<size_t> tempHashValues(hashFuncs.size());
 	for (unsigned short i = 0; i < hashFuncs.size(); ++i) {
 		//dereference functor call

@@ -18,7 +18,7 @@ using namespace std;
 class HashManager {
 public:
 	void addHashFunction(string const &functionName, size_t seedValue);
-	vector<size_t> &multiHash(string const &kmer) const;
+	vector<size_t> multiHash(string const &kmer) const;
 	//for possibly binary version of DNA representation
 	//vector<size_t> multiHash(boost::dynamic_bitset kmer);
 

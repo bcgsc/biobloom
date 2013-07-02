@@ -8,18 +8,19 @@
 #include "ResultsManager.h"
 #include <sstream>
 
-ResultsManager::ResultsManager(const vector<string> &hashSigs,
+ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
 		const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
-		const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFiles,
+		const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
 		size_t minHit, double percHit, size_t maxHitValue) :
-		hashSigs(hashSigs), filters(filtersRef), infoFiles(infoFiles), minHit(
+		hashSigs(hashSigsRef), filters(filtersRef), infoFiles(infoFilesRef), minHit(
 				minHit), percentMinHit(percHit), maxHitValue(maxHitValue)
 {
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
-		const vector<string> &idsInFilter = filters[*j]->getFilterIds();
+		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
@@ -31,7 +32,7 @@ ResultsManager::ResultsManager(const vector<string> &hashSigs,
 			uint16_t counter = 0;
 			rawHits[*i] = temp;
 			while (counter < maxHitValue) {
-				(*rawHits[*i])[counter] = 0;
+				rawHits[*i][counter] = 0;
 				counter++;
 			}
 		}
@@ -51,12 +52,14 @@ const string ResultsManager::updateSummaryData(size_t seqLen,
 			j != hashSigs.end(); ++j)
 	{
 		//update summary
-		const vector<string> &idsInFilter = filters[*j]->getFilterIds();
+		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			//pick threshold, by percent or by absolute value
-			uint16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
+			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(*j);
+			uint16_t kmerSize = tempVect.front()->getKmerSize();
 			size_t threshold = size_t(percentMinHit * (seqLen / kmerSize));
 			if (minHit > threshold) {
 				threshold = minHit;
@@ -75,7 +78,7 @@ const string ResultsManager::updateSummaryData(size_t seqLen,
 
 			//modify total reads
 			if (rawHits[*i].size() > hits[*i]) {
-				(*rawHits[*i])[hits[*i]]++;
+				rawHits[*i][hits[*i]]++;
 			}
 		}
 	}
@@ -87,8 +90,8 @@ const string ResultsManager::updateSummaryData(size_t seqLen,
  * Returns qualifying read IDs that meet threshold
  * both reads must qualify
  */
-const string ResultsManager::updateSummaryData(size_t seqLen1,
-		size_t seqLen2, unordered_map<string, size_t> &hits1,
+const string ResultsManager::updateSummaryData(size_t seqLen1, size_t seqLen2,
+		unordered_map<string, size_t> &hits1,
 		unordered_map<string, size_t> &hits2)
 {
 	string filterID = "noMatch";
@@ -97,12 +100,14 @@ const string ResultsManager::updateSummaryData(size_t seqLen1,
 			j != hashSigs.end(); ++j)
 	{
 		//update summary
-		const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
+		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			//pick threshold, by percent or by absolute value
-			uint16_t kmerSize = (*(infoFiles[*j].front())).getKmerSize();
+			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(*j);
+			uint16_t kmerSize = (*(tempVect.front())).getKmerSize();
 			size_t threshold1 = size_t(percentMinHit * (seqLen1 / kmerSize));
 			size_t threshold2 = size_t(percentMinHit * (seqLen2 / kmerSize));
 			if (minHit > threshold1) {
@@ -140,12 +145,14 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
-		const vector<string> &idsInFilter = filters[*j]->getFilterIds();
+		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
+			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(*j);
 			summaryOutput << "\t" << *i << "_"
-					<< (*(infoFiles[*j].front())).getKmerSize();
+					<< tempVect.front()->getKmerSize();
 		}
 	}
 	summaryOutput << "\n";
@@ -155,37 +162,40 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
-		const vector<string> idsInFilter = filters[*j]->getFilterIds();
+		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t"
-					<< double(aboveThreshold[*i]) / double(readCount);
+					<< double(aboveThreshold.at(*i)) / double(readCount);
 		}
 	}
 	summaryOutput << "\nMiss";
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
-		const vector<string> idsInFilter = filters[*j]->getFilterIds();
+		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t"
-					<< double(belowThreshold[*i]) / double(readCount);
+					<< double(belowThreshold.at(*i)) / double(readCount);
 		}
 	}
 	summaryOutput << "\nConfidentMiss";
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
-		const vector<string> idsInFilter = filters[*j]->getFilterIds();
+		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t"
 					<< double(
-							readCount - belowThreshold[*i] - aboveThreshold[*i])
+							readCount - belowThreshold.at(*i) - aboveThreshold.at(*i))
 							/ double(readCount);
 		}
 	}
@@ -194,34 +204,37 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
-		const vector<string> idsInFilter = filters[*j]->getFilterIds();
+		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			summaryOutput << "\t" << aboveThreshold[*i];
+			summaryOutput << "\t" << aboveThreshold.at(*i);
 		}
 	}
 	summaryOutput << "\nMiss";
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
-		const vector<string> idsInFilter = filters[*j]->getFilterIds();
+		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			summaryOutput << "\t" << belowThreshold[*i];
+			summaryOutput << "\t" << belowThreshold.at(*i);
 		}
 	}
 	summaryOutput << "\nConfidentMiss";
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
-		const vector<string> idsInFilter = filters[*j]->getFilterIds();
+		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t"
-					<< readCount - belowThreshold[*i] - aboveThreshold[*i];
+					<< readCount - belowThreshold.at(*i) - aboveThreshold.at(*i);
 		}
 	}
 	return summaryOutput.str();
@@ -234,12 +247,14 @@ const string ResultsManager::getCountSummary(size_t readCount) const
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
-		const vector<string> &idsInFilter = filters[*j]->getFilterIds();
+		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
+			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(*j);
 			summaryOutput << "\t" << *i << "_"
-					<< (*(infoFiles[*j].front())).getKmerSize();
+					<< tempVect.front()->getKmerSize();
 		}
 	}
 	summaryOutput << "\n";
@@ -252,16 +267,17 @@ const string ResultsManager::getCountSummary(size_t readCount) const
 		for (vector<string>::const_iterator j = hashSigs.begin();
 				j != hashSigs.end(); ++j)
 		{
-			const vector<string> &idsInFilter = filters[*j]->getFilterIds();
+			const shared_ptr<MultiFilter> &temp = filters.at(*j);
+			const vector<string> &idsInFilter = temp->getFilterIds();
 			for (vector<string>::const_iterator i = idsInFilter.begin();
 					i != idsInFilter.end(); ++i)
 			{
-				const vector<size_t> &temp = rawHits[*i];
-				if ( temp.size() < currentHitVal) {
+				const vector<size_t> &temp = rawHits.at(*i);
+				if (temp.size() < currentHitVal) {
 					summaryOutput << "\t0";
 				} else {
-					runningTotal += (*rawHits[*i])[currentHitVal];
-					summaryOutput << "\t" << (*rawHits[*i])[currentHitVal];
+					runningTotal += temp[currentHitVal];
+					summaryOutput << "\t" << temp[currentHitVal];
 				}
 			}
 		}

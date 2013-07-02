@@ -186,10 +186,10 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	readStatusOutput.close();
 
 	//close sorting files
-	for (vector<string>::iterator j = outputFiles.begin();
+	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j = outputFiles.begin();
 			j != outputFiles.end(); ++j)
 	{
-		outputFiles[*j]->close();
+		j->second->close();
 	}
 	cerr << "Total Reads:" << totalReads << endl;
 
@@ -416,10 +416,10 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	readStatusOutput.close();
 
 	//close sorting files
-	for (vector<string>::iterator j = outputFiles.begin();
+	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j = outputFiles.begin();
 			j != outputFiles.end(); ++j)
 	{
-		outputFiles[*j]->close();
+		j->second->close();
 	}
 
 	cerr << "Total Reads:" << totalReads << endl;
@@ -671,10 +671,10 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	}
 
 	//close sorting files
-	for (vector<string>::iterator j = outputFiles.begin();
+	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j = outputFiles.begin();
 			j != outputFiles.end(); ++j)
 	{
-		outputFiles[*j]->close();
+		j->second->close();
 	}
 
 	Dynamicofstream summaryOutput(prefix + "_summary.tsv");
