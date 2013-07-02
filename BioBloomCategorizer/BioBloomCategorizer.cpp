@@ -90,7 +90,7 @@ void printHelpDialog()
 					"  -r, --redundant=N      The number of redundant tiles to use. Lowers\n"
 					"                         effective false positive rate at the cost of\n"
 					"                         time. Also causes effective kmer length to\n"
-					"                         increase by N. [0]"
+					"                         increase by N. [0]\n"
 					"      --chastity         Discard and do not evaluate unchaste reads.\n"
 					"      --no-chastity      Do not discard unchaste reads. [default]\n"
 					"  -v  --version          Display version information.\n"
