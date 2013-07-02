@@ -68,13 +68,16 @@ void BloomFilter::initSize(size_t size)
 
 void BloomFilter::insert(string const &kmer)
 {
-	vector<size_t> values = multiHasher.multiHash(kmer);
+
+	const vector<size_t> &values = multiHasher.multiHash(kmer);
 	//iterates through hashed values adding it to the filter
-	for (vector<size_t>::iterator it = values.begin(); it != values.end(); ++it)
+
+	for (vector<size_t>::const_iterator it = values.begin(); it != values.end(); ++it)
 	{
 		size_t normalizedValue = *it % size;
 		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 				% bitsPerChar];
+
 	}
 }
 
