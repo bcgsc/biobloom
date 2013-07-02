@@ -16,7 +16,7 @@
 
 using namespace std;
 
-#define PROGRAM "biobloom_maker"
+#define PROGRAM "biobloommaker"
 
 void printVersion()
 {

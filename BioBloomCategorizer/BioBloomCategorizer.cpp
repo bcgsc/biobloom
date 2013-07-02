@@ -18,7 +18,7 @@
 
 using namespace std;
 
-#define PROGRAM "biobloom_categorizer"
+#define PROGRAM "biobloomcategorizer"
 
 void printVersion()
 {
