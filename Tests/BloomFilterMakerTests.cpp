@@ -8,6 +8,7 @@
 #include "BioBloomMaker/BloomFilterGenerator.h"
 #include "BioBloomMaker/BloomFilterGenerator.cpp"
 #include "Common/BloomFilter.h"
+#include "Common/HashManager.h"
 #include <string>
 #include <assert.h>
 #include <iostream>
@@ -20,12 +21,12 @@ int main(int argc, char **argv) {
 
 	//Using human genome reference as test data
 	string fileName =
-			"/projects/cjustin/BioBloomTools/NC_000913.fasta";
+			"/projects/cjustin/BioBloomTools/reference/NC_000913.fasta";
 
 	//test BloomFilterGenerator
 
 	vector<string> filenames;
-	filenames.push_back("NC_000913.2");
+	filenames.push_back(fileName);
 	//test count
 	BloomFilterGenerator gen(filenames, 20);
 
@@ -37,9 +38,11 @@ int main(int argc, char **argv) {
 
 	gen.setFilterSize(filterSize);
 	gen.addHashFuncs(6);
-	string filename = "/home/cjustin/workspace/TestData/bloomFilter.bf";
+	string filename = "test.bf";
+
 	gen.generate(filename);
 	//Check storage can occur properly
+
 	ifstream ifile(filename.c_str());
 	assert(ifile.is_open());
 	ifile.seekg(0, ios::end); // move to end of file
@@ -52,13 +55,23 @@ int main(int argc, char **argv) {
 	}
 	ifile.close();
 
+	HashManager test;
+	test.addHashFunction("CityHash64", 0);
+	test.addHashFunction("CityHash64", 1);
+	test.addHashFunction("CityHash64", 2);
+	test.addHashFunction("CityHash64", 3);
+	test.addHashFunction("CityHash64", 4);
+	test.addHashFunction("CityHash64", 5);
+
 	//check loading of stored filter
-//	BloomFilter filter2(filename, gen.getHashMan());
+	BloomFilter filter2(filterSize, filename, test);
 
 	//Check if loaded filter is able to report expected results
-//	assert(filter2.contains("AGCTTTTCATTCTGACTGCA"));
+	assert(filter2.contains("AGCTTTTCATTCTGACTGCA"));
+	assert(!filter2.contains("GGCTTTTCATTCTGACTGCA"));
 
-	cout << "BloomFilterGenerator Tests Done." << endl;
+	cout << "BloomFilterGenerator Tests Done. Cleaning up" << endl;
+	remove(filename.c_str());
 
 	return 0;
 }

@@ -23,16 +23,7 @@ int main(int argc, char **argv)
 	test << "test" << 123 << endl;
 
 	test.close();
-	delete test;
-
-//	//TEST IS NOT WORKING, couldn't get gzip to print to file
-//	//Test functionality of Uncompress.h
-//	//write out file with extention .gz as compressed file
-//	ofstream testfile(filename.c_str(), ios::out);
-//	testfile << "test" << endl;
-//	testfile.close();
-
-//read in file with extension .gz as compressed file
+	//read in file with extension .gz as compressed file
 	ifstream testfile2(filename.c_str(), ios::in);
 	string temp;
 	testfile2 >> temp;

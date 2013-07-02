@@ -13,13 +13,18 @@
 
 using namespace std;
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 
-	string infoFile = "/home/cjustin/workspace/TestData/20120820_HG19_Chr21.txt";
+	string infoFile = "Test.txt";
 
 	vector<string> map;
-	map[0] = "/home/pubseq/genomes/9606/hg19/bwa_ind/genome/human.fasta";
+
+	map.push_back("/home/pubseq/genomes/9606/hg19/bwa_ind/genome/human.fasta");
+
 	BloomFilterInfo info("HG19_chr21", 33, 0.02, 47000000, map, 6);
+
+	cout << 5 << endl;
 	info.addHashFunction("CityHash64", 0);
 	info.addHashFunction("CityHash64", 1);
 	info.addHashFunction("CityHash64", 2);
@@ -33,6 +38,11 @@ int main(int argc, char **argv) {
 	info.printInfoFile(infoFile);
 
 	cout << "Output tests done. check info file: " << infoFile << endl;
+	while (1)
+	{
+	    if (getchar())
+	       break;
+	}
 
 	//test loading of info into new object;
 	BloomFilterInfo info2(infoFile);
@@ -41,6 +51,9 @@ int main(int argc, char **argv) {
 	assert(info2.getCalcuatedFilterSize() == info.getCalcuatedFilterSize());
 	assert(info2.getFilterID() == info.getFilterID());
 	assert(info2.getSeedHashSigniture() == info.getSeedHashSigniture());
+
+	cout << "Asserts complete. cleaning up" << endl;
+	remove(infoFile.c_str());
 
 	return 0;
 }
