@@ -34,7 +34,8 @@ public:
 	const vector<size_t> &getSeedValues() const;
 	const string getSeedHashSigniture() const;
 	const string &getFilterID() const;
-	const double &getRedunancyFPR() const;
+	double getRedunancyFPR() const;
+	double getFPR() const;
 
 private:
 	//user specified input
@@ -48,6 +49,7 @@ private:
 	struct runtime {
 		size_t size;
 		size_t numEntries;
+		double FPR;
 		vector<string> hashFunctions;
 		vector<size_t> seeds;
 		size_t redundantSequences;

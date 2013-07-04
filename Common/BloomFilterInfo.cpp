@@ -54,8 +54,8 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 				runInfo.numEntries, hashNum, runInfo.redundantSequences);
 	}
 
-//	double tempFPR = pt.get<double>(
-//			"runtime_options.approximate_false_positive_rate");
+	runInfo.FPR = pt.get<double>(
+			"runtime_options.approximate_false_positive_rate");
 	string tempHashFunc = pt.get<string>("runtime_options.hash_functions");
 	string tempSeeds = pt.get<string>("runtime_options.seeds");
 	runInfo.hashFunctions = convertHashFuncString(tempHashFunc);
@@ -78,6 +78,9 @@ void BloomFilterInfo::setReduanacy(size_t redunSeq)
 	runInfo.redundantSequences = redunSeq;
 	runInfo.redundantFPR = calcRedunancyFPR(runInfo.size, runInfo.numEntries,
 			hashNum, redunSeq);
+	runInfo.FPR = calcApproxFPR(runInfo.size,
+			runInfo.numEntries - runInfo.redundantSequences,
+			runInfo.seeds.size());
 }
 
 /*
@@ -87,15 +90,10 @@ void BloomFilterInfo::setReduanacy(size_t redunSeq)
 void BloomFilterInfo::printInfoFile(const string &fileName) const
 {
 
-	//calcuate actual FPR
-	float maxFPR = calcApproxFPR(runInfo.size,
-			runInfo.numEntries - runInfo.redundantSequences,
-			runInfo.seeds.size());
-
 	//cannot output unless runtime values set
 	assert(runInfo.size !=0);
 	assert(runInfo.numEntries !=0);
-	assert(maxFPR !=0);
+	assert(runInfo.FPR !=0);
 	assert(runInfo.hashFunctions.size() !=0);
 	assert(runInfo.seeds.size() !=0);
 	assert(hashNum == runInfo.hashFunctions.size());
@@ -117,7 +115,7 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const
 	//runtime determined options
 	output << "\n\n[runtime_options]\nsize=" << runInfo.size << "\nnum_entries="
 			<< runInfo.numEntries << "\napproximate_false_positive_rate="
-			<< maxFPR << "\nredundant_sequences=" << runInfo.redundantSequences
+			<< runInfo.FPR << "\nredundant_sequences=" << runInfo.redundantSequences
 			<< "\nredundant_fpr=" << runInfo.redundantFPR << "\n";
 	//print out hash functions as a list
 
@@ -189,9 +187,14 @@ const string &BloomFilterInfo::getFilterID() const
 	return filterID;
 }
 
-const double &BloomFilterInfo::getRedunancyFPR() const
+double BloomFilterInfo::getRedunancyFPR() const
 {
 	return runInfo.redundantFPR;
+}
+
+double BloomFilterInfo::getFPR() const
+{
+	return runInfo.FPR;
 }
 
 const vector<string> BloomFilterInfo::convertSeqSrcString(
