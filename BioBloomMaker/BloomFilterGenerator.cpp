@@ -33,7 +33,6 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 	for (vector<string>::const_iterator i = filenames.begin();
 			i != filenames.end(); ++i)
 	{
-		//if no header is used assume user wants all
 		WindowedFileParser parser(*i, kmerSize);
 		fileNamesAndHeaders[*i] = parser.getHeaders();
 		for (vector<string>::iterator j = fileNamesAndHeaders[*i].begin();
@@ -51,7 +50,7 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
  *
  * Outputs to fileName path
  */
-void BloomFilterGenerator::generate(string fileName)
+size_t BloomFilterGenerator::generate(string fileName)
 {
 
 	//need the number of hash functions used to be greater than 0
@@ -63,11 +62,16 @@ void BloomFilterGenerator::generate(string fileName)
 	//setup bloom filter
 	BloomFilter filter(filterSize, multiHash);
 
+	//redundancy metric value
+	size_t redundancy = 0;
+
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	for (boost::unordered_map<string, vector<string> >::iterator i =
 			fileNamesAndHeaders.begin(); i != fileNamesAndHeaders.end(); ++i)
 	{
+		//let user know that files are being read
+		cerr << "Reading File: " << i->first << endl;
 		WindowedFileParser parser(i->first, kmerSize);
 		for (vector<string>::iterator j = i->second.begin();
 				j != i->second.end(); ++j)
@@ -79,12 +83,17 @@ void BloomFilterGenerator::generate(string fileName)
 			while (parser.notEndOfSeqeunce()) {
 				const string &currentSeq = parser.getNextSeq();
 				if (!currentSeq.empty()) {
-					filter.insert(currentSeq);
+					if (filter.contains(currentSeq)) {
+						redundancy++;
+					} else {
+						filter.insert(currentSeq);
+					}
 				}
 			}
 		}
 	}
 	filter.storeFilter(fileName);
+	return redundancy;
 }
 
 //setters

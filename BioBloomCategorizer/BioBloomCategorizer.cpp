@@ -63,7 +63,7 @@ void folderCheck(const string &path)
 void printHelpDialog()
 {
 	const char dialog[] =
-			"Usage: BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
+			"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
 					"Categorize Sequences. The input format may be FASTA, FASTQ, qseq,\n"
 					"export, SAM or BAM format and compressed with gz, bz2 or xz and\n"
 					"may be tarred.\n"

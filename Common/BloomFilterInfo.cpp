@@ -21,6 +21,7 @@ BloomFilterInfo::BloomFilterInfo(string const &filterID, uint16_t kmerSize,
 {
 	runInfo.numEntries = numEntries;
 	runInfo.size = calcOptimalSize(numEntries, desiredFPR, hashNum);
+	runInfo.redundantSequences = 0;
 }
 
 /*
@@ -40,8 +41,21 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 	//runtime params
 	runInfo.size = pt.get<size_t>("runtime_options.size");
 	runInfo.numEntries = pt.get<size_t>("runtime_options.num_entries");
-	float tempFPR = pt.get<float>(
-			"runtime_options.approximate_false_positive_rate");
+
+	//Compensation for legacy code
+	//TODO: if removed must notify users that old version cannot be used
+	try {
+		runInfo.redundantSequences = pt.get<size_t>(
+				"runtime_options.redundant_sequences");
+		runInfo.redundantFPR = pt.get<size_t>("runtime_options.redundant_fpr");
+	} catch (boost::property_tree::ptree_error &e) {
+		runInfo.redundantSequences = 0;
+		runInfo.redundantFPR = calcRedunancyFPR(runInfo.size,
+				runInfo.numEntries, hashNum, runInfo.redundantSequences);
+	}
+
+//	double tempFPR = pt.get<double>(
+//			"runtime_options.approximate_false_positive_rate");
 	string tempHashFunc = pt.get<string>("runtime_options.hash_functions");
 	string tempSeeds = pt.get<string>("runtime_options.seeds");
 	runInfo.hashFunctions = convertHashFuncString(tempHashFunc);
@@ -55,14 +69,27 @@ void BloomFilterInfo::addHashFunction(const string &fnName, size_t seed)
 	runInfo.seeds.push_back(seed);
 }
 
+/**
+ * Sets number of redundant sequences found in file. Also calculate the approximate
+ * error that may be happening to this value.
+ */
+void BloomFilterInfo::setReduanacy(size_t redunSeq)
+{
+	runInfo.redundantSequences = redunSeq;
+	runInfo.redundantFPR = calcRedunancyFPR(runInfo.size, runInfo.numEntries,
+			hashNum, redunSeq);
+}
+
 /*
  * Prints out INI format file
  */
+//Todo: research better method of outputting INI format file
 void BloomFilterInfo::printInfoFile(const string &fileName) const
 {
 
 	//calcuate actual FPR
-	float maxFPR = calcApproxFPR(runInfo.size, runInfo.numEntries,
+	float maxFPR = calcApproxFPR(runInfo.size,
+			runInfo.numEntries - runInfo.redundantSequences,
 			runInfo.seeds.size());
 
 	//cannot output unless runtime values set
@@ -90,7 +117,8 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const
 	//runtime determined options
 	output << "\n\n[runtime_options]\nsize=" << runInfo.size << "\nnum_entries="
 			<< runInfo.numEntries << "\napproximate_false_positive_rate="
-			<< maxFPR << "\n";
+			<< maxFPR << "\nredundant_sequences=" << runInfo.redundantSequences
+			<< "\nredundant_fpr=" << runInfo.redundantFPR << "\n";
 	//print out hash functions as a list
 
 	output << getSeedHashSigniture();
@@ -161,6 +189,11 @@ const string &BloomFilterInfo::getFilterID() const
 	return filterID;
 }
 
+const double &BloomFilterInfo::getRedunancyFPR() const
+{
+	return runInfo.redundantFPR;
+}
+
 const vector<string> BloomFilterInfo::convertSeqSrcString(
 		string const &seqSrcStr) const
 {
@@ -220,14 +253,30 @@ const vector<size_t> BloomFilterInfo::convertSeedString(
 
 //Private functions
 /*
- * Value uses approximated FPR formula
+ * Calculate FPR based on hash functions, size and number of entries
+ * see http://en.wikipedia.org/wiki/Bloom_filter
  */
-const float BloomFilterInfo::calcApproxFPR(size_t size, size_t numEntr,
+const double BloomFilterInfo::calcApproxFPR(size_t size, size_t numEntr,
 		uint16_t hashFunctNum) const
 {
 	return pow(
-			1.0 - exp(-double(hashFunctNum) * double(numEntr) / double(size)),
+			1.0 - pow(1.0 - 1.0 / double(size), double(numEntr) * hashFunctNum),
 			hashFunctNum);
+}
+
+/*
+ * Calculates redundancy FPR to correct for errors in the number of
+ * redundant sequences.
+ */
+const double BloomFilterInfo::calcRedunancyFPR(size_t size, size_t numEntr,
+		uint16_t hashFunctNum, size_t redundantSeqs) const
+{
+	double total = log(calcApproxFPR(size, 1, hashFunctNum));
+	size_t trueEntries = numEntr - redundantSeqs;
+	for (size_t i = 2; i < trueEntries; ++i) {
+		total = log(exp(total) + calcApproxFPR(size, i, hashFunctNum));
+	}
+	return exp(total) / trueEntries;
 }
 
 /*

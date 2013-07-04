@@ -31,7 +31,7 @@ void printVersion()
 void printHelpDialog()
 {
 	static const char dialog[] =
-			"Usage: BioBloomMaker -p [FILTERID] [OPTION]... [FILE]...\n"
+			"Usage: biobloommaker -p [FILTERID] [OPTION]... [FILE]...\n"
 					"Creates a bf and txt file from a list of fasta files. The input sequences are\n"
 					"cut into a k-mers with a sliding window and their hash signatures are inserted\n"
 					"into a bloom filter.\n"
@@ -190,7 +190,9 @@ int main(int argc, char *argv[])
 	filterGen.setFilterSize(filterSize);
 
 	//output filter
-	filterGen.generate(outputDir + filterPrefix + ".bf");
+	size_t redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
+	info.setReduanacy(redundNum);
+
 	//set hash function info
 	vector<string> hashFunctions = filterGen.getHashFuncNames();
 
@@ -198,9 +200,19 @@ int main(int argc, char *argv[])
 		info.addHashFunction(hashFunctions[i], seeds[i]);
 	}
 
+	//code for redundancy checking
+	//calcuate redundancy rate
+	double redunRate = double(redundNum) / double(entryNum) - info.getRedunancyFPR();
+	if( redunRate > 0.2)
+	{
+		cerr << "Redunancy Rate is approximately: " <<  redunRate << endl;
+		cerr << "Consider checking your files for duplicate sequences and adjusting them accordingly." << endl;
+		cerr << "High redundancy will cause overestimation of filter sizes used." << endl;
+	}
+
 	//output info
 	info.printInfoFile(outputDir + filterPrefix + ".txt");
-	cerr << "Filter Creation Complete" << endl;
+	cerr << "Filter Creation Complete." << endl;
 
 	return 0;
 }
