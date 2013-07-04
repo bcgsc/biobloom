@@ -186,8 +186,8 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	readStatusOutput.close();
 
 	//close sorting files
-	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j = outputFiles.begin();
-			j != outputFiles.end(); ++j)
+	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j =
+			outputFiles.begin(); j != outputFiles.end(); ++j)
 	{
 		j->second->close();
 	}
@@ -416,8 +416,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	readStatusOutput.close();
 
 	//close sorting files
-	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j = outputFiles.begin();
-			j != outputFiles.end(); ++j)
+	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j =
+			outputFiles.begin(); j != outputFiles.end(); ++j)
 	{
 		j->second->close();
 	}
@@ -671,8 +671,8 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	}
 
 	//close sorting files
-	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j = outputFiles.begin();
-			j != outputFiles.end(); ++j)
+	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j =
+			outputFiles.begin(); j != outputFiles.end(); ++j)
 	{
 		j->second->close();
 	}
