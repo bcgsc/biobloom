@@ -22,6 +22,7 @@ Dynamicofstream::Dynamicofstream(const string &filename)
 		filestream = new ofstream(filename.c_str(), ios::out);
 		gz = false;
 	}
+	assert(filestream->good());
 }
 
 ostream& Dynamicofstream::operator <<(const string& o)
@@ -38,6 +39,7 @@ ostream& Dynamicofstream::operator <<(uint16_t o)
 
 
 void Dynamicofstream::close(){
+	assert(filestream->good());
 	filestream->flush();
 	if (gz){
 		ogzstream *temp = dynamic_cast<ogzstream*>(filestream);
