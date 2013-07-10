@@ -845,7 +845,7 @@ const string BioBloomClassifier::getReadSummaryHeader(
 				i != idsInFilter.end(); ++i)
 		{
 			readStatusOutput << "\t" << *i << "_"
-					<< (*(infoFiles[*j].front())).getKmerSize();
+					<< (*(infoFiles[*j].front())).getKmerSize() << "_" << tileModifier;
 		}
 	}
 	readStatusOutput << "\n";
