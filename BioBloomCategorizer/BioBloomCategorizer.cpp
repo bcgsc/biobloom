@@ -64,38 +64,39 @@ void printHelpDialog()
 {
 	const char dialog[] =
 			"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
-					"Categorize Sequences. The input format may be FASTA, FASTQ, qseq,\n"
-					"export, SAM or BAM format and compressed with gz, bz2 or xz and\n"
-					"may be tarred.\n"
+					"Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or\n"
+					"BAM format and compressed with gz, bz2 or xz and may be tarred.\n"
 					"\n"
-					"  -p, --prefix=N         Output prefix to use. Otherwise will output\n"
-					"                         to current directory.\n"
-					"  -t, --min_hit_thr=N    Minimum Hit Threshold Value. The absolute\n"
-					"                         hit number needed for a hit to be considered\n"
-					"                         a match. [2]\n"
-					"  -m, --min_hit_pro=N    Minimum Hit Proportion Threshold Value. The\n"
-					"                         Proportion needed for a hit to be considered\n"
-					"                         a match. [0.2]\n"
-					"  -f, --filter_files=N   List of filter files to use. Required option.\n"
-					"                         Eg. \"filter1.bf filter2.bf\"\n"
-					"  -o, --output='fq','fa' Output categorized reads in Fasta/Fastq files.\n"
-					"  -e, --paired_mode      Uses paired-end information. For BAM or\n"
-					"                         SAM file if they are poorly ordered, memory\n"
-					"                         usage will be much larger than normal.\n"
-					"                         Sorting by read name may be needed.\n"
-					"  -c, --counts=N         Outputs summary of raw counts of user\n"
-					"                         specified hit counts to each filter of each\n"
-					"                         read or read-pair. [0]\n"
+					"  -p, --prefix=N         Output prefix to use. Otherwise will output to current\n"
+					"                         directory.\n"
+					"  -f, --filter_files=N   List of filter files to use. Required option. \n"
+					"                         eg. \"filter1.bf filter2.bf\"\n"
+					"  -e, --paired_mode      Uses paired-end information. For BAM or SAM file if\n"
+					"                         they are poorly ordered, memory usage will be much\n"
+					"                         larger than normal. Sorting by read name may be needed.\n"
+					"  -c, --counts=N         Outputs summary of raw counts of user specified hit\n"
+					"                         counts to each filter of each read or read-pair. [0]\n"
 					"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
-					"  -r, --redundant=N      The number of redundant tiles to use. Lowers\n"
-					"                         effective false positive rate at the cost of\n"
-					"                         time. Also causes effective kmer length to\n"
-					"                         increase by N. [0]\n"
+					"      --fa               Output categorized reads in Fasta files.\n"
+					"      --fq               Output categorized reads in Fastq files.\n"
 					"      --chastity         Discard and do not evaluate unchaste reads.\n"
 					"      --no-chastity      Do not discard unchaste reads. [default]\n"
 					"  -v  --version          Display version information.\n"
 					"  -h, --help             Display this dialog.\n"
 					"\n"
+					"Advanced options:\n"
+					"  -t, --min_hit_thr=N    Minimum Hit Threshold Value. The absolute hit number\n"
+					"                         needed for a hit to be considered a match. [2]\n"
+					"  -m, --min_hit_pro=N    Minimum Hit Proportion Threshold Value. The proportion\n"
+					"                         needed for a hit to be considered a match. [0.2]\n"
+					"  -r, --redundant=N      The number of redundant tiles to use. Lowers effective\n"
+					"                         false positive rate at the cost of time. Also causes\n"
+					"                         effective kmer length to increase by N. [0]\n"
+					"Option presets:\n"
+					"      --default          Run categorizer assuming default presets (ie. no\n"
+					"                         advanced options toggled) [default]\n"
+					"      --low_mem          Run categorizer assuming low memory presets.\n"
+					"      --minimum_fpr      Run categorizer assuming minimized false rate presets.\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
@@ -108,18 +109,31 @@ int main(int argc, char *argv[])
 	//switch statement variable
 	int c;
 
+	//control variables
+	bool die = false;
+
 	//command line variables
 	string rawInputFiles = "";
 	string outputPrefix = "";
 	string filtersFile = "";
-	size_t minHit = 2;
-	double percentHit = 0.2;
 	string outputReadType = "";
-	bool die = false;
 	bool paired = false;
 	size_t rawCounts = 0;
+
+	bool fastq = false;
+	bool fasta = false;
 	string filePostfix = "";
+
+	//advanced options
+	size_t minHit = 2;
+	double percentHit = 0.2;
 	uint8_t tileModifier = 0;
+
+	//preset options
+	bool defaultSettings = false;
+	bool lowMem = false;
+	bool minimumFPR = false;
+	string presetType = "default";
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -127,7 +141,6 @@ int main(int argc, char *argv[])
 					"prefix", optional_argument, NULL, 'p' }, {
 					"min_hit_thr", optional_argument, NULL, 't' }, {
 					"min_hit_pro", optional_argument, NULL, 'm' }, {
-					"output", required_argument, NULL, 'o' }, {
 					"filter_files", required_argument, NULL, 'f' }, {
 					"paired_mode", no_argument, NULL, 'e' }, {
 					"counts", no_argument, NULL, 'c' }, {
@@ -136,13 +149,38 @@ int main(int argc, char *argv[])
 					"redundant", required_argument, NULL, 'r' }, {
 					"chastity", no_argument, &opt::chastityFilter, 1 }, {
 					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
+					"fq", no_argument, fastq, 0 }, {
+					"fa", no_argument, fasta, 1 }, {
+					"default", no_argument, defaultSettings, 0 }, {
+					"low_mem", no_argument, lowMem, 1 }, {
+					"minimum_fpr", no_argument, minimumFPR, 0 }, {
 					"version", no_argument, NULL, 0 }, {
 					NULL, 0, NULL, 0 } };
+
+	//check if only one preset was set
+	if(defaultSettings ^ minimumFPR ^ lowMem)
+	{
+		cerr << "Error: Cannot mix option presets"<< endl;
+		exit(1);
+	}
+
+	//set presets
+
+	if(lowMem)
+	{
+		tileModifier = 1;
+		presetType = "low_mem";
+	}
+	else if(minimumFPR)
+	{
+		tileModifier = 1;
+		presetType = "minimum_fpr";
+	}
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:t:o:m:p:hec:gr:v", long_options,
+	while ((c = getopt_long(argc, argv, "f:t:m:p:hec:gr:v", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -157,6 +195,7 @@ int main(int argc, char *argv[])
 				cerr << "Error -m cannot be greater than 1 " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
+			presetType = "custom";
 			break;
 		}
 		case 't': {
@@ -165,6 +204,7 @@ int main(int argc, char *argv[])
 				cerr << "Error - Invalid parameter! t: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
+			presetType = "custom";
 			break;
 		}
 		case 'f': {
@@ -179,20 +219,6 @@ int main(int argc, char *argv[])
 			printHelpDialog();
 			break;
 		}
-		case 'o': {
-			stringstream convert(optarg);
-			if (!(convert >> outputReadType)) {
-				cerr << "Error - Invalid parameter! o: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			if (!(outputReadType == "fa" || outputReadType == "fq")) {
-				cerr
-						<< "Error - File output type must be fq or fa. Option given:"
-						<< optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
 		case 'e': {
 			paired = true;
 			break;
@@ -203,6 +229,7 @@ int main(int argc, char *argv[])
 				cerr << "Error - Invalid parameter! r: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
+			presetType = "custom";
 			break;
 		}
 		case 'c': {
@@ -276,6 +303,13 @@ int main(int argc, char *argv[])
 		folderCheck(tempStr);
 	}
 
+	//set file output type
+	if (fastq) {
+		outputReadType = "fq";
+	} else if (fasta) {
+		outputReadType = "fa";
+	}
+
 	//load filters
 	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts,
 			outputPrefix, filePostfix, tileModifier);
@@ -287,7 +321,8 @@ int main(int argc, char *argv[])
 			if (pairedBAMSAM) {
 				BBC.filterPairBAMPrint(inputFiles[0], outputReadType);
 			} else {
-				BBC.filterPairPrint(inputFiles[0], inputFiles[1], outputReadType);
+				BBC.filterPairPrint(inputFiles[0], inputFiles[1],
+						outputReadType);
 			}
 		} else {
 			if (pairedBAMSAM) {

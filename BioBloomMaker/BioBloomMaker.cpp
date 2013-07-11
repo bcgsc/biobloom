@@ -36,14 +36,20 @@ void printHelpDialog()
 					"cut into a k-mers with a sliding window and their hash signatures are inserted\n"
 					"into a bloom filter.\n"
 					"\n"
-					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.02]\n"
 					"  -p, --file_prefix=N    Filter prefix and filter ID. Required option.\n"
 					"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
+					"  -h, --help             Display this dialog.\n"
+					"Advanced options:\n"
+					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.02]\n"
 					"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
 					"                         of automatically using calculated optimal number of\n"
 					"                         functions.\n"
 					"  -k, --kmer_size        K-mer size to use to create filter. [25]\n"
-					"  -h, --help             Display this dialog.\n"
+					"Option presets:\n"
+					"      --default          Run categorizer assuming default presets (ie. no\n"
+					"                         advanced options toggled) [default]\n"
+					"      --low_mem          Run categorizer assuming low memory presets.\n"
+					"      --minimum_fpr      Run categorizer assuming minimized false rate presets.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
@@ -65,6 +71,12 @@ int main(int argc, char *argv[])
 	uint16_t kmerSize = 25;
 	uint16_t hashNum = 0;
 
+	//preset options
+	bool defaultSettings = false;
+	bool lowMem = false;
+	bool minimumFPR = false;
+	string presetType = "default";
+
 	//long form arguments
 	//each option format { "optionName", necessary option or not, I have no idea, 'symbol'}
 	static struct option long_options[] = {
@@ -74,8 +86,31 @@ int main(int argc, char *argv[])
 					"output_dir", optional_argument, NULL, 'o' }, {
 					"hash_num", 0, NULL, 'g' }, {
 					"kmer_size", 1, NULL, 'k' }, {
+					"default", no_argument, defaultSettings, 0 }, {
+					"low_mem", no_argument, lowMem, 1 }, {
+					"minimum_fpr", no_argument, minimumFPR, 0 }, {
 					"help", no_argument, NULL, 'h' }, {
 					NULL, 0, NULL, 0 } };
+
+	//check if only one preset was set
+	if(defaultSettings ^ minimumFPR ^ lowMem)
+	{
+		cerr << "Error: Cannot mix option presets"<< endl;
+		exit(1);
+	}
+
+	//set presets
+	if(lowMem)
+	{
+		fpr = 0.14;
+		kmerSize = 24;
+		presetType = "low_mem";
+	}
+	else if(minimumFPR)
+	{
+		kmerSize = 24;
+		presetType = "minimum_fpr";
+	}
 
 	//actual checking step
 	int option_index = 0;
@@ -94,6 +129,7 @@ int main(int argc, char *argv[])
 				cerr << "Error -f cannot be greater than 1 " << optarg << endl;
 				return 0;
 			}
+			presetType = "custom";
 			break;
 		}
 		case 'p': {
@@ -114,6 +150,7 @@ int main(int argc, char *argv[])
 						<< optarg << endl;
 				return 0;
 			}
+			presetType = "custom";
 			break;
 		}
 		case 'g': {
@@ -123,6 +160,7 @@ int main(int argc, char *argv[])
 						<< optarg << endl;
 				return 0;
 			}
+			presetType = "custom";
 			break;
 		}
 		case 'h': {
@@ -202,12 +240,16 @@ int main(int argc, char *argv[])
 
 	//code for redundancy checking
 	//calcuate redundancy rate
-	double redunRate = double(redundNum) / double(entryNum) - info.getRedunancyFPR();
-	if( redunRate > 0.2)
-	{
-		cerr << "Redunancy Rate is approximately: " <<  redunRate << endl;
-		cerr << "Consider checking your files for duplicate sequences and adjusting them accordingly." << endl;
-		cerr << "High redundancy will cause overestimation of filter sizes used." << endl;
+	double redunRate = double(redundNum) / double(entryNum)
+			- info.getRedunancyFPR();
+	if (redunRate > 0.2) {
+		cerr << "Redunancy Rate is approximately: " << redunRate << endl;
+		cerr
+				<< "Consider checking your files for duplicate sequences and adjusting them accordingly."
+				<< endl;
+		cerr
+				<< "High redundancy will cause overestimation of filter sizes used."
+				<< endl;
 	}
 
 	//output info
