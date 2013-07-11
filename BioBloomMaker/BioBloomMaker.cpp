@@ -217,7 +217,7 @@ int main(int argc, char *argv[])
 	}
 
 	BloomFilterInfo info(filterPrefix, kmerSize, fpr, entryNum, inputFiles,
-			hashNum);
+			hashNum, presetType);
 
 	//get calculated size of Filter
 	size_t filterSize = info.getCalcuatedFilterSize();

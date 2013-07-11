@@ -15,9 +15,9 @@
 
 BloomFilterInfo::BloomFilterInfo(string const &filterID, uint16_t kmerSize,
 		float desiredFPR, size_t numEntries, const vector<string> &seqSrcs,
-		uint16_t hashNum) :
+		uint16_t hashNum, const string &optionType) :
 		filterID(filterID), kmerSize(kmerSize), desiredFPR(desiredFPR), seqSrcs(
-				seqSrcs), hashNum(hashNum)
+				seqSrcs), hashNum(hashNum), optionType(optionType)
 {
 	runInfo.numEntries = numEntries;
 	runInfo.size = calcOptimalSize(numEntries, desiredFPR, hashNum);
@@ -45,10 +45,12 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 	//Compensation for legacy code
 	//TODO: if removed must notify users that old version cannot be used
 	try {
+		optionType = pt.get<string>("user_input_options.option_type");
 		runInfo.redundantSequences = pt.get<size_t>(
 				"runtime_options.redundant_sequences");
 		runInfo.redundantFPR = pt.get<size_t>("runtime_options.redundant_fpr");
 	} catch (boost::property_tree::ptree_error &e) {
+		optionType = "custom";
 		runInfo.redundantSequences = 0;
 		runInfo.redundantFPR = calcRedunancyFPR(runInfo.size,
 				runInfo.numEntries, hashNum, runInfo.redundantSequences);
@@ -102,7 +104,7 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const
 	//user specified
 	output << "[user_input_options]\nfilter_id=" << filterID << "\nkmer_size="
 			<< kmerSize << "\ndesired_false_positve_rate=" << desiredFPR
-			<< "\nsequence_sources=";
+			<< "\noption_type=" << optionType << "\nsequence_sources=";
 	//print out sources as a list
 	size_t tempCounter = 0;
 	for (vector<string>::const_iterator it = seqSrcs.begin();
@@ -115,8 +117,9 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const
 	//runtime determined options
 	output << "\n\n[runtime_options]\nsize=" << runInfo.size << "\nnum_entries="
 			<< runInfo.numEntries << "\napproximate_false_positive_rate="
-			<< runInfo.FPR << "\nredundant_sequences=" << runInfo.redundantSequences
-			<< "\nredundant_fpr=" << runInfo.redundantFPR << "\n";
+			<< runInfo.FPR << "\nredundant_sequences="
+			<< runInfo.redundantSequences << "\nredundant_fpr="
+			<< runInfo.redundantFPR << "\n";
 	//print out hash functions as a list
 
 	output << getSeedHashSigniture();
