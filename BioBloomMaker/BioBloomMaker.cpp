@@ -39,13 +39,13 @@ void printHelpDialog()
 					"  -p, --file_prefix=N    Filter prefix and filter ID. Required option.\n"
 					"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
 					"  -h, --help             Display this dialog.\n"
-					"Advanced options:\n"
+					"\nAdvanced options:\n"
 					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.02]\n"
 					"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
 					"                         of automatically using calculated optimal number of\n"
 					"                         functions.\n"
 					"  -k, --kmer_size        K-mer size to use to create filter. [25]\n"
-					"Option presets:\n"
+					"\nOption presets:\n"
 					"      --default          Run categorizer assuming default presets (ie. no\n"
 					"                         advanced options toggled) [default]\n"
 					"      --low_mem          Run categorizer assuming low memory presets.\n"
@@ -72,42 +72,39 @@ int main(int argc, char *argv[])
 	uint16_t hashNum = 0;
 
 	//preset options
-	bool defaultSettings = false;
-	bool lowMem = false;
-	bool minimumFPR = false;
+	int defaultSettings = 0;
+	int lowMem = 0;
+	int minimumFPR = 0;
 	string presetType = "default";
 
 	//long form arguments
-	//each option format { "optionName", necessary option or not, I have no idea, 'symbol'}
 	static struct option long_options[] = {
 			{
 					"fal_pos_rate", required_argument, NULL, 'f' }, {
 					"file_prefix", required_argument, NULL, 'p' }, {
-					"output_dir", optional_argument, NULL, 'o' }, {
-					"hash_num", 0, NULL, 'g' }, {
-					"kmer_size", 1, NULL, 'k' }, {
-					"default", no_argument, defaultSettings, 0 }, {
-					"low_mem", no_argument, lowMem, 1 }, {
-					"minimum_fpr", no_argument, minimumFPR, 0 }, {
+					"output_dir", required_argument, NULL, 'o' }, {
+					"hash_num", required_argument, NULL, 'g' }, {
+					"kmer_size", required_argument, NULL, 'k' }, {
+					"default", no_argument, &defaultSettings, 0 }, {
+					"low_mem", no_argument, &lowMem, 0 }, {
+					"minimum_fpr", no_argument, &minimumFPR, 0 }, {
 					"help", no_argument, NULL, 'h' }, {
 					NULL, 0, NULL, 0 } };
 
 	//check if only one preset was set
-	if(defaultSettings ^ minimumFPR ^ lowMem)
-	{
-		cerr << "Error: Cannot mix option presets"<< endl;
-		exit(1);
+	if (defaultSettings || minimumFPR || lowMem) {
+		if (!(defaultSettings ^ minimumFPR ^ lowMem)) {
+			cerr << "Error: Cannot mix option presets" << endl;
+			exit(1);
+		}
 	}
 
 	//set presets
-	if(lowMem)
-	{
+	if (lowMem) {
 		fpr = 0.14;
 		kmerSize = 24;
 		presetType = "low_mem";
-	}
-	else if(minimumFPR)
-	{
+	} else if (minimumFPR) {
 		kmerSize = 24;
 		presetType = "minimum_fpr";
 	}

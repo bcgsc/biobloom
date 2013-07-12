@@ -83,16 +83,15 @@ void printHelpDialog()
 					"      --no-chastity      Do not discard unchaste reads. [default]\n"
 					"  -v  --version          Display version information.\n"
 					"  -h, --help             Display this dialog.\n"
-					"\n"
-					"Advanced options:\n"
+					"\nAdvanced options:\n"
 					"  -t, --min_hit_thr=N    Minimum Hit Threshold Value. The absolute hit number\n"
 					"                         needed for a hit to be considered a match. [2]\n"
 					"  -m, --min_hit_pro=N    Minimum Hit Proportion Threshold Value. The proportion\n"
 					"                         needed for a hit to be considered a match. [0.2]\n"
 					"  -r, --redundant=N      The number of redundant tiles to use. Lowers effective\n"
-					"                         false positive rate at the cost of time. Also causes\n"
-					"                         effective kmer length to increase by N. [0]\n"
-					"Option presets:\n"
+					"                         false positive rate at the cost of increasing the\n"
+					"                         effective kmer length by N. [0]\n"
+					"\nOption presets:\n"
 					"      --default          Run categorizer assuming default presets (ie. no\n"
 					"                         advanced options toggled) [default]\n"
 					"      --low_mem          Run categorizer assuming low memory presets.\n"
@@ -120,8 +119,8 @@ int main(int argc, char *argv[])
 	bool paired = false;
 	size_t rawCounts = 0;
 
-	bool fastq = false;
-	bool fasta = false;
+	int fastq = 0;
+	int fasta = 0;
 	string filePostfix = "";
 
 	//advanced options
@@ -130,9 +129,9 @@ int main(int argc, char *argv[])
 	uint8_t tileModifier = 0;
 
 	//preset options
-	bool defaultSettings = false;
-	bool lowMem = false;
-	bool minimumFPR = false;
+	int defaultSettings = 0;
+	int lowMem = 0;
+	int minimumFPR = 0;
 	string presetType = "default";
 
 	//long form arguments
@@ -149,18 +148,20 @@ int main(int argc, char *argv[])
 					"redundant", required_argument, NULL, 'r' }, {
 					"chastity", no_argument, &opt::chastityFilter, 1 }, {
 					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
-					"fq", no_argument, fastq, 0 }, {
-					"fa", no_argument, fasta, 1 }, {
-					"default", no_argument, defaultSettings, 0 }, {
-					"low_mem", no_argument, lowMem, 1 }, {
-					"minimum_fpr", no_argument, minimumFPR, 0 }, {
+					"fq", no_argument, &fastq, 0 }, {
+					"fa", no_argument, &fasta, 0 }, {
+					"default", no_argument, &defaultSettings, 0 }, {
+					"low_mem", no_argument, &lowMem, 0 }, {
+					"minimum_fpr", no_argument, &minimumFPR, 0 }, {
 					"version", no_argument, NULL, 0 }, {
 					NULL, 0, NULL, 0 } };
 
 	//check if only one preset was set
-	if (defaultSettings ^ minimumFPR ^ lowMem) {
-		cerr << "Error: Cannot mix option presets" << endl;
-		exit(1);
+	if (defaultSettings || minimumFPR || lowMem) {
+		if (!(defaultSettings ^ minimumFPR ^ lowMem)) {
+			cerr << "Error: Cannot mix option presets" << endl;
+			exit(1);
+		}
 	}
 
 	//set presets
