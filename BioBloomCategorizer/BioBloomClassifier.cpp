@@ -689,6 +689,33 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 }
 
 /*
+ * Checks each filter's preset status and compares it to string given
+ * If even one does do not match, false is returned
+ * Also prints out warnings for the user
+ */
+const bool BioBloomClassifier::checkFilterPresetType(const string &optionType)
+{
+	bool status = true;
+	//get filterIDs to iterate through has in a consistent order
+	for (vector<string>::const_iterator j = hashSigs.begin();
+			j != hashSigs.end(); ++j)
+	{
+		for (vector<shared_ptr<BloomFilterInfo> >::const_iterator i =
+				infoFiles.at(*j).begin(); i != infoFiles.at(*j).end(); ++i)
+		{
+			if (optionType != (*i)->getPresetType()) {
+				cerr << "Warning: biobloomcategorizer's option preset: " << optionType << " does not match filter: " <<
+						(*i)->getFilterID() << "'s option preset of: " << (*i)->getPresetType() << endl;
+				status = false;
+			}
+		}
+	}
+	return status;
+}
+
+//helper methods
+
+/*
  * Loads list of filters into memory
  * todo: Implement non-block I/O when loading multiple filters at once
  */
@@ -741,12 +768,10 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 	cerr << "Filter Loading Complete." << endl;
 }
 
-//helper methods
-
 /*
  * checks if file exists
  */
-bool BioBloomClassifier::fexists(const string &filename) const
+const bool BioBloomClassifier::fexists(const string &filename) const
 {
 	ifstream ifile(filename.c_str());
 	return ifile;
@@ -845,7 +870,8 @@ const string BioBloomClassifier::getReadSummaryHeader(
 				i != idsInFilter.end(); ++i)
 		{
 			readStatusOutput << "\t" << *i << "_"
-					<< (*(infoFiles[*j].front())).getKmerSize() << "_" << tileModifier;
+					<< (*(infoFiles[*j].front())).getKmerSize() << "_"
+					<< tileModifier;
 		}
 	}
 	readStatusOutput << "\n";

@@ -158,21 +158,17 @@ int main(int argc, char *argv[])
 					NULL, 0, NULL, 0 } };
 
 	//check if only one preset was set
-	if(defaultSettings ^ minimumFPR ^ lowMem)
-	{
-		cerr << "Error: Cannot mix option presets"<< endl;
+	if (defaultSettings ^ minimumFPR ^ lowMem) {
+		cerr << "Error: Cannot mix option presets" << endl;
 		exit(1);
 	}
 
 	//set presets
 
-	if(lowMem)
-	{
+	if (lowMem) {
 		tileModifier = 1;
 		presetType = "low_mem";
-	}
-	else if(minimumFPR)
-	{
+	} else if (minimumFPR) {
 		tileModifier = 1;
 		presetType = "minimum_fpr";
 	}
@@ -313,6 +309,15 @@ int main(int argc, char *argv[])
 	//load filters
 	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts,
 			outputPrefix, filePostfix, tileModifier);
+
+	//check filter preset type
+	if (presetType != "custom") {
+		if (!BBC.checkFilterPresetType(presetType)) {
+			cerr
+					<< "If you know what you are doing please ignore these warnings. Program will proceed."
+					<< endl;
+		}
+	}
 
 	//filtering step
 	//create directory structure if it does not exist

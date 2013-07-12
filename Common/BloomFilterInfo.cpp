@@ -190,6 +190,11 @@ const string &BloomFilterInfo::getFilterID() const
 	return filterID;
 }
 
+const string &BloomFilterInfo::getPresetType() const
+{
+	return optionType;
+}
+
 double BloomFilterInfo::getRedunancyFPR() const
 {
 	return runInfo.redundantFPR;

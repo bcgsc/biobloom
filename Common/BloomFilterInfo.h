@@ -34,6 +34,7 @@ public:
 	const vector<size_t> &getSeedValues() const;
 	const string getSeedHashSigniture() const;
 	const string &getFilterID() const;
+	const string &getPresetType() const;
 	double getRedunancyFPR() const;
 	double getFPR() const;
 

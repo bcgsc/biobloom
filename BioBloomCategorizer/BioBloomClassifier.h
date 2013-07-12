@@ -34,10 +34,13 @@ public:
 			const string &outputType);
 	void filterPairBAM(const string &file);
 	void filterPairBAMPrint(const string &file, const string &outputType);
+	const bool checkFilterPresetType(const string &optionType);
+
 	virtual ~BioBloomClassifier();
+
 private:
 	void loadFilters(const vector<string> &filterFilePaths);
-	bool fexists(const string &filename) const;
+	const bool fexists(const string &filename) const;
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, size_t> &hits, uint8_t tileModifier);
 	const string getReadSummaryHeader(const vector<string> &hashSigs);
