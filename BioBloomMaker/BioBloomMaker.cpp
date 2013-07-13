@@ -46,10 +46,12 @@ void printHelpDialog()
 					"                         functions.\n"
 					"  -k, --kmer_size        K-mer size to use to create filter. [25]\n"
 					"\nOption presets:\n"
-					"      --default          Run categorizer assuming default presets (ie. no\n"
-					"                         advanced options toggled) [default]\n"
-					"      --low_mem          Run categorizer assuming low memory presets.\n"
-					"      --minimum_fpr      Run categorizer assuming minimized false rate presets.\n"
+					"      --default          Create filter assuming default presets (ie. no advanced\n"
+					"                         options toggled) [default]\n"
+					"      --low_mem          Create filter with presets designed for lower memory.\n"
+					"                         usage"
+					"      --minimum_fpr      Create filter with presets designed for minimizing the\n"
+					"                         false positive rate.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
