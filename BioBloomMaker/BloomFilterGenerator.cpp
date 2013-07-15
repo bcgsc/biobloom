@@ -151,7 +151,7 @@ const uint16_t BloomFilterGenerator::calcOptiHashNum(size_t size,
  */
 const uint16_t BloomFilterGenerator::calcOptiHashNum(float fpr) const
 {
-	return uint16_t(-log(fpr) / log(2));
+	return uint16_t(-log(fpr) / log(2) + 0.5);
 }
 
 //destructor
