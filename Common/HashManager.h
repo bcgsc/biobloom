@@ -4,6 +4,7 @@
  *  Created on: Aug 10, 2012
  *      Author: cjustin
  */
+//@TODO: experiment with hash concepts by Adam Kirsch and Michael Mitzenmacher in Building a Better Bloom Filter
 
 #ifndef HASHMANAGER_H_
 #define HASHMANAGER_H_
