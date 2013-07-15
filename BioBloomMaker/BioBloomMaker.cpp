@@ -39,6 +39,7 @@ void printHelpDialog()
 					"  -p, --file_prefix=N    Filter prefix and filter ID. Required option.\n"
 					"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
 					"  -h, --help             Display this dialog.\n"
+					"  -v  --version          Display version information.\n"
 					"\nAdvanced options:\n"
 					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.02]\n"
 					"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"

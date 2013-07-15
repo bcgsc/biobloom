@@ -172,6 +172,7 @@ int main(int argc, char *argv[])
 		presetType = "low_mem";
 	} else if (minimumFPR) {
 		tileModifier = 1;
+		percentHit = 0.25;
 		presetType = "minimum_fpr";
 	}
 
