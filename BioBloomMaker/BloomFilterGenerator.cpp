@@ -143,7 +143,7 @@ const vector<string> BloomFilterGenerator::getHashFuncNames() const
 const uint16_t BloomFilterGenerator::calcOptiHashNum(size_t size,
 		size_t entries) const
 {
-	return uint16_t(((double) size / (double) entries) * log(2));
+	return uint16_t(((double) size / (double) entries) * log(2) + 0.5);
 }
 
 /*
