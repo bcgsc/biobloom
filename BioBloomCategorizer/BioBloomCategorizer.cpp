@@ -95,7 +95,7 @@ void printHelpDialog()
 					"      --default          Run categorizer assuming default presets (ie. no\n"
 					"                         advanced options toggled) [default]\n"
 					"      --low_mem          Run categorizer assuming low memory presets.\n"
-					"      --minimum_fpr      Run categorizer assuming minimized false positive rate\n"
+					"      --minimize_fpr      Run categorizer assuming minimized false positive rate\n"
 					"                         presets.\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 	//preset options
 	int defaultSettings = 0;
 	int lowMem = 0;
-	int minimumFPR = 0;
+	int minimize_fpr = 0;
 	string presetType = "default";
 
 	//long form arguments
@@ -153,13 +153,13 @@ int main(int argc, char *argv[])
 					"fa", no_argument, &fasta, 0 }, {
 					"default", no_argument, &defaultSettings, 0 }, {
 					"low_mem", no_argument, &lowMem, 0 }, {
-					"minimum_fpr", no_argument, &minimumFPR, 0 }, {
+					"minimize_fpr", no_argument, &minimize_fpr, 0 }, {
 					"version", no_argument, NULL, 0 }, {
 					NULL, 0, NULL, 0 } };
 
 	//check if only one preset was set
-	if (defaultSettings || minimumFPR || lowMem) {
-		if (!(defaultSettings ^ minimumFPR ^ lowMem)) {
+	if (defaultSettings || minimize_fpr || lowMem) {
+		if (!(defaultSettings ^ minimize_fpr ^ lowMem)) {
 			cerr << "Error: Cannot mix option presets" << endl;
 			exit(1);
 		}
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 	if (lowMem) {
 		tileModifier = 1;
 		presetType = "low_mem";
-	} else if (minimumFPR) {
+	} else if (minimize_fpr) {
 		tileModifier = 1;
 		percentHit = 0.25;
 		presetType = "minimum_fpr";

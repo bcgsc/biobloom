@@ -51,7 +51,7 @@ void printHelpDialog()
 					"                         options toggled) [default]\n"
 					"      --low_mem          Create filter with presets designed for lower memory.\n"
 					"                         usage"
-					"      --minimum_fpr      Create filter with presets designed for minimizing the\n"
+					"      --minimize_fpr      Create filter with presets designed for minimizing the\n"
 					"                         false positive rate.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 					"kmer_size", required_argument, NULL, 'k' }, {
 					"default", no_argument, &defaultSettings, 0 }, {
 					"low_mem", no_argument, &lowMem, 0 }, {
-					"minimum_fpr", no_argument, &minimumFPR, 0 }, {
+					"minimize_fpr", no_argument, &minimumFPR, 0 }, {
 					"help", no_argument, NULL, 'h' }, {
 					NULL, 0, NULL, 0 } };
 
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 		presetType = "low_mem";
 	} else if (minimumFPR) {
 		kmerSize = 24;
-		presetType = "minimum_fpr";
+		presetType = "minimize_fpr";
 	}
 
 	//actual checking step
