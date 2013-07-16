@@ -51,7 +51,7 @@ void printHelpDialog()
 					"                         options toggled) [default]\n"
 					"      --low_mem          Create filter with presets designed for lower memory.\n"
 					"                         usage"
-					"      --minimize_fpr      Create filter with presets designed for minimizing the\n"
+					"      --minimize_fpr     Create filter with presets designed for minimizing the\n"
 					"                         false positive rate.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";

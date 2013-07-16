@@ -95,7 +95,7 @@ void printHelpDialog()
 					"      --default          Run categorizer assuming default presets (ie. no\n"
 					"                         advanced options toggled) [default]\n"
 					"      --low_mem          Run categorizer assuming low memory presets.\n"
-					"      --minimize_fpr      Run categorizer assuming minimized false positive rate\n"
+					"      --minimize_fpr     Run categorizer assuming minimized false positive rate\n"
 					"                         presets.\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
