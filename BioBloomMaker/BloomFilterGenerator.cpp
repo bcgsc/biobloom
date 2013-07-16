@@ -139,19 +139,21 @@ const vector<string> BloomFilterGenerator::getHashFuncNames() const
  * Calculation will return optimal number of hash functions
  * to achieve lowest FPR for a given ratio of filter size and entries
  */
+//Note: the floor is take because in practice you want to calculate as few hash values as possible
 //NOTE: Not currently used.
 const uint16_t BloomFilterGenerator::calcOptiHashNum(size_t size,
 		size_t entries) const
 {
-	return uint16_t(((double) size / (double) entries) * log(2) + 0.5);
+	return uint16_t(((double) size / (double) entries) * log(2));
 }
 
 /*
  * Calculation assumes optimal ratio of bytes per entry given a fpr
  */
+//Note: Rounded down because in practice you want to calculate as few hash values as possible
 const uint16_t BloomFilterGenerator::calcOptiHashNum(float fpr) const
 {
-	return uint16_t(-log(fpr) / log(2) + 0.5);
+	return uint16_t(-log(fpr) / log(2));
 }
 
 //destructor
