@@ -66,18 +66,18 @@ void BloomFilter::initSize(size_t size)
 	filter = new char[sizeInBytes];
 }
 
-void BloomFilter::insert(string const &kmer)
+/*
+ * Accepts a list of precomputed hash values. Faster than rehashing each time.
+ */
+void BloomFilter::insert(vector<size_t> const &precomputed)
 {
-
-	const vector<size_t> &values = multiHasher.multiHash(kmer);
 	//iterates through hashed values adding it to the filter
 
-	for (vector<size_t>::const_iterator it = values.begin(); it != values.end(); ++it)
+	for (vector<size_t>::const_iterator it = precomputed.begin(); it != precomputed.end(); ++it)
 	{
 		size_t normalizedValue = *it % size;
 		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 				% bitsPerChar];
-
 	}
 }
 
@@ -97,11 +97,6 @@ void BloomFilter::storeFilter(string const &filterFilePath) const
 	}
 	assert(myFile.good());
 	myFile.close();
-}
-
-const bool BloomFilter::contains(string const &kmer)
-{
-	return contains(multiHasher.multiHash(kmer));
 }
 
 /*

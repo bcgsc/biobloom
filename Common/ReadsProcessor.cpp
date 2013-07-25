@@ -21,6 +21,41 @@ ReadsProcessor::ReadsProcessor(uint16_t windowSize) :
 	outputRev.resize(windowSize);
 }
 
+static const char b2C[256] = {
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //0
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //1
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //2
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //3
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 'A', 0xFF, 'C', 0xFF, 0xFF, 0xFF, 'G', //4 A C G
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 'T', 0xFF, 0xFF, 0xFF, //5 T
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 'A', 0xFF, 'C', 0xFF, 0xFF, 0xFF, 'G', //6 a c g
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 'T', 0xFF, 0xFF, 0xFF, //7 t
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //8
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //9
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //A
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //B
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //C
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //D
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //E
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //F
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+};
+
 /* Prepares DNA sequence for insertion into bloom filter by:
  * - Turning all lower-case sequences to upper-case
  * - Also looks into reverse compliment version and returns consistently
@@ -39,46 +74,14 @@ const string &ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 	// half the length of seq because after this point will be palindromic and is not worth checking
 	for (size_t index = position; outputIndex < halfKmerSize; ++index) {
 		//modify the forward
-		switch (sequence[index]) {
-		case 'A':
-		case 'a':
-			outputFwd[outputIndex] = 'A';
-			break;
-		case 'C':
-		case 'c':
-			outputFwd[outputIndex] = 'C';
-			break;
-		case 'G':
-		case 'g':
-			outputFwd[outputIndex] = 'G';
-			break;
-		case 'T':
-		case 't':
-			outputFwd[outputIndex] = 'T';
-			break;
-		default:
+
+		outputFwd[outputIndex] = b2C[sequence[index]];
+		if (outputFwd[outputIndex] == 0xFF) {
 			return emptyResult;
 		}
 
-		//modify the reverse
-		switch (sequence[revIndex]) {
-		case 'A':
-		case 'a':
-			outputRev[outputIndex] = 'T';
-			break;
-		case 'C':
-		case 'c':
-			outputRev[outputIndex] = 'G';
-			break;
-		case 'G':
-		case 'g':
-			outputRev[outputIndex] = 'C';
-			break;
-		case 'T':
-		case 't':
-			outputRev[outputIndex] = 'A';
-			break;
-		default:
+		outputRev[outputIndex] = b2C[sequence[revIndex]];
+		if (outputFwd[outputIndex] == 0xFF) {
 			return emptyResult;
 		}
 
@@ -89,24 +92,8 @@ const string &ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 			++index;
 			++outputIndex;
 			for (; outputIndex < kmerSize; ++index) {
-				switch (sequence[index]) {
-				case 'A':
-				case 'a':
-					outputFwd[outputIndex] = 'A';
-					break;
-				case 'C':
-				case 'c':
-					outputFwd[outputIndex] = 'C';
-					break;
-				case 'G':
-				case 'g':
-					outputFwd[outputIndex] = 'G';
-					break;
-				case 'T':
-				case 't':
-					outputFwd[outputIndex] = 'T';
-					break;
-				default:
+				outputFwd[outputIndex] = b2C[sequence[index]];
+				if (outputFwd[outputIndex] == 0xFF) {
 					return emptyResult;
 				}
 				++outputIndex;
@@ -119,24 +106,8 @@ const string &ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 			--revIndex;
 			++outputIndex;
 			for (; outputIndex < kmerSize; --revIndex) {
-				switch (sequence[revIndex]) {
-				case 'A':
-				case 'a':
-					outputRev[outputIndex] = 'T';
-					break;
-				case 'C':
-				case 'c':
-					outputRev[outputIndex] = 'G';
-					break;
-				case 'G':
-				case 'g':
-					outputRev[outputIndex] = 'C';
-					break;
-				case 'T':
-				case 't':
-					outputRev[outputIndex] = 'A';
-					break;
-				default:
+				outputRev[outputIndex] = b2C[sequence[revIndex]];
+				if (outputFwd[outputIndex] == 0xFF) {
 					return emptyResult;
 				}
 				++outputIndex;
@@ -149,136 +120,6 @@ const string &ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 	//palamdromic
 	return outputFwd;
 }
-
-//const string &ReadsProcessor::prepSeqAmbigPos(string const &sequence, vector<size_t> &ambigPos) {
-//
-//	size_t outputIndex = 0;
-//	size_t revIndex = kmerSize - 1;
-//
-//	// determines which compliment to use
-//	// parse through string converting and checking for lower-case and non ATCG characters
-//	// half the length of seq because after this point will be palindromic and is not worth checking
-//	for (size_t index = 0; outputIndex < halfKmerSize; ++index) {
-//		//modify the forward
-//		switch (sequence[index]) {
-//		case 'A':
-//		case 'a':
-//			outputFwd[outputIndex] = 'A';
-//			break;
-//		case 'C':
-//		case 'c':
-//			outputFwd[outputIndex] = 'C';
-//			break;
-//		case 'G':
-//		case 'g':
-//			outputFwd[outputIndex] = 'G';
-//			break;
-//		case 'T':
-//		case 't':
-//			outputFwd[outputIndex] = 'T';
-//			break;
-//		default:
-//			outputFwd[outputIndex] = 'N';
-//			ambigPos.push_back(outputIndex);
-//			break;
-//		}
-//
-//		//modify the reverse
-//		switch (sequence[revIndex]) {
-//		case 'A':
-//		case 'a':
-//			outputRev[outputIndex] = 'T';
-//			break;
-//		case 'C':
-//		case 'c':
-//			outputRev[outputIndex] = 'G';
-//			break;
-//		case 'G':
-//		case 'g':
-//			outputRev[outputIndex] = 'C';
-//			break;
-//		case 'T':
-//		case 't':
-//			outputRev[outputIndex] = 'A';
-//			break;
-//		default:
-//			outputFwd[outputIndex] = 'N';
-//			ambigPos.push_back(outputIndex);
-//			break;
-//		}
-//
-//		//compare and convert if not already established
-//		//forward is smaller
-//		if (outputFwd[outputIndex] < outputRev[outputIndex]) {
-//			//finish off sequence
-//			++index;
-//			++outputIndex;
-//			for (; outputIndex < kmerSize; ++index) {
-//				switch (sequence[index]) {
-//				case 'A':
-//				case 'a':
-//					outputFwd[outputIndex] = 'A';
-//					break;
-//				case 'C':
-//				case 'c':
-//					outputFwd[outputIndex] = 'C';
-//					break;
-//				case 'G':
-//				case 'g':
-//					outputFwd[outputIndex] = 'G';
-//					break;
-//				case 'T':
-//				case 't':
-//					outputFwd[outputIndex] = 'T';
-//					break;
-//				default:
-//					outputFwd[outputIndex] = 'N';
-//					ambigPos.push_back(outputIndex);
-//					break;
-//				}
-//				++outputIndex;
-//			}
-//			return outputFwd;
-//		}
-//		//reverse is smaller
-//		else if (outputFwd[outputIndex] > outputRev[outputIndex]) {
-//			//finish off sequence
-//			--revIndex;
-//			++outputIndex;
-//			for (; outputIndex < kmerSize; --revIndex) {
-//				switch (sequence[revIndex]) {
-//				case 'A':
-//				case 'a':
-//					outputRev[outputIndex] = 'T';
-//					break;
-//				case 'C':
-//				case 'c':
-//					outputRev[outputIndex] = 'G';
-//					break;
-//				case 'G':
-//				case 'g':
-//					outputRev[outputIndex] = 'C';
-//					break;
-//				case 'T':
-//				case 't':
-//					outputRev[outputIndex] = 'A';
-//					break;
-//				default:
-//					outputFwd[outputIndex] = 'N';
-//					ambigPos.push_back(outputIndex);
-//					break;
-//				}
-//				++outputIndex;
-//			}
-//			return outputRev;
-//		}
-//		++outputIndex;
-//		--revIndex;
-//		ambigPos.pop_back();
-//	}
-//	//palamdromic
-//	return outputFwd;
-//}
 
 ReadsProcessor::~ReadsProcessor() {
 }

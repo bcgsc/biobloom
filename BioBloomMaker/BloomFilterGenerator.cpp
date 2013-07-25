@@ -83,10 +83,11 @@ size_t BloomFilterGenerator::generate(string fileName)
 			while (parser.notEndOfSeqeunce()) {
 				const string &currentSeq = parser.getNextSeq();
 				if (!currentSeq.empty()) {
-					if (filter.contains(currentSeq)) {
+					const vector<size_t> &tempHash = multiHash.multiHash(currentSeq);
+					if (filter.contains(tempHash)) {
 						redundancy++;
 					} else {
-						filter.insert(currentSeq);
+						filter.insert(tempHash);
 					}
 				}
 			}

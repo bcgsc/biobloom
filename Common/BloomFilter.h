@@ -20,14 +20,19 @@ class BloomFilter {
 public:
 	//for generating a new filter
 	explicit BloomFilter(size_t filterSize, HashManager const &hashFns);
-	void insert(string const &kmer);
+	void insert(vector<size_t> const &precomputed);
+	void insert(string const &kmer){
+		insert(multiHasher.multiHash(kmer));
+	}
 
 	//for storing/restoring the filter
 	void storeFilter(string const &filterFilePath) const;
 	BloomFilter(size_t filterSize, string const &filterFilePath, HashManager const &hashFns);
 
-	const bool contains(string const &kmer);
 	const bool contains(vector<size_t> const &precomputed);
+	const bool contains(string const &kmer){
+		return contains(multiHasher.multiHash(kmer));
+	}
 
 	virtual ~BloomFilter();
 private:
