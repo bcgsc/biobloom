@@ -43,6 +43,8 @@ private:
 	const bool fexists(const string &filename) const;
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, size_t> &hits, uint8_t tileModifier);
+	void evaluateRead(const FastqRecord &rec, const string &hashSig,
+			unordered_map<string, size_t> &hits);
 	const string getReadSummaryHeader(const vector<string> &hashSigs);
 	void initHits(unordered_map<string, size_t> &hits);
 	const string getReadStatStr(string const &readID, size_t readLength,

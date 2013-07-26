@@ -57,7 +57,7 @@ const boost::unordered_map<string, bool> &MultiFilter::multiContains(
 	for (vector<string>::const_iterator it = tempFilters.begin();
 			it != tempFilters.end(); ++it)
 	{
-		tempResults[*it] = (filters[*it])->contains(hashResults);
+		tempResults[*it] = filters.at(*it)->contains(hashResults);
 	}
 
 	return tempResults;

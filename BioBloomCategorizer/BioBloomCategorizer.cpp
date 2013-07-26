@@ -149,8 +149,8 @@ int main(int argc, char *argv[])
 					"redundant", required_argument, NULL, 'r' }, {
 					"chastity", no_argument, &opt::chastityFilter, 1 }, {
 					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
-					"fq", no_argument, &fastq, 0 }, {
-					"fa", no_argument, &fasta, 0 }, {
+					"fq", no_argument, &fastq, 1 }, {
+					"fa", no_argument, &fasta, 1 }, {
 					"default", no_argument, &defaultSettings, 0 }, {
 					"low_mem", no_argument, &lowMem, 0 }, {
 					"minimize_fpr", no_argument, &minimize_fpr, 0 }, {
@@ -303,17 +303,22 @@ int main(int argc, char *argv[])
 	}
 
 	//set file output type
-	if (fastq) {
+	if (fastq && fasta) {
+		cerr
+				<< "Error: fasta (--fa) and fastq (--fq) outputs types cannot be both set"
+				<< endl;
+		exit(1);
+	} else if (fastq) {
 		outputReadType = "fq";
 	} else if (fasta) {
 		outputReadType = "fa";
 	}
 
-	//load filters
+//load filters
 	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts,
 			outputPrefix, filePostfix, tileModifier);
 
-	//check filter preset type
+//check filter preset type
 	if (presetType != "custom") {
 		if (!BBC.checkFilterPresetType(presetType)) {
 			cerr
@@ -322,8 +327,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	//filtering step
-	//create directory structure if it does not exist
+//filtering step
+//create directory structure if it does not exist
 	if (paired) {
 		if (outputReadType != "") {
 			if (pairedBAMSAM) {
