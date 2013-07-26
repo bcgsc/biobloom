@@ -104,7 +104,8 @@ void printHelpDialog()
 
 int main(int argc, char *argv[])
 {
-	opt::chastityFilter = false;
+	opt::chastityFilter = 0;
+	opt::trimMasked = 0;
 
 	//switch statement variable
 	int c;

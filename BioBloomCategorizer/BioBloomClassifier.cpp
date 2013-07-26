@@ -184,6 +184,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	cerr << "Filtering Start" << endl;
 
 	if (tileModifier == 0) {
+
 		for (vector<string>::const_iterator it = inputFiles.begin();
 				it != inputFiles.end(); ++it)
 		{
@@ -192,6 +193,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 			//hits results stored in hashmap of filternames and hits
 			unordered_map<string, size_t> hits(filterNum);
 			while (sequence >> rec) {
+
 				++totalReads;
 				if (totalReads % 1000000 == 0) {
 					cerr << "Currently Reading Read Number: " << totalReads
@@ -205,7 +207,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				for (vector<string>::const_iterator j = hashSigs.begin();
 						j != hashSigs.end(); ++j)
 				{
-					evaluateRead(rec, *j, hits, tileModifier);
+					evaluateRead(rec, *j, hits);
 				}
 
 				//print hit results to read status
@@ -1163,9 +1165,10 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 
 	ReadsProcessor proc(kmerSize);
 
-	uint8_t currentLoc = 0;
+	size_t currentLoc = 0;
 	//cut read into kmer size + tilemodifier given
 	while (rec.seq.length() >= currentLoc + kmerSize + tileModifier) {
+
 		unordered_map<string, bool> tempResults;
 		vector<string> filterIDs = idsInFilter;
 
