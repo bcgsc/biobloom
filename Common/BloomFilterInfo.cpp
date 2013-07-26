@@ -50,7 +50,7 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 				"runtime_options.redundant_sequences");
 		runInfo.redundantFPR = pt.get<size_t>("runtime_options.redundant_fpr");
 	} catch (boost::property_tree::ptree_error &e) {
-		optionType = "custom";
+		optionType = "legacy";
 		runInfo.redundantSequences = 0;
 		runInfo.redundantFPR = calcRedunancyFPR(runInfo.size,
 				runInfo.numEntries, hashNum, runInfo.redundantSequences);
