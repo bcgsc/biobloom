@@ -705,7 +705,7 @@ const bool BioBloomClassifier::checkFilterPresetType(const string &optionType)
 		{
 			if (optionType != (*i)->getPresetType()) {
 				cerr << "Warning: biobloomcategorizer's option preset \"" << optionType << "\" does not match filter \"" <<
-						(*i)->getFilterID() << "\" option preset of  \"" << (*i)->getPresetType() << "\"" << endl;
+						(*i)->getFilterID() << "\" option preset of \"" << (*i)->getPresetType() << "\"" << endl;
 				status = false;
 			}
 		}
