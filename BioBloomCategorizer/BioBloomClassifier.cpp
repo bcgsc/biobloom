@@ -704,8 +704,8 @@ const bool BioBloomClassifier::checkFilterPresetType(const string &optionType)
 				infoFiles.at(*j).begin(); i != infoFiles.at(*j).end(); ++i)
 		{
 			if (optionType != (*i)->getPresetType()) {
-				cerr << "Warning: biobloomcategorizer's option preset: " << optionType << " does not match filter: " <<
-						(*i)->getFilterID() << "'s option preset of: " << (*i)->getPresetType() << endl;
+				cerr << "Warning: biobloomcategorizer's option preset \"" << optionType << "\" does not match filter \"" <<
+						(*i)->getFilterID() << "\" option preset of  \"" << (*i)->getPresetType() << "\"" << endl;
 				status = false;
 			}
 		}

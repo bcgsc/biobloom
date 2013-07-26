@@ -52,8 +52,7 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 	} catch (boost::property_tree::ptree_error &e) {
 		optionType = "legacy";
 		runInfo.redundantSequences = 0;
-		runInfo.redundantFPR = calcRedunancyFPR(runInfo.size,
-				runInfo.numEntries, hashNum, runInfo.redundantSequences);
+		runInfo.redundantFPR = 0;
 	}
 
 	runInfo.FPR = pt.get<double>(
