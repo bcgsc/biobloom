@@ -128,12 +128,12 @@ int main(int argc, char *argv[])
 	//advanced options
 	size_t minHit = 2;
 	double percentHit = 0.2;
-	uint8_t tileModifier = 0;
+	size_t tileModifier = 0;
 
 	//preset options
 	int defaultSettings = 0;
 	int lowMem = 0;
-	int minimize_fpr = 0;
+	int minimizefpr = 0;
 	string presetType = "default";
 
 	//long form arguments
@@ -152,30 +152,11 @@ int main(int argc, char *argv[])
 					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
 					"fq", no_argument, &fastq, 1 }, {
 					"fa", no_argument, &fasta, 1 }, {
-					"default", no_argument, &defaultSettings, 0 }, {
-					"low_mem", no_argument, &lowMem, 0 }, {
-					"minimize_fpr", no_argument, &minimize_fpr, 0 }, {
+					"default", no_argument, &defaultSettings, 1 }, {
+					"low_mem", no_argument, &lowMem, 1 }, {
+					"minimize_fpr", no_argument, &minimizefpr, 1 }, {
 					"version", no_argument, NULL, 0 }, {
 					NULL, 0, NULL, 0 } };
-
-	//check if only one preset was set
-	if (defaultSettings || minimize_fpr || lowMem) {
-		if (!(defaultSettings ^ minimize_fpr ^ lowMem)) {
-			cerr << "Error: Cannot mix option presets" << endl;
-			exit(1);
-		}
-	}
-
-	//set presets
-
-	if (lowMem) {
-		tileModifier = 1;
-		presetType = "low_mem";
-	} else if (minimize_fpr) {
-		tileModifier = 1;
-		percentHit = 0.25;
-		presetType = "minimum_fpr";
-	}
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
@@ -255,6 +236,25 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	//check if only one preset was set
+	if (defaultSettings || minimizefpr || lowMem) {
+		if (presetType == "custom" || !(defaultSettings ^ minimizefpr ^ lowMem)) {
+			cerr << "Error: Cannot mix option presets or add custom advanced options to presets" << endl;
+			exit(1);
+		}
+	}
+
+	//set presets
+
+	if (lowMem) {
+		tileModifier = 1;
+		presetType = "low_mem";
+	} else if (minimizefpr) {
+		tileModifier = 1;
+		percentHit = 0.25;
+		presetType = "minimum_fpr";
+	}
+
 	vector<string> filterFilePaths = convertInputString(filtersFile);
 	vector<string> inputFiles = convertInputString(rawInputFiles);
 
@@ -315,11 +315,11 @@ int main(int argc, char *argv[])
 		outputReadType = "fa";
 	}
 
-//load filters
+	//load filters
 	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts,
 			outputPrefix, filePostfix, tileModifier);
 
-//check filter preset type
+	//check filter preset type
 	if (presetType != "custom") {
 		if (!BBC.checkFilterPresetType(presetType)) {
 			cerr
@@ -328,8 +328,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-//filtering step
-//create directory structure if it does not exist
+	//filtering step
+	//create directory structure if it does not exist
 	if (paired) {
 		if (outputReadType != "") {
 			if (pairedBAMSAM) {

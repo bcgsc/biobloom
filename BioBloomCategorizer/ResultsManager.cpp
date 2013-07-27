@@ -11,9 +11,10 @@
 ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
 		const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
 		const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
-		size_t minHit, double percHit, size_t maxHitValue) :
+		size_t minHit, double percHit, size_t maxHitValue, uint8_t tileModifier) :
 		hashSigs(hashSigsRef), filters(filtersRef), infoFiles(infoFilesRef), minHit(
-				minHit), percentMinHit(percHit), maxHitValue(maxHitValue)
+				minHit), percentMinHit(percHit), maxHitValue(maxHitValue), tileModifier(
+				tileModifier)
 {
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -58,9 +59,11 @@ const string ResultsManager::updateSummaryData(size_t seqLen,
 				i != idsInFilter.end(); ++i)
 		{
 			//pick threshold, by percent or by absolute value
-			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(*j);
+			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(
+					*j);
 			uint16_t kmerSize = tempVect.front()->getKmerSize();
-			size_t threshold = size_t(percentMinHit * (seqLen / kmerSize));
+			size_t threshold = size_t(
+					percentMinHit * (seqLen / (kmerSize + tileModifier)));
 			if (minHit > threshold) {
 				threshold = minHit;
 			}
@@ -106,10 +109,13 @@ const string ResultsManager::updateSummaryData(size_t seqLen1, size_t seqLen2,
 				i != idsInFilter.end(); ++i)
 		{
 			//pick threshold, by percent or by absolute value
-			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(*j);
+			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(
+					*j);
 			uint16_t kmerSize = (*(tempVect.front())).getKmerSize();
-			size_t threshold1 = size_t(percentMinHit * (seqLen1 / kmerSize));
-			size_t threshold2 = size_t(percentMinHit * (seqLen2 / kmerSize));
+			size_t threshold1 = size_t(
+					percentMinHit * (seqLen1 / (kmerSize + tileModifier)));
+			size_t threshold2 = size_t(
+					percentMinHit * (seqLen2 / (kmerSize + tileModifier)));
 			if (minHit > threshold1) {
 				threshold1 = minHit;
 			}
@@ -150,7 +156,8 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(*j);
+			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(
+					*j);
 			summaryOutput << "\t" << *i << "_"
 					<< tempVect.front()->getKmerSize();
 		}
@@ -195,7 +202,8 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 		{
 			summaryOutput << "\t"
 					<< double(
-							readCount - belowThreshold.at(*i) - aboveThreshold.at(*i))
+							readCount - belowThreshold.at(*i)
+									- aboveThreshold.at(*i))
 							/ double(readCount);
 		}
 	}
@@ -234,7 +242,8 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 				i != idsInFilter.end(); ++i)
 		{
 			summaryOutput << "\t"
-					<< readCount - belowThreshold.at(*i) - aboveThreshold.at(*i);
+					<< readCount - belowThreshold.at(*i)
+							- aboveThreshold.at(*i);
 		}
 	}
 	return summaryOutput.str();
@@ -252,7 +261,8 @@ const string ResultsManager::getCountSummary(size_t readCount) const
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(*j);
+			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(
+					*j);
 			summaryOutput << "\t" << *i << "_"
 					<< tempVect.front()->getKmerSize();
 		}

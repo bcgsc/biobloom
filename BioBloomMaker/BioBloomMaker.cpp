@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 	//preset options
 	int defaultSettings = 0;
 	int lowMem = 0;
-	int minimumFPR = 0;
+	int minimizefpr = 0;
 	string presetType = "default";
 
 	//long form arguments
@@ -88,29 +88,11 @@ int main(int argc, char *argv[])
 					"output_dir", required_argument, NULL, 'o' }, {
 					"hash_num", required_argument, NULL, 'g' }, {
 					"kmer_size", required_argument, NULL, 'k' }, {
-					"default", no_argument, &defaultSettings, 0 }, {
-					"low_mem", no_argument, &lowMem, 0 }, {
-					"minimize_fpr", no_argument, &minimumFPR, 0 }, {
+					"default", no_argument, &defaultSettings, 1 }, {
+					"low_mem", no_argument, &lowMem, 1 }, {
+					"minimize_fpr", no_argument, &minimizefpr, 1 }, {
 					"help", no_argument, NULL, 'h' }, {
 					NULL, 0, NULL, 0 } };
-
-	//check if only one preset was set
-	if (defaultSettings || minimumFPR || lowMem) {
-		if (!(defaultSettings ^ minimumFPR ^ lowMem)) {
-			cerr << "Error: Cannot mix option presets" << endl;
-			exit(1);
-		}
-	}
-
-	//set presets
-	if (lowMem) {
-		fpr = 0.14;
-		kmerSize = 24;
-		presetType = "low_mem";
-	} else if (minimumFPR) {
-		kmerSize = 24;
-		presetType = "minimize_fpr";
-	}
 
 	//actual checking step
 	int option_index = 0;
@@ -176,6 +158,24 @@ int main(int argc, char *argv[])
 			break;
 		}
 		}
+	}
+
+	//check if only one preset was set
+	if (presetType != "custom" || defaultSettings || minimizefpr || lowMem) {
+		if (presetType == "custom" || !(defaultSettings ^ minimizefpr ^ lowMem)) {
+			cerr << "Error: Cannot mix option presets or add custom advanced options to presets" << endl;
+			exit(1);
+		}
+	}
+
+	//set presets
+	if (lowMem) {
+		fpr = 0.14;
+		kmerSize = 24;
+		presetType = "low_mem";
+	} else if (minimizefpr) {
+		kmerSize = 24;
+		presetType = "minimize_fpr";
 	}
 
 	//Stores fasta input file names

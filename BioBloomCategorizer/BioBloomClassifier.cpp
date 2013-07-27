@@ -33,7 +33,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue);
+			percentMinHit, maxHitValue, tileModifier);
 
 	size_t totalReads = 0;
 
@@ -145,11 +145,9 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 
 	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
-	bool printReads = 1;
-
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue);
+			percentMinHit, maxHitValue, tileModifier);
 
 	size_t totalReads = 0;
 
@@ -305,7 +303,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue);
+			percentMinHit, maxHitValue, tileModifier);
 
 	size_t totalReads = 0;
 
@@ -435,7 +433,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue);
+			percentMinHit, maxHitValue, tileModifier);
 
 	size_t totalReads = 0;
 
@@ -630,7 +628,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue);
+			percentMinHit, maxHitValue, tileModifier);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -792,7 +790,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue);
+			percentMinHit, maxHitValue, tileModifier);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -1152,7 +1150,7 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
  */
 void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 		const string &hashSig, unordered_map<string, size_t> &hits,
-		uint8_t tileModifier)
+		uint8_t redundantRead)
 {
 	//get filterIDs to iterate through has in a consistent order
 	const vector<string> &idsInFilter = (*filters[hashSig]).getFilterIds();
@@ -1161,13 +1159,13 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	uint16_t kmerSize = infoFiles.at(hashSig).front()->getKmerSize();
 
 	//Establish tiling pattern
-	uint16_t startModifier = (rec.seq.length() % (kmerSize + tileModifier)) / 2;
+	uint16_t startModifier = (rec.seq.length() % (kmerSize + redundantRead)) / 2;
 
 	ReadsProcessor proc(kmerSize);
 
 	size_t currentLoc = 0;
 	//cut read into kmer size + tilemodifier given
-	while (rec.seq.length() >= currentLoc + kmerSize + tileModifier) {
+	while (rec.seq.length() >= currentLoc + kmerSize + redundantRead) {
 
 		unordered_map<string, bool> tempResults;
 		vector<string> filterIDs = idsInFilter;
@@ -1178,7 +1176,7 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 			tempResults[*i] = true;
 		}
 
-		for (uint8_t j = 0; j <= tileModifier; ++j) {
+		for (uint8_t j = 0; j <= redundantRead; ++j) {
 
 			const string &currentKmer = proc.prepSeq(rec.seq,
 					currentLoc + startModifier + j);
@@ -1217,7 +1215,7 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 				++hits[*i];
 			}
 		}
-		currentLoc += kmerSize + tileModifier;
+		currentLoc += kmerSize + redundantRead;
 	}
 }
 

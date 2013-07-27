@@ -23,7 +23,7 @@ public:
 	explicit ResultsManager(const vector<string> &hashSigsRef,
 			const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
 			const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
-			size_t minHit, double percHit, size_t maxHitValue);
+			size_t minHit, double percHit, size_t maxHitValue, uint8_t tileModifier);
 
 	const string updateSummaryData(size_t seqLen,
 			unordered_map<string, size_t> &hits);
@@ -42,6 +42,7 @@ private:
 	const size_t minHit;
 	const double percentMinHit;
 	const size_t maxHitValue;
+	const uint8_t tileModifier;
 
 	unordered_map<string, size_t> aboveThreshold;
 	unordered_map<string, size_t> belowThreshold;
