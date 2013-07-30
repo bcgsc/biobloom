@@ -99,7 +99,7 @@ void WindowedFileParser::initializeIndex(string const &fileName)
 	indexFile.open(faiFile.c_str(), ifstream::in);
 	if (!indexFile)
 	{
-		cerr << "Fasta files used must be indexed." << endl;
+		cerr << "Fasta files must be indexed. Use samtools faidx." << endl;
 		exit(1);
 	}
 

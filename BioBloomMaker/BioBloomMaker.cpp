@@ -49,8 +49,8 @@ void printHelpDialog()
 					"\nOption presets:\n"
 					"      --default          Create filter assuming default presets (ie. no advanced\n"
 					"                         options toggled) [default]\n"
-					"      --low_mem          Create filter with presets designed for lower memory.\n"
-					"                         usage"
+					"      --low_mem          Create filter with presets designed for lower memory\n"
+					"                         usage.\n"
 					"      --minimize_fpr     Create filter with presets designed for minimizing the\n"
 					"                         false positive rate.\n"
 					"\n"
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 	}
 
 	//check if only one preset was set
-	if (presetType != "custom" || defaultSettings || minimizefpr || lowMem) {
+	if (defaultSettings || minimizefpr || lowMem) {
 		if (presetType == "custom" || !(defaultSettings ^ minimizefpr ^ lowMem)) {
 			cerr << "Error: Cannot mix option presets or add custom advanced options to presets" << endl;
 			exit(1);

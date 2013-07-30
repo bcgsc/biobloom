@@ -45,7 +45,8 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 }
 
 /*
- * Returns a Bloom Filter generated from a file.
+ * Generates a bloom filter outputting it to a filename
+ * Returns the redundancy rate of a Bloom Filter generated from a file.
  * Currently only supports fasta files.
  *
  * Outputs to fileName path
@@ -71,7 +72,7 @@ size_t BloomFilterGenerator::generate(string fileName)
 			fileNamesAndHeaders.begin(); i != fileNamesAndHeaders.end(); ++i)
 	{
 		//let user know that files are being read
-		cerr << "Reading File: " << i->first << endl;
+		cerr << "Processing File: " << i->first << endl;
 		WindowedFileParser parser(i->first, kmerSize);
 		for (vector<string>::iterator j = i->second.begin();
 				j != i->second.end(); ++j)

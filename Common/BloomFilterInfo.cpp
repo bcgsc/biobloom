@@ -79,9 +79,10 @@ void BloomFilterInfo::setReduanacy(size_t redunSeq)
 	runInfo.redundantSequences = redunSeq;
 	runInfo.redundantFPR = calcRedunancyFPR(runInfo.size, runInfo.numEntries,
 			hashNum, redunSeq);
+
 	runInfo.FPR = calcApproxFPR(runInfo.size,
 			runInfo.numEntries - runInfo.redundantSequences,
-			runInfo.seeds.size());
+			hashNum);
 }
 
 /*
