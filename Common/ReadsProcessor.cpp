@@ -8,9 +8,6 @@
 #include "ReadsProcessor.h"
 #include <cassert>
 #include <iostream>
-
-//TODO: write unit tests for this class
-
 /*
  * Needed for use of optimized char* returning prepSeq
  */
@@ -99,6 +96,7 @@ static const char revTable[256] = {
  *
  * requires a start position
  */
+//@todo: try out binarizing the data for faster hashing speed
 const string &ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 
 	uint16_t outputIndex = 0;

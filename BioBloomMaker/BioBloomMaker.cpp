@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
 	//calcuate redundancy rate
 	double redunRate = double(redundNum) / double(entryNum)
 			- info.getRedunancyFPR();
-	if (redunRate > 0.2) {
+	if (redunRate > 0.25) {
 		cerr << "Redunancy Rate is approximately: " << redunRate << endl;
 		cerr
 				<< "Consider checking your files for duplicate sequences and adjusting them accordingly."

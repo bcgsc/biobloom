@@ -48,7 +48,7 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 		optionType = pt.get<string>("user_input_options.option_type");
 		runInfo.redundantSequences = pt.get<size_t>(
 				"runtime_options.redundant_sequences");
-		runInfo.redundantFPR = pt.get<size_t>("runtime_options.redundant_fpr");
+		runInfo.redundantFPR = pt.get<double>("runtime_options.redundant_fpr");
 	} catch (boost::property_tree::ptree_error &e) {
 		optionType = "legacy";
 		runInfo.redundantSequences = 0;
