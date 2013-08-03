@@ -1144,6 +1144,18 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 }
 
 /*
+ * Assumes single filter is used
+ */
+size_t BioBloomClassifier::evaluateReadSingle(const FastqRecord &rec, const BloomFilter &filter)
+{
+	//break read into tiles
+	//evaluate read
+
+	//depending on results evaluate pairs 3 extra tiles per pair, at median points
+	//if only single section passes, evaluate read 4 times, shift only one tile
+}
+
+/*
  * For a single read evaluate hits for a single hash signature
  * Sections with ambiguity bases are treated as misses
  * Updates hits value to number of hits (hashSig is used to as key)
@@ -1159,13 +1171,13 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	uint16_t kmerSize = infoFiles.at(hashSig).front()->getKmerSize();
 
 	//Establish tiling pattern
-	uint16_t startModifier = (rec.seq.length() % (kmerSize + redundantRead)) / 2;
+	uint16_t startModifier = (rec.seq.length() % (kmerSize)) / 2;
 
 	ReadsProcessor proc(kmerSize);
 
 	size_t currentLoc = 0;
 	//cut read into kmer size + tilemodifier given
-	while (rec.seq.length() >= currentLoc + kmerSize + redundantRead) {
+	while (rec.seq.length() >= currentLoc + kmerSize) {
 
 		unordered_map<string, bool> tempResults;
 		vector<string> filterIDs = idsInFilter;
@@ -1176,35 +1188,83 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 			tempResults[*i] = true;
 		}
 
-		for (uint8_t j = 0; j <= redundantRead; ++j) {
+		//shift right
+		if (rec.seq.length() != currentLoc + kmerSize) {
+			for (uint8_t j = 0; j < redundantRead; ++j) {
 
-			const string &currentKmer = proc.prepSeq(rec.seq,
-					currentLoc + startModifier + j);
-			vector<string> tempFilterIDs;
+				if (filterIDs.size() == 0) {
+					break;
+				}
 
-			//check to see if string is invalid
-			if (!currentKmer.empty()) {
+				const string &currentKmer = proc.prepSeq(rec.seq,
+						currentLoc + startModifier + j);
+				vector<string> tempFilterIDs;
 
-				const unordered_map<string, bool> &results =
-						filters[hashSig]->multiContains(currentKmer, filterIDs);
+				//check to see if string is invalid
+				if (!currentKmer.empty()) {
 
-				for (vector<string>::iterator i = filterIDs.begin();
-						i != filterIDs.end(); ++i)
-				{
-					if (!results.find(*i)->second) {
-						tempResults[*i] = false;
-					} else {
-						tempFilterIDs.push_back(*i);
+					const unordered_map<string, bool> &results =
+							filters[hashSig]->multiContains(currentKmer,
+									filterIDs);
+
+					for (vector<string>::iterator i = filterIDs.begin();
+							i != filterIDs.end(); ++i)
+					{
+						if (!results.find(*i)->second) {
+							tempResults[*i] = false;
+						} else {
+							tempFilterIDs.push_back(*i);
+						}
 					}
+				} else {
+					for (vector<string>::iterator i = filterIDs.begin();
+							i != filterIDs.end(); ++i)
+					{
+						tempResults[*i] = false;
+					}
+					break;
 				}
-			} else {
-				for (vector<string>::iterator i = filterIDs.begin();
-						i != filterIDs.end(); ++i)
-				{
-					tempResults[*i] = false;
-				}
+				filterIDs = tempFilterIDs;
 			}
-			filterIDs = tempFilterIDs;
+		}
+		//shift left on last read segment
+		else {
+			for (uint8_t j = 0; j < redundantRead; ++j) {
+
+				if (filterIDs.size() == 0) {
+					break;
+				}
+
+				const string &currentKmer = proc.prepSeq(rec.seq,
+						currentLoc + startModifier - 1);
+				vector<string> tempFilterIDs;
+
+				//check to see if string is invalid
+				if (!currentKmer.empty()) {
+
+					const unordered_map<string, bool> &results =
+							filters[hashSig]->multiContains(currentKmer,
+									filterIDs);
+
+					for (vector<string>::iterator i = filterIDs.begin();
+							i != filterIDs.end(); ++i)
+					{
+						if (!results.find(*i)->second) {
+							tempResults[*i] = false;
+						} else {
+							tempFilterIDs.push_back(*i);
+						}
+					}
+				} else {
+					for (vector<string>::iterator i = filterIDs.begin();
+							i != filterIDs.end(); ++i)
+					{
+						tempResults[*i] = false;
+					}
+					break;
+				}
+				filterIDs = tempFilterIDs;
+			}
 		}
 
 		//record hit number in order
@@ -1215,9 +1275,85 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 				++hits[*i];
 			}
 		}
-		currentLoc += kmerSize + redundantRead;
+		currentLoc += kmerSize;
 	}
 }
+
+///*
+// * For a single read evaluate hits for a single hash signature
+// * Sections with ambiguity bases are treated as misses
+// * Updates hits value to number of hits (hashSig is used to as key)
+// */
+//void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
+//		const string &hashSig, unordered_map<string, size_t> &hits,
+//		uint8_t redundantRead)
+//{
+//	//get filterIDs to iterate through has in a consistent order
+//	const vector<string> &idsInFilter = (*filters[hashSig]).getFilterIds();
+//
+//	//get kmersize for set of info files
+//	uint16_t kmerSize = infoFiles.at(hashSig).front()->getKmerSize();
+//
+//	//Establish tiling pattern
+//	uint16_t startModifier = (rec.seq.length() % (kmerSize + redundantRead)) / 2;
+//
+//	ReadsProcessor proc(kmerSize);
+//
+//	size_t currentLoc = 0;
+//	//cut read into kmer size + tilemodifier given
+//	while (rec.seq.length() >= currentLoc + kmerSize + redundantRead) {
+//
+//		unordered_map<string, bool> tempResults;
+//		vector<string> filterIDs = idsInFilter;
+//
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i)
+//		{
+//			tempResults[*i] = true;
+//		}
+//
+//		for (uint8_t j = 0; j <= redundantRead; ++j) {
+//
+//			const string &currentKmer = proc.prepSeq(rec.seq,
+//					currentLoc + startModifier + j);
+//			vector<string> tempFilterIDs;
+//
+//			//check to see if string is invalid
+//			if (!currentKmer.empty()) {
+//
+//				const unordered_map<string, bool> &results =
+//						filters[hashSig]->multiContains(currentKmer, filterIDs);
+//
+//				for (vector<string>::iterator i = filterIDs.begin();
+//						i != filterIDs.end(); ++i)
+//				{
+//					if (!results.find(*i)->second) {
+//						tempResults[*i] = false;
+//					} else {
+//						tempFilterIDs.push_back(*i);
+//					}
+//				}
+//			} else {
+//				for (vector<string>::iterator i = filterIDs.begin();
+//						i != filterIDs.end(); ++i)
+//				{
+//					tempResults[*i] = false;
+//				}
+//			}
+//			filterIDs = tempFilterIDs;
+//		}
+//
+//		//record hit number in order
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i)
+//		{
+//			if (tempResults.find(*i)->second) {
+//				++hits[*i];
+//			}
+//		}
+//		currentLoc += kmerSize + redundantRead;
+//	}
+//}
 
 /*
  * Initializes Summary Variables. Also prints heads for read status.

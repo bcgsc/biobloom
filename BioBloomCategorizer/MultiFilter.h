@@ -23,6 +23,7 @@ public:
 	const boost::unordered_map<string, bool> &multiContains(string const &kmer);
 	const boost::unordered_map<string, bool> &multiContains(string const &kmer,
 			vector<string> const &tempFilters);
+	const BloomFilter &getFilter(const string &filterID);
 	const vector<string> &getFilterIds() const;
 	virtual ~MultiFilter();
 private:
