@@ -6,17 +6,18 @@
  */
 
 #include "BloomFilter.h"
-#include <vector>
 #include <fstream>
 #include <iostream>
 #include <sys/stat.h>
+#include <cstring>
+#include <cassert>
+#include <cstdlib>
 
 /* De novo filter constructor.
  * precondition: filterSize must be a multiple of 64
  */
-BloomFilter::BloomFilter(size_t filterSize, HashManager const &hashFns) :
-		size(filterSize), multiHasher(hashFns)
-{
+BloomFilter::BloomFilter(size_t filterSize, size_t hashNum) :
+		size(filterSize), hashNum(hashNum) {
 	initSize(size);
 	memset(filter, 0, sizeInBytes);
 }
@@ -24,10 +25,9 @@ BloomFilter::BloomFilter(size_t filterSize, HashManager const &hashFns) :
 /*
  * Loads the filter (file is a .bf file) from path specified
  */
-BloomFilter::BloomFilter(size_t filterSize, string const &filterFilePath,
-		HashManager const &hashFns) :
-		size(filterSize), multiHasher(hashFns)
-{
+BloomFilter::BloomFilter(size_t filterSize, size_t hashNum,
+		string const &filterFilePath) :
+		size(filterSize), hashNum(hashNum) {
 	initSize(size);
 
 	//Check file size is correct size
@@ -55,8 +55,7 @@ BloomFilter::BloomFilter(size_t filterSize, string const &filterFilePath,
 /*
  * Checks filter size and initializes filter
  */
-void BloomFilter::initSize(size_t size)
-{
+void BloomFilter::initSize(size_t size) {
 	if (size % 8 != 0) {
 		cerr << "ERROR: Filter Size \"" << size << "\" is not a multiple of 8."
 				<< endl;
@@ -69,13 +68,11 @@ void BloomFilter::initSize(size_t size)
 /*
  * Accepts a list of precomputed hash values. Faster than rehashing each time.
  */
-void BloomFilter::insert(vector<size_t> const &precomputed)
-{
+void BloomFilter::insert(vector<size_t> const &precomputed) {
 	//iterates through hashed values adding it to the filter
-
-	for (vector<size_t>::const_iterator it = precomputed.begin(); it != precomputed.end(); ++it)
-	{
-		size_t normalizedValue = *it % size;
+	for (size_t i = 0; i < hashNum;
+			++i) {
+		size_t normalizedValue = precomputed.at(i) % size;
 		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 				% bitsPerChar];
 	}
@@ -86,8 +83,7 @@ void BloomFilter::insert(vector<size_t> const &precomputed)
  * Stores uncompressed because the random data tend to
  * compress poorly anyway
  */
-void BloomFilter::storeFilter(string const &filterFilePath) const
-{
+void BloomFilter::storeFilter(string const &filterFilePath) const {
 	ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
 
 	assert(myFile.good());
@@ -102,12 +98,10 @@ void BloomFilter::storeFilter(string const &filterFilePath) const
 /*
  * Accepts a list of precomputed hash values. Faster than rehashing each time.
  */
-const bool BloomFilter::contains(vector<size_t> const &values)
-{
-	for (vector<size_t>::const_iterator it = values.begin(); it != values.end();
-			++it)
-	{
-		size_t normalizedValue = *it % size;
+const bool BloomFilter::contains(vector<size_t> const &values) {
+	for (size_t i = 0; i < hashNum;
+			++i) {
+		size_t normalizedValue = values.at(i) % size;
 		char bit = bitMask[normalizedValue % bitsPerChar];
 		if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
 			return false;
@@ -116,7 +110,6 @@ const bool BloomFilter::contains(vector<size_t> const &values)
 	return true;
 }
 
-BloomFilter::~BloomFilter()
-{
+BloomFilter::~BloomFilter() {
 	delete[] filter;
 }

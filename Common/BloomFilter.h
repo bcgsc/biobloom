@@ -7,8 +7,8 @@
 
 #ifndef BLOOMFILTER_H_
 #define BLOOMFILTER_H_
-#include "Common/HashManager.h"
 #include <string>
+#include <vector>
 
 using namespace std;
 
@@ -19,30 +19,21 @@ static const unsigned char bitMask[0x08] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
 class BloomFilter {
 public:
 	//for generating a new filter
-	explicit BloomFilter(size_t filterSize, HashManager const &hashFns);
+	explicit BloomFilter(size_t filterSize, size_t hashNum);
 	void insert(vector<size_t> const &precomputed);
-	void insert(string const &kmer){
-		insert(multiHasher.multiHash(kmer));
-	}
 
 	//for storing/restoring the filter
 	void storeFilter(string const &filterFilePath) const;
-	BloomFilter(size_t filterSize, string const &filterFilePath, HashManager const &hashFns);
+	BloomFilter(size_t filterSize, size_t hashNum, string const &filterFilePath);
 
 	const bool contains(vector<size_t> const &precomputed);
-	const bool contains(string const &kmer){
-		return contains(multiHasher.multiHash(kmer));
-	}
-
 	virtual ~BloomFilter();
 private:
-	BloomFilter(const BloomFilter&);
-	BloomFilter& operator=(const BloomFilter&);
 	void initSize(size_t size);
 	char* filter;
 	size_t size;
 	size_t sizeInBytes;
-	const HashManager &multiHasher;
+	size_t hashNum;
 };
 
 #endif /* BLOOMFILTER_H_ */
