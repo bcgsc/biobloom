@@ -36,11 +36,7 @@ int memory_usage() {
 }
 
 int main(int argc, char **argv) {
-	HashManager hashMan;
-	for (unsigned int i = 0; i < 12; ++i) {
-		hashMan.addHashFunction("CityHash64", i);
-	}
-	const vector<size_t> &hashedValues = hashMan.multiHash("ATCGGGTCATCAACCAATAT");
+	const vector<size_t> &hashedValues = multiHash("ATCGGGTCATCAACCAATAT",);
 	cout << hashedValues.size() << endl;
 	for (unsigned int i = 0; i < hashedValues.size() - 1; ++i) {
 		for (unsigned int j = i + 1; j < hashedValues.size(); ++j) {

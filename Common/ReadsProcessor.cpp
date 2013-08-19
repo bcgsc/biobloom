@@ -1,6 +1,9 @@
 /*
  * ReadsProcessor.cpp
  * Contains methods for formatting sequences to place into bloom filter
+ * For memory management purposes the kmer is intermediately stored here.
+ * DO NOT USE THE SAME READ PROCESSER FOR MULTIPLE THREADS
+ * YOU MUST FINISH PROCESSING ONE KMER BEFORE MOVING TO NEXT KMER
  *
  *  Created on: Aug 8, 2012
  *      Author: cjustin
@@ -8,13 +11,30 @@
 #include "ReadsProcessor.h"
 #include <cassert>
 #include <iostream>
+#include <cstring>
+
+//@todo: decide on endian convention for kmers, currently assuming little endian for ease of bitshifts
 
 /*
  * Needed for use of optimized char* returning prepSeq
  */
-ReadsProcessor::ReadsProcessor(uint16_t windowSize) : kmerSize(windowSize),
-		kmerSizeInBytes(windowSize / 4 + windowSize % 2), halfSizeOfKmerInBytes(
-				windowSize / 8 + windowSize % 2) {
+ReadsProcessor::ReadsProcessor(uint16_t windowSize) :
+		kmerSize(windowSize), kmerSizeInBytes(windowSize / 4), halfSizeOfKmerInBytes(
+				windowSize / 8), hangingBits(0) {
+
+	//parsing code require kmer larger than 3
+	assert(kmerSize > 3);
+
+	if (windowSize % 8 != 0) {
+		halfSizeOfKmerInBytes++;
+		if (windowSize % 4 != 0) {
+			kmerSizeInBytes++;
+			hangingBits = 1;
+		}
+	}
+
+	fw = new char[kmerSizeInBytes];
+	rv = new char[kmerSizeInBytes];
 }
 
 static const uint8_t fw0[256] = {
@@ -304,88 +324,137 @@ static const uint8_t rv3[256] = {
  * - Converts input to empty string if any character other than ATCG is found
  * - If sequence is palamdromic a char with only the first half recorded is used
  *   because that is all that is needed to uniquely identify the sequence
+ * - kmersize must be greater than 3
  * requires a start position
  */
 const char* ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 
 	size_t index = position;
 	size_t revIndex = position + kmerSize - 1;
-	char fw[kmerSizeInBytes];
-	char rv[kmerSizeInBytes];
+	size_t outputIndex = 0;
+
+	memset(fw, 0, kmerSizeInBytes);
+	memset(rv, 0, kmerSizeInBytes);
 
 	// determines which compliment to use
 	// parse through string converting and checking for lower-case and non ATCG characters
 	// half the length of seq because after this point will be palindromic and is not worth checking
-	for (size_t outputIndex = position; outputIndex < halfSizeOfKmerInBytes;
-			++outputIndex) {
+	for (; outputIndex < halfSizeOfKmerInBytes; ++outputIndex) {
 
 		//create char for forward
-		uint8_t fwChar = fw0[sequence[index++]];
-		fwChar |= fw1[sequence[index++]];
-		fwChar |= fw2[sequence[index++]];
 
-		if (fwChar == 0xFF || fw3[sequence[index]] == 0xFF) {
-			return "";
+		fw[outputIndex] |= fw0[sequence[index++]];
+		fw[outputIndex] |= fw1[sequence[index++]];
+		fw[outputIndex] |= fw2[sequence[index++]];
+
+		if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
+			return emptyResult;
 		}
 
-		fwChar |= fw3[sequence[index++]];
+		fw[outputIndex] |= fw3[sequence[index++]];
 
 		//create char for rv
-		uint8_t rvChar = rv0[sequence[revIndex--]];
-		rvChar |= rv1[sequence[revIndex--]];
-		rvChar |= rv2[sequence[revIndex--]];
 
-		if (rvChar == 0xFF || rv3[sequence[revIndex]] == 0xFF) {
-			return "";
+		rv[outputIndex] |= rv0[sequence[revIndex--]];
+		rv[outputIndex] |= rv1[sequence[revIndex--]];
+		rv[outputIndex] |= rv2[sequence[revIndex--]];
+
+		if (rv[outputIndex] == 0xFF || rv3[sequence[revIndex]] == 0xFF) {
+			return emptyResult;
 		}
 
-		rvChar |= rv3[sequence[revIndex--]];
+		rv[outputIndex] |= rv3[sequence[revIndex--]];
 
 		//compare and convert if not already established
 		//forward is smaller
-		if (fwChar < rvChar) {
-			fw[outputIndex] = fwChar;
+		if (fw[outputIndex] < rv[outputIndex]) {
 			//finish off sequence
-			for (++outputIndex; outputIndex < kmerSizeInBytes; ++outputIndex) {
+			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBits;
+					++outputIndex) {
 				//create char for forward
-				fwChar = fw0[sequence[index++]];
-				fwChar |= fw1[sequence[index++]];
-				fwChar |= fw2[sequence[index++]];
+				fw[outputIndex] |= fw0[sequence[index++]];
+				fw[outputIndex] |= fw1[sequence[index++]];
+				fw[outputIndex] |= fw2[sequence[index++]];
 
-				if (fwChar == 0xFF || fw3[sequence[index]] == 0xFF) {
+				if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
 					return "";
 				}
-				fwChar |= fw3[sequence[index++]];
-
-				fw[outputIndex] = fwChar;
+				fw[outputIndex] |= fw3[sequence[index]];
+			}
+			//create last byte
+			if (hangingBits) {
+				size_t lastPos = position + kmerSize - 1;
+				fw[outputIndex] |= fw0[sequence[lastPos]];
+				for (; index < lastPos; --lastPos) {
+					fw[outputIndex] = fw[outputIndex] << 2;
+					fw[outputIndex] |= fw0[sequence[lastPos]];
+				}
+				if (fw[outputIndex] == 0xFF) {
+					return emptyResult;
+				}
 			}
 			return fw;
 		}
 		//reverse is smaller
-		else if (fwChar > rvChar) {
+		else if (fw[outputIndex] > rv[outputIndex]) {
 			//finish off sequence
-			//create char for rv
-			for (++outputIndex; outputIndex < kmerSizeInBytes; ++outputIndex) {
-				rvChar = rv0[sequence[revIndex--]];
-				rvChar |= rv1[sequence[revIndex--]];
-				rvChar |= rv2[sequence[revIndex--]];
+			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBits;
+					++outputIndex) {
+				rv[outputIndex] |= rv0[sequence[revIndex--]];
+				rv[outputIndex] |= rv1[sequence[revIndex--]];
+				rv[outputIndex] |= rv2[sequence[revIndex--]];
 
-				if (rvChar == 0xFF || rv3[sequence[revIndex]] == 0xFF) {
-					return "";
+				if (rv[outputIndex] == 0xFF
+						|| rv3[sequence[revIndex]] == 0xFF) {
+					return emptyResult;
 				}
-				rvChar |= rv3[sequence[revIndex--]];
-
-				rv[outputIndex] = rvChar;
+				rv[outputIndex] |= rv3[sequence[revIndex]];
+			}
+			//create last byte
+			if (hangingBits) {
+				rv[outputIndex] |= rv0[sequence[position]];
+				for (; revIndex > position; ++position) {
+					rv[outputIndex] = rv[outputIndex] << 2;
+					rv[outputIndex] |= rv0[sequence[position]];
+				}
+				if (rv[outputIndex] == 0xFF) {
+					return emptyResult;
+				}
 			}
 			return rv;
 		}
-		fw[outputIndex] = fwChar;
-		rv[outputIndex] = rvChar;
 	}
-	//palamdromic (return string with only first half)
+	//palamdromic
+	//finish off sequence
+	for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBits;
+			++outputIndex) {
+		//create char for forward
+		fw[outputIndex] |= fw0[sequence[index++]];
+		fw[outputIndex] |= fw1[sequence[index++]];
+		fw[outputIndex] |= fw2[sequence[index++]];
+
+		if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
+			return "";
+		}
+		fw[outputIndex] |= fw3[sequence[index]];
+	}
+	//create last byte
+	if (hangingBits) {
+		size_t lastPos = position + kmerSize - 1;
+		fw[outputIndex] |= fw0[sequence[lastPos]];
+		for (; index < lastPos; --lastPos) {
+			fw[outputIndex] = fw[outputIndex] << 2;
+			fw[outputIndex] |= fw0[sequence[lastPos]];
+		}
+		if (fw[outputIndex] == 0xFF) {
+			return emptyResult;
+		}
+	}
 	return fw;
 }
 
 ReadsProcessor::~ReadsProcessor() {
+	delete[] fw;
+	delete[] rv;
 }
 

@@ -9,10 +9,11 @@
 #define BLOOMFILTER_H_
 #include <string>
 #include <vector>
+#include <stdint.h>
 
 using namespace std;
 
-static const size_t bitsPerChar = 0x08;
+static const uint8_t bitsPerChar = 0x08;
 static const unsigned char bitMask[0x08] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
 		0x40, 0x80 };
 
