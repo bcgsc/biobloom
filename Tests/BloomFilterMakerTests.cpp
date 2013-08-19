@@ -8,20 +8,19 @@
 #include "BioBloomMaker/BloomFilterGenerator.h"
 #include "BioBloomMaker/BloomFilterGenerator.cpp"
 #include "Common/BloomFilter.h"
-#include "Common/HashManager.h"
 #include <string>
 #include <assert.h>
 #include <iostream>
 #include <boost/unordered/unordered_map.hpp>
 #include <vector>
+#include <fstream>
 
 using namespace std;
 
 int main(int argc, char **argv) {
 
-	//Using human genome reference as test data
-	string fileName =
-			"/projects/cjustin/BioBloomTools/reference/NC_000913.fasta";
+	//Generate some testdata
+	string fileName = "test_fasta.fa";
 
 	//test BloomFilterGenerator
 
@@ -55,16 +54,8 @@ int main(int argc, char **argv) {
 	}
 	ifile.close();
 
-	HashManager test;
-	test.addHashFunction("CityHash64", 0);
-	test.addHashFunction("CityHash64", 1);
-	test.addHashFunction("CityHash64", 2);
-	test.addHashFunction("CityHash64", 3);
-	test.addHashFunction("CityHash64", 4);
-	test.addHashFunction("CityHash64", 5);
-
 	//check loading of stored filter
-	BloomFilter filter2(filterSize, filename, test);
+	BloomFilter filter2(filterSize, 6, filename);
 
 	//Check if loaded filter is able to report expected results
 	assert(filter2.contains("AGCTTTTCATTCTGACTGCA"));

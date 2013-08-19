@@ -61,7 +61,7 @@ size_t BloomFilterGenerator::generate(string fileName)
 	assert(filterSize > expectedEntries);
 
 	//setup bloom filter
-	BloomFilter filter(filterSize, multiHash);
+	BloomFilter filter(filterSize, );
 
 	//redundancy metric value
 	size_t redundancy = 0;

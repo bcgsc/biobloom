@@ -9,28 +9,21 @@
 #define BLOOMFILTERGENERATOR_H_
 #include <boost/unordered/unordered_map.hpp>
 #include <vector>
-#include "Common/HashManager.h"
 using namespace std;
 
 class BloomFilterGenerator {
 public:
 	explicit BloomFilterGenerator(vector<string> const &filenames,
-			uint16_t kmer);
+			uint8_t kmer, uint8_t numFunc);
 	size_t generate(string filename);
 	void setFilterSize(size_t bits);
-	const vector<size_t> addHashFuncs(uint16_t numFunc);
 	const size_t getExpectedEntries() const;
-	const vector<string> getHashFuncNames() const;
-	const uint16_t calcOptiHashNum(size_t size, size_t entries) const;
-	const uint16_t calcOptiHashNum(float fpr) const;
 
 	virtual ~BloomFilterGenerator();
 private:
 	size_t filterSize;
 	size_t expectedEntries;
 	int16_t kmerSize;
-	HashManager multiHash;
-	vector<string> hashFunctionNames;
 	boost::unordered_map<string, vector<string> > fileNamesAndHeaders;
 };
 

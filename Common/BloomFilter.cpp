@@ -4,6 +4,8 @@
  *  Created on: Aug 10, 2012
  *      Author: cjustin
  */
+//@TODO: experiment with hash concepts by Adam Kirsch and Michael Mitzenmacher in Building a Better Bloom Filter
+
 
 #include "BloomFilter.h"
 #include <fstream>
@@ -16,8 +18,8 @@
 /* De novo filter constructor.
  * precondition: filterSize must be a multiple of 64
  */
-BloomFilter::BloomFilter(size_t filterSize, size_t hashNum) :
-		size(filterSize), hashNum(hashNum) {
+BloomFilter::BloomFilter(size_t filterSize, size_t hashNum, size_t kmerSize) :
+		size(filterSize), hashNum(hashNum), kmerSize(kmerSize) {
 	initSize(size);
 	memset(filter, 0, sizeInBytes);
 }
@@ -25,9 +27,9 @@ BloomFilter::BloomFilter(size_t filterSize, size_t hashNum) :
 /*
  * Loads the filter (file is a .bf file) from path specified
  */
-BloomFilter::BloomFilter(size_t filterSize, size_t hashNum,
+BloomFilter::BloomFilter(size_t filterSize, size_t hashNum, size_t kmerSize,
 		string const &filterFilePath) :
-		size(filterSize), hashNum(hashNum) {
+		size(filterSize), hashNum(hashNum), kmerSize(kmerSize) {
 	initSize(size);
 
 	//Check file size is correct size
@@ -78,6 +80,46 @@ void BloomFilter::insert(vector<size_t> const &precomputed) {
 	}
 }
 
+void BloomFilter::insert(const char* kmer) {
+	//iterates through hashed values adding it to the filter
+	for (size_t i = 0; i < hashNum;
+			++i) {
+		size_t normalizedValue = CityHash64WithSeed(kmer, kmerSize, i ) % size;
+		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
+				% bitsPerChar];
+	}
+}
+
+/*
+ * Accepts a list of precomputed hash values. Faster than rehashing each time.
+ */
+const bool BloomFilter::contains(vector<size_t> const &values) {
+	for (size_t i = 0; i < hashNum;
+			++i) {
+		size_t normalizedValue = values.at(i) % size;
+		char bit = bitMask[normalizedValue % bitsPerChar];
+		if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/*
+ * Single pass filtering, computes hash values on the fly
+ */
+const bool BloomFilter::contains(const char* kmer) {
+	for (size_t i = 0; i < hashNum;
+			++i) {
+		size_t normalizedValue = CityHash64WithSeed(kmer, kmerSize, i ) % size;
+		char bit = bitMask[normalizedValue % bitsPerChar];
+		if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
+			return false;
+		}
+	}
+	return true;
+}
+
 /*
  * Stores the filter as a binary file to the path specified
  * Stores uncompressed because the random data tend to
@@ -95,19 +137,12 @@ void BloomFilter::storeFilter(string const &filterFilePath) const {
 	myFile.close();
 }
 
-/*
- * Accepts a list of precomputed hash values. Faster than rehashing each time.
- */
-const bool BloomFilter::contains(vector<size_t> const &values) {
-	for (size_t i = 0; i < hashNum;
-			++i) {
-		size_t normalizedValue = values.at(i) % size;
-		char bit = bitMask[normalizedValue % bitsPerChar];
-		if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
-			return false;
-		}
-	}
-	return true;
+uint8_t BloomFilter::getHashNum() const{
+	return hashNum;
+}
+
+uint8_t BloomFilter::getKmerSize() const{
+	return kmerSize;
 }
 
 BloomFilter::~BloomFilter() {

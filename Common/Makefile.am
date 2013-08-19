@@ -9,7 +9,6 @@ libcommon_a_SOURCES = \
 	Dynamicofstream.cpp Dynamicofstream.h \
 	Fcontrol.cpp Fcontrol.h \
 	gzstream.C gzstream.h \
-	HashManager.h \
 	IOUtil.h \
 	Options.cpp Options.h \
 	ReadsProcessor.cpp ReadsProcessor.h \

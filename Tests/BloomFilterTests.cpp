@@ -5,8 +5,6 @@
  *      Author: cjustin
  */
 
-//#include "BloomFilter.h"
-#include "Common/HashManager.h"
 #include "Common/BloomFilter.h"
 #include <string>
 #include <assert.h>
@@ -36,7 +34,7 @@ int memory_usage() {
 }
 
 int main(int argc, char **argv) {
-	const vector<size_t> &hashedValues = multiHash("ATCGGGTCATCAACCAATAT",);
+	const vector<size_t> &hashedValues = multiHash("ATCGGGTCATCAACCAATAT", 5, 20);
 	cout << hashedValues.size() << endl;
 	for (unsigned int i = 0; i < hashedValues.size() - 1; ++i) {
 		for (unsigned int j = i + 1; j < hashedValues.size(); ++j) {
@@ -51,7 +49,7 @@ int main(int argc, char **argv) {
 	int memUsage = memory_usage();
 
 	size_t filterSize = 1000000000;
-	BloomFilter filter(filterSize, hashMan);
+	BloomFilter filter(filterSize, 5, 20);
 	filter.insert("ATCGGGTCATCAACCAATAT");
 	filter.insert("ATCGGGTCATCAACCAATAC");
 	filter.insert("ATCGGGTCATCAACCAATAG");
@@ -72,7 +70,7 @@ int main(int argc, char **argv) {
 	cout << "de novo bf tests done" << endl;
 
 	//Check storage can occur properly
-	string filename = "/home/cjustin/workspace/TestData/bloomFilter.bf";
+	string filename = "/tmp/bloomFilter.bf";
 	filter.storeFilter(filename);
 	ifstream ifile(filename.c_str());
 	assert(ifile.is_open());
@@ -90,7 +88,7 @@ int main(int argc, char **argv) {
 	cout << memory_usage() - memUsage << "kb" << endl;
 
 	//check loading of stored filter
-	BloomFilter filter2(filterSize, filename, hashMan);
+	BloomFilter filter2(filterSize, 5, 20, filename);
 
 	//should be double size of bf (amortized)
 	cout << memory_usage() - memUsage << "kb" << endl;
@@ -104,10 +102,14 @@ int main(int argc, char **argv) {
 	cout << "premade bf tests done" << endl;
 
 	//memory leak tests
-	BloomFilter* filter3 = new BloomFilter(filterSize, hashMan);
+	BloomFilter* filter3 = new BloomFilter(filterSize, 5, 20);
+
+	size_t tempMem = memory_usage() - memUsage;
+
 	cout << memory_usage() - memUsage << "kb" << endl;
 	delete(filter3);
 	cout << memory_usage() - memUsage << "kb" << endl;
+	assert(tempMem != memory_usage() - memUsage);
 
 //	vector<vector<int> > test(1, vector<int>(1, 1));
 
@@ -117,6 +119,7 @@ int main(int argc, char **argv) {
 	cout << "memory leak prevention tests done" << endl;
 	cout << memory_usage() - memUsage << "kb" << endl;
 
+	remove(filename.c_str());
 	cout << "done" << endl;
 	return 0;
 }
