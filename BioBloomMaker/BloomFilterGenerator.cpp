@@ -25,8 +25,8 @@
  * filenames with corresponding headers to make filter from.
  */
 BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
-		uint16_t kmer) :
-		kmerSize(kmer), expectedEntries(0), filterSize(0)
+		uint8_t kmer, uint8_t numFunc) :
+		kmerSize(kmer), expectedEntries(0), filterSize(0), kmerSize(0)
 {
 
 	//for each file loop over all headers and obtain max number of elements
