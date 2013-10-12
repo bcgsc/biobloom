@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <omp.h>
 
 using namespace std;
 
@@ -120,6 +121,30 @@ int main(int argc, char **argv) {
 	cout << memory_usage() - memUsage << "kb" << endl;
 
 	remove(filename.c_str());
+
+//	//check parallelized code speed
+//	cout << "testing code parallelization" << endl;
+//	double start_s = omp_get_wtime();
+//
+//	cout << "parallelization" << endl;
+//	for( int i =0; i < 10000000; i++)
+//	{
+//		vector<size_t> values = multiHash("ATCGGGTCATCAACCAATAA", 5, 20);
+//		filter.contains(values);
+//	}
+//	double stop_s=omp_get_wtime();
+//	cout << "time: " << stop_s-start_s << endl;
+//
+//	start_s = omp_get_wtime();
+//	cout << "non parallelization" << endl;
+//	for( int i =0; i < 10000000; i++)
+//	{
+//		vector<size_t> values = multiHashNonPara("ATCGGGTCATCAACCAATAA", 5, 20);
+//		filter.contains(values);
+//	}
+//	stop_s=omp_get_wtime();
+//	cout << "time: " << stop_s-start_s << endl;
+
 	cout << "done" << endl;
 	return 0;
 }

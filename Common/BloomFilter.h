@@ -1,4 +1,5 @@
 /*
+ *
  * BloomFilter.h
  *
  *  Created on: Aug 10, 2012
@@ -10,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <stdint.h>
+#include <omp.h>
 #include "city.h"
 
 using namespace std;
@@ -27,7 +29,10 @@ static inline vector<size_t> multiHash(const char* kmer, size_t num,
 	//use raw kmer number as first hash value
 	tempHashValues[0] = kmer[0] | (kmer[1] << 8) | (kmer[2] << 16)
 			| (kmer[3] << 24);
-	for (size_t i = 1; i < num; ++i) {
+//	omp_set_num_threads(num);
+//	int i;
+//	#pragma omp parallel for shared(tempHashValues) private(i) schedule(static,1)
+	for (int i = 1; i < num; ++i) {
 		tempHashValues[i] = CityHash64WithSeed(kmer, kmerSize, i);
 	}
 	return tempHashValues;
@@ -53,7 +58,7 @@ public:
 	virtual ~BloomFilter();
 private:
 	void initSize(size_t size);
-	char* filter;
+	unsigned char* filter;
 	size_t size;
 	size_t sizeInBytes;
 	uint8_t hashNum;
