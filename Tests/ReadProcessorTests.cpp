@@ -26,6 +26,9 @@ int main(int argc, char **argv) {
 	assert(proc.prepSeq("AAAT",0) == "AAAT");
 	assert("AAAT" == proc.prepSeq("AAAT",0));
 	assert("AAAT" == proc.prepSeq("AAAT",0));
+	assert("ATAT" == proc.prepSeq("ATAT",0));
+	assert("CGCG" == proc.prepSeq("CGCG",0));
+	assert("GCGC" != proc.prepSeq("CGCG",0));
 
 	string string1 = proc.prepSeq("ATTT", 0);
 	string string2 = proc.prepSeq("AAAT", 0);

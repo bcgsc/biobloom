@@ -16,7 +16,8 @@ class BloomFilterGenerator {
 public:
 	explicit BloomFilterGenerator(vector<string> const &filenames,
 			uint16_t kmer);
-	size_t generate(string filename);
+	size_t generate(const string &filename);
+	size_t generate(const string &filename, const string &subtractFilter);
 	void setFilterSize(size_t bits);
 	const vector<size_t> addHashFuncs(uint16_t numFunc);
 	const size_t getExpectedEntries() const;

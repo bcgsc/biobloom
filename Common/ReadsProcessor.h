@@ -8,7 +8,7 @@
 #ifndef READSPROCESSOR_H_
 #define READSPROCESSOR_H_
 #include <string>
-#include <deque>
+#include <stdint.h>
 
 using namespace std;
 
@@ -17,7 +17,8 @@ public:
 
 	ReadsProcessor(uint16_t windowSize);
 	const string &prepSeq(string const &sequence, size_t position);
-//	const string &prepSeqAmbigPos(string const &sequence, vector<size_t> &ambigPos);
+	const string &prepSeqBisulf(string const &sequence, size_t position);
+
 	virtual ~ReadsProcessor();
 private:
 	string outputFwd; //containers preventing reallocation of mem

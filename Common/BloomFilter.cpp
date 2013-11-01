@@ -10,6 +10,8 @@
 #include <fstream>
 #include <iostream>
 #include <sys/stat.h>
+#include <stdio.h>
+#include <cstring>
 
 /* De novo filter constructor.
  * precondition: filterSize must be a multiple of 64

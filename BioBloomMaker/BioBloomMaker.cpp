@@ -46,6 +46,10 @@ void printHelpDialog()
 					"                         of automatically using calculated optimal number of\n"
 					"                         functions.\n"
 					"  -k, --kmer_size        K-mer size to use to create filter. [25]\n"
+					"  -s, --subtract         Path to filter that you want to uses to prevent the\n"
+					"                         addition of k-mers contained into new filter. You may\n"
+					"                         only use filters with k-mer sizes <= the one you wish\n"
+					"                         to create.\n"
 					"\nOption presets:\n"
 					"      --default          Create filter assuming default presets (ie. no advanced\n"
 					"                         options toggled) [default]\n"
@@ -73,6 +77,7 @@ int main(int argc, char *argv[])
 	string outputDir = "";
 	uint16_t kmerSize = 25;
 	uint16_t hashNum = 0;
+	string subtractFilter = "";
 
 	//preset options
 	int defaultSettings = 0;
@@ -88,6 +93,7 @@ int main(int argc, char *argv[])
 					"output_dir", required_argument, NULL, 'o' }, {
 					"hash_num", required_argument, NULL, 'g' }, {
 					"kmer_size", required_argument, NULL, 'k' }, {
+					"subtract", required_argument, NULL, 's' }, {
 					"default", no_argument, &defaultSettings, 1 }, {
 					"low_mem", no_argument, &lowMem, 1 }, {
 					"minimize_fpr", no_argument, &minimizefpr, 1 }, {
@@ -96,7 +102,7 @@ int main(int argc, char *argv[])
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hv", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:", long_options,
 			&option_index)) != -1)
 	{
 		switch (c) {
@@ -153,6 +159,15 @@ int main(int argc, char *argv[])
 			printVersion();
 			break;
 		}
+		case 's': {
+			stringstream convert(optarg);
+			if (!(convert >> subtractFilter)) {
+				cerr << "Error - Invalid set of bloom filter parameters! s: "
+						<< optarg << endl;
+				return 0;
+			}
+			break;
+		}
 		default: {
 			die = true;
 			break;
@@ -162,8 +177,11 @@ int main(int argc, char *argv[])
 
 	//check if only one preset was set
 	if (defaultSettings || minimizefpr || lowMem) {
-		if (presetType == "custom" || !(defaultSettings ^ minimizefpr ^ lowMem)) {
-			cerr << "Error: Cannot mix option presets or add custom advanced options to presets" << endl;
+		if (presetType == "custom" || !(defaultSettings ^ minimizefpr ^ lowMem))
+		{
+			cerr
+					<< "Error: Cannot mix option presets or add custom advanced options to presets"
+					<< endl;
 			exit(1);
 		}
 	}
@@ -227,8 +245,14 @@ int main(int argc, char *argv[])
 	assert(seeds.size() == hashNum);
 	filterGen.setFilterSize(filterSize);
 
+	size_t redundNum = 0;
 	//output filter
-	size_t redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
+	if (subtractFilter == "") {
+		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
+	} else {
+		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
+				subtractFilter);
+	}
 	info.setReduanacy(redundNum);
 
 	//set hash function info
