@@ -27,7 +27,7 @@
  */
 BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 		uint16_t kmer) :
-		kmerSize(kmer), expectedEntries(0), filterSize(0)
+		kmerSize(kmer), expectedEntries(0), filterSize(0), totalEntries(0)
 {
 
 	//for each file loop over all headers and obtain max number of elements
@@ -42,6 +42,25 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 			//subtract kmer size for max number of possible kmers
 			expectedEntries += parser.getSequenceSize(*j) - kmerSize;
 		}
+	}
+}
+
+/*
+ * Constructor:
+ * User must specify kmer size used in sliding window and give it a list of
+ * filenames with corresponding headers to make filter from.
+ * Variant allows users to set a specific filter size before hand
+ */
+BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
+		uint16_t kmer, size_t numElements) :
+		kmerSize(kmer), expectedEntries(numElements), filterSize(0), totalEntries(0)
+{
+	//for each file loop over all headers and obtain max number of elements
+	for (vector<string>::const_iterator i = filenames.begin();
+			i != filenames.end(); ++i)
+	{
+		WindowedFileParser parser(*i, kmerSize);
+		fileNamesAndHeaders[*i] = parser.getHeaders();
 	}
 }
 
@@ -91,6 +110,7 @@ size_t BloomFilterGenerator::generate(const string &filename)
 						redundancy++;
 					} else {
 						filter.insert(tempHash);
+						totalEntries++;
 					}
 				}
 			}
@@ -204,6 +224,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 							redundancy++;
 						} else {
 							filter.insert(tempHash);
+							totalEntries++;
 						}
 					} else {
 						++kmerRemoved;
@@ -243,12 +264,21 @@ const vector<size_t> BloomFilterGenerator::addHashFuncs(uint16_t numFunc)
 //getters
 
 /*
+ * Returns the total number of inserted filter entries
+ */
+const size_t BloomFilterGenerator::getTotalEntries() const
+{
+	return totalEntries;
+}
+
+/*
  * Returns the maximum possible number of expected filter entries based on inputs
  */
 const size_t BloomFilterGenerator::getExpectedEntries() const
 {
 	return expectedEntries;
 }
+
 
 const vector<string> BloomFilterGenerator::getHashFuncNames() const
 {

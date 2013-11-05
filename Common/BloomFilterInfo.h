@@ -18,11 +18,12 @@ using namespace std;
 class BloomFilterInfo {
 public:
 	explicit BloomFilterInfo(string const &filterID, uint16_t kmerSize,
-			float desiredFPR, size_t numEntries, const vector<string> &seqSrcs,
+			float desiredFPR, size_t expectedSize, const vector<string> &seqSrcs,
 			uint16_t hashNum, const string &optionType);
 	explicit BloomFilterInfo(string const &fileName);
 	void addHashFunction(const string &fnName, size_t seed);
 	void setReduanacy(size_t redunSeq);
+	void setTotalNum(size_t totalNum);
 
 	void printInfoFile(const string &fileName) const;
 	virtual ~BloomFilterInfo();
@@ -46,6 +47,7 @@ private:
 	vector<string> seqSrcs;
 	uint16_t hashNum;
 	string optionType;
+	size_t expectedNumEntries;
 
 	//determined at run time
 	struct runtime {

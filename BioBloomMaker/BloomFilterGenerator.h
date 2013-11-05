@@ -16,10 +16,13 @@ class BloomFilterGenerator {
 public:
 	explicit BloomFilterGenerator(vector<string> const &filenames,
 			uint16_t kmer);
+	explicit BloomFilterGenerator(vector<string> const &filenames,
+			uint16_t kmer, size_t numElements);
 	size_t generate(const string &filename);
 	size_t generate(const string &filename, const string &subtractFilter);
 	void setFilterSize(size_t bits);
 	const vector<size_t> addHashFuncs(uint16_t numFunc);
+	const size_t getTotalEntries() const;
 	const size_t getExpectedEntries() const;
 	const vector<string> getHashFuncNames() const;
 	const uint16_t calcOptiHashNum(size_t size, size_t entries) const;
@@ -29,6 +32,7 @@ public:
 private:
 	size_t filterSize;
 	size_t expectedEntries;
+	size_t totalEntries;
 	int16_t kmerSize;
 	HashManager multiHash;
 	vector<string> hashFunctionNames;
