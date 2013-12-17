@@ -1103,7 +1103,7 @@ const bool BioBloomClassifier::fexists(const string &filename) const
  * For a single read evaluate hits for a single hash signature
  * Sections with ambiguity bases are treated as misses
  * Updates hits value to number of hits (hashSig is used to as key)
- * Faster varient that assume there a redundant tile of 0
+ * Faster variant that assume there a redundant tile of 0
  */
 void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 		const string &hashSig, unordered_map<string, size_t> &hits)

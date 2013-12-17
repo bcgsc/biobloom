@@ -14,13 +14,14 @@
 #include <boost/property_tree/ini_parser.hpp>
 
 BloomFilterInfo::BloomFilterInfo(string const &filterID, uint16_t kmerSize,
-		float desiredFPR, size_t numEntries, const vector<string> &seqSrcs,
-		uint16_t hashNum, const string &optionType) :
+		float desiredFPR, size_t expectedNumEntries,
+		const vector<string> &seqSrcs, uint16_t hashNum,
+		const string &optionType) :
 		filterID(filterID), kmerSize(kmerSize), desiredFPR(desiredFPR), seqSrcs(
-				seqSrcs), hashNum(hashNum), optionType(optionType)
+				seqSrcs), hashNum(hashNum), optionType(optionType), expectedNumEntries(
+				expectedNumEntries)
 {
-	runInfo.numEntries = numEntries;
-	runInfo.size = calcOptimalSize(numEntries, desiredFPR, hashNum);
+	runInfo.size = calcOptimalSize(expectedNumEntries, desiredFPR, hashNum);
 	runInfo.redundantSequences = 0;
 }
 
@@ -54,6 +55,12 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 		runInfo.redundantSequences = 0;
 		runInfo.redundantFPR = 0;
 	}
+	try {
+		expectedNumEntries = pt.get<size_t>(
+				"user_input_options.expected_num_entries");
+	} catch (boost::property_tree::ptree_error &e) {
+		expectedNumEntries = runInfo.numEntries;
+	}
 
 	runInfo.FPR = pt.get<double>(
 			"runtime_options.approximate_false_positive_rate");
@@ -81,8 +88,15 @@ void BloomFilterInfo::setReduanacy(size_t redunSeq)
 			hashNum, redunSeq);
 
 	runInfo.FPR = calcApproxFPR(runInfo.size,
-			runInfo.numEntries - runInfo.redundantSequences,
-			hashNum);
+			runInfo.numEntries - runInfo.redundantSequences, hashNum);
+}
+
+/**
+ * Sets number of element inserted into filter
+ */
+void BloomFilterInfo::setTotalNum(size_t totalNum)
+{
+	runInfo.numEntries = totalNum;
 }
 
 /*
@@ -95,6 +109,7 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const
 	//cannot output unless runtime values set
 	assert(runInfo.size !=0);
 	assert(runInfo.numEntries !=0);
+	assert(expectedNumEntries !=0);
 	assert(runInfo.FPR !=0);
 	assert(runInfo.hashFunctions.size() !=0);
 	assert(runInfo.seeds.size() !=0);
@@ -104,7 +119,8 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const
 	//user specified
 	output << "[user_input_options]\nfilter_id=" << filterID << "\nkmer_size="
 			<< kmerSize << "\ndesired_false_positve_rate=" << desiredFPR
-			<< "\noption_type=" << optionType << "\nsequence_sources=";
+			<< "\noption_type=" << optionType << "\nexpected_num_entries="
+			<< expectedNumEntries << "\nsequence_sources=";
 	//print out sources as a list
 	size_t tempCounter = 0;
 	for (vector<string>::const_iterator it = seqSrcs.begin();

@@ -45,7 +45,13 @@ void printHelpDialog()
 					"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
 					"                         of automatically using calculated optimal number of\n"
 					"                         functions.\n"
-					"  -k, --kmer_size        K-mer size to use to create filter. [25]\n"
+					"  -k, --kmer_size=N      K-mer size to use to create filter. [25]\n"
+					"  -s, --subtract=N       Path to filter that you want to uses to prevent the\n"
+					"                         addition of k-mers contained into new filter. You may\n"
+					"                         only use filters with k-mer sizes <= the one you wish\n"
+					"                         to create.\n"
+					"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
+					"                         is determined from sequences sizes within files. [0]"
 					"\nOption presets:\n"
 					"      --default          Create filter assuming default presets (ie. no advanced\n"
 					"                         options toggled) [default]\n"
@@ -73,6 +79,8 @@ int main(int argc, char *argv[])
 	string outputDir = "";
 	uint16_t kmerSize = 25;
 	uint16_t hashNum = 0;
+	string subtractFilter = "";
+	size_t entryNum = 0;
 
 	//preset options
 	int defaultSettings = 0;
@@ -86,8 +94,11 @@ int main(int argc, char *argv[])
 					"fal_pos_rate", required_argument, NULL, 'f' }, {
 					"file_prefix", required_argument, NULL, 'p' }, {
 					"output_dir", required_argument, NULL, 'o' }, {
+					"version", no_argument, NULL, 'v' }, {
 					"hash_num", required_argument, NULL, 'g' }, {
 					"kmer_size", required_argument, NULL, 'k' }, {
+					"subtract", required_argument, NULL, 's' }, {
+					"num_ele", required_argument, NULL, 'n' }, {
 					"default", no_argument, &defaultSettings, 1 }, {
 					"low_mem", no_argument, &lowMem, 1 }, {
 					"minimize_fpr", no_argument, &minimizefpr, 1 }, {
@@ -96,7 +107,7 @@ int main(int argc, char *argv[])
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hv", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:", long_options,
 			&option_index)) != -1)
 	{
 		switch (c) {
@@ -145,12 +156,31 @@ int main(int argc, char *argv[])
 			presetType = "custom";
 			break;
 		}
+		case 'n': {
+			stringstream convert(optarg);
+			if (!(convert >> entryNum)) {
+				cerr << "Error - Invalid set of bloom filter parameters! n: "
+						<< optarg << endl;
+				return 0;
+			}
+			presetType = "custom";
+			break;
+		}
 		case 'h': {
 			printHelpDialog();
 			break;
 		}
 		case 'v': {
 			printVersion();
+			break;
+		}
+		case 's': {
+			stringstream convert(optarg);
+			if (!(convert >> subtractFilter)) {
+				cerr << "Error - Invalid set of bloom filter parameters! s: "
+						<< optarg << endl;
+				return 0;
+			}
 			break;
 		}
 		default: {
@@ -162,8 +192,11 @@ int main(int argc, char *argv[])
 
 	//check if only one preset was set
 	if (defaultSettings || minimizefpr || lowMem) {
-		if (presetType == "custom" || !(defaultSettings ^ minimizefpr ^ lowMem)) {
-			cerr << "Error: Cannot mix option presets or add custom advanced options to presets" << endl;
+		if (presetType == "custom" || !(defaultSettings ^ minimizefpr ^ lowMem))
+		{
+			cerr
+					<< "Error: Cannot mix option presets or add custom advanced options to presets"
+					<< endl;
 			exit(1);
 		}
 	}
@@ -205,10 +238,13 @@ int main(int argc, char *argv[])
 	}
 
 	//create filter
-	BloomFilterGenerator filterGen(inputFiles, kmerSize);
+	BloomFilterGenerator filterGen(inputFiles, kmerSize, entryNum);
 
-	//get expected number of entries
-	size_t entryNum = filterGen.getExpectedEntries();
+	if(entryNum == 0)
+	{
+		filterGen = BloomFilterGenerator(inputFiles, kmerSize);
+		entryNum = filterGen.getExpectedEntries();
+	}
 
 	//set number of hash functions used
 	if (hashNum == 0) {
@@ -227,8 +263,15 @@ int main(int argc, char *argv[])
 	assert(seeds.size() == hashNum);
 	filterGen.setFilterSize(filterSize);
 
+	size_t redundNum = 0;
 	//output filter
-	size_t redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
+	if (subtractFilter == "") {
+		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
+	} else {
+		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
+				subtractFilter);
+	}
+	info.setTotalNum(filterGen.getTotalEntries());
 	info.setReduanacy(redundNum);
 
 	//set hash function info
@@ -243,7 +286,7 @@ int main(int argc, char *argv[])
 	double redunRate = double(redundNum) / double(entryNum)
 			- info.getRedunancyFPR();
 	if (redunRate > 0.25) {
-		cerr << "Redunancy Rate is approximately: " << redunRate << endl;
+		cerr << "Redundancy Rate is approximately: " << redunRate << endl;
 		cerr
 				<< "Consider checking your files for duplicate sequences and adjusting them accordingly."
 				<< endl;

@@ -32,6 +32,13 @@ int main(int argc, char **argv) {
 	assert(!strcmp(proc1.prepSeq("AAAACGTTTT",0), proc2.prepSeq("TTTTGCAAAA",0)) == 0);
 	assert(strcmp(proc1.prepSeq("AAAACGTTTT",0), proc2.prepSeq("AAAACGTTTT",0)) == 0);
 	assert(!strcmp(proc1.prepSeq("GTACATAAAT",0), proc2.prepSeq("GTTTATGTAC",0)) == 0);
+	assert(proc.prepSeq("ATTT",0) == "AAAT");
+	assert(proc.prepSeq("AAAT",0) == "AAAT");
+	assert("AAAT" == proc.prepSeq("AAAT",0));
+	assert("AAAT" == proc.prepSeq("AAAT",0));
+	assert("ATAT" == proc.prepSeq("ATAT",0));
+	assert("CGCG" == proc.prepSeq("CGCG",0));
+	assert("GCGC" != proc.prepSeq("CGCG",0));
 
 	assert(strcmp(proc.prepSeq("ATTT",0), proc0.prepSeq("AAAT",0)) == 0);
 	assert(strcmp(proc.prepSeq("AAAT",0), proc0.prepSeq("AAAT",0)) == 0);
