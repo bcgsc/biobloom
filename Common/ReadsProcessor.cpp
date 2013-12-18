@@ -20,16 +20,16 @@
  */
 ReadsProcessor::ReadsProcessor(uint16_t windowSize) :
 		kmerSize(windowSize), kmerSizeInBytes(windowSize / 4), halfSizeOfKmerInBytes(
-				windowSize / 8), hangingBits(0) {
+				windowSize / 8), hangingBases(0) {
 
 	//parsing code require kmer larger than 3
 	assert(kmerSize > 3);
 
 	if (windowSize % 8 != 0) {
 		halfSizeOfKmerInBytes++;
-		if (windowSize % 4 != 0) {
+		hangingBases = windowSize % 4;
+		if (hangingBases % 4 != 0) {
 			kmerSizeInBytes++;
-			hangingBits = 1;
 		}
 	}
 
@@ -324,11 +324,11 @@ static const uint8_t rv3[256] = {
  * - Converts input to empty string if any character other than ATCG is found
  * - If sequence is palamdromic a char with only the first half recorded is used
  *   because that is all that is needed to uniquely identify the sequence
- * - kmersize must be greater than 3
+ * - kmersize must be greater than 3 otherwise undefined behavior will occur
  * requires a start position
  */
-const char* ReadsProcessor::prepSeq(string const &sequence, size_t position) {
-
+const char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
+{
 	size_t index = position;
 	size_t revIndex = position + kmerSize - 1;
 	size_t outputIndex = 0;
@@ -347,7 +347,8 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 		fw[outputIndex] |= fw1[sequence[index++]];
 		fw[outputIndex] |= fw2[sequence[index++]];
 
-		if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
+		//-128 is used as I am working with signed chars
+		if (fw[outputIndex] == -128 || fw3[sequence[index]] == 0xFF) {
 			return emptyResult;
 		}
 
@@ -359,7 +360,7 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 		rv[outputIndex] |= rv1[sequence[revIndex--]];
 		rv[outputIndex] |= rv2[sequence[revIndex--]];
 
-		if (rv[outputIndex] == 0xFF || rv3[sequence[revIndex]] == 0xFF) {
+		if (rv[outputIndex] == -128 || rv3[sequence[revIndex]] == 0xFF) {
 			return emptyResult;
 		}
 
@@ -369,27 +370,28 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 		//forward is smaller
 		if (fw[outputIndex] < rv[outputIndex]) {
 			//finish off sequence
-			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBits;
-					++outputIndex) {
+			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBases;
+					++outputIndex)
+			{
 				//create char for forward
 				fw[outputIndex] |= fw0[sequence[index++]];
 				fw[outputIndex] |= fw1[sequence[index++]];
 				fw[outputIndex] |= fw2[sequence[index++]];
 
-				if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
+				if (fw[outputIndex] == -128 || fw3[sequence[index]] == 0xFF) {
 					return "";
 				}
 				fw[outputIndex] |= fw3[sequence[index]];
 			}
 			//create last byte
-			if (hangingBits) {
+			if (hangingBases) {
 				size_t lastPos = position + kmerSize - 1;
 				fw[outputIndex] |= fw0[sequence[lastPos]];
 				for (; index < lastPos; --lastPos) {
 					fw[outputIndex] = fw[outputIndex] << 2;
 					fw[outputIndex] |= fw0[sequence[lastPos]];
 				}
-				if (fw[outputIndex] == 0xFF) {
+				if (fw[outputIndex] == -128) {
 					return emptyResult;
 				}
 			}
@@ -398,26 +400,27 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 		//reverse is smaller
 		else if (fw[outputIndex] > rv[outputIndex]) {
 			//finish off sequence
-			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBits;
-					++outputIndex) {
+			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBases;
+					++outputIndex)
+			{
 				rv[outputIndex] |= rv0[sequence[revIndex--]];
 				rv[outputIndex] |= rv1[sequence[revIndex--]];
 				rv[outputIndex] |= rv2[sequence[revIndex--]];
 
-				if (rv[outputIndex] == 0xFF
-						|| rv3[sequence[revIndex]] == 0xFF) {
+				if (rv[outputIndex] == -128 || rv3[sequence[revIndex]] == 0xFF)
+				{
 					return emptyResult;
 				}
 				rv[outputIndex] |= rv3[sequence[revIndex]];
 			}
 			//create last byte
-			if (hangingBits) {
+			if (hangingBases) {
 				rv[outputIndex] |= rv0[sequence[position]];
 				for (; revIndex > position; ++position) {
 					rv[outputIndex] = rv[outputIndex] << 2;
 					rv[outputIndex] |= rv0[sequence[position]];
 				}
-				if (rv[outputIndex] == 0xFF) {
+				if (rv[outputIndex] == -128) {
 					return emptyResult;
 				}
 			}
@@ -426,27 +429,28 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position) {
 	}
 	//palamdromic
 	//finish off sequence
-	for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBits;
-			++outputIndex) {
+	for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBases;
+			++outputIndex)
+	{
 		//create char for forward
 		fw[outputIndex] |= fw0[sequence[index++]];
 		fw[outputIndex] |= fw1[sequence[index++]];
 		fw[outputIndex] |= fw2[sequence[index++]];
 
-		if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
+		if (fw[outputIndex] == -128 || fw3[sequence[index]] == 0xFF) {
 			return "";
 		}
 		fw[outputIndex] |= fw3[sequence[index]];
 	}
 	//create last byte
-	if (hangingBits) {
+	if (hangingBases) {
 		size_t lastPos = position + kmerSize - 1;
 		fw[outputIndex] |= fw0[sequence[lastPos]];
 		for (; index < lastPos; --lastPos) {
 			fw[outputIndex] = fw[outputIndex] << 2;
 			fw[outputIndex] |= fw0[sequence[lastPos]];
 		}
-		if (fw[outputIndex] == 0xFF) {
+		if (fw[outputIndex] == -128) {
 			return emptyResult;
 		}
 	}

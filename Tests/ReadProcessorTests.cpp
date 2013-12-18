@@ -26,6 +26,10 @@ int main(int argc, char **argv) {
 	ReadsProcessor proc1(10);
 	ReadsProcessor proc2(10);
 
+	//check unhandleable sequences (should return empty string)
+	assert(*proc.prepSeq("NNNA",0) == 0);
+	assert(*proc1.prepSeq("AATANNNNNN",0) == 0);
+
 	assert(strcmp(proc1.prepSeq("GTACATAAAT",0), proc2.prepSeq("ATTTATGTAC",0)) == 0);
 	assert(strcmp(proc.prepSeq("AAAT",0), proc0.prepSeq("AAAT",0)) == 0);
 
