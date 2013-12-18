@@ -52,13 +52,6 @@ void printHelpDialog()
 					"                         to create.\n"
 					"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 					"                         is determined from sequences sizes within files. [0]"
-					"\nOption presets:\n"
-					"      --default          Create filter assuming default presets (ie. no advanced\n"
-					"                         options toggled) [default]\n"
-					"      --low_mem          Create filter with presets designed for lower memory\n"
-					"                         usage.\n"
-					"      --minimize_fpr     Create filter with presets designed for minimizing the\n"
-					"                         false positive rate.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
@@ -82,12 +75,6 @@ int main(int argc, char *argv[])
 	string subtractFilter = "";
 	size_t entryNum = 0;
 
-	//preset options
-	int defaultSettings = 0;
-	int lowMem = 0;
-	int minimizefpr = 0;
-	string presetType = "default";
-
 	//long form arguments
 	static struct option long_options[] = {
 			{
@@ -99,9 +86,6 @@ int main(int argc, char *argv[])
 					"kmer_size", required_argument, NULL, 'k' }, {
 					"subtract", required_argument, NULL, 's' }, {
 					"num_ele", required_argument, NULL, 'n' }, {
-					"default", no_argument, &defaultSettings, 1 }, {
-					"low_mem", no_argument, &lowMem, 1 }, {
-					"minimize_fpr", no_argument, &minimizefpr, 1 }, {
 					"help", no_argument, NULL, 'h' }, {
 					NULL, 0, NULL, 0 } };
 
@@ -122,7 +106,6 @@ int main(int argc, char *argv[])
 				cerr << "Error -f cannot be greater than 1 " << optarg << endl;
 				return 0;
 			}
-			presetType = "custom";
 			break;
 		}
 		case 'p': {
@@ -143,7 +126,6 @@ int main(int argc, char *argv[])
 						<< optarg << endl;
 				return 0;
 			}
-			presetType = "custom";
 			break;
 		}
 		case 'g': {
@@ -153,7 +135,6 @@ int main(int argc, char *argv[])
 						<< optarg << endl;
 				return 0;
 			}
-			presetType = "custom";
 			break;
 		}
 		case 'n': {
@@ -163,7 +144,6 @@ int main(int argc, char *argv[])
 						<< optarg << endl;
 				return 0;
 			}
-			presetType = "custom";
 			break;
 		}
 		case 'h': {
@@ -188,27 +168,6 @@ int main(int argc, char *argv[])
 			break;
 		}
 		}
-	}
-
-	//check if only one preset was set
-	if (defaultSettings || minimizefpr || lowMem) {
-		if (presetType == "custom" || !(defaultSettings ^ minimizefpr ^ lowMem))
-		{
-			cerr
-					<< "Error: Cannot mix option presets or add custom advanced options to presets"
-					<< endl;
-			exit(1);
-		}
-	}
-
-	//set presets
-	if (lowMem) {
-		fpr = 0.14;
-		kmerSize = 24;
-		presetType = "low_mem";
-	} else if (minimizefpr) {
-		kmerSize = 24;
-		presetType = "minimize_fpr";
 	}
 
 	//Stores fasta input file names
