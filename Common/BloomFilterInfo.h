@@ -15,6 +15,19 @@
 
 using namespace std;
 
+// For Calculating aspects of bloom filter
+// todo: Tweak calculations as they are approximations and may not be 100% optimal
+// see http://en.wikipedia.org/wiki/Bloom_filter
+
+/*
+ * Calculation assumes optimal ratio of bytes per entry given a fpr
+ */
+//Note: Rounded down because in practice you want to calculate as few hash values as possible
+static uint8_t calcOptiHashNum(float fpr)
+{
+	return uint8_t(-log(fpr) / log(2));
+}
+
 class BloomFilterInfo {
 public:
 	explicit BloomFilterInfo(string const &filterID, uint16_t kmerSize,

@@ -87,7 +87,8 @@ const bool WindowedFileParser::notEndOfSeqeunce()
 }
 
 /*
- * Initializes fasta index in memory. Will output index if not present.
+ * Initializes fasta index in memory.
+ * If no index exists derive one from input file
  * Input file refers to input fasta file not the index file.
  */
 void WindowedFileParser::initializeIndex(string const &fileName)

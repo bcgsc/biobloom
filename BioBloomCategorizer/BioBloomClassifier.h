@@ -49,7 +49,7 @@ private:
 
 	size_t evaluateReadSingle(const FastqRecord &rec, const BloomFilter &filter);
 
-	const string getReadSummaryHeader(const vector<string> &hashSigs);
+	const string getReadSummaryHeader(const vector<uint16_t> &hashSigs);
 	void initHits(unordered_map<string, size_t> &hits);
 	const string getReadStatStr(string const &readID, size_t readLength,
 			unordered_map<string, size_t> &hits);
@@ -57,10 +57,10 @@ private:
 			size_t readLength2, unordered_map<string, size_t> &hits1,
 			unordered_map<string, size_t> &hits2);
 
-	//group filters with same hash signature
-	unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > infoFiles;
-	unordered_map<string, shared_ptr<MultiFilter> > filters;
-	vector<string> hashSigs;
+	//group filters with same hash number
+	unordered_map<uint16_t , vector<shared_ptr<BloomFilterInfo> > > infoFiles;
+	unordered_map<uint16_t, shared_ptr<MultiFilter> > filters;
+	vector<uint16_t> hashSigs;
 	size_t minHit;
 	double percentMinHit;
 	uint8_t filterNum;

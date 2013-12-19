@@ -40,19 +40,6 @@ static inline vector<size_t> multiHash(const char* kmer, size_t num,
 	return tempHashValues;
 }
 
-// For Calculating aspects of bloom filter
-// todo: Tweak calculations as they are approximations and may not be 100% optimal
-// see http://en.wikipedia.org/wiki/Bloom_filter
-
-/*
- * Calculation assumes optimal ratio of bytes per entry given a fpr
- */
-//Note: Rounded down because in practice you want to calculate as few hash values as possible
-static uint8_t calcOptiHashNum(float fpr)
-{
-	return uint8_t(-log(fpr) / log(2));
-}
-
 class BloomFilter {
 public:
 	//for generating a new filter

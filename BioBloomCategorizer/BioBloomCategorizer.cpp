@@ -9,7 +9,6 @@
 #include <string>
 #include <getopt.h>
 #include "boost/unordered/unordered_map.hpp"
-#include "Common/HashManager.h"
 #include <vector>
 #include <sys/stat.h>
 #include "BioBloomClassifier.h"

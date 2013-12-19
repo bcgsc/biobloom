@@ -162,7 +162,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	outputFiles[multiMatch] = multi_match;
 
 	//initialize variables
-	for (vector<string>::const_iterator j = hashSigs.begin();
+	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
@@ -456,7 +456,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	outputFiles[multiMatch + "2"] = multiMatch2;
 
 	//initialize variables and print filter ids
-	for (vector<string>::const_iterator j = hashSigs.begin();
+	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
@@ -815,7 +815,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	outputFiles[multiMatch + "2"] = multiMatch2;
 
 	//initialize variables and print filter ids
-	for (vector<string>::const_iterator j = hashSigs.begin();
+	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const vector<string> idsInFilter = (*filters[*j]).getFilterIds();
@@ -1017,7 +1017,7 @@ const bool BioBloomClassifier::checkFilterPresetType(const string &optionType)
 {
 	bool status = true;
 	//get filterIDs to iterate through has in a consistent order
-	for (vector<string>::const_iterator j = hashSigs.begin();
+	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		for (vector<shared_ptr<BloomFilterInfo> >::const_iterator i =
@@ -1146,7 +1146,8 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 /*
  * Assumes single filter is used
  */
-size_t BioBloomClassifier::evaluateReadSingle(const FastqRecord &rec, const BloomFilter &filter)
+size_t BioBloomClassifier::evaluateReadSingle(const FastqRecord &rec,
+		const BloomFilter &filter)
 {
 	//break read into tiles
 	//evaluate read
@@ -1359,13 +1360,13 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
  * Initializes Summary Variables. Also prints heads for read status.
  */
 const string BioBloomClassifier::getReadSummaryHeader(
-		const vector<string> &hashSigs)
+		const vector<uint16_t> &hashSigs)
 {
 	stringstream readStatusOutput;
 	readStatusOutput << "readID\tseqSize";
 
 	//initialize variables and print filter ids
-	for (vector<string>::const_iterator j = hashSigs.begin();
+	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		vector<string> idsInFilter = (*filters[*j]).getFilterIds();

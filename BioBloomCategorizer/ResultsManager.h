@@ -20,10 +20,11 @@ using namespace boost;
 
 class ResultsManager {
 public:
-	explicit ResultsManager(const vector<string> &hashSigsRef,
-			const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
-			const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
-			size_t minHit, double percHit, size_t maxHitValue, uint8_t tileModifier);
+	explicit ResultsManager(const vector<uint16_t> &hashSigsRef,
+			const unordered_map<uint16_t, shared_ptr<MultiFilter> > &filtersRef,
+			const unordered_map<uint16_t, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
+			size_t minHit, double percHit, size_t maxHitValue,
+			uint8_t tileModifier);
 
 	const string updateSummaryData(size_t seqLen,
 			unordered_map<string, size_t> &hits);
@@ -36,9 +37,9 @@ public:
 	virtual ~ResultsManager();
 private:
 	//Variables copied from biobloomcategorizer
-	const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > infoFiles;
-	const unordered_map<string, shared_ptr<MultiFilter> > filters;
-	const vector<string> hashSigs;
+	const unordered_map<uint16_t, vector<shared_ptr<BloomFilterInfo> > > infoFiles;
+	const unordered_map<uint16_t, shared_ptr<MultiFilter> > filters;
+	const vector<uint16_t> hashSigs;
 	const size_t minHit;
 	const double percentMinHit;
 	const size_t maxHitValue;
