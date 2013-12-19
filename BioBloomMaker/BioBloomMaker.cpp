@@ -199,27 +199,22 @@ int main(int argc, char *argv[])
 	//create filter
 	BloomFilterGenerator filterGen(inputFiles, kmerSize, entryNum);
 
-	if(entryNum == 0)
-	{
-		filterGen = BloomFilterGenerator(inputFiles, kmerSize);
-		entryNum = filterGen.getExpectedEntries();
-	}
-
 	//set number of hash functions used
 	if (hashNum == 0) {
 		//get optimal number of hash functions
-		hashNum = filterGen.calcOptiHashNum(fpr);
+		hashNum = calcOptiHashNum(fpr);
 	}
 
-	BloomFilterInfo info(filterPrefix, kmerSize, fpr, entryNum, inputFiles,
-			hashNum, presetType);
+	if(entryNum == 0)
+	{
+		filterGen = BloomFilterGenerator(inputFiles, kmerSize, hashNum);
+		entryNum = filterGen.getExpectedEntries();
+	}
+
+	BloomFilterInfo info(filterPrefix, kmerSize, fpr, entryNum, inputFiles, hashNum);
 
 	//get calculated size of Filter
 	size_t filterSize = info.getCalcuatedFilterSize();
-
-	//Add seed to bloom filter and get them for info file
-	vector<size_t> seeds = filterGen.addHashFuncs(hashNum);
-	assert(seeds.size() == hashNum);
 	filterGen.setFilterSize(filterSize);
 
 	size_t redundNum = 0;
@@ -232,13 +227,6 @@ int main(int argc, char *argv[])
 	}
 	info.setTotalNum(filterGen.getTotalEntries());
 	info.setReduanacy(redundNum);
-
-	//set hash function info
-	vector<string> hashFunctions = filterGen.getHashFuncNames();
-
-	for (uint16_t i = 0; i < hashNum; ++i) {
-		info.addHashFunction(hashFunctions[i], seeds[i]);
-	}
 
 	//code for redundancy checking
 	//calcuate redundancy rate

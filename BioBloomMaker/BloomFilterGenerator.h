@@ -13,12 +13,17 @@ using namespace std;
 
 class BloomFilterGenerator {
 public:
-	explicit BloomFilterGenerator(vector<string> const &filenames,uint8_t kmer, uint8_t numFunc, size_t numElements);
-	explicit BloomFilterGenerator(vector<string> const &filenames,uint8_t kmer, uint8_t numFunc);
+	explicit BloomFilterGenerator(vector<string> const &filenames,
+			uint8_t kmerSize, uint8_t hashNum, size_t numElements);
+
+	explicit BloomFilterGenerator(vector<string> const &filenames,
+			uint8_t kmerSize, uint8_t hashNum);
+
 	size_t generate(const string &filename);
 	size_t generate(const string &filename, const string &subtractFilter);
 	void setFilterSize(size_t bits);
-	const vector<size_t> addHashFuncs(uint16_t numFunc);
+
+	void setHashFuncs(uint8_t numFunc);
 	const size_t getTotalEntries() const;
 	const size_t getExpectedEntries() const;
 
@@ -27,7 +32,8 @@ private:
 	size_t filterSize;
 	size_t expectedEntries;
 	size_t totalEntries;
-	int16_t kmerSize;
+	int8_t kmerSize;
+	int8_t hashNum;
 	boost::unordered_map<string, vector<string> > fileNamesAndHeaders;
 };
 

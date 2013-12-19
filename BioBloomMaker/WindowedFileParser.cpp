@@ -17,7 +17,7 @@ WindowedFileParser::WindowedFileParser(string const &fileName,
 	fastaFileHandle.open(fileName.c_str(), ifstream::in);
 	assert(fastaFileHandle);
 
-//create in memory index
+	//create in memory index
 	WindowedFileParser::initializeIndex(fileName);
 	currentHeader = "";
 	setLocationByHeader(headers[0]);
@@ -74,7 +74,7 @@ const char* WindowedFileParser::getNextSeq()
 		//if there is not enough sequence for a full kmer
 		if (currentString.length() < windowSize) {
 			sequenceNotEnd = false;
-			return currentString;
+			return "";
 		}
 	}
 
@@ -97,8 +97,7 @@ void WindowedFileParser::initializeIndex(string const &fileName)
 	//append .fai to end of filename
 	ifstream indexFile;
 	indexFile.open(faiFile.c_str(), ifstream::in);
-	if (!indexFile)
-	{
+	if (!indexFile) {
 		cerr << "Fasta files must be indexed. Use samtools faidx." << endl;
 		exit(1);
 	}

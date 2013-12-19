@@ -17,7 +17,6 @@
 #include "WindowedFileParser.h"
 #include "Common/BloomFilter.h"
 #include "Common/BloomFilterInfo.h"
-#include <deque>
 #include <cassert>
 
 /*
@@ -26,8 +25,9 @@
  * filenames with corresponding headers to make filter from.
  */
 BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
-		uint8_t kmer, uint8_t numFunc) :
-		kmerSize(kmer), expectedEntries(0), filterSize(0), totalEntries(0)
+		uint8_t hashNum, uint8_t kmerSize) :
+		hashNum(hashNum), kmerSize(kmerSize), expectedEntries(0), filterSize(0), totalEntries(
+				0)
 {
 
 	//for each file loop over all headers and obtain max number of elements
@@ -52,8 +52,9 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
  * Variant allows users to set a specific filter size before hand
  */
 BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
-		uint16_t kmer, size_t numElements) :
-		kmerSize(kmer), expectedEntries(numElements), filterSize(0), totalEntries(0)
+		uint8_t hashNum, uint8_t kmerSize, size_t numElements) :
+		hashNum(hashNum), kmerSize(kmerSize), expectedEntries(numElements), filterSize(
+				0), totalEntries(0)
 {
 	//for each file loop over all headers and obtain max number of elements
 	for (vector<string>::const_iterator i = filenames.begin();
@@ -75,13 +76,13 @@ size_t BloomFilterGenerator::generate(const string &filename)
 {
 
 	//need the number of hash functions used to be greater than 0
-	assert(!hashFunctionNames.empty());
+	assert(hashNum > 0);
 
 	//need the filter to be greater than the size of the number of expected entries
 	assert(filterSize > expectedEntries);
 
 	//setup bloom filter
-	BloomFilter filter(filterSize, );
+	BloomFilter filter(filterSize, hashNum, kmerSize);
 
 	//redundancy metric value
 	size_t redundancy = 0;
@@ -102,10 +103,10 @@ size_t BloomFilterGenerator::generate(const string &filename)
 			//insert elements into filter
 			//read fasta file line by line and split using sliding window
 			while (parser.notEndOfSeqeunce()) {
-				const string &currentSeq = parser.getNextSeq();
-				if (!currentSeq.empty()) {
-					const vector<size_t> &tempHash = multiHash.multiHash(
-							currentSeq);
+				const char* currentSeq = parser.getNextSeq();
+				if (*currentSeq != 0) {
+					const vector<size_t> &tempHash = multiHash(currentSeq,
+							hashNum, kmerSize);
 					if (filter.contains(tempHash)) {
 						redundancy++;
 					} else {
@@ -122,45 +123,34 @@ size_t BloomFilterGenerator::generate(const string &filename)
 
 /*
  * Generates a bloom filter outputting it to a filename
+ * Input a filename to use as a subtractive filter
  * Returns the redundancy rate of a Bloom Filter generated from a file.
  * Currently only supports fasta files.
  *
  * Outputs to fileName path
  */
+//@TODO refactor to remove boilerplate-ness to method above
 size_t BloomFilterGenerator::generate(const string &filename,
 		const string &subtractFilter)
 {
 
 	//need the number of hash functions used to be greater than 0
-	assert(!hashFunctionNames.empty());
+	assert(hashNum > 0);
 
 	//need the filter to be greater than the size of the number of expected entries
 	assert(filterSize > expectedEntries);
 
 	//setup bloom filter
-	BloomFilter filter(filterSize, multiHash);
+	BloomFilter filter(filterSize, hashNum, kmerSize);
 
 	//load other bloom filter info
 	string infoFileName = (subtractFilter).substr(0,
 			(subtractFilter).length() - 2) + "txt";
 	BloomFilterInfo subInfo(infoFileName);
 
-	//createHashManager for subtraction filter
-	HashManager subMan;
-
-	vector<size_t>::const_iterator seedsItr = subInfo.getSeedValues().begin();
-
-	for (vector<string>::const_iterator hashFnItr =
-			subInfo.getHashFunctionNames().begin();
-			hashFnItr != subInfo.getHashFunctionNames().end(); ++hashFnItr)
-	{
-		subMan.addHashFunction(*hashFnItr, *seedsItr);
-		++seedsItr;
-	}
-
 	//load other bloomfilter
-	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(), subtractFilter,
-			subMan);
+	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
+			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
 
 	if (subInfo.getKmerSize() > kmerSize) {
 		cerr
@@ -193,8 +183,8 @@ size_t BloomFilterGenerator::generate(const string &filename,
 			//insert elements into filter
 			//read fasta file line by line and split using sliding window
 			while (parser.notEndOfSeqeunce()) {
-				const string &currentSeq = parser.getNextSeq();
-				if (!currentSeq.empty()) {
+				const char* currentSeq = parser.getNextSeq();
+				if (*currentSeq != 0) {
 					//allow kmer into filter?
 					bool allowKmer = false;
 
@@ -218,8 +208,8 @@ size_t BloomFilterGenerator::generate(const string &filename,
 					}
 
 					if (allowKmer) {
-						const vector<size_t> &tempHash = multiHash.multiHash(
-								currentSeq);
+						const vector<size_t> &tempHash = multiHash(currentSeq,
+								hashNum, kmerSize);
 						if (filter.contains(tempHash)) {
 							redundancy++;
 						} else {
@@ -246,21 +236,6 @@ void BloomFilterGenerator::setFilterSize(size_t bits)
 	filterSize = bits;
 }
 
-/*
- * Adds numFunc number of seed values to be used in filter
- * Returns the seed values used
- */
-const vector<size_t> BloomFilterGenerator::addHashFuncs(uint16_t numFunc)
-{
-	vector<size_t> seedVals;
-	for (uint16_t i = 0; i < numFunc; ++i) {
-		multiHash.addHashFunction("CityHash64", i);
-		hashFunctionNames.push_back("CityHash64");
-		seedVals.push_back(i);
-	}
-	return seedVals;
-}
-
 //getters
 
 /*
@@ -277,36 +252,6 @@ const size_t BloomFilterGenerator::getTotalEntries() const
 const size_t BloomFilterGenerator::getExpectedEntries() const
 {
 	return expectedEntries;
-}
-
-
-const vector<string> BloomFilterGenerator::getHashFuncNames() const
-{
-	return hashFunctionNames;
-}
-
-// todo: Tweak calculations as they are approximations and may not be 100% optimal
-// see http://en.wikipedia.org/wiki/Bloom_filter
-
-/*
- * Calculation will return optimal number of hash functions
- * to achieve lowest FPR for a given ratio of filter size and entries
- */
-//Note: the floor is take because in practice you want to calculate as few hash values as possible
-//NOTE: Not currently used.
-const uint16_t BloomFilterGenerator::calcOptiHashNum(size_t size,
-		size_t entries) const
-{
-	return uint16_t(((double) size / (double) entries) * log(2));
-}
-
-/*
- * Calculation assumes optimal ratio of bytes per entry given a fpr
- */
-//Note: Rounded down because in practice you want to calculate as few hash values as possible
-const uint16_t BloomFilterGenerator::calcOptiHashNum(float fpr) const
-{
-	return uint16_t(-log(fpr) / log(2));
 }
 
 //destructor
