@@ -11,6 +11,7 @@
 #include <string>
 #include <assert.h>
 #include <iostream>
+#include <fstream>
 #include <boost/unordered/unordered_map.hpp>
 #include <vector>
 #include <fstream>
@@ -21,25 +22,33 @@ int main(int argc, char **argv) {
 
 	//Generate some testdata
 	string fileName = "test_fasta.fa";
+	string headerString = ">FAKE FASTA";
+	string contents = "AGCTTTTCATTCTGACTGCATTCGCACGCTACCCGGTCCGGGCTTGTCAGCGTGTGCCAACAATCATGAATAAATCTGTCTTCGTCATTT";
+
+	//write out file.
+	ofstream testDataOut(fileName.c_str(), ios::out);
+
+	testDataOut << headerString << "\n" << contents << endl;
+	testDataOut.close();
+
+	size_t kmerSize = 20;
+	size_t hashNum = 5;
 
 	//test BloomFilterGenerator
 
 	vector<string> filenames;
 	filenames.push_back(fileName);
 	//test count
-	BloomFilterGenerator gen(filenames, 20);
+	BloomFilterGenerator filterGen(filenames, kmerSize, hashNum);
 
-	cout << gen.getExpectedEntries() << "bp" << endl;
+	cout << filterGen.getExpectedEntries() << "bp" << endl;
 
 	//set filter parameters
 //	size_t filterSize = 34359738368;
-	size_t filterSize = gen.getExpectedEntries()*8 + (64 - ((gen.getExpectedEntries()*8)% 64));
-
-	gen.setFilterSize(filterSize);
-	gen.addHashFuncs(6);
+	size_t filterSize = filterGen.getExpectedEntries()*8 + (64 - ((filterGen.getExpectedEntries()*8)% 64));
 	string filename = "test.bf";
 
-	gen.generate(filename);
+	filterGen.generate(filename);
 	//Check storage can occur properly
 
 	ifstream ifile(filename.c_str());
@@ -55,7 +64,7 @@ int main(int argc, char **argv) {
 	ifile.close();
 
 	//check loading of stored filter
-	BloomFilter filter2(filterSize, 6, filename);
+	BloomFilter filter2(filterSize, hashNum, kmerSize, filename);
 
 	//Check if loaded filter is able to report expected results
 	assert(filter2.contains("AGCTTTTCATTCTGACTGCA"));
