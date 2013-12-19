@@ -29,11 +29,9 @@ public:
 	virtual ~BloomFilterInfo();
 
 	//getters
-	const uint16_t getKmerSize() const;
+	uint16_t getKmerSize() const;
+	uint16_t getHashNum() const;
 	const size_t getCalcuatedFilterSize() const;
-	const vector<string> &getHashFunctionNames() const;
-	const vector<size_t> &getSeedValues() const;
-	const string getSeedHashSigniture() const;
 	const string &getFilterID() const;
 	const string &getPresetType() const;
 	double getRedunancyFPR() const;
@@ -46,7 +44,6 @@ private:
 	float desiredFPR;
 	vector<string> seqSrcs;
 	uint16_t hashNum;
-	string optionType;
 	size_t expectedNumEntries;
 
 	//determined at run time
@@ -54,8 +51,6 @@ private:
 		size_t size;
 		size_t numEntries;
 		double FPR;
-		vector<string> hashFunctions;
-		vector<size_t> seeds;
 		size_t redundantSequences;
 		double redundantFPR;
 	};

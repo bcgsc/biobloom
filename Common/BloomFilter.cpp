@@ -18,7 +18,7 @@
 /* De novo filter constructor.
  * precondition: filterSize must be a multiple of 64
  */
-BloomFilter::BloomFilter(size_t filterSize, size_t hashNum, size_t kmerSize) :
+BloomFilter::BloomFilter(size_t filterSize, uint8_t hashNum, uint8_t kmerSize) :
 		size(filterSize), hashNum(hashNum), kmerSize(kmerSize)
 {
 	initSize(size);
@@ -28,7 +28,7 @@ BloomFilter::BloomFilter(size_t filterSize, size_t hashNum, size_t kmerSize) :
 /*
  * Loads the filter (file is a .bf file) from path specified
  */
-BloomFilter::BloomFilter(size_t filterSize, size_t hashNum, size_t kmerSize,
+BloomFilter::BloomFilter(size_t filterSize, uint8_t hashNum, uint8_t kmerSize,
 		string const &filterFilePath) :
 		size(filterSize), hashNum(hashNum), kmerSize(kmerSize)
 {

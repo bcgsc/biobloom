@@ -18,7 +18,7 @@ BloomFilterInfo::BloomFilterInfo(string const &filterID, uint16_t kmerSize,
 		const vector<string> &seqSrcs, uint16_t hashNum,
 		const string &optionType) :
 		filterID(filterID), kmerSize(kmerSize), desiredFPR(desiredFPR), seqSrcs(
-				seqSrcs), hashNum(hashNum), optionType(optionType), expectedNumEntries(
+				seqSrcs), hashNum(hashNum), expectedNumEntries(
 				expectedNumEntries)
 {
 	runInfo.size = calcOptimalSize(expectedNumEntries, desiredFPR, hashNum);
@@ -38,43 +38,21 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 	desiredFPR = pt.get<float>("user_input_options.desired_false_positve_rate");
 	string tempSeqSrcs = pt.get<string>("user_input_options.sequence_sources");
 	seqSrcs = convertSeqSrcString(tempSeqSrcs);
+	hashNum = pt.get<uint16_t>("user_input_options.nnumber_of_hash_functions");
 
 	//runtime params
 	runInfo.size = pt.get<size_t>("runtime_options.size");
 	runInfo.numEntries = pt.get<size_t>("runtime_options.num_entries");
 
-	//Compensation for legacy code
-	//TODO: if removed must notify users that old version cannot be used
-	try {
-		optionType = pt.get<string>("user_input_options.option_type");
-		runInfo.redundantSequences = pt.get<size_t>(
-				"runtime_options.redundant_sequences");
-		runInfo.redundantFPR = pt.get<double>("runtime_options.redundant_fpr");
-	} catch (boost::property_tree::ptree_error &e) {
-		optionType = "legacy";
-		runInfo.redundantSequences = 0;
-		runInfo.redundantFPR = 0;
-	}
-	try {
-		expectedNumEntries = pt.get<size_t>(
-				"user_input_options.expected_num_entries");
-	} catch (boost::property_tree::ptree_error &e) {
-		expectedNumEntries = runInfo.numEntries;
-	}
-
+	runInfo.redundantSequences = pt.get<size_t>(
+			"runtime_options.redundant_sequences");
+	runInfo.redundantFPR = pt.get<double>("runtime_options.redundant_fpr");
+	expectedNumEntries = pt.get<size_t>(
+			"user_input_options.expected_num_entries");
 	runInfo.FPR = pt.get<double>(
 			"runtime_options.approximate_false_positive_rate");
 	string tempHashFunc = pt.get<string>("runtime_options.hash_functions");
 	string tempSeeds = pt.get<string>("runtime_options.seeds");
-	runInfo.hashFunctions = convertHashFuncString(tempHashFunc);
-	runInfo.seeds = convertSeedString(tempSeeds);
-}
-
-//todo: change so that class is not mutable after object construction
-void BloomFilterInfo::addHashFunction(const string &fnName, size_t seed)
-{
-	runInfo.hashFunctions.push_back(fnName);
-	runInfo.seeds.push_back(seed);
 }
 
 /**
@@ -111,16 +89,15 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const
 	assert(runInfo.numEntries !=0);
 	assert(expectedNumEntries !=0);
 	assert(runInfo.FPR !=0);
-	assert(runInfo.hashFunctions.size() !=0);
-	assert(runInfo.seeds.size() !=0);
-	assert(hashNum == runInfo.hashFunctions.size());
+	assert(hashNum > 0);
 
 	ofstream output(fileName.c_str(), ios::out);
 	//user specified
 	output << "[user_input_options]\nfilter_id=" << filterID << "\nkmer_size="
 			<< kmerSize << "\ndesired_false_positve_rate=" << desiredFPR
-			<< "\noption_type=" << optionType << "\nexpected_num_entries="
-			<< expectedNumEntries << "\nsequence_sources=";
+			<< "\nnumber_of_hash_functions=" << hashNum
+			<< "\nexpected_num_entries=" << expectedNumEntries
+			<< "\nsequence_sources=";
 	//print out sources as a list
 	size_t tempCounter = 0;
 	for (vector<string>::const_iterator it = seqSrcs.begin();
@@ -138,77 +115,64 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const
 			<< runInfo.redundantFPR << "\n";
 	//print out hash functions as a list
 
-	output << getSeedHashSigniture();
-
 	output.close();
 }
 
 //getters
 
-const uint16_t BloomFilterInfo::getKmerSize() const
+uint16_t BloomFilterInfo::getKmerSize() const
 {
 	return kmerSize;
 }
 
-/*
- * returns a unique string representing the hash function and seeds used
- */
-const string BloomFilterInfo::getSeedHashSigniture() const
+uint16_t BloomFilterInfo::getHashNum() const
 {
-	stringstream ss;
-	ss << "hash_functions=";
-	//print out hash functions as a list
-	uint16_t tempCounter = 0;
-	for (vector<string>::const_iterator it = runInfo.hashFunctions.begin();
-			it != runInfo.hashFunctions.end(); ++it)
-	{
-		ss << (*it);
-		//print closing quotes
-		++tempCounter;
-		if (tempCounter == runInfo.hashFunctions.size()) {
-			ss << "";
-		} else {
-			ss << ", ";
-		}
-	}
-	ss << "\nseeds=";
-	tempCounter = 0;
-	for (vector<size_t>::const_iterator it = runInfo.seeds.begin();
-			it != runInfo.seeds.end(); ++it)
-	{
-		ss << *it;
-		++tempCounter;
-		if (tempCounter != runInfo.seeds.size()) {
-			ss << ", ";
-		}
-	}
-	return ss.str();
+	return hashNum;
 }
+
+///*
+// * returns a unique string representing the hash function and seeds used
+// */
+//const string BloomFilterInfo::getSeedHashSigniture() const
+//{
+//	stringstream ss;
+//	ss << "hash_functions=";
+//	//print out hash functions as a list
+//	uint16_t tempCounter = 0;
+//	for (vector<string>::const_iterator it = runInfo.hashFunctions.begin();
+//			it != runInfo.hashFunctions.end(); ++it)
+//	{
+//		ss << (*it);
+//		//print closing quotes
+//		++tempCounter;
+//		if (tempCounter == runInfo.hashFunctions.size()) {
+//			ss << "";
+//		} else {
+//			ss << ", ";
+//		}
+//	}
+//	ss << "\nseeds=";
+//	tempCounter = 0;
+//	for (vector<size_t>::const_iterator it = runInfo.seeds.begin();
+//			it != runInfo.seeds.end(); ++it)
+//	{
+//		ss << *it;
+//		++tempCounter;
+//		if (tempCounter != runInfo.seeds.size()) {
+//			ss << ", ";
+//		}
+//	}
+//	return ss.str();
+//}
 
 const size_t BloomFilterInfo::getCalcuatedFilterSize() const
 {
 	return runInfo.size;
 }
 
-const vector<string> &BloomFilterInfo::getHashFunctionNames() const
-{
-	return runInfo.hashFunctions;
-
-}
-
-const vector<size_t> &BloomFilterInfo::getSeedValues() const
-{
-	return runInfo.seeds;
-}
-
 const string &BloomFilterInfo::getFilterID() const
 {
 	return filterID;
-}
-
-const string &BloomFilterInfo::getPresetType() const
-{
-	return optionType;
 }
 
 double BloomFilterInfo::getRedunancyFPR() const
@@ -232,25 +196,6 @@ const vector<string> BloomFilterInfo::convertSeqSrcString(
 		inputs.push_back(temp);
 	}
 	return inputs;
-}
-
-/*
- * converts string obtained from hash values in info file and converts to list
- */
-const vector<string> BloomFilterInfo::convertHashFuncString(
-		const string &hashFnStr) const
-{
-	vector<string> fnNames;
-	string temp;
-	stringstream converter(hashFnStr);
-	while (converter >> temp) {
-		if (temp.at(temp.length() - 1) == ',') {
-			temp.resize(temp.length() - 1);
-		}
-		fnNames.push_back(temp);
-	}
-	return fnNames;
-
 }
 
 /*

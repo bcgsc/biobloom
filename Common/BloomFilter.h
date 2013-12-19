@@ -13,18 +13,20 @@
 #include <stdint.h>
 #include <omp.h>
 #include "city.h"
+#include <math.h>
 
 using namespace std;
 
 static const uint8_t bitsPerChar = 0x08;
-static const unsigned char bitMask[0x08] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
-		0x40, 0x80 };
+static const unsigned char bitMask[0x08] = {
+		0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80 };
 
 /*
  * For precomputing hash values. kmerSize is the number of bytes of the string used.
  */
 static inline vector<size_t> multiHash(const char* kmer, size_t num,
-		size_t kmerSize) {
+		size_t kmerSize)
+{
 	vector<size_t> tempHashValues(num);
 	//use raw kmer number as first hash value
 	tempHashValues[0] = kmer[0] | (kmer[1] << 8) | (kmer[2] << 16)
@@ -38,10 +40,23 @@ static inline vector<size_t> multiHash(const char* kmer, size_t num,
 	return tempHashValues;
 }
 
+// For Calculating aspects of bloom filter
+// todo: Tweak calculations as they are approximations and may not be 100% optimal
+// see http://en.wikipedia.org/wiki/Bloom_filter
+
+/*
+ * Calculation assumes optimal ratio of bytes per entry given a fpr
+ */
+//Note: Rounded down because in practice you want to calculate as few hash values as possible
+static uint8_t calcOptiHashNum(float fpr)
+{
+	return uint8_t(-log(fpr) / log(2));
+}
+
 class BloomFilter {
 public:
 	//for generating a new filter
-	explicit BloomFilter(size_t filterSize, size_t hashNum, size_t kmerSize);
+	explicit BloomFilter(size_t filterSize, uint8_t hashNum, uint8_t kmerSize);
 	void insert(vector<size_t> const &precomputed);
 	void insert(const char* kmer);
 	const bool contains(vector<size_t> const &precomputed);
@@ -52,7 +67,7 @@ public:
 
 	//for storing/restoring the filter
 	void storeFilter(string const &filterFilePath) const;
-	explicit BloomFilter(size_t filterSize, size_t hashNum, size_t kmerSize,
+	explicit BloomFilter(size_t filterSize, uint8_t hashNum, uint8_t kmerSize,
 			string const &filterFilePath);
 
 	virtual ~BloomFilter();
