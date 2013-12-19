@@ -57,7 +57,7 @@ const size_t WindowedFileParser::getSequenceSize(string const &header)
  * Return the next string in sliding window, also cleans and formats
  * sequences using ReadProcessor
  */
-const string &WindowedFileParser::getNextSeq()
+const char* WindowedFileParser::getNextSeq()
 {
 	if (currentString.length() < windowSize + currentLinePos) {
 		currentString.erase(0, currentLinePos);
