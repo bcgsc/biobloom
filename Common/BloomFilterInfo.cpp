@@ -15,8 +15,7 @@
 
 BloomFilterInfo::BloomFilterInfo(string const &filterID, uint16_t kmerSize,
 		float desiredFPR, size_t expectedNumEntries,
-		const vector<string> &seqSrcs, uint16_t hashNum,
-		const string &optionType) :
+		const vector<string> &seqSrcs, uint16_t hashNum) :
 		filterID(filterID), kmerSize(kmerSize), desiredFPR(desiredFPR), seqSrcs(
 				seqSrcs), hashNum(hashNum), expectedNumEntries(
 				expectedNumEntries)

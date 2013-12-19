@@ -19,7 +19,7 @@ class BloomFilterInfo {
 public:
 	explicit BloomFilterInfo(string const &filterID, uint16_t kmerSize,
 			float desiredFPR, size_t expectedSize, const vector<string> &seqSrcs,
-			uint16_t hashNum, const string &optionType);
+			uint16_t hashNum);
 	explicit BloomFilterInfo(string const &fileName);
 	void addHashFunction(const string &fnName, size_t seed);
 	void setReduanacy(size_t redunSeq);
