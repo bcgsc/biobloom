@@ -35,7 +35,6 @@ public:
 			const string &outputType);
 	void filterPairBAM(const string &file);
 	void filterPairBAMPrint(const string &file, const string &outputType);
-	const bool checkFilterPresetType(const string &optionType);
 
 	virtual ~BioBloomClassifier();
 
@@ -48,8 +47,7 @@ private:
 			unordered_map<string, size_t> &hits);
 
 	size_t evaluateReadSingle(const FastqRecord &rec, const BloomFilter &filter);
-
-	const string getReadSummaryHeader(const vector<uint16_t> &hashSigs);
+	const string getReadSummaryHeader(const vector<string> &hashSigs);
 	void initHits(unordered_map<string, size_t> &hits);
 	const string getReadStatStr(string const &readID, size_t readLength,
 			unordered_map<string, size_t> &hits);
@@ -58,9 +56,9 @@ private:
 			unordered_map<string, size_t> &hits2);
 
 	//group filters with same hash number
-	unordered_map<uint16_t , vector<shared_ptr<BloomFilterInfo> > > infoFiles;
-	unordered_map<uint16_t, shared_ptr<MultiFilter> > filters;
-	vector<uint16_t> hashSigs;
+	unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > infoFiles;
+	unordered_map<string, shared_ptr<MultiFilter> > filters;
+	vector<string> hashSigs;
 	size_t minHit;
 	double percentMinHit;
 	uint8_t filterNum;

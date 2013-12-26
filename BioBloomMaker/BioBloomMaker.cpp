@@ -18,8 +18,7 @@ using namespace std;
 
 #define PROGRAM "biobloommaker"
 
-void printVersion()
-{
+void printVersion() {
 	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"
 	"Written by Justin Chu.\n"
 	"\n"
@@ -28,8 +27,7 @@ void printVersion()
 	exit(EXIT_SUCCESS);
 }
 
-void printHelpDialog()
-{
+void printHelpDialog() {
 	static const char dialog[] =
 			"Usage: biobloommaker -p [FILTERID] [OPTION]... [FILE]...\n"
 					"Creates a bf and txt file from a list of fasta files. The input sequences are\n"
@@ -58,8 +56,7 @@ void printHelpDialog()
 	exit(0);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 
 	bool die = false;
 
@@ -76,24 +73,20 @@ int main(int argc, char *argv[])
 	size_t entryNum = 0;
 
 	//long form arguments
-	static struct option long_options[] = {
-			{
-					"fal_pos_rate", required_argument, NULL, 'f' }, {
-					"file_prefix", required_argument, NULL, 'p' }, {
-					"output_dir", required_argument, NULL, 'o' }, {
-					"version", no_argument, NULL, 'v' }, {
-					"hash_num", required_argument, NULL, 'g' }, {
-					"kmer_size", required_argument, NULL, 'k' }, {
-					"subtract", required_argument, NULL, 's' }, {
-					"num_ele", required_argument, NULL, 'n' }, {
-					"help", no_argument, NULL, 'h' }, {
-					NULL, 0, NULL, 0 } };
+	static struct option long_options[] = { { "fal_pos_rate", required_argument,
+	NULL, 'f' }, { "file_prefix", required_argument, NULL, 'p' }, {
+			"output_dir", required_argument, NULL, 'o' }, { "version",
+	no_argument, NULL, 'v' }, { "hash_num", required_argument, NULL, 'g' }, {
+			"kmer_size",
+			required_argument, NULL, 'k' }, { "subtract",
+	required_argument, NULL, 's' }, { "num_ele",
+	required_argument, NULL, 'n' }, { "help", no_argument, NULL, 'h' }, {
+	NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
 	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:", long_options,
-			&option_index)) != -1)
-	{
+			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
 			stringstream convert(optarg);
@@ -196,22 +189,22 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	//create filter
-	BloomFilterGenerator filterGen(inputFiles, kmerSize, entryNum);
-
 	//set number of hash functions used
 	if (hashNum == 0) {
 		//get optimal number of hash functions
 		hashNum = calcOptiHashNum(fpr);
 	}
 
-	if(entryNum == 0)
-	{
+	//create filter
+	BloomFilterGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
+
+	if (entryNum == 0) {
 		filterGen = BloomFilterGenerator(inputFiles, kmerSize, hashNum);
 		entryNum = filterGen.getExpectedEntries();
 	}
 
-	BloomFilterInfo info(filterPrefix, kmerSize, fpr, entryNum, inputFiles, hashNum);
+	BloomFilterInfo info(filterPrefix, kmerSize, fpr, entryNum, inputFiles,
+			hashNum);
 
 	//get calculated size of Filter
 	size_t filterSize = info.getCalcuatedFilterSize();

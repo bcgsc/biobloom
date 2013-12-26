@@ -12,8 +12,6 @@
 
 using namespace std;
 
-static char* emptyResult = "";
-
 class ReadsProcessor {
 public:
 	ReadsProcessor(uint16_t windowSize);
@@ -25,6 +23,7 @@ private:
 	char* fw;
 	char* rv;
 	const uint16_t kmerSize;
+	char* emptyResult;
 	uint16_t kmerSizeInBytes;
 	uint8_t hangingBases; // used if k-mer is indivisible by 4
 	uint16_t halfSizeOfKmerInBytes;

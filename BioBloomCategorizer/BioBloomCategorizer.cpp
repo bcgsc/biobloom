@@ -90,12 +90,6 @@ void printHelpDialog()
 					"  -r, --redundant=N      The number of redundant tiles to use. Lowers effective\n"
 					"                         false positive rate at the cost of increasing the\n"
 					"                         effective kmer length by N. [0]\n"
-					"\nOption presets:\n"
-					"      --default          Run categorizer assuming default presets (ie. no\n"
-					"                         advanced options toggled) [default]\n"
-					"      --low_mem          Run categorizer assuming low memory presets.\n"
-					"      --minimize_fpr     Run categorizer assuming minimized false positive rate\n"
-					"                         presets.\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
@@ -129,12 +123,6 @@ int main(int argc, char *argv[])
 	double percentHit = 0.2;
 	size_t tileModifier = 0;
 
-	//preset options
-	int defaultSettings = 0;
-	int lowMem = 0;
-	int minimizefpr = 0;
-	string presetType = "default";
-
 	//long form arguments
 	static struct option long_options[] = {
 			{
@@ -151,9 +139,6 @@ int main(int argc, char *argv[])
 					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
 					"fq", no_argument, &fastq, 1 }, {
 					"fa", no_argument, &fasta, 1 }, {
-					"default", no_argument, &defaultSettings, 1 }, {
-					"low_mem", no_argument, &lowMem, 1 }, {
-					"minimize_fpr", no_argument, &minimizefpr, 1 }, {
 					"version", no_argument, NULL, 0 }, {
 					NULL, 0, NULL, 0 } };
 
@@ -175,7 +160,6 @@ int main(int argc, char *argv[])
 				cerr << "Error -m cannot be greater than 1 " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
-			presetType = "custom";
 			break;
 		}
 		case 't': {
@@ -184,7 +168,6 @@ int main(int argc, char *argv[])
 				cerr << "Error - Invalid parameter! t: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
-			presetType = "custom";
 			break;
 		}
 		case 'f': {
@@ -209,7 +192,6 @@ int main(int argc, char *argv[])
 				cerr << "Error - Invalid parameter! r: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
-			presetType = "custom";
 			break;
 		}
 		case 'c': {
@@ -233,25 +215,6 @@ int main(int argc, char *argv[])
 			break;
 		}
 		}
-	}
-
-	//check if only one preset was set
-	if (defaultSettings || minimizefpr || lowMem) {
-		if (presetType == "custom" || !(defaultSettings ^ minimizefpr ^ lowMem)) {
-			cerr << "Error: Cannot mix option presets or add custom advanced options to presets" << endl;
-			exit(1);
-		}
-	}
-
-	//set presets
-
-	if (lowMem) {
-		tileModifier = 1;
-		presetType = "low_mem";
-	} else if (minimizefpr) {
-		tileModifier = 1;
-		percentHit = 0.25;
-		presetType = "minimum_fpr";
 	}
 
 	vector<string> filterFilePaths = convertInputString(filtersFile);
@@ -317,15 +280,6 @@ int main(int argc, char *argv[])
 	//load filters
 	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts,
 			outputPrefix, filePostfix, tileModifier);
-
-	//check filter preset type
-	if (presetType != "custom") {
-		if (!BBC.checkFilterPresetType(presetType)) {
-			cerr
-					<< "If you know what you are doing please ignore these warnings. Program will proceed."
-					<< endl;
-		}
-	}
 
 	//filtering step
 	//create directory structure if it does not exist

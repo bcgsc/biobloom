@@ -8,16 +8,16 @@
 #include "ResultsManager.h"
 #include <sstream>
 
-ResultsManager::ResultsManager(const vector<uint16_t> &hashSigsRef,
-		const unordered_map<uint16_t, shared_ptr<MultiFilter> > &filtersRef,
-		const unordered_map<uint16_t, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
+ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
+		const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
+		const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
 		size_t minHit, double percHit, size_t maxHitValue, uint8_t tileModifier) :
 		hashSigs(hashSigsRef), filters(filtersRef), infoFiles(infoFilesRef), minHit(
 				minHit), percentMinHit(percHit), maxHitValue(maxHitValue), tileModifier(
 				tileModifier)
 {
 	//initialize variables and print filter ids
-	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const shared_ptr<MultiFilter> &temp = filters.at(*j);
@@ -49,7 +49,7 @@ const string ResultsManager::updateSummaryData(size_t seqLen,
 {
 	string filterID = "noMatch";
 
-	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		//update summary
@@ -99,7 +99,7 @@ const string ResultsManager::updateSummaryData(size_t seqLen1, size_t seqLen2,
 {
 	string filterID = "noMatch";
 
-	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		//update summary
@@ -148,7 +148,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	stringstream summaryOutput;
 	summaryOutput << "type";
 	//initialize variables and print filter ids
-	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const shared_ptr<MultiFilter> &temp = filters.at(*j);
@@ -166,7 +166,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 
 	//print summary information and close filehandles
 	summaryOutput << "\nHits";
-	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const shared_ptr<MultiFilter> &temp = filters.at(*j);
@@ -179,7 +179,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 		}
 	}
 	summaryOutput << "\nMiss";
-	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const shared_ptr<MultiFilter> &temp = filters.at(*j);
@@ -192,7 +192,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 		}
 	}
 	summaryOutput << "\nConfidentMiss";
-	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const shared_ptr<MultiFilter> &temp = filters.at(*j);
@@ -209,7 +209,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	}
 
 	summaryOutput << "\n\nHits";
-	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const shared_ptr<MultiFilter> &temp = filters.at(*j);
@@ -221,7 +221,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 		}
 	}
 	summaryOutput << "\nMiss";
-	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const shared_ptr<MultiFilter> &temp = filters.at(*j);
@@ -233,7 +233,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 		}
 	}
 	summaryOutput << "\nConfidentMiss";
-	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const shared_ptr<MultiFilter> &temp = filters.at(*j);
@@ -253,7 +253,7 @@ const string ResultsManager::getCountSummary(size_t readCount) const
 	stringstream summaryOutput;
 	summaryOutput << "type";
 	//initialize variables and print filter ids
-	for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
 	{
 		const shared_ptr<MultiFilter> &temp = filters.at(*j);
@@ -274,7 +274,7 @@ const string ResultsManager::getCountSummary(size_t readCount) const
 
 	while (currentHitVal < maxHitValue) {
 		summaryOutput << currentHitVal;
-		for (vector<uint16_t>::const_iterator j = hashSigs.begin();
+		for (vector<string>::const_iterator j = hashSigs.begin();
 				j != hashSigs.end(); ++j)
 		{
 			const shared_ptr<MultiFilter> &temp = filters.at(*j);
