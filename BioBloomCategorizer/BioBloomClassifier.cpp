@@ -24,7 +24,7 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 }
 
 /*
- * Generic filtering function (signel end, no fa or fq file outputs)
+ * Generic filtering function (single end, no fa or fq file outputs)
  */
 void BioBloomClassifier::filter(const vector<string> &inputFiles) {
 	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
