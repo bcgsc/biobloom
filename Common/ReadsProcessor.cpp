@@ -20,8 +20,7 @@
  */
 ReadsProcessor::ReadsProcessor(uint16_t windowSize) :
 		kmerSize(windowSize), kmerSizeInBytes(windowSize / 4), halfSizeOfKmerInBytes(
-				windowSize / 8), hangingBases(0), emptyResult("") {
-	cout << kmerSize << endl;
+				windowSize / 8), hangingBases(0), hangingBasesExist(0){
 	//parsing code require kmer larger than 3
 	assert(kmerSize > 3);
 
@@ -30,14 +29,15 @@ ReadsProcessor::ReadsProcessor(uint16_t windowSize) :
 		hangingBases = windowSize % 4;
 		if (hangingBases % 4 != 0) {
 			kmerSizeInBytes++;
+			hangingBasesExist = 1;
 		}
 	}
 
-	fw = new char[kmerSizeInBytes];
-	rv = new char[kmerSizeInBytes];
+	fw = new unsigned char[kmerSizeInBytes];
+	rv = new unsigned char[kmerSizeInBytes];
 }
 
-static const uint8_t fw0[256] = {
+static const uint8_t fw3[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //0
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //1
@@ -72,7 +72,7 @@ static const uint8_t fw0[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
 
-static const uint8_t fw1[256] = {
+static const uint8_t fw2[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //0
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //1
@@ -107,7 +107,7 @@ static const uint8_t fw1[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
 
-static const uint8_t fw2[256] = {
+static const uint8_t fw1[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //0
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //1
@@ -142,7 +142,7 @@ static const uint8_t fw2[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
 
-static const uint8_t fw3[256] = {
+static const uint8_t fw0[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //0
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //1
@@ -177,7 +177,7 @@ static const uint8_t fw3[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
 
-static const uint8_t rv0[256] = {
+static const uint8_t rv3[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //0
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //1
@@ -212,7 +212,7 @@ static const uint8_t rv0[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
 
-static const uint8_t rv1[256] = {
+static const uint8_t rv2[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //0
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //1
@@ -247,7 +247,7 @@ static const uint8_t rv1[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
 
-static const uint8_t rv2[256] = {
+static const uint8_t rv1[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //0
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //1
@@ -282,7 +282,7 @@ static const uint8_t rv2[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
 
-static const uint8_t rv3[256] = {
+static const uint8_t rv0[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //0
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, //1
@@ -317,6 +317,32 @@ static const uint8_t rv3[256] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
 
+/*
+ * For debugging purposes only
+ */
+const string ReadsProcessor::getBases(const unsigned char* c)
+{
+	string bases = "";
+
+	int currentIndex = 0;
+	int currentOffset = 3;
+	for (int i = 0; i < kmerSize; ++i) {
+		if (currentOffset == -1) {
+			currentIndex++;
+			currentOffset = 3;
+		}
+
+		unsigned char currentChr = c[currentIndex];
+
+		currentChr = currentChr >> (2 * currentOffset);
+		currentChr &= 3;
+
+		bases += ("ACGT")[currentChr];
+		currentOffset--;
+	}
+	return bases;
+}
+
 /* Prepares DNA sequence for insertion into bloom filter by:
  * - Turning all lower-case sequences to upper-case
  * - Also looks into reverse compliment version and returns consistently
@@ -328,7 +354,7 @@ static const uint8_t rv3[256] = {
  * - kmersize must be greater than 3 otherwise undefined behavior will occur
  * requires a start position
  */
-const char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
+const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
 {
 	size_t index = position;
 	size_t revIndex = position + kmerSize - 1;
@@ -349,7 +375,7 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
 		fw[outputIndex] |= fw2[sequence[index++]];
 
 		//-128 is used as I am working with signed chars
-		if (fw[outputIndex] == -128 || fw3[sequence[index]] == 0xFF) {
+		if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
 			return emptyResult;
 		}
 
@@ -361,7 +387,7 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
 		rv[outputIndex] |= rv1[sequence[revIndex--]];
 		rv[outputIndex] |= rv2[sequence[revIndex--]];
 
-		if (rv[outputIndex] == -128 || rv3[sequence[revIndex]] == 0xFF) {
+		if (rv[outputIndex] == 0xFF || rv3[sequence[revIndex]] == 0xFF) {
 			return emptyResult;
 		}
 
@@ -371,7 +397,7 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
 		//forward is smaller
 		if (fw[outputIndex] < rv[outputIndex]) {
 			//finish off sequence
-			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBases;
+			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBasesExist;
 					++outputIndex)
 			{
 				//create char for forward
@@ -379,20 +405,20 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
 				fw[outputIndex] |= fw1[sequence[index++]];
 				fw[outputIndex] |= fw2[sequence[index++]];
 
-				if (fw[outputIndex] == -128 || fw3[sequence[index]] == 0xFF) {
-					return "";
+				if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
+					return emptyResult;
 				}
-				fw[outputIndex] |= fw3[sequence[index]];
+				fw[outputIndex] |= fw3[sequence[index++]];
 			}
 			//create last byte
-			if (hangingBases) {
+			if (hangingBasesExist) {
 				size_t lastPos = position + kmerSize - 1;
-				fw[outputIndex] |= fw0[sequence[lastPos]];
-				for (; index < lastPos; --lastPos) {
-					fw[outputIndex] = fw[outputIndex] << 2;
+				fw[outputIndex] = fw0[sequence[lastPos--]];
+				for (; index <= lastPos; --lastPos) {
+					fw[outputIndex] = fw[outputIndex] >> 2;
 					fw[outputIndex] |= fw0[sequence[lastPos]];
 				}
-				if (fw[outputIndex] == -128) {
+				if (fw[outputIndex] == 0xFF) {
 					return emptyResult;
 				}
 			}
@@ -401,27 +427,27 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
 		//reverse is smaller
 		else if (fw[outputIndex] > rv[outputIndex]) {
 			//finish off sequence
-			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBases;
+			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBasesExist;
 					++outputIndex)
 			{
 				rv[outputIndex] |= rv0[sequence[revIndex--]];
 				rv[outputIndex] |= rv1[sequence[revIndex--]];
 				rv[outputIndex] |= rv2[sequence[revIndex--]];
 
-				if (rv[outputIndex] == -128 || rv3[sequence[revIndex]] == 0xFF)
+				if (rv[outputIndex] == 0xFF || rv3[sequence[revIndex]] == 0xFF)
 				{
 					return emptyResult;
 				}
-				rv[outputIndex] |= rv3[sequence[revIndex]];
+				rv[outputIndex] |= rv3[sequence[revIndex--]];
 			}
 			//create last byte
-			if (hangingBases) {
-				rv[outputIndex] |= rv0[sequence[position]];
-				for (; revIndex > position; ++position) {
-					rv[outputIndex] = rv[outputIndex] << 2;
+			if (hangingBasesExist) {
+				rv[outputIndex] = rv0[sequence[position++]];
+				for (; revIndex >= position; ++position) {
+					rv[outputIndex] = rv[outputIndex] >> 2;
 					rv[outputIndex] |= rv0[sequence[position]];
 				}
-				if (rv[outputIndex] == -128) {
+				if (rv[outputIndex] == 0xFF) {
 					return emptyResult;
 				}
 			}
@@ -430,7 +456,7 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
 	}
 	//palamdromic
 	//finish off sequence
-	for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBases;
+	for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBasesExist;
 			++outputIndex)
 	{
 		//create char for forward
@@ -438,8 +464,8 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
 		fw[outputIndex] |= fw1[sequence[index++]];
 		fw[outputIndex] |= fw2[sequence[index++]];
 
-		if (fw[outputIndex] == -128 || fw3[sequence[index]] == 0xFF) {
-			return "";
+		if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
+			return emptyResult;
 		}
 		fw[outputIndex] |= fw3[sequence[index]];
 	}
@@ -451,7 +477,7 @@ const char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
 			fw[outputIndex] = fw[outputIndex] << 2;
 			fw[outputIndex] |= fw0[sequence[lastPos]];
 		}
-		if (fw[outputIndex] == -128) {
+		if (fw[outputIndex] == 0xFF) {
 			return emptyResult;
 		}
 	}

@@ -1058,11 +1058,11 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	//cut read into kmer size given
 	while (rec.seq.length() >= (currentKmerNum + 1) * kmerSize) {
 
-		const char* currentKmer = proc.prepSeq(rec.seq,
+		const unsigned char* currentKmer = proc.prepSeq(rec.seq,
 				currentKmerNum * kmerSize + startModifier1);
 
 		//check to see if string is invalid
-		if (*currentKmer != 0) {
+		if (currentKmer != NULL) {
 			const unordered_map<string, bool> &results =
 					filters[hashSig]->multiContains(currentKmer);
 
@@ -1078,17 +1078,17 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	}
 }
 
-/*
- * Assumes single filter is used
- */
-size_t BioBloomClassifier::evaluateReadSingle(const FastqRecord &rec,
-		const BloomFilter &filter) {
-	//break read into tiles
-	//evaluate read
-
-	//depending on results evaluate pairs 3 extra tiles per pair, at median points
-	//if only single section passes, evaluate read 4 times, shift only one tile
-}
+///*
+// * Assumes single filter is used
+// */
+//size_t BioBloomClassifier::evaluateReadSingle(const FastqRecord &rec,
+//		const BloomFilter &filter) {
+//	//break read into tiles
+//	//evaluate read
+//
+//	//depending on results evaluate pairs 3 extra tiles per pair, at median points
+//	//if only single section passes, evaluate read 4 times, shift only one tile
+//}
 
 /*
  * For a single read evaluate hits for a single hash signature
@@ -1129,12 +1129,12 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 					break;
 				}
 
-				const char* currentKmer = proc.prepSeq(rec.seq,
+				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
 						currentLoc + startModifier + j);
 				vector<string> tempFilterIDs;
 
 				//check to see if string is invalid
-				if (*currentKmer != 0) {
+				if (currentKmer != NULL) {
 
 					const unordered_map<string, bool> &results =
 							filters[hashSig]->multiContains(currentKmer,
@@ -1166,12 +1166,12 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 					break;
 				}
 
-				const char* currentKmer = proc.prepSeq(rec.seq,
+				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
 						currentLoc + startModifier - 1);
 				vector<string> tempFilterIDs;
 
 				//check to see if string is invalid
-				if (*currentKmer != 0) {
+				if (currentKmer != NULL) {
 
 					const unordered_map<string, bool> &results =
 							filters[hashSig]->multiContains(currentKmer,

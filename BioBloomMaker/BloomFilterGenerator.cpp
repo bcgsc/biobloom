@@ -18,6 +18,8 @@
 #include "Common/BloomFilter.h"
 #include "Common/BloomFilterInfo.h"
 #include <cassert>
+#include <cmath>
+
 
 /*
  * Constructor:
@@ -103,8 +105,8 @@ size_t BloomFilterGenerator::generate(const string &filename)
 			//insert elements into filter
 			//read fasta file line by line and split using sliding window
 			while (parser.notEndOfSeqeunce()) {
-				const char* currentSeq = parser.getNextSeq();
-				if (*currentSeq != 0) {
+				const unsigned char* currentSeq = parser.getNextSeq();
+				if (currentSeq != NULL) {
 					const vector<size_t> &tempHash = multiHash(currentSeq,
 							hashNum, kmerSize);
 					if (filter.contains(tempHash)) {
@@ -183,8 +185,8 @@ size_t BloomFilterGenerator::generate(const string &filename,
 			//insert elements into filter
 			//read fasta file line by line and split using sliding window
 			while (parser.notEndOfSeqeunce()) {
-				const char* currentSeq = parser.getNextSeq();
-				if (*currentSeq != 0) {
+				const unsigned char* currentSeq = parser.getNextSeq();
+				if (currentSeq != NULL) {
 					//allow kmer into filter?
 					bool allowKmer = false;
 
@@ -193,18 +195,17 @@ size_t BloomFilterGenerator::generate(const string &filename,
 						//if kmer does not exists set allowance to true
 						allowKmer = !filterSub.contains(currentSeq);
 					} else {
-						uint16_t subSections = kmerSize - kmerSize;
-						const string &currentSeq = parser.getNextSeq();
-
-						for (uint16_t i = 0; i <= subSections; ++i) {
-							if (!filterSub.contains(
-									subProc.prepSeq(currentSeq, i)))
-							{
-								//if any sub kmer does not exists set allowance to true
-								allowKmer = true;
-								break;
-							}
-						}
+						//TODO make compatable with smaller kmer sizes
+						cerr << "ERROR: Must use idenitical size k-mers in subtractive filter" << endl;
+//						uint16_t subSections = kmerSize - kmerSize;
+//						for (uint16_t i = 0; i <= subSections; ++i) {
+//							if (!filterSub.contains(subProc.prepSeq(currentSeq, i)))
+//							{
+//								//if any sub kmer does not exists set allowance to true
+//								allowKmer = true;
+//								break;
+//							}
+//						}
 					}
 
 					if (allowKmer) {

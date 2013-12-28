@@ -30,12 +30,12 @@ static uint8_t calcOptiHashNum(float fpr)
 
 class BloomFilterInfo {
 public:
-	explicit BloomFilterInfo(string const &filterID, uint16_t kmerSize,
-			float desiredFPR, size_t expectedSize, const vector<string> &seqSrcs,
-			uint16_t hashNum);
+	explicit BloomFilterInfo(string const &filterID, uint16_t hashNum,
+			uint16_t kmerSize, float desiredFPR, size_t expectedSize,
+			const vector<string> &seqSrc);
 	explicit BloomFilterInfo(string const &fileName);
 	void addHashFunction(const string &fnName, size_t seed);
-	void setReduanacy(size_t redunSeq);
+	void setRedundancy(size_t redunSeq);
 	void setTotalNum(size_t totalNum);
 
 	void printInfoFile(const string &fileName) const;
@@ -47,7 +47,7 @@ public:
 	const size_t getCalcuatedFilterSize() const;
 	const string &getFilterID() const;
 	const string &getPresetType() const;
-	double getRedunancyFPR() const;
+	double getRedundancyFPR() const;
 	double getFPR() const;
 
 private:
@@ -72,7 +72,6 @@ private:
 
 	const vector<string> convertSeqSrcString(const string &seqSrcStr) const;
 	const vector<string> convertHashFuncString(const string &hashFnStr) const;
-	const vector<size_t> convertSeedString(const string &seedStr) const;
 	const double calcApproxFPR(size_t size, size_t numEntr,
 			uint16_t hashFunctNum) const;
 	const double calcRedunancyFPR(size_t size, size_t numEntr,

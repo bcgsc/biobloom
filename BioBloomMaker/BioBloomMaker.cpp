@@ -196,15 +196,14 @@ int main(int argc, char *argv[]) {
 	}
 
 	//create filter
-	BloomFilterGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
+	BloomFilterGenerator filterGen(inputFiles, hashNum, kmerSize, entryNum);
 
 	if (entryNum == 0) {
-		filterGen = BloomFilterGenerator(inputFiles, kmerSize, hashNum);
+		filterGen = BloomFilterGenerator(inputFiles, hashNum, kmerSize);
 		entryNum = filterGen.getExpectedEntries();
 	}
 
-	BloomFilterInfo info(filterPrefix, kmerSize, fpr, entryNum, inputFiles,
-			hashNum);
+	BloomFilterInfo info(filterPrefix, hashNum, kmerSize, fpr, entryNum, inputFiles);
 
 	//get calculated size of Filter
 	size_t filterSize = info.getCalcuatedFilterSize();
@@ -219,12 +218,12 @@ int main(int argc, char *argv[]) {
 				subtractFilter);
 	}
 	info.setTotalNum(filterGen.getTotalEntries());
-	info.setReduanacy(redundNum);
+	info.setRedundancy(redundNum);
 
 	//code for redundancy checking
 	//calcuate redundancy rate
 	double redunRate = double(redundNum) / double(entryNum)
-			- info.getRedunancyFPR();
+			- info.getRedundancyFPR();
 	if (redunRate > 0.25) {
 		cerr << "Redundancy Rate is approximately: " << redunRate << endl;
 		cerr

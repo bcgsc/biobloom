@@ -46,9 +46,9 @@ void WindowedFileParser::setLocationByHeader(string const &header)
 	currentLinePos = 0;
 }
 
-const size_t WindowedFileParser::getSequenceSize(string const &header)
+const size_t WindowedFileParser::getSequenceSize(string const &header) const
 {
-	return fastaIndex[header].size;
+	return fastaIndex.at(header).size;
 }
 
 //Todo: Optimize to skip sections when finding a non ATCG character
@@ -57,7 +57,7 @@ const size_t WindowedFileParser::getSequenceSize(string const &header)
  * Return the next string in sliding window, also cleans and formats
  * sequences using ReadProcessor
  */
-const char* WindowedFileParser::getNextSeq()
+const unsigned char* WindowedFileParser::getNextSeq()
 {
 	if (currentString.length() < windowSize + currentLinePos) {
 		currentString.erase(0, currentLinePos);
@@ -71,17 +71,17 @@ const char* WindowedFileParser::getNextSeq()
 		{
 			currentString += bufferString;
 		}
+
 		//if there is not enough sequence for a full kmer
 		if (currentString.length() < windowSize) {
 			sequenceNotEnd = false;
-			return "";
+			return emptyResult;
 		}
 	}
-
 	return proc.prepSeq(currentString, currentLinePos++);
 }
 
-const bool WindowedFileParser::notEndOfSeqeunce()
+const bool WindowedFileParser::notEndOfSeqeunce() const
 {
 	return sequenceNotEnd;
 }

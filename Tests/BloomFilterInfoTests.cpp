@@ -22,7 +22,7 @@ int main(int argc, char **argv)
 
 	map.push_back("/home/pubseq/genomes/9606/hg19/bwa_ind/genome/human.fasta");
 
-	BloomFilterInfo info("HG19_chr21", 33, 0.02, 47000000, map, 6);
+	BloomFilterInfo info("HG19_chr21", 6, 33, 0.02, 47000000, map);
 
 //	//test getting Optimal Number of hash functions' function.
 //	assert(info.calcOptiHashNum(16,1) == 11);

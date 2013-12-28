@@ -25,9 +25,9 @@ public:
 	explicit WindowedFileParser(const string &fileName, uint16_t windowSize);
 	const vector<string> getHeaders() const;
 	void setLocationByHeader( const string &header);
-	const size_t getSequenceSize( const string &header);
-	const char* getNextSeq();
-	const bool notEndOfSeqeunce();
+	const size_t getSequenceSize( const string &header) const;
+	const unsigned char* getNextSeq();
+	const bool notEndOfSeqeunce() const;
 
 	virtual ~WindowedFileParser();
 

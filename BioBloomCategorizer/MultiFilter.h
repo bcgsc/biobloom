@@ -19,8 +19,8 @@ public:
 	MultiFilter(uint16_t hashNum, uint16_t kmerSize);
 	void addFilter(size_t filterSize, string const &filterID,
 			string const &filePath);
-	const boost::unordered_map<string, bool> &multiContains(const char* kmer);
-	const boost::unordered_map<string, bool> &multiContains(const char* kmer,
+	const boost::unordered_map<string, bool> &multiContains(const unsigned char* kmer);
+	const boost::unordered_map<string, bool> &multiContains(const unsigned char* kmer,
 			vector<string> const &tempFilters);
 	const BloomFilter &getFilter(const string &filterID);
 	const vector<string> &getFilterIds() const;

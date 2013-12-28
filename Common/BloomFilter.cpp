@@ -115,7 +115,7 @@ const bool BloomFilter::contains(vector<size_t> const &values)
 /*
  * Single pass filtering, computes hash values on the fly
  */
-const bool BloomFilter::contains(const char* kmer)
+const bool BloomFilter::contains(const unsigned char* kmer)
 {
 	size_t normalizedValue = kmer[0] | (kmer[1] << 8) | (kmer[2] << 16)
 			| (kmer[3] << 24) % size;
@@ -124,7 +124,7 @@ const bool BloomFilter::contains(const char* kmer)
 		return false;
 	}
 	for (size_t i = 1; i < hashNum; ++i) {
-		normalizedValue = CityHash64WithSeed(kmer, kmerSize, i) % size;
+		normalizedValue = CityHash64WithSeed(reinterpret_cast <const char*> (kmer), kmerSize, i) % size;
 		bit = bitMask[normalizedValue % bitsPerChar];
 		if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
 			return false;

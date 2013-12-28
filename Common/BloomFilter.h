@@ -24,7 +24,7 @@ static const unsigned char bitMask[0x08] = {
 /*
  * For precomputing hash values. kmerSize is the number of bytes of the string used.
  */
-static inline vector<size_t> multiHash(const char* kmer, size_t num,
+static inline vector<size_t> multiHash(const unsigned char* kmer, size_t num,
 		size_t kmerSize)
 {
 	vector<size_t> tempHashValues(num);
@@ -35,7 +35,7 @@ static inline vector<size_t> multiHash(const char* kmer, size_t num,
 //	int i;
 //	#pragma omp parallel for shared(tempHashValues) private(i) schedule(static,1)
 	for (int i = 1; i < num; ++i) {
-		tempHashValues[i] = CityHash64WithSeed(kmer, kmerSize, i);
+		tempHashValues[i] = CityHash64WithSeed(reinterpret_cast <const char*> (kmer), kmerSize, i);
 	}
 	return tempHashValues;
 }
@@ -47,7 +47,7 @@ public:
 	void insert(vector<size_t> const &precomputed);
 	void insert(const char* kmer);
 	const bool contains(vector<size_t> const &precomputed);
-	const bool contains(const char* kmer);
+	const bool contains(const unsigned char* kmer);
 
 	uint8_t getHashNum() const;
 	uint8_t getKmerSize() const;

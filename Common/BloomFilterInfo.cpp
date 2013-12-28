@@ -13,9 +13,9 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
-BloomFilterInfo::BloomFilterInfo(string const &filterID, uint16_t kmerSize,
+BloomFilterInfo::BloomFilterInfo(string const &filterID, uint16_t hashNum, uint16_t kmerSize,
 		float desiredFPR, size_t expectedNumEntries,
-		const vector<string> &seqSrcs, uint16_t hashNum) :
+		const vector<string> &seqSrcs) :
 		filterID(filterID), kmerSize(kmerSize), desiredFPR(desiredFPR), seqSrcs(
 				seqSrcs), hashNum(hashNum), expectedNumEntries(
 				expectedNumEntries)
@@ -37,7 +37,7 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 	desiredFPR = pt.get<float>("user_input_options.desired_false_positve_rate");
 	string tempSeqSrcs = pt.get<string>("user_input_options.sequence_sources");
 	seqSrcs = convertSeqSrcString(tempSeqSrcs);
-	hashNum = pt.get<uint16_t>("user_input_options.nnumber_of_hash_functions");
+	hashNum = pt.get<uint16_t>("user_input_options.number_of_hash_functions");
 
 	//runtime params
 	runInfo.size = pt.get<size_t>("runtime_options.size");
@@ -50,19 +50,17 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 			"user_input_options.expected_num_entries");
 	runInfo.FPR = pt.get<double>(
 			"runtime_options.approximate_false_positive_rate");
-	string tempHashFunc = pt.get<string>("runtime_options.hash_functions");
-	string tempSeeds = pt.get<string>("runtime_options.seeds");
 }
 
 /**
  * Sets number of redundant sequences found in file. Also calculate the approximate
  * error that may be happening to this value.
  */
-void BloomFilterInfo::setReduanacy(size_t redunSeq)
+void BloomFilterInfo::setRedundancy(size_t redunSeq)
 {
 	runInfo.redundantSequences = redunSeq;
 	runInfo.redundantFPR = calcRedunancyFPR(runInfo.size, runInfo.numEntries,
-			hashNum, redunSeq);
+			hashNum, runInfo.redundantSequences);
 
 	runInfo.FPR = calcApproxFPR(runInfo.size,
 			runInfo.numEntries - runInfo.redundantSequences, hashNum);
@@ -129,41 +127,6 @@ uint16_t BloomFilterInfo::getHashNum() const
 	return hashNum;
 }
 
-///*
-// * returns a unique string representing the hash function and seeds used
-// */
-//const string BloomFilterInfo::getSeedHashSigniture() const
-//{
-//	stringstream ss;
-//	ss << "hash_functions=";
-//	//print out hash functions as a list
-//	uint16_t tempCounter = 0;
-//	for (vector<string>::const_iterator it = runInfo.hashFunctions.begin();
-//			it != runInfo.hashFunctions.end(); ++it)
-//	{
-//		ss << (*it);
-//		//print closing quotes
-//		++tempCounter;
-//		if (tempCounter == runInfo.hashFunctions.size()) {
-//			ss << "";
-//		} else {
-//			ss << ", ";
-//		}
-//	}
-//	ss << "\nseeds=";
-//	tempCounter = 0;
-//	for (vector<size_t>::const_iterator it = runInfo.seeds.begin();
-//			it != runInfo.seeds.end(); ++it)
-//	{
-//		ss << *it;
-//		++tempCounter;
-//		if (tempCounter != runInfo.seeds.size()) {
-//			ss << ", ";
-//		}
-//	}
-//	return ss.str();
-//}
-
 const size_t BloomFilterInfo::getCalcuatedFilterSize() const
 {
 	return runInfo.size;
@@ -174,7 +137,7 @@ const string &BloomFilterInfo::getFilterID() const
 	return filterID;
 }
 
-double BloomFilterInfo::getRedunancyFPR() const
+double BloomFilterInfo::getRedundancyFPR() const
 {
 	return runInfo.redundantFPR;
 }
@@ -197,28 +160,7 @@ const vector<string> BloomFilterInfo::convertSeqSrcString(
 	return inputs;
 }
 
-/*
- * converts string obtained from seeds in info file and converts to list
- */
-const vector<size_t> BloomFilterInfo::convertSeedString(
-		const string &seedStr) const
-{
-	vector<size_t> seedVal;
-	string temp;
-	stringstream converter(seedStr);
-	while (converter >> temp) {
-		if (temp.at(temp.length() - 1) == ',') {
-			temp.resize(temp.length() - 1);
-		}
-		size_t num;
-		stringstream converter2(temp);
-		converter2 >> num;
-		seedVal.push_back(num);
-	}
-	return seedVal;
-}
 // functions for calculations regarding bloomfilter
-
 // todo: Tweak calculations as they are approximations and may not be 100% optimal
 // see http://en.wikipedia.org/wiki/Bloom_filter
 
@@ -236,18 +178,16 @@ const double BloomFilterInfo::calcApproxFPR(size_t size, size_t numEntr,
 }
 
 /*
- * Calculates redundancy FPR to correct for errors in the number of
- * redundant sequences.
+ * Calculates redundancy FPR
  */
 const double BloomFilterInfo::calcRedunancyFPR(size_t size, size_t numEntr,
 		uint16_t hashFunctNum, size_t redundantSeqs) const
 {
 	double total = log(calcApproxFPR(size, 1, hashFunctNum));
-	size_t trueEntries = numEntr - redundantSeqs;
-	for (size_t i = 2; i < trueEntries; ++i) {
+	for (size_t i = 2; i < numEntr; ++i) {
 		total = log(exp(total) + calcApproxFPR(size, i, hashFunctNum));
 	}
-	return exp(total) / trueEntries;
+	return exp(total) / numEntr;
 }
 
 /*

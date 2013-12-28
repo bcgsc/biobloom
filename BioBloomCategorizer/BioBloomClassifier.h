@@ -46,7 +46,7 @@ private:
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, size_t> &hits);
 
-	size_t evaluateReadSingle(const FastqRecord &rec, const BloomFilter &filter);
+//	size_t evaluateReadSingle(const FastqRecord &rec, const BloomFilter &filter);
 	const string getReadSummaryHeader(const vector<string> &hashSigs);
 	void initHits(unordered_map<string, size_t> &hits);
 	const string getReadStatStr(string const &readID, size_t readLength,
