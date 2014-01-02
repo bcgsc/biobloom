@@ -51,10 +51,10 @@ int main(int argc, char **argv) {
 
 	size_t filterSize = 1000000000;
 	BloomFilter filter(filterSize, 5, 20);
-	filter.insert("ATCGGGTCATCAACCAATAT");
-	filter.insert("ATCGGGTCATCAACCAATAC");
-	filter.insert("ATCGGGTCATCAACCAATAG");
-	filter.insert("ATCGGGTCATCAACCAATAA");
+//	filter.insert("ATCGGGTCATCAACCAATAT");
+//	filter.insert("ATCGGGTCATCAACCAATAC");
+//	filter.insert("ATCGGGTCATCAACCAATAG");
+//	filter.insert("ATCGGGTCATCAACCAATAA");
 
 	//Check if filter is able to report expected results
 //	assert(filter.contains("ATCGGGTCATCAACCAATAT"));

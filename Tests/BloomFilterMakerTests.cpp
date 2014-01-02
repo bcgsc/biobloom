@@ -15,21 +15,14 @@
 #include <boost/unordered/unordered_map.hpp>
 #include <vector>
 #include <fstream>
+#include "Common/ReadsProcessor.h"
 
 using namespace std;
 
 int main(int argc, char **argv) {
 
-	//Generate some testdata
-	string fileName = "test_fasta.fa";
-	string headerString = ">FAKE FASTA";
-	string contents = "AGCTTTTCATTCTGACTGCATTCGCACGCTACCCGGTCCGGGCTTGTCAGCGTGTGCCAACAATCATGAATAAATCTGTCTTCGTCATTT";
-
-	//write out file.
-	ofstream testDataOut(fileName.c_str(), ios::out);
-
-	testDataOut << headerString << "\n" << contents << endl;
-	testDataOut.close();
+	//Load some testdata
+	string fileName = "ecoli.fasta";
 
 	size_t kmerSize = 20;
 	size_t hashNum = 5;
@@ -45,8 +38,12 @@ int main(int argc, char **argv) {
 
 	//set filter parameters
 //	size_t filterSize = 34359738368;
-	size_t filterSize = filterGen.getExpectedEntries()*8 + (64 - ((filterGen.getExpectedEntries()*8)% 64));
+	size_t filterSize = filterGen.getExpectedEntries() * 8
+			+ (64 - ((filterGen.getExpectedEntries() * 8) % 64));
 	string filename = "test.bf";
+
+	//set filter size
+	filterGen.setFilterSize(filterSize);
 
 	filterGen.generate(filename);
 	//Check storage can occur properly
@@ -57,18 +54,30 @@ int main(int argc, char **argv) {
 	size_t fileSize = ifile.tellg(); // file size in bytes
 	//file size should be same as filter size (Round to block size)
 	if (filterSize % 64 > 0) {
-		assert((filterSize + (64 - (filterSize% 64))) == fileSize*8);
+		assert((filterSize + (64 - (filterSize % 64))) == fileSize * 8);
 	} else {
-		assert(filterSize == fileSize*8);
+		assert(filterSize == fileSize * 8);
 	}
 	ifile.close();
 
 	//check loading of stored filter
 	BloomFilter filter2(filterSize, hashNum, kmerSize, filename);
 
+	ReadsProcessor proc(kmerSize);
+
 //	//Check if loaded filter is able to report expected results
-//	assert(filter2.contains("AGCTTTTCATTCTGACTGCA"));
-//	assert(!filter2.contains("GGCTTTTCATTCTGACTGCA"));
+
+//	int countsHit = 0;
+//
+//	for (int i = 0; i < 100000; ++i) {
+//		if(filter2.contains(proc.prepSeq("AGCTTTTCATTCTGACTGCA", 0)))
+//		{
+//			++countsHit;
+//		}
+//	}
+//	cout << countsHit << endl;
+	assert(filter2.contains(proc.prepSeq("AGCTTTTCATTCTGACTGCA", 0)));
+	assert(!filter2.contains(proc.prepSeq("GGCTTTTCATTCTGACTGCA", 0)));
 
 	cout << "BloomFilterGenerator Tests Done. Cleaning up" << endl;
 	remove(filename.c_str());

@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 #include <cassert>
+#include <stdio.h>
 
 using namespace std;
 

@@ -15,14 +15,6 @@
 
 using namespace std;
 
-int compare(unsigned char *a, unsigned char *b, int size) {
-	while(size-- > 0) {
-		if ( *a != *b ) { return (*a < *b ) ? -1 : 1; }
-		a++; b++;
-	}
-	return 0;
-}
-
 int main(int argc, char **argv) {
 
 	int16_t kmerSize = 4;
