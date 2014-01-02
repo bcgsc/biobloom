@@ -13,7 +13,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
-BloomFilterInfo::BloomFilterInfo(string const &filterID, uint16_t hashNum, uint16_t kmerSize,
+BloomFilterInfo::BloomFilterInfo(string const &filterID, uint16_t kmerSize, uint8_t hashNum,
 		float desiredFPR, size_t expectedNumEntries,
 		const vector<string> &seqSrcs) :
 		filterID(filterID), kmerSize(kmerSize), desiredFPR(desiredFPR), seqSrcs(

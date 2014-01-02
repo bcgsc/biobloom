@@ -23,15 +23,14 @@ using namespace std;
  * Calculation assumes optimal ratio of bytes per entry given a fpr
  */
 //Note: Rounded down because in practice you want to calculate as few hash values as possible
-static uint8_t calcOptiHashNum(float fpr)
-{
+static uint8_t calcOptiHashNum(float fpr) {
 	return uint8_t(-log(fpr) / log(2));
 }
 
 class BloomFilterInfo {
 public:
-	explicit BloomFilterInfo(string const &filterID, uint16_t hashNum,
-			uint16_t kmerSize, float desiredFPR, size_t expectedSize,
+	explicit BloomFilterInfo(string const &filterID, uint16_t kmerSize,
+			uint8_t hashNum, float desiredFPR, size_t expectedSize,
 			const vector<string> &seqSrc);
 	explicit BloomFilterInfo(string const &fileName);
 	void addHashFunction(const string &fnName, size_t seed);

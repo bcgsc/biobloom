@@ -376,7 +376,7 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 
 		//-128 is used as I am working with signed chars
 		if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
-			return emptyResult;
+			return NULL;
 		}
 
 		fw[outputIndex] |= fw3[sequence[index++]];
@@ -388,7 +388,7 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 		rv[outputIndex] |= rv2[sequence[revIndex--]];
 
 		if (rv[outputIndex] == 0xFF || rv3[sequence[revIndex]] == 0xFF) {
-			return emptyResult;
+			return NULL;
 		}
 
 		rv[outputIndex] |= rv3[sequence[revIndex--]];
@@ -406,7 +406,7 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 				fw[outputIndex] |= fw2[sequence[index++]];
 
 				if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
-					return emptyResult;
+					return NULL;
 				}
 				fw[outputIndex] |= fw3[sequence[index++]];
 			}
@@ -419,7 +419,7 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 					fw[outputIndex] |= fw0[sequence[lastPos]];
 				}
 				if (fw[outputIndex] == 0xFF) {
-					return emptyResult;
+					return NULL;
 				}
 			}
 			return fw;
@@ -436,7 +436,7 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 
 				if (rv[outputIndex] == 0xFF || rv3[sequence[revIndex]] == 0xFF)
 				{
-					return emptyResult;
+					return NULL;
 				}
 				rv[outputIndex] |= rv3[sequence[revIndex--]];
 			}
@@ -448,7 +448,7 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 					rv[outputIndex] |= rv0[sequence[position]];
 				}
 				if (rv[outputIndex] == 0xFF) {
-					return emptyResult;
+					return NULL;
 				}
 			}
 			return rv;
@@ -465,7 +465,7 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 		fw[outputIndex] |= fw2[sequence[index++]];
 
 		if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
-			return emptyResult;
+			return NULL;
 		}
 		fw[outputIndex] |= fw3[sequence[index]];
 	}
@@ -478,7 +478,7 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 			fw[outputIndex] |= fw0[sequence[lastPos]];
 		}
 		if (fw[outputIndex] == 0xFF) {
-			return emptyResult;
+			return NULL;
 		}
 	}
 	return fw;

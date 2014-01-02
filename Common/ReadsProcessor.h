@@ -12,8 +12,6 @@
 
 using namespace std;
 
-static unsigned char* emptyResult = NULL;
-
 class ReadsProcessor {
 public:
 	ReadsProcessor(uint16_t windowSize);
