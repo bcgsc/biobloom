@@ -75,7 +75,7 @@ const unsigned char* WindowedFileParser::getNextSeq()
 		//if there is not enough sequence for a full kmer
 		if (currentString.length() < windowSize) {
 			sequenceNotEnd = false;
-			return emptyResult;
+			return NULL;
 		}
 	}
 	return proc.prepSeq(currentString, currentLinePos++);

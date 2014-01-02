@@ -14,10 +14,10 @@ using namespace std;
 class BloomFilterGenerator {
 public:
 	explicit BloomFilterGenerator(vector<string> const &filenames,
-			uint8_t kmerSize, uint8_t hashNum, size_t numElements);
+			uint16_t kmerSize, uint8_t hashNum, size_t numElements);
 
 	explicit BloomFilterGenerator(vector<string> const &filenames,
-			uint8_t kmerSize, uint8_t hashNum);
+			uint16_t kmerSize, uint8_t hashNum);
 
 	size_t generate(const string &filename);
 	size_t generate(const string &filename, const string &subtractFilter);
@@ -32,7 +32,7 @@ private:
 	size_t filterSize;
 	size_t expectedEntries;
 	size_t totalEntries;
-	int8_t kmerSize;
+	int16_t kmerSize;
 	int8_t hashNum;
 	boost::unordered_map<string, vector<string> > fileNamesAndHeaders;
 };

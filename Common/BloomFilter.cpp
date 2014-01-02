@@ -16,13 +16,19 @@
 #include <cstring>
 
 /* De novo filter constructor.
- * precondition: filterSize must be a multiple of 64
- * kmer Size in bytes must be used else expect errors!!!
+ *
+ * preconditions:
+ * filterSize must be a multiple of 64
+ * kmerSize refers to the number of bases the kmer has
+ * kmerSize must be greater than 16
+ * k-mers supplied to this object should be binary (2 bits per base)
  */
 BloomFilter::BloomFilter(size_t filterSize, uint8_t hashNum, uint16_t kmerSize) :
 		size(filterSize), hashNum(hashNum), kmerSize(kmerSize), kmerSizeInBytes(
-				(kmerSize + 8 - 1) / 8) {
+				(kmerSize + 4 - 1) / 4) {
 	initSize(size);
+	//kmerSize must be greater than 16
+	assert(kmerSize > 16);
 	memset(filter, 0, sizeInBytes);
 }
 
@@ -32,7 +38,7 @@ BloomFilter::BloomFilter(size_t filterSize, uint8_t hashNum, uint16_t kmerSize) 
 BloomFilter::BloomFilter(size_t filterSize, uint8_t hashNum, uint16_t kmerSize,
 		string const &filterFilePath) :
 		size(filterSize), hashNum(hashNum), kmerSize(kmerSize), kmerSizeInBytes(
-				(kmerSize + 8 - 1) / 8) {
+				(kmerSize + 4 - 1) / 4) {
 	initSize(size);
 
 	//Check file size is correct size
@@ -74,17 +80,22 @@ void BloomFilter::initSize(size_t size) {
  * Accepts a list of precomputed hash values. Faster than rehashing each time.
  */
 void BloomFilter::insert(vector<size_t> const &precomputed) {
+
 	//iterates through hashed values adding it to the filter
-	for (size_t i = 0; i < hashNum - 1; ++i) {
+	for (size_t i = 0; i < hashNum; ++i) {
 		size_t normalizedValue = precomputed.at(i) % size;
+
+//		cout << normalizedValue << endl;
+//		exit(1);
+
 		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 				% bitsPerChar];
 	}
 }
 
 void BloomFilter::insert(const unsigned char* kmer) {
-	size_t normalizedValue = kmer[0] | (kmer[1] << 8) | (kmer[2] << 16)
-			| (kmer[3] << 24) % size;
+	size_t normalizedValue = (kmer[0] | (kmer[1] << 8) | (kmer[2] << 16)
+			| (kmer[3] << 24)) % size;
 	filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 			% bitsPerChar];
 	//iterates through hashed values adding it to the filter
@@ -100,10 +111,10 @@ void BloomFilter::insert(const unsigned char* kmer) {
  * Accepts a list of precomputed hash values. Faster than rehashing each time.
  */
 const bool BloomFilter::contains(vector<size_t> const &values) const {
-	for (size_t i = 0; i < hashNum - 1; ++i) {
+	for (size_t i = 0; i < hashNum; ++i) {
 		size_t normalizedValue = values.at(i) % size;
 		unsigned char bit = bitMask[normalizedValue % bitsPerChar];
-		if ((filter[normalizedValue / bitsPerChar] & bit) == 0) {
+		if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
 			return false;
 		}
 	}
@@ -114,28 +125,21 @@ const bool BloomFilter::contains(vector<size_t> const &values) const {
  * Single pass filtering, computes hash values on the fly
  */
 const bool BloomFilter::contains(const unsigned char* kmer) const {
-	size_t normalizedValue = kmer[0] | (kmer[1] << 8) | (kmer[2] << 16)
-			| (kmer[3] << 24) % size;
-	cout << 0 << " " << normalizedValue << " " << kmerSizeInBytes << endl;
+	//use raw kmer number as first hash value
+	size_t normalizedValue = (kmer[0] | (kmer[1] << 8) | (kmer[2] << 16)
+			| (kmer[3] << 24)) % size;
+
 	unsigned char bit = bitMask[normalizedValue % bitsPerChar];
-	if ((filter[normalizedValue / bitsPerChar] & bit) == 0) {
+
+	if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
 		return false;
 	}
-	for (size_t i = 0; i < hashNum - 1; ++i) {
-		normalizedValue = CityHash64WithSeed(
-				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i) % size;
-		bit = bitMask[normalizedValue % bitsPerChar];
-		cout << i << " " << normalizedValue << " " << kmerSizeInBytes << " "
-				<< size << endl;
-	}
 
-	for (size_t i = 0; i < hashNum - 1; ++i) {
+	for (int i = 0; i < hashNum - 1; ++i) {
 		normalizedValue = CityHash64WithSeed(
 				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i) % size;
 		bit = bitMask[normalizedValue % bitsPerChar];
-		cout << i << " " << normalizedValue << " " << kmerSizeInBytes << " "
-				<< size << endl;
-		if ((filter[normalizedValue / bitsPerChar] & bit) == 0) {
+		if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
 			return false;
 		}
 	}

@@ -82,14 +82,6 @@ void printHelpDialog()
 					"      --no-chastity      Do not discard unchaste reads. [default]\n"
 					"  -v  --version          Display version information.\n"
 					"  -h, --help             Display this dialog.\n"
-					"\nAdvanced options:\n"
-					"  -t, --min_hit_thr=N    Minimum Hit Threshold Value. The absolute hit number\n"
-					"                         needed for a hit to be considered a match. [2]\n"
-					"  -m, --min_hit_pro=N    Minimum Hit Proportion Threshold Value. The proportion\n"
-					"                         needed for a hit to be considered a match. [0.2]\n"
-					"  -r, --redundant=N      The number of redundant tiles to use. Lowers effective\n"
-					"                         false positive rate at the cost of increasing the\n"
-					"                         effective kmer length by N. [0]\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);

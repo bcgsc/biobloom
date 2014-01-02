@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 	string filterPrefix = "";
 	string outputDir = "";
 	uint16_t kmerSize = 25;
-	uint16_t hashNum = 0;
+	uint8_t hashNum = 0;
 	string subtractFilter = "";
 	size_t entryNum = 0;
 
@@ -196,14 +196,15 @@ int main(int argc, char *argv[]) {
 	}
 
 	//create filter
-	BloomFilterGenerator filterGen(inputFiles, hashNum, kmerSize, entryNum);
+	BloomFilterGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
 
 	if (entryNum == 0) {
-		filterGen = BloomFilterGenerator(inputFiles, hashNum, kmerSize);
+		filterGen = BloomFilterGenerator(inputFiles, kmerSize, hashNum);
 		entryNum = filterGen.getExpectedEntries();
 	}
 
-	BloomFilterInfo info(filterPrefix, hashNum, kmerSize, fpr, entryNum, inputFiles);
+	BloomFilterInfo info(filterPrefix, kmerSize, hashNum, fpr, entryNum,
+			inputFiles);
 
 	//get calculated size of Filter
 	size_t filterSize = info.getCalcuatedFilterSize();
@@ -227,10 +228,9 @@ int main(int argc, char *argv[]) {
 	if (redunRate > 0.25) {
 		cerr << "Redundancy Rate is approximately: " << redunRate << endl;
 		cerr
-				<< "Consider checking your files for duplicate sequences and adjusting them accordingly."
-				<< endl;
-		cerr
-				<< "High redundancy will cause overestimation of filter sizes used."
+				<< "Consider checking your files for duplicate sequences and adjusting them accordingly.\n"
+						"High redundancy will cause filter sizes used overestimated, potentially resulting in a larger than needed filter.\n"
+						"Alternatively you can set the size of filter wanted with (-n) and ignore this message."
 				<< endl;
 	}
 
