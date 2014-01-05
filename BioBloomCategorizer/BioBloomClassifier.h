@@ -24,9 +24,9 @@ using namespace boost;
 class BioBloomClassifier {
 public:
 	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
-			size_t minHit, double percentMinHit, size_t maxHitValue,
+			float minHit, size_t maxHitValue,
 			const string &outputPrefix, const string &outputPostFix,
-			uint8_t tileModifier);
+			uint16_t tileModifier);
 	void filter(const vector<string> &inputFiles);
 	void filterPrint(const vector<string> &inputFiles,
 			const string &outputType);
@@ -42,30 +42,30 @@ private:
 	void loadFilters(const vector<string> &filterFilePaths);
 	const bool fexists(const string &filename) const;
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, size_t> &hits, uint8_t tileModifier);
+			unordered_map<string, float> &hits, uint8_t tileModifier);
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, size_t> &hits);
+			unordered_map<string, float> &hits);
 
 //	size_t evaluateReadSingle(const FastqRecord &rec, const BloomFilter &filter);
 	const string getReadSummaryHeader(const vector<string> &hashSigs);
-	void initHits(unordered_map<string, size_t> &hits);
+	void initHits(unordered_map<string, float> &hits);
 	const string getReadStatStr(string const &readID, size_t readLength,
-			unordered_map<string, size_t> &hits);
+			unordered_map<string, float> &hits);
 	const string getReadStatStrPair(string const &readID, size_t readLength1,
-			size_t readLength2, unordered_map<string, size_t> &hits1,
-			unordered_map<string, size_t> &hits2);
+			size_t readLength2, unordered_map<string, float> &hits1,
+			unordered_map<string, float> &hits2);
 
 	//group filters with same hash number
 	unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > infoFiles;
 	unordered_map<string, shared_ptr<MultiFilter> > filters;
+	unordered_map<string, shared_ptr<BloomFilter> > filtersSingle;
 	vector<string> hashSigs;
-	size_t minHit;
-	double percentMinHit;
+	float minHit;
 	uint8_t filterNum;
 	size_t maxHitValue;
 	const string &postfix;
 	const string &prefix;
-	const uint8_t tileModifier;
+	const uint16_t tileModifier;
 
 	//Todo: is this really better than hard-coding them in the class?
 	const string noMatch;

@@ -13,6 +13,7 @@
 #include <fstream>
 #include <sstream>
 #include <omp.h>
+#include "Common/ReadsProcessor.h"
 
 using namespace std;
 
@@ -35,35 +36,26 @@ int memory_usage() {
 }
 
 int main(int argc, char **argv) {
-//	const vector<size_t> &hashedValues = multiHash("ATCGGGTCATCAACCAATAT", 5, 20);
-//	cout << hashedValues.size() << endl;
-//	for (unsigned int i = 0; i < hashedValues.size() - 1; ++i) {
-//		for (unsigned int j = i + 1; j < hashedValues.size(); ++j) {
-//			assert(hashedValues.at(j) != hashedValues.at(i));
-//		}
-//	}
-
-	// end of testing hash manager, numbers should all be different.
-	cout << "hashing tests done" << endl;
-
 	//memory usage from before
 	int memUsage = memory_usage();
 
 	size_t filterSize = 1000000000;
 	BloomFilter filter(filterSize, 5, 20);
-//	filter.insert("ATCGGGTCATCAACCAATAT");
-//	filter.insert("ATCGGGTCATCAACCAATAC");
-//	filter.insert("ATCGGGTCATCAACCAATAG");
-//	filter.insert("ATCGGGTCATCAACCAATAA");
+	ReadsProcessor proc(20);
+
+	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAT", 0));
+	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAC", 0));
+	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAG", 0));
+	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAA", 0));
 
 	//Check if filter is able to report expected results
-//	assert(filter.contains("ATCGGGTCATCAACCAATAT"));
-//	assert(filter.contains("ATCGGGTCATCAACCAATAC"));
-//	assert(filter.contains("ATCGGGTCATCAACCAATAG"));
-//	assert(filter.contains("ATCGGGTCATCAACCAATAA"));
-//
-//	assert(!filter.contains("ATCGGGTCATCAACCAATTA"));
-//	assert(!filter.contains("ATCGGGTCATCAACCAATTC"));
+	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAT", 0)));
+	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAC", 0)));
+	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAG", 0)));
+	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAA", 0)));
+
+	assert(!filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATTA",0)));
+	assert(!filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATTC",0)));
 
 	//should be size of bf (amortized)
 	cout << memory_usage() - memUsage << "kb" << endl;
@@ -95,11 +87,13 @@ int main(int argc, char **argv) {
 	cout << memory_usage() - memUsage << "kb" << endl;
 
 	//Check if loaded filter is able to report expected results
-//	assert(filter2.contains("ATCGGGTCATCAACCAATAT"));
-//	assert(filter2.contains("ATCGGGTCATCAACCAATAC"));
-//	assert(filter2.contains("ATCGGGTCATCAACCAATAG"));
-//	assert(filter2.contains("ATCGGGTCATCAACCAATAA"));
-//	assert(!filter2.contains("ATCGGGTCATCAACCAATTT"));
+	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAT", 0)));
+	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAC", 0)));
+	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAG", 0)));
+	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAA", 0)));
+
+	assert(!filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATTA",0)));
+	assert(!filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATTC",0)));
 	cout << "premade bf tests done" << endl;
 
 	//memory leak tests

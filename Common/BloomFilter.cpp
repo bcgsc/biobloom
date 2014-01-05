@@ -20,15 +20,12 @@
  * preconditions:
  * filterSize must be a multiple of 64
  * kmerSize refers to the number of bases the kmer has
- * kmerSize must be greater than 16
  * k-mers supplied to this object should be binary (2 bits per base)
  */
 BloomFilter::BloomFilter(size_t filterSize, uint8_t hashNum, uint16_t kmerSize) :
 		size(filterSize), hashNum(hashNum), kmerSize(kmerSize), kmerSizeInBytes(
 				(kmerSize + 4 - 1) / 4) {
 	initSize(size);
-	//kmerSize must be greater than 16
-	assert(kmerSize > 16);
 	memset(filter, 0, sizeInBytes);
 }
 
@@ -94,13 +91,9 @@ void BloomFilter::insert(vector<size_t> const &precomputed) {
 }
 
 void BloomFilter::insert(const unsigned char* kmer) {
-	size_t normalizedValue = (kmer[0] | (kmer[1] << 8) | (kmer[2] << 16)
-			| (kmer[3] << 24)) % size;
-	filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
-			% bitsPerChar];
 	//iterates through hashed values adding it to the filter
-	for (size_t i = 0; i < hashNum - 1; ++i) {
-		normalizedValue = CityHash64WithSeed(
+	for (size_t i = 0; i < hashNum ; ++i) {
+		size_t normalizedValue = CityHash64WithSeed(
 				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i) % size;
 		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 				% bitsPerChar];
@@ -125,20 +118,10 @@ const bool BloomFilter::contains(vector<size_t> const &values) const {
  * Single pass filtering, computes hash values on the fly
  */
 const bool BloomFilter::contains(const unsigned char* kmer) const {
-	//use raw kmer number as first hash value
-	size_t normalizedValue = (kmer[0] | (kmer[1] << 8) | (kmer[2] << 16)
-			| (kmer[3] << 24)) % size;
-
-	unsigned char bit = bitMask[normalizedValue % bitsPerChar];
-
-	if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
-		return false;
-	}
-
-	for (int i = 0; i < hashNum - 1; ++i) {
-		normalizedValue = CityHash64WithSeed(
+	for (int i = 0; i < hashNum; ++i) {
+		size_t normalizedValue = CityHash64WithSeed(
 				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i) % size;
-		bit = bitMask[normalizedValue % bitsPerChar];
+		unsigned char bit = bitMask[normalizedValue % bitsPerChar];
 		if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
 			return false;
 		}

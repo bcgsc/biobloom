@@ -14,12 +14,11 @@
 #include "ResultsManager.h"
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
-		size_t minHit, double percentMinHit, size_t maxHitValue,
-		const string &prefix, const string &outputPostFix, uint8_t tileModifier) :
-		minHit(minHit), percentMinHit(percentMinHit), filterNum(
-				filterFilePaths.size()), maxHitValue(maxHitValue), noMatch(
-				"noMatch"), multiMatch("multiMatch"), prefix(prefix), postfix(
-				outputPostFix), tileModifier(tileModifier) {
+		float minHit, size_t maxHitValue, const string &prefix,
+		const string &outputPostFix, uint16_t tileModifier) :
+		minHit(minHit), filterNum(filterFilePaths.size()), maxHitValue(
+				maxHitValue), noMatch("noMatch"), multiMatch("multiMatch"), prefix(
+				prefix), postfix(outputPostFix), tileModifier(tileModifier) {
 	loadFilters(filterFilePaths);
 }
 
@@ -30,8 +29,8 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles) {
 	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//results summary object
-	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue, tileModifier);
+	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit, maxHitValue,
+			tileModifier);
 
 	size_t totalReads = 0;
 
@@ -47,7 +46,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles) {
 			FastqRecord rec;
 
 			//stored out of loop so reallocation does not have to be done
-			unordered_map<string, size_t> hits(filterNum);
+			unordered_map<string, float> hits(filterNum);
 			while (sequence >> rec) {
 
 				//track read progress
@@ -81,7 +80,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles) {
 			FastqRecord rec;
 
 			//stored out of loop so reallocation does not have to be done
-			unordered_map<string, size_t> hits(filterNum);
+			unordered_map<string, float> hits(filterNum);
 			while (sequence >> rec) {
 
 				//track read progress
@@ -139,8 +138,8 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//results summary object
-	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue, tileModifier);
+	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit, maxHitValue,
+			tileModifier);
 
 	size_t totalReads = 0;
 
@@ -179,7 +178,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
 			FastqRecord rec;
 			//hits results stored in hashmap of filternames and hits
-			unordered_map<string, size_t> hits(filterNum);
+			unordered_map<string, float> hits(filterNum);
 			while (sequence >> rec) {
 
 				++totalReads;
@@ -221,7 +220,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
 			FastqRecord rec;
 			//hits results stored in hashmap of filternames and hits
-			unordered_map<string, size_t> hits(filterNum);
+			unordered_map<string, float> hits(filterNum);
 			while (sequence >> rec) {
 				++totalReads;
 				if (totalReads % 1000000 == 0) {
@@ -287,8 +286,8 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//results summary object
-	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue, tileModifier);
+	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit, maxHitValue,
+			tileModifier);
 
 	size_t totalReads = 0;
 
@@ -302,8 +301,8 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 	FastqRecord rec1;
 	FastqRecord rec2;
 	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, size_t> hits1(filterNum);
-	unordered_map<string, size_t> hits2(filterNum);
+	unordered_map<string, float> hits1(filterNum);
+	unordered_map<string, float> hits2(filterNum);
 
 	if (tileModifier == 0) {
 		while (sequence1 >> rec1 && sequence2 >> rec2) {
@@ -414,8 +413,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//results summary object
-	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue, tileModifier);
+	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit, maxHitValue,
+			tileModifier);
 
 	size_t totalReads = 0;
 
@@ -464,8 +463,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	FastqRecord rec1;
 	FastqRecord rec2;
 	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, size_t> hits1(filterNum);
-	unordered_map<string, size_t> hits2(filterNum);
+	unordered_map<string, float> hits1(filterNum);
+	unordered_map<string, float> hits2(filterNum);
 
 	if (tileModifier == 0) {
 		while (sequence1 >> rec1 && sequence2 >> rec2) {
@@ -603,8 +602,8 @@ void BioBloomClassifier::filterPairBAM(const string &file) {
 	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//results summary object
-	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue, tileModifier);
+	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit, maxHitValue,
+			tileModifier);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -617,8 +616,8 @@ void BioBloomClassifier::filterPairBAM(const string &file) {
 
 	FastaReader sequence(file.c_str(), FastaReader::NO_FOLD_CASE);
 	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, size_t> hits1(filterNum);
-	unordered_map<string, size_t> hits2(filterNum);
+	unordered_map<string, float> hits1(filterNum);
+	unordered_map<string, float> hits2(filterNum);
 
 	if (tileModifier == 0) {
 		while (!sequence.eof()) {
@@ -762,8 +761,8 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//results summary object
-	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit,
-			percentMinHit, maxHitValue, tileModifier);
+	ResultsManager resSummary(hashSigs, filters, infoFiles, minHit, maxHitValue,
+			tileModifier);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -810,8 +809,8 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 
 	FastaReader sequence(file.c_str(), FastaReader::NO_FOLD_CASE);
 	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, size_t> hits1(filterNum);
-	unordered_map<string, size_t> hits2(filterNum);
+	unordered_map<string, float> hits1(filterNum);
+	unordered_map<string, float> hits2(filterNum);
 
 	if (tileModifier == 0) {
 		while (!sequence.eof()) {
@@ -1008,21 +1007,20 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths) {
 		hashSig << info->getHashNum() << info->getKmerSize();
 
 		//if hashSig exists add filter to list
-		if (infoFiles.count(hashSig.str()) == 1) {
-			infoFiles[hashSig.str()].push_back(info);
-			filters[hashSig.str()]->addFilter(info->getCalcuatedFilterSize(),
-					info->getFilterID(), *it);
-		} else {
-			vector<shared_ptr<BloomFilterInfo> > tempVect;
-			tempVect.push_back(info);
+		if (infoFiles.count(hashSig.str()) != 1) {
 			hashSigs.push_back(hashSig.str());
+			vector<shared_ptr<BloomFilterInfo> > tempVect;
 			shared_ptr<MultiFilter> temp(
 					new MultiFilter(info->getHashNum(), info->getKmerSize()));
 			filters[hashSig.str()] = temp;
-			filters[hashSig.str()]->addFilter(info->getCalcuatedFilterSize(),
-					info->getFilterID(), *it);
 			infoFiles[hashSig.str()] = tempVect;
 		}
+		infoFiles[hashSig.str()].push_back(info);
+		boost::shared_ptr<BloomFilter> filter(
+				new BloomFilter(info->getCalcuatedFilterSize(),
+						info->getHashNum(), info->getKmerSize(), *it));
+		filters[hashSig.str()]->addFilter(info->getFilterID(), filter);
+		filtersSingle[info->getFilterID()] = filter;
 		cerr << "Loaded Filter: " + info->getFilterID() << endl;
 	}
 	cerr << "Filter Loading Complete." << endl;
@@ -1043,7 +1041,7 @@ const bool BioBloomClassifier::fexists(const string &filename) const {
  * Faster variant that assume there a redundant tile of 0
  */
 void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
-		const string &hashSig, unordered_map<string, size_t> &hits) {
+		const string &hashSig, unordered_map<string, float> &hits) {
 	//get filterIDs to iterate through has in a consistent order
 	const vector<string> &idsInFilter = (*filters[hashSig]).getFilterIds();
 
@@ -1063,6 +1061,7 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 
 		//check to see if string is invalid
 		if (currentKmer != NULL) {
+
 			const unordered_map<string, bool> &results =
 					filters[hashSig]->multiContains(currentKmer);
 
@@ -1096,116 +1095,181 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
  * Updates hits value to number of hits (hashSig is used to as key)
  */
 void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
-		const string &hashSig, unordered_map<string, size_t> &hits,
+		const string &hashSig, unordered_map<string, float> &hits,
 		uint8_t redundantRead) {
+
 	//get filterIDs to iterate through has in a consistent order
 	const vector<string> &idsInFilter = (*filters[hashSig]).getFilterIds();
 
-	//get kmersize for set of info files
 	uint16_t kmerSize = infoFiles.at(hashSig).front()->getKmerSize();
-
-	//Establish tiling pattern
-	uint16_t startModifier = (rec.seq.length() % (kmerSize)) / 2;
 
 	ReadsProcessor proc(kmerSize);
 
-	size_t currentLoc = 0;
-	//cut read into kmer size + tilemodifier given
-	while (rec.seq.length() >= currentLoc + kmerSize) {
+	float normalizationValue = rec.seq.length() - kmerSize + 1;
+	float threshold = minHit * normalizationValue;
 
-		unordered_map<string, bool> tempResults;
-		vector<string> filterIDs = idsInFilter;
-
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i) {
-			tempResults[*i] = true;
-		}
-
-		//shift right
-		if (rec.seq.length() != currentLoc + kmerSize) {
-			for (uint8_t j = 0; j < redundantRead; ++j) {
-
-				if (filterIDs.size() == 0) {
+	for (vector<string>::const_iterator i = idsInFilter.begin();
+			i != idsInFilter.end(); ++i) {
+		size_t currentLoc = 0;
+		float score = 0;
+		uint16_t streak = 0;
+		bool pass = false;
+		//First pass filtering
+		while (rec.seq.length() >= currentLoc + kmerSize) {
+			const unsigned char* currentKmer = proc.prepSeq(rec.seq,
+					currentLoc);
+			if (currentKmer != NULL) {
+				if (filtersSingle.at(*i)->contains(currentKmer)) {
+					pass = true;
 					break;
 				}
-
+			}
+			currentLoc += kmerSize;
+		}
+		currentLoc = 0;
+		if (pass) {
+			while (rec.seq.length() >= currentLoc + kmerSize) {
 				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
-						currentLoc + startModifier + j);
-				vector<string> tempFilterIDs;
-
-				//check to see if string is invalid
-				if (currentKmer != NULL) {
-
-					const unordered_map<string, bool> &results =
-							filters[hashSig]->multiContains(currentKmer,
-									filterIDs);
-
-					for (vector<string>::iterator i = filterIDs.begin();
-							i != filterIDs.end(); ++i) {
-						if (!results.find(*i)->second) {
-							tempResults[*i] = false;
-						} else {
-							tempFilterIDs.push_back(*i);
+						currentLoc);
+				if (streak == 0) {
+					if (currentKmer != NULL) {
+						if (filtersSingle.at(*i)->contains(currentKmer)) {
+							score += 0.25;
+							++streak;
 						}
 					}
+					++currentLoc;
 				} else {
-					for (vector<string>::iterator i = filterIDs.begin();
-							i != filterIDs.end(); ++i) {
-						tempResults[*i] = false;
-					}
-					break;
-				}
-				filterIDs = tempFilterIDs;
-			}
-		}
-		//shift left on last read segment
-		else {
-			for (uint8_t j = 0; j < redundantRead; ++j) {
-
-				if (filterIDs.size() == 0) {
-					break;
-				}
-
-				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
-						currentLoc + startModifier - 1);
-				vector<string> tempFilterIDs;
-
-				//check to see if string is invalid
-				if (currentKmer != NULL) {
-
-					const unordered_map<string, bool> &results =
-							filters[hashSig]->multiContains(currentKmer,
-									filterIDs);
-
-					for (vector<string>::iterator i = filterIDs.begin();
-							i != filterIDs.end(); ++i) {
-						if (!results.find(*i)->second) {
-							tempResults[*i] = false;
-						} else {
-							tempFilterIDs.push_back(*i);
+					if (currentKmer != NULL) {
+						if (filtersSingle.at(*i)->contains(currentKmer)) {
+							++streak;
+							++score;
+							++currentLoc;
+							if (threshold <= score) {
+								break;
+							}
+							continue;
 						}
 					}
-				} else {
-					for (vector<string>::iterator i = filterIDs.begin();
-							i != filterIDs.end(); ++i) {
-						tempResults[*i] = false;
+					if (streak < 3) {
+						++currentLoc;
+					} else {
+						currentLoc += kmerSize + 1;
 					}
-					break;
+					streak = 0;
 				}
-				filterIDs = tempFilterIDs;
 			}
+			hits[*i] = score / normalizationValue;
 		}
-
-		//record hit number in order
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i) {
-			if (tempResults.find(*i)->second) {
-				++hits[*i];
-			}
-		}
-		currentLoc += kmerSize;
 	}
 }
+
+//	//get kmersize for set of info files
+//	uint16_t kmerSize = infoFiles.at(hashSig).front()->getKmerSize();
+//
+//	ReadsProcessor proc(kmerSize);
+//
+//	size_t currentLoc = 0;
+//	//cut read into kmer size + tilemodifier given
+//	while (rec.seq.length() >= currentLoc + kmerSize + redundantRead) {
+//
+//		unordered_map<string, bool> tempResults;
+//		vector<string> filterIDs = idsInFilter;
+//
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i) {
+//			tempResults[*i] = true;
+//		}
+//
+//		//shift right
+//		for (uint8_t j = 0; j <= redundantRead; ++j) {
+//
+//			if (filterIDs.size() == 0) {
+//				break;
+//			}
+//
+//			const unsigned char* currentKmer = proc.prepSeq(rec.seq,
+//					currentLoc + j);
+//			vector<string> tempFilterIDs;
+//
+//			//check to see if string is invalid
+//			if (currentKmer != NULL) {
+//
+//				const unordered_map<string, bool> &results =
+//						filters[hashSig]->multiContains(currentKmer, filterIDs);
+//
+//				for (vector<string>::iterator i = filterIDs.begin();
+//						i != filterIDs.end(); ++i) {
+//					if (!results.find(*i)->second) {
+//						tempResults[*i] = false;
+//					} else {
+//						tempFilterIDs.push_back(*i);
+//					}
+//				}
+//			} else {
+//				for (vector<string>::iterator i = filterIDs.begin();
+//						i != filterIDs.end(); ++i) {
+//					tempResults[*i] = false;
+//				}
+//				break;
+//			}
+//			filterIDs = tempFilterIDs;
+//		}
+//
+//		//record hit number in order
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i) {
+//			if (tempResults.find(*i)->second) {
+//				++hits[*i];
+//			}
+//		}
+//		currentLoc += kmerSize/2;
+//	}
+//
+//	unordered_map<string, bool> tempResults;
+//	vector<string> filterIDs = idsInFilter;
+//
+//	for (vector<string>::const_iterator i = idsInFilter.begin();
+//			i != idsInFilter.end(); ++i) {
+//		tempResults[*i] = true;
+//	}
+//
+//	//shift left on last read segment
+//	for (uint8_t j = 0; j <= redundantRead; ++j) {
+//
+//		const unsigned char* currentKmer = proc.prepSeq(rec.seq,
+//				rec.seq.size() - kmerSize - j - 1);
+//		vector<string> tempFilterIDs;
+//
+//		//check to see if string is invalid
+//		if (currentKmer != NULL) {
+//
+//			const unordered_map<string, bool> &results =
+//					filters[hashSig]->multiContains(currentKmer, filterIDs);
+//
+//			for (vector<string>::iterator i = filterIDs.begin();
+//					i != filterIDs.end(); ++i) {
+//				if (!results.find(*i)->second) {
+//					tempResults[*i] = false;
+//				} else {
+//					tempFilterIDs.push_back(*i);
+//				}
+//			}
+//		} else {
+//			for (vector<string>::iterator i = filterIDs.begin();
+//					i != filterIDs.end(); ++i) {
+//				tempResults[*i] = false;
+//			}
+//			break;
+//		}
+//		filterIDs = tempFilterIDs;
+//	}
+//	for (vector<string>::const_iterator i = idsInFilter.begin();
+//			i != idsInFilter.end(); ++i) {
+//		if (tempResults.find(*i)->second) {
+//			++hits[*i];
+//		}
+//	}
 
 ///*
 // * For a single read evaluate hits for a single hash signature
@@ -1309,7 +1373,7 @@ const string BioBloomClassifier::getReadSummaryHeader(
 /*
  * Initializes hits results to zero
  */
-void BioBloomClassifier::initHits(unordered_map<string, size_t> &hits) {
+void BioBloomClassifier::initHits(unordered_map<string, float> &hits) {
 	//initialize hits to zero
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j) {
@@ -1325,7 +1389,7 @@ void BioBloomClassifier::initHits(unordered_map<string, size_t> &hits) {
  * return results of hits to be output for read status
  */
 const string BioBloomClassifier::getReadStatStr(string const &readID,
-		size_t readLength, unordered_map<string, size_t> &hits) {
+		size_t readLength, unordered_map<string, float> &hits) {
 	stringstream str;
 	str << readID << "\t" << readLength;
 	//print readID
@@ -1348,8 +1412,8 @@ const string BioBloomClassifier::getReadStatStr(string const &readID,
  */
 const string BioBloomClassifier::getReadStatStrPair(string const &readID,
 		size_t readLength1, size_t readLength2,
-		unordered_map<string, size_t> &hits1,
-		unordered_map<string, size_t> &hits2) {
+		unordered_map<string, float> &hits1,
+		unordered_map<string, float> &hits2) {
 	stringstream str;
 	str << readID << "\t" << readLength1 << "|" << readLength2;
 	//print readID

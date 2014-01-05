@@ -12,10 +12,8 @@ MultiFilter::MultiFilter(uint16_t hashNum, uint16_t kmerSize) :
 
 }
 
-void MultiFilter::addFilter(size_t filterSize, string const &filterID,
-		string const &filePath) {
-	boost::shared_ptr<BloomFilter> filter(
-			new BloomFilter(filterSize, hashNum, kmerSize));
+void MultiFilter::addFilter(string const &filterID,
+		boost::shared_ptr<BloomFilter> filter) {
 	filters[filterID] = filter;
 	filterIDs.push_back(filterID);
 }

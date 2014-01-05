@@ -73,6 +73,12 @@ void printHelpDialog()
 					"  -e, --paired_mode      Uses paired-end information. For BAM or SAM file if\n"
 					"                         they are poorly ordered, memory usage will be much\n"
 					"                         larger than normal. Sorting by read name may be needed.\n"
+					"\nAdvanced options:\n"
+					"  -t, --min_hit_thr=N    Minimum Hit Threshold Value. The absolute hit number\n"
+					"                         needed for a hit to be considered a match. [2]\n"
+					"  -r, --redundant=N      The number of redundant tiles to use. Lowers effective\n"
+					"                         false positive rate at the cost of increasing the\n"
+					"                         effective kmer length by N. [0]\n"
 					"  -c, --counts=N         Outputs summary of raw counts of user specified hit\n"
 					"                         counts to each filter of each read or read-pair. [0]\n"
 					"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
@@ -111,8 +117,7 @@ int main(int argc, char *argv[])
 	string filePostfix = "";
 
 	//advanced options
-	size_t minHit = 2;
-	double percentHit = 0.2;
+	float minHit = 2;
 	size_t tileModifier = 0;
 
 	//long form arguments
@@ -120,7 +125,6 @@ int main(int argc, char *argv[])
 			{
 					"prefix", optional_argument, NULL, 'p' }, {
 					"min_hit_thr", optional_argument, NULL, 't' }, {
-					"min_hit_pro", optional_argument, NULL, 'm' }, {
 					"filter_files", required_argument, NULL, 'f' }, {
 					"paired_mode", no_argument, NULL, 'e' }, {
 					"counts", no_argument, NULL, 'c' }, {
@@ -142,18 +146,6 @@ int main(int argc, char *argv[])
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
 		switch (c) {
-		case 'm': {
-			stringstream convert(optarg);
-			if (!(convert >> percentHit)) {
-				cerr << "Error - Invalid parameter! m: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			if (percentHit > 1) {
-				cerr << "Error -m cannot be greater than 1 " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
 		case 't': {
 			stringstream convert(optarg);
 			if (!(convert >> minHit)) {
@@ -222,9 +214,9 @@ int main(int argc, char *argv[])
 	//check validity of inputs for paired end mode
 	if (paired) {
 		if (inputFiles.size() == 1
-				&& (inputFiles[0].substr(inputFiles[0].size() - 4) != "bam"
+				&& (inputFiles[0].substr(inputFiles[0].size() - 4) == "bam"
 						|| inputFiles[0].substr(inputFiles[0].size() - 4)
-								!= "sam"))
+								== "sam"))
 		{
 			pairedBAMSAM = true;
 		} else if (inputFiles.size() == 2) {
@@ -270,7 +262,7 @@ int main(int argc, char *argv[])
 	}
 
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts,
+	BioBloomClassifier BBC(filterFilePaths, minHit, rawCounts,
 			outputPrefix, filePostfix, tileModifier);
 
 	//filtering step

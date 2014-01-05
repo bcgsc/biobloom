@@ -23,14 +23,14 @@ public:
 	explicit ResultsManager(const vector<string> &hashSigsRef,
 			const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
 			const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
-			size_t minHit, double percHit, size_t maxHitValue,
+			float minHit, size_t maxHitValue,
 			uint8_t tileModifier);
 
 	const string updateSummaryData(size_t seqLen,
-			unordered_map<string, size_t> &hits);
+			unordered_map<string, float> &hits);
 	const string updateSummaryData(size_t seqLen1, size_t seqLen2,
-			unordered_map<string, size_t> &hits1,
-			unordered_map<string, size_t> &hits2);
+			unordered_map<string, float> &hits1,
+			unordered_map<string, float> &hits2);
 
 	const string getResultsSummary(size_t readCount) const;
 	const string getCountSummary(size_t readCount) const;
@@ -40,8 +40,7 @@ private:
 	const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > infoFiles;
 	const unordered_map<string, shared_ptr<MultiFilter> > filters;
 	const vector<string> hashSigs;
-	const size_t minHit;
-	const double percentMinHit;
+	const float minHit;
 	const size_t maxHitValue;
 	const uint8_t tileModifier;
 

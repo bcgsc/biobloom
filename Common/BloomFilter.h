@@ -30,16 +30,13 @@ static inline vector<size_t> multiHash(const unsigned char* kmer, size_t num,
 		uint16_t kmerSize) {
 	vector<size_t> tempHashValues(num);
 	//use raw kmer number as first hash value
-	tempHashValues[0] = kmer[0] | (kmer[1] << 8) | (kmer[2] << 16)
-			| (kmer[3] << 24);
-
 	size_t kmerSizeInBytes = (kmerSize + 4 - 1) / 4;
 
 //	omp_set_num_threads(num);
 //	int i;
 //	#pragma omp parallel for shared(tempHashValues) private(i) schedule(static,1)
-	for (int i = 0; i < num - 1; ++i) {
-		tempHashValues[i+1] = CityHash64WithSeed(
+	for (int i = 0; i < num; ++i) {
+		tempHashValues[i] = CityHash64WithSeed(
 				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i);
 	}
 	return tempHashValues;
