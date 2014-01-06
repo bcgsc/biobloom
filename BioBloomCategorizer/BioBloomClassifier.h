@@ -23,16 +23,16 @@ using namespace boost;
 
 class BioBloomClassifier {
 public:
-	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
-			float minHit, size_t maxHitValue,
+	explicit BioBloomClassifier(
+			const vector<string> &filterFilePaths, float scoreThreshold,
 			const string &outputPrefix, const string &outputPostFix,
-			uint16_t tileModifier);
+			float minHit, bool minHitOnly);
 	void filter(const vector<string> &inputFiles);
-	void filterPrint(const vector<string> &inputFiles,
-			const string &outputType);
+	void filterPrint(
+			const vector<string> &inputFiles, const string &outputType);
 	void filterPair(const string &file1, const string &file2);
-	void filterPairPrint(const string &file1, const string &file2,
-			const string &outputType);
+	void filterPairPrint(
+			const string &file1, const string &file2, const string &outputType);
 	void filterPairBAM(const string &file);
 	void filterPairBAMPrint(const string &file, const string &outputType);
 
@@ -41,18 +41,21 @@ public:
 private:
 	void loadFilters(const vector<string> &filterFilePaths);
 	const bool fexists(const string &filename) const;
-	void evaluateRead(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, float> &hits, uint8_t tileModifier);
-	void evaluateRead(const FastqRecord &rec, const string &hashSig,
+	void evaluateReadStd(
+			const FastqRecord &rec, const string &hashSig,
+			unordered_map<string, float> &hits);
+	void evaluateRead(
+			const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, float> &hits);
 
-//	size_t evaluateReadSingle(const FastqRecord &rec, const BloomFilter &filter);
 	const string getReadSummaryHeader(const vector<string> &hashSigs);
 	void initHits(unordered_map<string, float> &hits);
-	const string getReadStatStr(string const &readID, size_t readLength,
+	const string getReadStatStr(
+			string const &readID, size_t readLength,
 			unordered_map<string, float> &hits);
-	const string getReadStatStrPair(string const &readID, size_t readLength1,
-			size_t readLength2, unordered_map<string, float> &hits1,
+	const string getReadStatStrPair(
+			string const &readID, size_t readLength1, size_t readLength2,
+			unordered_map<string, float> &hits1,
 			unordered_map<string, float> &hits2);
 
 	//group filters with same hash number
@@ -60,12 +63,12 @@ private:
 	unordered_map<string, shared_ptr<MultiFilter> > filters;
 	unordered_map<string, shared_ptr<BloomFilter> > filtersSingle;
 	vector<string> hashSigs;
-	float minHit;
+	float scoreThreshold;
 	uint8_t filterNum;
-	size_t maxHitValue;
 	const string &postfix;
 	const string &prefix;
-	const uint16_t tileModifier;
+	const float minHit;
+	const bool minHitOnly;
 
 	//Todo: is this really better than hard-coding them in the class?
 	const string noMatch;

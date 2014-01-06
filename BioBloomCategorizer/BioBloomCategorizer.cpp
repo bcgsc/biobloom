@@ -19,8 +19,7 @@ using namespace std;
 
 #define PROGRAM "biobloomcategorizer"
 
-void printVersion()
-{
+void printVersion() {
 	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"
 	"Written by Justin Chu.\n"
 	"\n"
@@ -32,8 +31,7 @@ void printVersion()
 /*
  * Parses input string into separate strings, returning a vector.
  */
-vector<string> convertInputString(const string &inputString)
-{
+vector<string> convertInputString(const string &inputString) {
 	vector<string> currentInfoFile;
 	string temp;
 	stringstream converter(inputString);
@@ -43,8 +41,7 @@ vector<string> convertInputString(const string &inputString)
 	return currentInfoFile;
 }
 
-void folderCheck(const string &path)
-{
+void folderCheck(const string &path) {
 	struct stat sb;
 
 	if (stat(path.c_str(), &sb) == 0) {
@@ -59,8 +56,7 @@ void folderCheck(const string &path)
 	}
 }
 
-void printHelpDialog()
-{
+void printHelpDialog() {
 	const char dialog[] =
 			"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
 					"Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or\n"
@@ -73,14 +69,10 @@ void printHelpDialog()
 					"  -e, --paired_mode      Uses paired-end information. For BAM or SAM file if\n"
 					"                         they are poorly ordered, memory usage will be much\n"
 					"                         larger than normal. Sorting by read name may be needed.\n"
-					"\nAdvanced options:\n"
-					"  -t, --min_hit_thr=N    Minimum Hit Threshold Value. The absolute hit number\n"
-					"                         needed for a hit to be considered a match. [2]\n"
-					"  -r, --redundant=N      The number of redundant tiles to use. Lowers effective\n"
-					"                         false positive rate at the cost of increasing the\n"
-					"                         effective kmer length by N. [0]\n"
-					"  -c, --counts=N         Outputs summary of raw counts of user specified hit\n"
-					"                         counts to each filter of each read or read-pair. [0]\n"
+					"  -s, --score=N          Score threshold for matching. Maximum threshold \n"
+					"                         is 1 (highest specificity), minimum is 0 (highest \n"
+					"                         sensitivity). [0.2]"
+//	"  -t, --threads=N        The number of threads to use. [1]"
 					"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
 					"      --fa               Output categorized reads in Fasta files.\n"
 					"      --fq               Output categorized reads in Fastq files.\n"
@@ -88,13 +80,22 @@ void printHelpDialog()
 					"      --no-chastity      Do not discard unchaste reads. [default]\n"
 					"  -v  --version          Display version information.\n"
 					"  -h, --help             Display this dialog.\n"
+					"Advanced options:\n"
+					"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
+					"                         needed over initial tiling of read to continue.\n"
+					"                         Higher values decrease runtime but lower sensitity.\n"
+//					"  -r, --streak=N         The number of hit tiling in second pass needed to jump\n"
+//					"                         Several tiles upon a miss. Small values decrease runtime\n"
+//					"                         but decrease sensitivity. [3]\n"
+//	"  -o, --min_hit_only     Use initial pass filtering only to evaluate reads. Very\n"
+//	"                         fast but prone to false positives, use only on long\n"
+//	"                         reads (>100bp).\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	opt::chastityFilter = 0;
 	opt::trimMasked = 0;
 
@@ -110,46 +111,60 @@ int main(int argc, char *argv[])
 	string filtersFile = "";
 	string outputReadType = "";
 	bool paired = false;
-	size_t rawCounts = 0;
+	bool minHitOnly = false;
 
 	int fastq = 0;
 	int fasta = 0;
 	string filePostfix = "";
+	float score = 0.2;
 
 	//advanced options
-	float minHit = 2;
-	size_t tileModifier = 0;
+	float minHit = 0.25;
 
 	//long form arguments
-	static struct option long_options[] = {
-			{
-					"prefix", optional_argument, NULL, 'p' }, {
-					"min_hit_thr", optional_argument, NULL, 't' }, {
-					"filter_files", required_argument, NULL, 'f' }, {
-					"paired_mode", no_argument, NULL, 'e' }, {
-					"counts", no_argument, NULL, 'c' }, {
-					"help", no_argument, NULL, 'h' }, {
-					"gz_output", no_argument, NULL, 'g' }, {
-					"redundant", required_argument, NULL, 'r' }, {
-					"chastity", no_argument, &opt::chastityFilter, 1 }, {
-					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
-					"fq", no_argument, &fastq, 1 }, {
-					"fa", no_argument, &fasta, 1 }, {
-					"version", no_argument, NULL, 0 }, {
-					NULL, 0, NULL, 0 } };
+	static struct option long_options[] = { {
+		"prefix", optional_argument, NULL, 'p' }, {
+		"filter_files", required_argument, NULL, 'f' }, {
+		"paired_mode", no_argument, NULL, 'e' }, {
+		"score", no_argument, NULL, 's' }, {
+		"help", no_argument, NULL, 'h' }, {
+		"gz_output", no_argument, NULL, 'g' }, {
+		"chastity", no_argument, &opt::chastityFilter, 1 }, {
+		"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
+		"fq", no_argument, &fastq, 1 }, {
+		"fa", no_argument, &fasta, 1 }, {
+		"version", no_argument, NULL, 0 }, {
+//		"min_hit_thr", optional_argument, NULL, 'm' }, {
+		"streak", optional_argument, NULL, 'r' }, {
+		NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:t:m:p:hec:gr:v", long_options,
-			&option_index)) != -1)
-	{
+	while ((c = getopt_long(argc, argv, "f:m:p:hec:gvs:o", long_options,
+			&option_index)) != -1) {
 		istringstream arg(optarg != NULL ? optarg : "");
 		switch (c) {
-		case 't': {
+		case 'm': {
 			stringstream convert(optarg);
 			if (!(convert >> minHit)) {
-				cerr << "Error - Invalid parameter! t: " << optarg << endl;
+				cerr << "Error - Invalid parameter! m: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			if (minHit < 0 || minHit > 1) {
+				cerr << "Error - Invalid parameter! m: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
+		case 's': {
+			stringstream convert(optarg);
+			if (!(convert >> score)) {
+				cerr << "Error - Invalid parameter! s: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			if (score < 0 || score > 1) {
+				cerr << "Error - Invalid parameter! s: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -170,28 +185,16 @@ int main(int argc, char *argv[])
 			paired = true;
 			break;
 		}
-		case 'r': {
-			stringstream convert(optarg);
-			if (!(convert >> tileModifier)) {
-				cerr << "Error - Invalid parameter! r: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
-		case 'c': {
-			stringstream convert(optarg);
-			if (!(convert >> rawCounts)) {
-				cerr << "Error - Invalid parameter! c: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
 		case 'g': {
 			filePostfix = ".gz";
 			break;
 		}
 		case 'v': {
 			printVersion();
+			break;
+		}
+		case 'o': {
+			minHitOnly = true;
 			break;
 		}
 		case '?': {
@@ -216,8 +219,7 @@ int main(int argc, char *argv[])
 		if (inputFiles.size() == 1
 				&& (inputFiles[0].substr(inputFiles[0].size() - 4) == "bam"
 						|| inputFiles[0].substr(inputFiles[0].size() - 4)
-								== "sam"))
-		{
+								== "sam")) {
 			pairedBAMSAM = true;
 		} else if (inputFiles.size() == 2) {
 			pairedBAMSAM = false;
@@ -262,8 +264,7 @@ int main(int argc, char *argv[])
 	}
 
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths, minHit, rawCounts,
-			outputPrefix, filePostfix, tileModifier);
+	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix);
 
 	//filtering step
 	//create directory structure if it does not exist

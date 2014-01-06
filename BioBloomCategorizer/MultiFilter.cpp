@@ -34,7 +34,7 @@ const boost::unordered_map<string, bool> &MultiFilter::multiContains(
 }
 
 /*
- * checks filters for kmer, given a list of filterIDs, hashing only single time
+ * checks filters for k-mer, given a list of filterIDs, hashing only single time
  */
 const boost::unordered_map<string, bool> &MultiFilter::multiContains(
 		const unsigned char* kmer, vector<string> const &tempFilters) {
