@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
 			}
 			if (minHit < 0 || minHit > 1) {
 				cerr << "Error - Invalid parameter! m: " << optarg << endl;
-				exit(EXIT_FAILURE);
+				exit(EXIT_FAILURE);F
 			}
 			break;
 		}
