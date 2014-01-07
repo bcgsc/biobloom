@@ -15,10 +15,11 @@
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		float scoreThreshold, const string &prefix, const string &outputPostFix,
-		float minHit, bool minHitOnly) :
+		uint16_t streakThreshold, uint16_t minHit, bool minHitOnly) :
 		scoreThreshold(scoreThreshold), filterNum(filterFilePaths.size()), noMatch(
 				"noMatch"), multiMatch("multiMatch"), prefix(prefix), postfix(
-				outputPostFix), minHit(minHit), minHitOnly(minHitOnly)
+				outputPostFix), streakThreshold(streakThreshold), minHit(minHit), minHitOnly(
+				minHitOnly)
 {
 	loadFilters(filterFilePaths);
 }
@@ -40,7 +41,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 
 	cerr << "Filtering Start" << endl;
 
-	if (minHitOnly == 0) {
+	if (minHitOnly) {
 		for (vector<string>::const_iterator it = inputFiles.begin();
 				it != inputFiles.end(); ++it)
 		{
@@ -172,7 +173,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 
 	cerr << "Filtering Start" << endl;
 
-	if (minHitOnly == 0) {
+	if (minHitOnly) {
 
 		for (vector<string>::const_iterator it = inputFiles.begin();
 				it != inputFiles.end(); ++it)
@@ -304,7 +305,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 	unordered_map<string, float> hits1(filterNum);
 	unordered_map<string, float> hits2(filterNum);
 
-	if (minHitOnly == 0) {
+	if (minHitOnly) {
 		while (sequence1 >> rec1 && sequence2 >> rec2) {
 			++totalReads;
 			if (totalReads % 1000000 == 0) {
@@ -464,7 +465,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	unordered_map<string, float> hits1(filterNum);
 	unordered_map<string, float> hits2(filterNum);
 
-	if (minHitOnly == 0) {
+	if (minHitOnly) {
 		while (sequence1 >> rec1 && sequence2 >> rec2) {
 			++totalReads;
 			if (totalReads % 1000000 == 0) {
@@ -614,7 +615,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 	unordered_map<string, float> hits1(filterNum);
 	unordered_map<string, float> hits2(filterNum);
 
-	if (minHitOnly == 0) {
+	if (minHitOnly) {
 		while (!sequence.eof()) {
 			FastqRecord rec;
 			if (sequence >> rec) {
@@ -805,7 +806,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	unordered_map<string, float> hits1(filterNum);
 	unordered_map<string, float> hits2(filterNum);
 
-	if (minHitOnly == 0) {
+	if (minHitOnly) {
 		while (!sequence.eof()) {
 			FastqRecord rec;
 			if (sequence >> rec) {
@@ -1139,7 +1140,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 							continue;
 						}
 					}
-					if (streak < 3) {
+					if (streak < streakThreshold) {
 						++currentLoc;
 					} else {
 						currentLoc += kmerSize + 1;

@@ -19,7 +19,8 @@ using namespace std;
 
 #define PROGRAM "biobloomcategorizer"
 
-void printVersion() {
+void printVersion()
+{
 	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"
 	"Written by Justin Chu.\n"
 	"\n"
@@ -31,7 +32,8 @@ void printVersion() {
 /*
  * Parses input string into separate strings, returning a vector.
  */
-vector<string> convertInputString(const string &inputString) {
+vector<string> convertInputString(const string &inputString)
+{
 	vector<string> currentInfoFile;
 	string temp;
 	stringstream converter(inputString);
@@ -41,7 +43,8 @@ vector<string> convertInputString(const string &inputString) {
 	return currentInfoFile;
 }
 
-void folderCheck(const string &path) {
+void folderCheck(const string &path)
+{
 	struct stat sb;
 
 	if (stat(path.c_str(), &sb) == 0) {
@@ -56,7 +59,8 @@ void folderCheck(const string &path) {
 	}
 }
 
-void printHelpDialog() {
+void printHelpDialog()
+{
 	const char dialog[] =
 			"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
 					"Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or\n"
@@ -71,7 +75,7 @@ void printHelpDialog() {
 					"                         larger than normal. Sorting by read name may be needed.\n"
 					"  -s, --score=N          Score threshold for matching. Maximum threshold \n"
 					"                         is 1 (highest specificity), minimum is 0 (highest \n"
-					"                         sensitivity). [0.2]"
+					"                         sensitivity). [0.2]\n"
 //	"  -t, --threads=N        The number of threads to use. [1]"
 					"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
 					"      --fa               Output categorized reads in Fasta files.\n"
@@ -83,19 +87,20 @@ void printHelpDialog() {
 					"Advanced options:\n"
 					"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
 					"                         needed over initial tiling of read to continue.\n"
-					"                         Higher values decrease runtime but lower sensitity.\n"
-//					"  -r, --streak=N         The number of hit tiling in second pass needed to jump\n"
-//					"                         Several tiles upon a miss. Small values decrease runtime\n"
-//					"                         but decrease sensitivity. [3]\n"
-//	"  -o, --min_hit_only     Use initial pass filtering only to evaluate reads. Very\n"
-//	"                         fast but prone to false positives, use only on long\n"
-//	"                         reads (>100bp).\n"
+					"                         Higher values decrease runtime but lower sensitivity.[1]\n"
+					"  -r, --streak=N         The number of hit tiling in second pass needed to jump\n"
+					"                         Several tiles upon a miss. Small values decrease runtime\n"
+					"                         but decrease sensitivity. [3]\n"
+					"  -o, --min_hit_only     Use initial pass filtering only to evaluate reads. Very\n"
+					"                         fast but prone to false positives, use only on long\n"
+					"                         reads (>100bp).\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	opt::chastityFilter = 0;
 	opt::trimMasked = 0;
 
@@ -119,30 +124,33 @@ int main(int argc, char *argv[]) {
 	float score = 0.2;
 
 	//advanced options
-	float minHit = 0.25;
+	uint16_t minHit = 1;
+	uint16_t streak = 3;
 
 	//long form arguments
-	static struct option long_options[] = { {
-		"prefix", optional_argument, NULL, 'p' }, {
-		"filter_files", required_argument, NULL, 'f' }, {
-		"paired_mode", no_argument, NULL, 'e' }, {
-		"score", no_argument, NULL, 's' }, {
-		"help", no_argument, NULL, 'h' }, {
-		"gz_output", no_argument, NULL, 'g' }, {
-		"chastity", no_argument, &opt::chastityFilter, 1 }, {
-		"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
-		"fq", no_argument, &fastq, 1 }, {
-		"fa", no_argument, &fasta, 1 }, {
-		"version", no_argument, NULL, 0 }, {
+	static struct option long_options[] = {
+			{
+					"prefix", optional_argument, NULL, 'p' }, {
+					"filter_files", required_argument, NULL, 'f' }, {
+					"paired_mode", no_argument, NULL, 'e' }, {
+					"score", no_argument, NULL, 's' }, {
+					"help", no_argument, NULL, 'h' }, {
+					"gz_output", no_argument, NULL, 'g' }, {
+					"chastity", no_argument, &opt::chastityFilter, 1 }, {
+					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
+					"fq", no_argument, &fastq, 1 }, {
+					"fa", no_argument, &fasta, 1 }, {
+					"version", no_argument, NULL, 0 }, {
 //		"min_hit_thr", optional_argument, NULL, 'm' }, {
-		"streak", optional_argument, NULL, 'r' }, {
-		NULL, 0, NULL, 0 } };
+					"streak", optional_argument, NULL, 'r' }, {
+					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hec:gvs:o", long_options,
-			&option_index)) != -1) {
+	while ((c = getopt_long(argc, argv, "f:m:p:hec:gvs:or:", long_options,
+			&option_index)) != -1)
+	{
 		istringstream arg(optarg != NULL ? optarg : "");
 		switch (c) {
 		case 'm': {
@@ -150,10 +158,6 @@ int main(int argc, char *argv[]) {
 			if (!(convert >> minHit)) {
 				cerr << "Error - Invalid parameter! m: " << optarg << endl;
 				exit(EXIT_FAILURE);
-			}
-			if (minHit < 0 || minHit > 1) {
-				cerr << "Error - Invalid parameter! m: " << optarg << endl;
-				exit(EXIT_FAILURE);F
 			}
 			break;
 		}
@@ -164,7 +168,7 @@ int main(int argc, char *argv[]) {
 				exit(EXIT_FAILURE);
 			}
 			if (score < 0 || score > 1) {
-				cerr << "Error - Invalid parameter! s: " << optarg << endl;
+				cerr << "Error - s must be between 0 and 1, input given:" << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -197,6 +201,14 @@ int main(int argc, char *argv[]) {
 			minHitOnly = true;
 			break;
 		}
+		case 'r': {
+			stringstream convert(optarg);
+			if (!(convert >> streak)) {
+				cerr << "Error - Invalid parameter! r: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
 		case '?': {
 			die = true;
 			break;
@@ -219,7 +231,8 @@ int main(int argc, char *argv[]) {
 		if (inputFiles.size() == 1
 				&& (inputFiles[0].substr(inputFiles[0].size() - 4) == "bam"
 						|| inputFiles[0].substr(inputFiles[0].size() - 4)
-								== "sam")) {
+								== "sam"))
+		{
 			pairedBAMSAM = true;
 		} else if (inputFiles.size() == 2) {
 			pairedBAMSAM = false;
@@ -264,7 +277,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix);
+	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix,
+			streak, minHit, minHitOnly);
 
 	//filtering step
 	//create directory structure if it does not exist
