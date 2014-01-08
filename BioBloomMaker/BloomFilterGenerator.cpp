@@ -203,7 +203,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 						//if kmer does not exists set allowance to true
 						allowKmer = !filterSub.contains(currentSeq);
 					} else {
-						uint16_t subSections = kmerSize - kmerSize;
+						uint16_t subSections = kmerSize - subInfo.getKmerSize();
 
 						for (uint16_t i = 0; i <= subSections; ++i) {
 							if (!filterSub.contains(
