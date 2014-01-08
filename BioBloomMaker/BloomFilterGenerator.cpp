@@ -204,7 +204,6 @@ size_t BloomFilterGenerator::generate(const string &filename,
 						allowKmer = !filterSub.contains(currentSeq);
 					} else {
 						uint16_t subSections = kmerSize - kmerSize;
-						const string &currentSeq = parser.getNextSeq();
 
 						for (uint16_t i = 0; i <= subSections; ++i) {
 							if (!filterSub.contains(
