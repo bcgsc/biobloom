@@ -98,92 +98,114 @@ const string ResultsManager::updateSummaryData(size_t seqLen1, size_t seqLen2,
 const string ResultsManager::getResultsSummary(size_t readCount) const {
 
 	stringstream summaryOutput;
-	summaryOutput << "type";
-	//initialize variables and print filter ids
+
+	//print header
+	summaryOutput << "filter_id\thits\tmisses\tcomp_misses\n";
+
 	for (vector<string>::const_iterator j = hashSigs.begin();
-			j != hashSigs.end(); ++j) {
+			j != hashSigs.end(); ++j)
+	{
 		const shared_ptr<MultiFilter> &temp = filters.at(*j);
 		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i) {
+				i != idsInFilter.end(); ++i)
+		{
 			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(
 					*j);
-			summaryOutput << "\t" << *i << "_"
-					<< tempVect.front()->getKmerSize();
-		}
-	}
-	summaryOutput << "\n";
-
-	//print summary information and close filehandles
-	summaryOutput << "\nHits";
-	for (vector<string>::const_iterator j = hashSigs.begin();
-			j != hashSigs.end(); ++j) {
-		const shared_ptr<MultiFilter> &temp = filters.at(*j);
-		const vector<string> &idsInFilter = temp->getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i) {
-			summaryOutput << "\t"
-					<< double(aboveThreshold.at(*i)) / double(readCount);
-		}
-	}
-	summaryOutput << "\nMiss";
-	for (vector<string>::const_iterator j = hashSigs.begin();
-			j != hashSigs.end(); ++j) {
-		const shared_ptr<MultiFilter> &temp = filters.at(*j);
-		const vector<string> &idsInFilter = temp->getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i) {
-			summaryOutput << "\t"
-					<< double(belowThreshold.at(*i)) / double(readCount);
-		}
-	}
-	summaryOutput << "\nConfidentMiss";
-	for (vector<string>::const_iterator j = hashSigs.begin();
-			j != hashSigs.end(); ++j) {
-		const shared_ptr<MultiFilter> &temp = filters.at(*j);
-		const vector<string> &idsInFilter = temp->getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i) {
-			summaryOutput << "\t"
-					<< double(
-							readCount - belowThreshold.at(*i)
-									- aboveThreshold.at(*i))
-							/ double(readCount);
-		}
-	}
-
-	summaryOutput << "\n\nHits";
-	for (vector<string>::const_iterator j = hashSigs.begin();
-			j != hashSigs.end(); ++j) {
-		const shared_ptr<MultiFilter> &temp = filters.at(*j);
-		const vector<string> &idsInFilter = temp->getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i) {
+			summaryOutput << *i << "_" << tempVect.front()->getKmerSize();
 			summaryOutput << "\t" << aboveThreshold.at(*i);
-		}
-	}
-	summaryOutput << "\nMiss";
-	for (vector<string>::const_iterator j = hashSigs.begin();
-			j != hashSigs.end(); ++j) {
-		const shared_ptr<MultiFilter> &temp = filters.at(*j);
-		const vector<string> &idsInFilter = temp->getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i) {
 			summaryOutput << "\t" << belowThreshold.at(*i);
-		}
-	}
-	summaryOutput << "\nConfidentMiss";
-	for (vector<string>::const_iterator j = hashSigs.begin();
-			j != hashSigs.end(); ++j) {
-		const shared_ptr<MultiFilter> &temp = filters.at(*j);
-		const vector<string> &idsInFilter = temp->getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i) {
 			summaryOutput << "\t"
 					<< readCount - belowThreshold.at(*i)
 							- aboveThreshold.at(*i);
+			summaryOutput << "\n";
 		}
 	}
+//	//initialize variables and print filter ids
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j) {
+//		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+//		const vector<string> &idsInFilter = temp->getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i) {
+//			const vector<shared_ptr<BloomFilterInfo> > &tempVect = infoFiles.at(
+//					*j);
+//			summaryOutput << "\t" << *i << "_"
+//					<< tempVect.front()->getKmerSize();
+//		}
+//	}
+//	summaryOutput << "\n";
+//
+//	//print summary information and close filehandles
+//	summaryOutput << "\nHits";
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j) {
+//		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+//		const vector<string> &idsInFilter = temp->getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i) {
+//			summaryOutput << "\t"
+//					<< double(aboveThreshold.at(*i)) / double(readCount);
+//		}
+//	}
+//	summaryOutput << "\nMiss";
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j) {
+//		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+//		const vector<string> &idsInFilter = temp->getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i) {
+//			summaryOutput << "\t"
+//					<< double(belowThreshold.at(*i)) / double(readCount);
+//		}
+//	}
+//	summaryOutput << "\nConfidentMiss";
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j) {
+//		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+//		const vector<string> &idsInFilter = temp->getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i) {
+//			summaryOutput << "\t"
+//					<< double(
+//							readCount - belowThreshold.at(*i)
+//									- aboveThreshold.at(*i))
+//							/ double(readCount);
+//		}
+//	}
+//
+//	summaryOutput << "\n\nHits";
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j) {
+//		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+//		const vector<string> &idsInFilter = temp->getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i) {
+//			summaryOutput << "\t" << aboveThreshold.at(*i);
+//		}
+//	}
+//	summaryOutput << "\nMiss";
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j) {
+//		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+//		const vector<string> &idsInFilter = temp->getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i) {
+//			summaryOutput << "\t" << belowThreshold.at(*i);
+//		}
+//	}
+//	summaryOutput << "\nConfidentMiss";
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j) {
+//		const shared_ptr<MultiFilter> &temp = filters.at(*j);
+//		const vector<string> &idsInFilter = temp->getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i) {
+//			summaryOutput << "\t"
+//					<< readCount - belowThreshold.at(*i)
+//							- aboveThreshold.at(*i);
+//		}
+//	}
 	return summaryOutput.str();
 }
 

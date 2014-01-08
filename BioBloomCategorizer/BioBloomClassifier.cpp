@@ -18,8 +18,8 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		uint16_t streakThreshold, uint16_t minHit, bool minHitOnly) :
 		scoreThreshold(scoreThreshold), filterNum(filterFilePaths.size()), noMatch(
 				"noMatch"), multiMatch("multiMatch"), prefix(prefix), postfix(
-				outputPostFix), streakThreshold(streakThreshold), minHit(minHit), minHitOnly(
-				minHitOnly)
+				outputPostFix), streakThreshold(streakThreshold), minHit(
+				minHit), minHitOnly(minHitOnly)
 {
 	loadFilters(filterFilePaths);
 }
@@ -29,7 +29,6 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
  */
 void BioBloomClassifier::filter(const vector<string> &inputFiles)
 {
-	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, scoreThreshold);
@@ -37,7 +36,6 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 	size_t totalReads = 0;
 
 	//print out header info and initialize variables
-	readStatusOutput << getReadSummaryHeader(hashSigs);
 
 	cerr << "Filtering Start" << endl;
 
@@ -68,10 +66,6 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 				{
 					evaluateRead(rec, *j, hits);
 				}
-
-				//print hit results to read status
-				readStatusOutput
-						<< getReadStatStr(rec.id, rec.seq.length(), hits);
 
 				//Evaluate hit data and record for summary
 				resSummary.updateSummaryData(rec.seq.length(), hits);
@@ -105,17 +99,11 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 					evaluateReadStd(rec, *j, hits);
 				}
 
-				//print hit results to read status
-				readStatusOutput
-						<< getReadStatStr(rec.id, rec.seq.length(), hits);
-
 				//Evaluate hit data and record for summary
 				resSummary.updateSummaryData(rec.seq.length(), hits);
 			}
 		}
 	}
-
-	readStatusOutput.close();
 
 	cerr << "Total Reads:" << totalReads << endl;
 
@@ -135,8 +123,6 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 		const string &outputType)
 {
-
-	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, scoreThreshold);
@@ -169,7 +155,6 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	}
 
 	//print out header info and initialize variables
-	readStatusOutput << getReadSummaryHeader(hashSigs);
 
 	cerr << "Filtering Start" << endl;
 
@@ -199,10 +184,6 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				{
 					evaluateRead(rec, *j, hits);
 				}
-
-				//print hit results to read status
-				readStatusOutput
-						<< getReadStatStr(rec.id, rec.seq.length(), hits);
 
 				//Evaluate hit data and record for summary
 				const string &outputFileName = resSummary.updateSummaryData(
@@ -243,10 +224,6 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 					evaluateReadStd(rec, *j, hits);
 				}
 
-				//print hit results to read status
-				readStatusOutput
-						<< getReadStatStr(rec.id, rec.seq.length(), hits);
-
 				//Evaluate hit data and record for summary
 				const string &outputFileName = resSummary.updateSummaryData(
 						rec.seq.length(), hits);
@@ -261,8 +238,6 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 			}
 		}
 	}
-
-	readStatusOutput.close();
 
 	//close sorting files
 	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j =
@@ -285,15 +260,12 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 {
 
-	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
-
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, scoreThreshold);
 
 	size_t totalReads = 0;
 
 	//print out header info and initialize variables for summary
-	readStatusOutput << getReadSummaryHeader(hashSigs);
 
 	cerr << "Filtering Start" << "\n";
 
@@ -334,11 +306,6 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 
 			string readID = rec1.id.substr(0, rec1.id.length() - 2);
 
-			//print hit results to read status
-			readStatusOutput
-					<< getReadStatStrPair(readID, rec1.seq.length(),
-							rec2.seq.length(), hits1, hits2);
-
 			//Evaluate hit data and record for summary
 			resSummary.updateSummaryData(rec1.seq.length(), rec2.seq.length(),
 					hits1, hits2);
@@ -373,11 +340,6 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 
 			string readID = rec1.id.substr(0, rec1.id.length() - 2);
 
-			//print hit results to read status
-			readStatusOutput
-					<< getReadStatStrPair(readID, rec1.seq.length(),
-							rec2.seq.length(), hits1, hits2);
-
 			//Evaluate hit data and record for summary
 			resSummary.updateSummaryData(rec1.seq.length(), rec2.seq.length(),
 					hits1, hits2);
@@ -389,8 +351,6 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 				<< "error: eof bit not flipped. Input files may be different lengths"
 				<< endl;
 	}
-
-	readStatusOutput.close();
 
 	cerr << "Total Reads:" << totalReads << endl;
 
@@ -408,7 +368,6 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 void BioBloomClassifier::filterPairPrint(const string &file1,
 		const string &file2, const string &outputType)
 {
-	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, scoreThreshold);
@@ -453,7 +412,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	}
 
 	//print out header info and initialize variables for summary
-	readStatusOutput << getReadSummaryHeader(hashSigs);
 
 	cerr << "Filtering Start" << "\n";
 
@@ -493,11 +451,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 			}
 
 			string readID = rec1.id.substr(0, rec1.id.length() - 2);
-
-			//print hit results to read status
-			readStatusOutput
-					<< getReadStatStrPair(readID, rec1.seq.length(),
-							rec1.seq.length(), hits1, hits2);
 
 			//Evaluate hit data and record for summary
 			const string &outputFileName = resSummary.updateSummaryData(
@@ -545,11 +498,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 			string readID = rec1.id.substr(0, rec1.id.length() - 2);
 
-			//print hit results to read status
-			readStatusOutput
-					<< getReadStatStrPair(readID, rec1.seq.length(),
-							rec1.seq.length(), hits1, hits2);
-
 			//Evaluate hit data and record for summary
 			const string &outputFileName = resSummary.updateSummaryData(
 					rec1.seq.length(), rec2.seq.length(), hits1, hits2);
@@ -573,8 +521,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				<< endl;
 	}
 
-	readStatusOutput.close();
-
 	//close sorting files
 	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j =
 			outputFiles.begin(); j != outputFiles.end(); ++j)
@@ -596,7 +542,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
  */
 void BioBloomClassifier::filterPairBAM(const string &file)
 {
-	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, scoreThreshold);
@@ -606,7 +551,6 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 	size_t totalReads = 0;
 
 	//print out header info and initialize variables for summary
-	readStatusOutput << getReadSummaryHeader(hashSigs);
 
 	cerr << "Filtering Start" << "\n";
 
@@ -656,11 +600,6 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 							exit(1);
 						}
 					}
-
-					//print hit results to read status
-					readStatusOutput
-							<< getReadStatStrPair(readID, rec1.seq.length(),
-									rec2.seq.length(), hits1, hits2);
 
 					//Evaluate hit data and record for summary
 					resSummary.updateSummaryData(rec1.seq.length(),
@@ -716,11 +655,6 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 						}
 					}
 
-					//print hit results to read status
-					readStatusOutput
-							<< getReadStatStrPair(readID, rec1.seq.length(),
-									rec2.seq.length(), hits1, hits2);
-
 					//Evaluate hit data and record for summary
 					resSummary.updateSummaryData(rec1.seq.length(),
 							rec2.seq.length(), hits1, hits2);
@@ -734,8 +668,6 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 			}
 		}
 	}
-
-	readStatusOutput.close();
 
 	Dynamicofstream summaryOutput(prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
@@ -751,7 +683,6 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 void BioBloomClassifier::filterPairBAMPrint(const string &file,
 		const string &outputType)
 {
-	Dynamicofstream readStatusOutput(prefix + "_status.tsv" + postfix);
 
 	//results summary object
 	ResultsManager resSummary(hashSigs, filters, infoFiles, scoreThreshold);
@@ -798,7 +729,6 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	}
 
 	//print out header info and initialize variables for summary
-	readStatusOutput << getReadSummaryHeader(hashSigs);
 	cerr << "Filtering Start" << "\n";
 
 	FastaReader sequence(file.c_str(), FastaReader::NO_FOLD_CASE);
@@ -847,11 +777,6 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 							exit(1);
 						}
 					}
-
-					//print hit results to read status
-					readStatusOutput
-							<< getReadStatStrPair(readID, rec1.seq.length(),
-									rec2.seq.length(), hits1, hits2);
 
 					//Evaluate hit data and record for summary
 					const string &outputFileName = resSummary.updateSummaryData(
@@ -920,11 +845,6 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 							exit(1);
 						}
 					}
-
-					//print hit results to read status
-					readStatusOutput
-							<< getReadStatStrPair(readID, rec1.seq.length(),
-									rec2.seq.length(), hits1, hits2);
 
 					//Evaluate hit data and record for summary
 					const string &outputFileName = resSummary.updateSummaryData(
@@ -1153,30 +1073,30 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 	}
 }
 
-/*
- * Initializes Summary Variables. Also prints headers for read status.
- */
-const string BioBloomClassifier::getReadSummaryHeader(
-		const vector<string> &hashSigs)
-{
-	stringstream readStatusOutput;
-	readStatusOutput << "readID\tseqSize";
-
-	//initialize variables and print filter ids
-	for (vector<string>::const_iterator j = hashSigs.begin();
-			j != hashSigs.end(); ++j)
-	{
-		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i)
-		{
-			readStatusOutput << "\t" << *i << "_"
-					<< (*(infoFiles[*j].front())).getKmerSize();
-		}
-	}
-	readStatusOutput << "\n";
-	return readStatusOutput.str();
-}
+///*
+// * Initializes Summary Variables. Also prints headers for read status.
+// */
+//const string BioBloomClassifier::getReadSummaryHeader(
+//		const vector<string> &hashSigs)
+//{
+//	stringstream readStatusOutput;
+//	readStatusOutput << "readID\tseqSize";
+//
+//	//initialize variables and print filter ids
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j)
+//	{
+//		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i)
+//		{
+//			readStatusOutput << "\t" << *i << "_"
+//					<< (*(infoFiles[*j].front())).getKmerSize();
+//		}
+//	}
+//	readStatusOutput << "\n";
+//	return readStatusOutput.str();
+//}
 
 /*
  * Initializes hits results to zero
@@ -1196,57 +1116,57 @@ void BioBloomClassifier::initHits(unordered_map<string, float> &hits)
 	}
 }
 
-/*
- * return results of hits to be output for read status
- */
-const string BioBloomClassifier::getReadStatStr(string const &readID,
-		size_t readLength, unordered_map<string, float> &hits)
-{
-	stringstream str;
-	str << readID << "\t" << readLength;
-	//print readID
-	for (vector<string>::const_iterator j = hashSigs.begin();
-			j != hashSigs.end(); ++j)
-	{
-		//update summary
-		const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i)
-		{
-			//print to file
-			str << "\t" << hits[*i];
-		}
-	}
-	str << "\n";
-	return str.str();
-}
-
-/*
- * return results of hits to be output for read status for paired end mode
- */
-const string BioBloomClassifier::getReadStatStrPair(string const &readID,
-		size_t readLength1, size_t readLength2,
-		unordered_map<string, float> &hits1,
-		unordered_map<string, float> &hits2)
-{
-	stringstream str;
-	str << readID << "\t" << readLength1 << "|" << readLength2;
-	//print readID
-	for (vector<string>::const_iterator j = hashSigs.begin();
-			j != hashSigs.end(); ++j)
-	{
-		//update summary
-		const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i)
-		{
-			//print to file
-			str << "\t" << hits1[*i] << "|" << hits2[*i];
-		}
-	}
-	str << "\n";
-	return str.str();
-}
+///*
+// * return results of hits to be output for read status
+// */
+//const string BioBloomClassifier::getReadStatStr(string const &readID,
+//		size_t readLength, unordered_map<string, float> &hits)
+//{
+//	stringstream str;
+//	str << readID << "\t" << readLength;
+//	//print readID
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j)
+//	{
+//		//update summary
+//		const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i)
+//		{
+//			//print to file
+//			str << "\t" << hits[*i];
+//		}
+//	}
+//	str << "\n";
+//	return str.str();
+//}
+//
+///*
+// * return results of hits to be output for read status for paired end mode
+// */
+//const string BioBloomClassifier::getReadStatStrPair(string const &readID,
+//		size_t readLength1, size_t readLength2,
+//		unordered_map<string, float> &hits1,
+//		unordered_map<string, float> &hits2)
+//{
+//	stringstream str;
+//	str << readID << "\t" << readLength1 << "|" << readLength2;
+//	//print readID
+//	for (vector<string>::const_iterator j = hashSigs.begin();
+//			j != hashSigs.end(); ++j)
+//	{
+//		//update summary
+//		const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
+//		for (vector<string>::const_iterator i = idsInFilter.begin();
+//				i != idsInFilter.end(); ++i)
+//		{
+//			//print to file
+//			str << "\t" << hits1[*i] << "|" << hits2[*i];
+//		}
+//	}
+//	str << "\n";
+//	return str.str();
+//}
 
 BioBloomClassifier::~BioBloomClassifier()
 {
