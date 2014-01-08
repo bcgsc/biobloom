@@ -33,19 +33,26 @@ ostream& FastaReader::die()
 	return cerr << m_path << ':' << m_line << ": error: ";
 }
 
-FastaReader::FastaReader(const char* path, int flags)
-	: m_path(path), m_fin(path),
-	m_in(strcmp(path, "-") == 0 ? cin : m_fin),
-	m_flags(flags), m_line(0), m_unchaste(0),
-	m_end(numeric_limits<streamsize>::max())
+FastaReader::FastaReader(const char* path, int flags, int len)
+	: m_path(path), m_blen(32768), m_bstart(0), m_bend(0),
+	m_fail(false), m_flags(flags), m_line(0), m_unchaste(0),
+	m_end(numeric_limits<streamsize>::max()),
+	m_maxLength(len)
 {
+	m_buff = new char[m_blen];
 	if (strcmp(path, "-") != 0)
-		assert_good(m_fin, path);
-	if (m_in.peek() == EOF)
+		m_in = fopen(m_path, "r");
+	else
+		m_in = stdin;
+	if (m_in == NULL)
+		perror(m_path);
+	if (fpeek(m_in) == EOF)
 		cerr << m_path << ':' << m_line << ": warning: "
 			"file is empty\n";
+	fill_buff();
 }
 
+#if 0
 /** Split the fasta file into nsections and seek to the start
  * of section. */
 void FastaReader::split(unsigned section, unsigned nsections)
@@ -81,6 +88,7 @@ void FastaReader::split(unsigned section, unsigned nsections)
 	assert(m_end > 0);
 	assert(m_in.good());
 }
+#endif
 
 /** Return whether this read passed the chastity filter. */
 bool FastaReader::isChaste(const string& s, const string& line)
@@ -125,16 +133,18 @@ next_record:
 	q.clear();
 
 	// Discard comments.
-	while (m_in.peek() == '#')
+	while (peek() == '#')
 		ignoreLines(1);
 
-	signed char recordType = m_in.peek();
+	signed char recordType = peek();
 	Sequence s;
 
 	unsigned qualityOffset = 0;
-	if (recordType == EOF || m_in.tellg() >= m_end) {
-		m_in.seekg(0, ios::end);
-		m_in.clear(std::ios::eofbit | std::ios::failbit);
+	if (eof() || recordType == EOF || ftell(m_in) >= m_end) {
+		string header;
+		getline(header);
+//		m_in.seekg(0, ios::end);
+//		clear();
 		return s;
 	} else if (recordType == '>' || recordType == '@') {
 		// Read the header.
@@ -158,7 +168,7 @@ next_record:
 				if (recordType == '@') {
 					ignoreLines(3);
 				} else {
-					while (m_in.peek() != '>' && m_in.peek() != '#'
+					while (peek() != '>' && peek() != '#'
 							&& ignoreLines(1))
 						;
 				}
@@ -175,20 +185,21 @@ next_record:
 		if (recordType == '>') {
 			// Read a multi-line FASTA record.
 			string line;
-			while (m_in.peek() != '>' && m_in.peek() != '#'
+			while (peek() != '>' && peek() != '#'
 					&& getline(line))
 				s += line;
-			if (m_in.eof())
-				m_in.clear();
+			if (eof())
+				clear();
 		}
 
 		if (recordType == '@') {
-			char c = m_in.get();
+			char c = peek();
 			if (c != '+') {
+				die() << s << '\n' << header << '\n';
 				string line;
 				getline(line);
 				die() << "expected `+' and saw ";
-				if (m_in.eof())
+				if (eof())
 					cerr << "end-of-file\n";
 				else
 					cerr << "`" << c << "' near\n"
@@ -223,8 +234,12 @@ next_record:
 		if (opt::trimMasked && !colourSpace) {
 			// Removed masked (lower case) sequence at the beginning
 			// and end of the read.
-			size_t trimFront = s.find_first_not_of("acgtn");
-			size_t trimBack = s.find_last_not_of("acgtn") + 1;
+			size_t trimFront = 0;
+			while (trimFront <= s.length() && islower(s[trimFront]))
+				trimFront++;
+			size_t trimBack = s.length();
+			while (trimBack > 0 && islower(s[trimBack - 1]))
+				trimBack--;
 			s.erase(trimBack);
 			s.erase(0, trimFront);
 			if (!q.empty()) {
@@ -327,6 +342,13 @@ next_record:
 
 	if (opt::qualityOffset > 0)
 		qualityOffset = opt::qualityOffset;
+
+	// Trim from the 3' end to the maximum length. Then, trim based on
+	// quality.
+	if (m_maxLength > 0) {
+		s.erase(m_maxLength);
+		q.erase(m_maxLength);
+	}
 
 	if (opt::qualityThreshold > 0 && !q.empty()) {
 		assert(s.length() == q.length());

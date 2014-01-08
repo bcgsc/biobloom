@@ -7,8 +7,21 @@
 #include <cstdlib> // for exit
 #include <fstream>
 #include <istream>
+#include <iostream> // for debugging, remove before committing
 #include <limits> // for numeric_limits
 #include <ostream>
+#include <algorithm>
+
+#include <cstdio>
+#include <cstring>
+
+static inline int fpeek(FILE * stream)
+{
+	int c;
+	c = fgetc(stream);
+	ungetc(c, stream);
+	return c;
+}
 
 /** Read a FASTA, FASTQ, export, qseq or SAM file. */
 class FastaReader {
@@ -22,47 +35,39 @@ class FastaReader {
 		bool flagFoldCase() { return ~m_flags & NO_FOLD_CASE; }
 		bool flagConvertQual() { return m_flags & CONVERT_QUALITY; }
 
-		FastaReader(const char* path, int flags);
+		FastaReader(const char* path, int flags, int len = 0);
 
 		~FastaReader()
 		{
-			if (!m_in.eof()) {
+			if (!eof()) {
 				std::string line;
 				getline(line);
 				die() << "expected end-of-file near\n"
 					<< line << '\n';
 				exit(EXIT_FAILURE);
 			}
+			fclose(m_in);
+			delete m_buff;
 		}
 
 		Sequence read(std::string& id, std::string& comment,
 				char& anchor, std::string& qual);
 
-		/** Split the fasta file into nsections and seek to the start
-		 * of section. */
-		void split(unsigned section, unsigned nsections);
-
 		/** Return whether this stream is at end-of-file. */
-		bool eof() const { return m_in.eof(); };
+		bool eof() const { return m_bstart >= m_bend && feof(m_in); };
 
 		/** Return whether this stream is good. */
-		operator void*() const { return m_in; }
+		operator bool() const { return !m_fail; }
 
 		/** Return the next character of this stream. */
-		int peek() { return m_in.peek(); }
+		int peek() { fill_buff(); return m_buff[m_bstart]; }
 
 		/** Interface for manipulators. */
-		FastaReader& operator>>(std::istream& (*f)(std::istream&))
-		{
-			f(m_in);
-			return *this;
-		}
-
-		/** Jump to sequence location to start reading */
-		void jump(size_t pos) {
-			m_in.clear();
-			m_in.seekg(pos, std::ios::beg);
-		}
+		//FastaReader& operator>>(std::istream& (*f)(std::istream&))
+		//{
+		//	f(m_in);
+		//	return *this;
+		//}
 
 		/** Returns the number of unchaste reads. */
 		unsigned unchaste() const { return m_unchaste; }
@@ -76,26 +81,49 @@ class FastaReader {
 		}
 
 	private:
-		/** Read a single line. */
-		std::istream& getline(std::string& s)
+		bool fill_buff()
 		{
-			if (std::getline(m_in, s)) {
-				chomp(s, '\r');
-				m_line++;
+			if (m_bstart >= m_bend) {
+				m_bstart = 0;
+				m_bend = fread(m_buff, sizeof(char), m_blen, m_in);
 			}
-			return m_in;
+			return m_bend != 0;
 		}
 
-		/** Ignore the specified number of lines. */
-		std::istream& ignoreLines(unsigned n)
+		/** Read a single line. */
+		bool getline(std::string& s)
 		{
+			s.clear();
+			while (!eof()) {
+				if (!fill_buff()) break;
+				// find first new line char
+				char * end = strchr(m_buff+m_bstart, '\n');
+				if (end == NULL || m_buff + m_bend < end)
+					end = m_buff + m_bend;
+				assert (end >= m_buff);
+				s.append(m_buff+m_bstart, end);
+				m_bstart = end - m_buff + 1;
+				if (m_bstart <= m_bend) break;
+			}
+			chomp(s, '\r');
+			m_line++;
+			if (s.empty())
+				m_fail = true;
+			return !m_fail;
+		}
+
+		void clear() { m_fail = false; }
+
+		/** Ignore the specified number of lines. */
+		bool ignoreLines(unsigned n)
+		{
+			std::string s;
+			bool good = true;
 			for (unsigned i = 0; i < n; ++i) {
-				if (m_in.ignore(
-						std::numeric_limits<std::streamsize>::max(),
-						'\n'))
+				if ((good = getline(s)))
 					m_line++;
 			}
-			return m_in;
+			return good;
 		}
 
 		std::ostream& die();
@@ -103,8 +131,13 @@ class FastaReader {
 		void checkSeqQual(const std::string& s, const std::string& q);
 
 		const char* m_path;
-		std::ifstream m_fin;
-		std::istream& m_in;
+		//std::ifstream m_fin;
+		//std::istream& m_in;
+		FILE * m_in;
+
+		size_t m_blen, m_bstart, m_bend;
+		char * m_buff;
+		bool m_fail;
 
 		/** Flags indicating parsing options. */
 		int m_flags;
@@ -117,6 +150,9 @@ class FastaReader {
 
 		/** Position of the end of the current section. */
 		std::streampos m_end;
+
+		/** Trim sequences to this length. 0 is unlimited. */
+		const int m_maxLength;
 };
 
 /** A FASTA record. */
@@ -135,6 +171,16 @@ struct FastaRecord
 	FastaRecord(const std::string& id, const std::string& comment,
 			const Sequence& seq)
 		: id(id), comment(comment), anchor(0), seq(seq) { }
+
+	operator Sequence() const { return seq; }
+
+	FastaRecord& operator=(const std::string& s)
+	{
+		seq = s;
+		return *this;
+	}
+
+	size_t size() const { return seq.size(); }
 
 	friend FastaReader& operator >>(FastaReader& in, FastaRecord& o)
 	{
