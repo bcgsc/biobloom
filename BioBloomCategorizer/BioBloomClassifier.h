@@ -24,7 +24,7 @@ using namespace boost;
 class BioBloomClassifier {
 public:
 	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
-			float scoreThreshold, const string &outputPrefix,
+			double scoreThreshold, const string &outputPrefix,
 			const string &outputPostFix, uint16_t streakThreshold, uint16_t minHit,
 			bool minHitOnly);
 	void filter(const vector<string> &inputFiles);
@@ -42,24 +42,24 @@ private:
 	void loadFilters(const vector<string> &filterFilePaths);
 	const bool fexists(const string &filename) const;
 	void evaluateReadStd(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, float> &hits);
+			unordered_map<string, double> &hits);
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, float> &hits);
+			unordered_map<string, double> &hits);
 
 //	const string getReadSummaryHeader(const vector<string> &hashSigs);
-	void initHits(unordered_map<string, float> &hits);
+	void initHits(unordered_map<string, double> &hits);
 //	const string getReadStatStr(string const &readID, size_t readLength,
-//			unordered_map<string, float> &hits);
+//			unordered_map<string, double> &hits);
 //	const string getReadStatStrPair(string const &readID, size_t readLength1,
-//			size_t readLength2, unordered_map<string, float> &hits1,
-//			unordered_map<string, float> &hits2);
+//			size_t readLength2, unordered_map<string, double> &hits1,
+//			unordered_map<string, double> &hits2);
 
 	//group filters with same hash number
 	unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > infoFiles;
 	unordered_map<string, shared_ptr<MultiFilter> > filters;
 	unordered_map<string, shared_ptr<BloomFilter> > filtersSingle;
 	vector<string> hashSigs;
-	float scoreThreshold;
+	double scoreThreshold;
 	uint8_t filterNum;
 	const string &postfix;
 	const string &prefix;

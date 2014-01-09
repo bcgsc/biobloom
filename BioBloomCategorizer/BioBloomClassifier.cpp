@@ -14,7 +14,7 @@
 #include "ResultsManager.h"
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
-		float scoreThreshold, const string &prefix, const string &outputPostFix,
+		double scoreThreshold, const string &prefix, const string &outputPostFix,
 		uint16_t streakThreshold, uint16_t minHit, bool minHitOnly) :
 		scoreThreshold(scoreThreshold), filterNum(filterFilePaths.size()), noMatch(
 				"noMatch"), multiMatch("multiMatch"), prefix(prefix), postfix(
@@ -47,7 +47,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 			FastqRecord rec;
 
 			//stored out of loop so reallocation does not have to be done
-			unordered_map<string, float> hits(filterNum);
+			unordered_map<string, double> hits(filterNum);
 			while (sequence >> rec) {
 
 				//track read progress
@@ -79,7 +79,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 			FastqRecord rec;
 
 			//stored out of loop so reallocation does not have to be done
-			unordered_map<string, float> hits(filterNum);
+			unordered_map<string, double> hits(filterNum);
 			while (sequence >> rec) {
 
 				//track read progress
@@ -166,7 +166,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
 			FastqRecord rec;
 			//hits results stored in hashmap of filternames and hits
-			unordered_map<string, float> hits(filterNum);
+			unordered_map<string, double> hits(filterNum);
 			while (sequence >> rec) {
 
 				++totalReads;
@@ -206,7 +206,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
 			FastqRecord rec;
 			//hits results stored in hashmap of filternames and hits
-			unordered_map<string, float> hits(filterNum);
+			unordered_map<string, double> hits(filterNum);
 			while (sequence >> rec) {
 				++totalReads;
 				if (totalReads % 1000000 == 0) {
@@ -274,8 +274,8 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 	FastqRecord rec1;
 	FastqRecord rec2;
 	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, float> hits1(filterNum);
-	unordered_map<string, float> hits2(filterNum);
+	unordered_map<string, double> hits1(filterNum);
+	unordered_map<string, double> hits2(filterNum);
 
 	if (minHitOnly) {
 		while (sequence1 >> rec1 && sequence2 >> rec2) {
@@ -420,8 +420,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	FastqRecord rec1;
 	FastqRecord rec2;
 	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, float> hits1(filterNum);
-	unordered_map<string, float> hits2(filterNum);
+	unordered_map<string, double> hits1(filterNum);
+	unordered_map<string, double> hits2(filterNum);
 
 	if (minHitOnly) {
 		while (sequence1 >> rec1 && sequence2 >> rec2) {
@@ -556,8 +556,8 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 
 	FastaReader sequence(file.c_str(), FastaReader::NO_FOLD_CASE);
 	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, float> hits1(filterNum);
-	unordered_map<string, float> hits2(filterNum);
+	unordered_map<string, double> hits1(filterNum);
+	unordered_map<string, double> hits2(filterNum);
 
 	if (minHitOnly) {
 		while (!sequence.eof()) {
@@ -733,8 +733,8 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 
 	FastaReader sequence(file.c_str(), FastaReader::NO_FOLD_CASE);
 	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, float> hits1(filterNum);
-	unordered_map<string, float> hits2(filterNum);
+	unordered_map<string, double> hits1(filterNum);
+	unordered_map<string, double> hits2(filterNum);
 
 	if (minHitOnly) {
 		while (!sequence.eof()) {
@@ -955,7 +955,7 @@ const bool BioBloomClassifier::fexists(const string &filename) const
  * Faster variant that assume there a redundant tile of 0
  */
 void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
-		const string &hashSig, unordered_map<string, float> &hits)
+		const string &hashSig, unordered_map<string, double> &hits)
 {
 	//get filterIDs to iterate through has in a consistent order
 	const vector<string> &idsInFilter = (*filters[hashSig]).getFilterIds();
@@ -999,7 +999,7 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
  * Updates hits value to number of hits (hashSig is used to as key)
  */
 void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
-		const string &hashSig, unordered_map<string, float> &hits)
+		const string &hashSig, unordered_map<string, double> &hits)
 {
 
 	//get filterIDs to iterate through has in a consistent order
@@ -1009,14 +1009,14 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 
 	ReadsProcessor proc(kmerSize);
 
-	float normalizationValue = rec.seq.length() - kmerSize + 1;
-	float threshold = scoreThreshold * normalizationValue;
+	double normalizationValue = rec.seq.length() - kmerSize + 1;
+	double threshold = scoreThreshold * normalizationValue;
 
 	for (vector<string>::const_iterator i = idsInFilter.begin();
 			i != idsInFilter.end(); ++i)
 	{
 		size_t currentLoc = 0;
-		float score = 0;
+		double score = 0;
 		uint16_t streak = 0;
 		bool pass = false;
 		uint16_t screeningHits = 0;
@@ -1063,7 +1063,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 					if (streak < streakThreshold) {
 						++currentLoc;
 					} else {
-						currentLoc += kmerSize + 1;
+						currentLoc += kmerSize;
 					}
 					streak = 0;
 				}
@@ -1101,7 +1101,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 /*
  * Initializes hits results to zero
  */
-void BioBloomClassifier::initHits(unordered_map<string, float> &hits)
+void BioBloomClassifier::initHits(unordered_map<string, double> &hits)
 {
 	//initialize hits to zero
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -1120,7 +1120,7 @@ void BioBloomClassifier::initHits(unordered_map<string, float> &hits)
 // * return results of hits to be output for read status
 // */
 //const string BioBloomClassifier::getReadStatStr(string const &readID,
-//		size_t readLength, unordered_map<string, float> &hits)
+//		size_t readLength, unordered_map<string, double> &hits)
 //{
 //	stringstream str;
 //	str << readID << "\t" << readLength;
@@ -1146,8 +1146,8 @@ void BioBloomClassifier::initHits(unordered_map<string, float> &hits)
 // */
 //const string BioBloomClassifier::getReadStatStrPair(string const &readID,
 //		size_t readLength1, size_t readLength2,
-//		unordered_map<string, float> &hits1,
-//		unordered_map<string, float> &hits2)
+//		unordered_map<string, double> &hits1,
+//		unordered_map<string, double> &hits2)
 //{
 //	stringstream str;
 //	str << readID << "\t" << readLength1 << "|" << readLength2;

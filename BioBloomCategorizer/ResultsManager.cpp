@@ -11,7 +11,7 @@
 ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
 		const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
 		const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
-		float scoreThreshold) :
+		double scoreThreshold) :
 		hashSigs(hashSigsRef), filters(filtersRef), infoFiles(infoFilesRef), scoreThreshold(
 				scoreThreshold) {
 	//initialize variables and print filter ids
@@ -32,7 +32,7 @@ ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
  * Returns qualifying read IDs that meet threshold
  */
 const string ResultsManager::updateSummaryData(size_t seqLen,
-		unordered_map<string, float> &hits) {
+		unordered_map<string, double> &hits) {
 	string filterID = "noMatch";
 
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -66,8 +66,8 @@ const string ResultsManager::updateSummaryData(size_t seqLen,
  * both reads must qualify
  */
 const string ResultsManager::updateSummaryData(size_t seqLen1, size_t seqLen2,
-		unordered_map<string, float> &hits1,
-		unordered_map<string, float> &hits2) {
+		unordered_map<string, double> &hits1,
+		unordered_map<string, double> &hits2) {
 	string filterID = "noMatch";
 
 	for (vector<string>::const_iterator j = hashSigs.begin();
@@ -121,6 +121,9 @@ const string ResultsManager::getResultsSummary(size_t readCount) const {
 			summaryOutput << "\n";
 		}
 	}
+
+	cout << summaryOutput.str() << endl;
+
 //	//initialize variables and print filter ids
 //	for (vector<string>::const_iterator j = hashSigs.begin();
 //			j != hashSigs.end(); ++j) {

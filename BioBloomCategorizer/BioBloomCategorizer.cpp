@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 	int fastq = 0;
 	int fasta = 0;
 	string filePostfix = "";
-	float score = 0.2;
+	double score = 0.2;
 
 	//advanced options
 	uint16_t minHit = 1;
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 					"fq", no_argument, &fastq, 1 }, {
 					"fa", no_argument, &fasta, 1 }, {
 					"version", no_argument, NULL, 0 }, {
-//		"min_hit_thr", optional_argument, NULL, 'm' }, {
+					"min_hit_thr", required_argument, NULL, 'm' }, {
 					"streak", optional_argument, NULL, 'r' }, {
 					NULL, 0, NULL, 0 } };
 
