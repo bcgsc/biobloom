@@ -14,10 +14,18 @@
 #include "BioBloomClassifier.h"
 #include "DataLayer/Options.h"
 #include "config.h"
+#if defined(_OPENMP)
+# include <omp.h>
+#endif
 
 using namespace std;
 
 #define PROGRAM "biobloomcategorizer"
+
+namespace opt {
+	/** The number of parallel threads. */
+	static unsigned threads = 1;
+}
 
 void printVersion()
 {
@@ -76,8 +84,8 @@ void printHelpDialog()
 					"  -s, --score=N          Score threshold for matching. Maximum threshold \n"
 					"                         is 1 (highest specificity), minimum is 0 (highest \n"
 					"                         .sensitivity). Lower score threshold will decrease\n"
-					"                         run time. [0.2]\n"
-//	"  -t, --threads=N        The number of threads to use. [1]"
+					"                         run time. [0.15]\n"
+					"  -t, --threads=N        The number of threads to use. [1]"
 					"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
 					"      --fa               Output categorized reads in Fasta files.\n"
 					"      --fq               Output categorized reads in Fastq files.\n"
@@ -120,7 +128,6 @@ int main(int argc, char *argv[])
 	string filtersFile = "";
 	string outputReadType = "";
 	bool paired = false;
-	bool minHitOnly = false;
 
 	int fastq = 0;
 	int fasta = 0;
@@ -130,6 +137,7 @@ int main(int argc, char *argv[])
 	//advanced options
 	uint16_t minHit = 1;
 	uint16_t streak = 3;
+	bool minHitOnly = false;
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -139,6 +147,7 @@ int main(int argc, char *argv[])
 					"paired_mode", no_argument, NULL, 'e' }, {
 					"score", no_argument, NULL, 's' }, {
 					"help", no_argument, NULL, 'h' }, {
+					"threads", required_argument, NULL, 't' }, {
 					"gz_output", no_argument, NULL, 'g' }, {
 					"chastity", no_argument, &opt::chastityFilter, 1 }, {
 					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
@@ -152,7 +161,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hec:gvs:or:", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hec:gvs:or:t:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -172,7 +181,8 @@ int main(int argc, char *argv[])
 				exit(EXIT_FAILURE);
 			}
 			if (score < 0 || score > 1) {
-				cerr << "Error - s must be between 0 and 1, input given:" << optarg << endl;
+				cerr << "Error - s must be between 0 and 1, input given:"
+						<< optarg << endl;
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -191,6 +201,14 @@ int main(int argc, char *argv[])
 		}
 		case 'e': {
 			paired = true;
+			break;
+		}
+		case 't': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::threads )) {
+				cerr << "Error - Invalid parameter! t: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
 			break;
 		}
 		case 'g': {
@@ -219,6 +237,13 @@ int main(int argc, char *argv[])
 		}
 		}
 	}
+
+#if defined(_OPENMP)
+	cout << opt::threads << endl;
+	if (opt::threads > 0)
+		omp_set_num_threads(opt::threads);
+	cout << opt::threads << endl;
+#endif
 
 	vector<string> filterFilePaths = convertInputString(filtersFile);
 	vector<string> inputFiles = convertInputString(rawInputFiles);

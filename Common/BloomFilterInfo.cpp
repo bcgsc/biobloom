@@ -60,7 +60,7 @@ void BloomFilterInfo::setRedundancy(size_t redunSeq)
 {
 	runInfo.redundantSequences = redunSeq;
 	runInfo.redundantFPR = calcRedunancyFPR(runInfo.size, runInfo.numEntries,
-			hashNum, runInfo.redundantSequences);
+			hashNum);
 
 	runInfo.FPR = calcApproxFPR(runInfo.size,
 			runInfo.numEntries, hashNum);
@@ -95,8 +95,8 @@ void BloomFilterInfo::printInfoFile(const string &fileName) const
 			<< "\nnumber_of_hash_functions=" << hashNum
 			<< "\nexpected_num_entries=" << expectedNumEntries
 			<< "\nsequence_sources=";
+
 	//print out sources as a list
-	size_t tempCounter = 0;
 	for (vector<string>::const_iterator it = seqSrcs.begin();
 			it != seqSrcs.end(); ++it)
 	{
@@ -181,7 +181,7 @@ const double BloomFilterInfo::calcApproxFPR(size_t size, size_t numEntr,
  * Calculates redundancy FPR
  */
 const double BloomFilterInfo::calcRedunancyFPR(size_t size, size_t numEntr,
-		uint16_t hashFunctNum, size_t redundantSeqs) const
+		uint16_t hashFunctNum) const
 {
 	double total = log(calcApproxFPR(size, 1, hashFunctNum));
 	for (size_t i = 2; i < numEntr; ++i) {

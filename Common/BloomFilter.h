@@ -32,7 +32,7 @@ static inline vector<size_t> multiHash(const unsigned char* kmer, size_t num,
 	//use raw kmer number as first hash value
 	size_t kmerSizeInBytes = (kmerSize + 4 - 1) / 4;
 
-	for (int i = 0; i < num; ++i) {
+	for (size_t i = 0; i < num; ++i) {
 		tempHashValues[i] = CityHash64WithSeed(
 				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i);
 	}

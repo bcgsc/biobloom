@@ -41,7 +41,7 @@ BloomFilter::BloomFilter(size_t filterSize, uint8_t hashNum, uint16_t kmerSize,
 	//Check file size is correct size
 	struct stat sb;
 	stat(filterFilePath.c_str(), &sb);
-	if (sb.st_size != filterSize / 8) {
+	if (static_cast<size_t>(sb.st_size) != filterSize / 8) {
 		cerr << "Error: " << filterFilePath
 				<< " does not match size given by its information file. Size: "
 				<< sb.st_size << "/" << filterSize / 8 << " bytes." << endl;
@@ -139,7 +139,7 @@ void BloomFilter::storeFilter(string const &filterFilePath) const {
 
 	assert(myFile.good());
 	//write out each block
-	for (int i = 0; i < sizeInBytes; i++) {
+	for (size_t i = 0; i < sizeInBytes; i++) {
 		myFile << filter[i];
 	}
 	assert(myFile.good());

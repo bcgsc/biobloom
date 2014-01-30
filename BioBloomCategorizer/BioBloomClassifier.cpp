@@ -12,10 +12,14 @@
 #include <sys/stat.h>
 #include "Common/Dynamicofstream.h"
 #include "ResultsManager.h"
+#if _OPENMP
+# include <omp.h>
+#endif
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
-		double scoreThreshold, const string &prefix, const string &outputPostFix,
-		uint16_t streakThreshold, uint16_t minHit, bool minHitOnly) :
+		double scoreThreshold, const string &prefix,
+		const string &outputPostFix, uint16_t streakThreshold, uint16_t minHit,
+		bool minHitOnly) :
 		scoreThreshold(scoreThreshold), filterNum(filterFilePaths.size()), noMatch(
 				"noMatch"), multiMatch("multiMatch"), prefix(prefix), postfix(
 				outputPostFix), streakThreshold(streakThreshold), minHit(
@@ -76,32 +80,40 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 				it != inputFiles.end(); ++it)
 		{
 			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
-			FastqRecord rec;
-
-			//stored out of loop so reallocation does not have to be done
-			unordered_map<string, double> hits(filterNum);
-			while (sequence >> rec) {
-
-				//track read progress
-				++totalReads;
-				if (totalReads % 1000000 == 0) {
-					cerr << "Currently Reading Read Number: " << totalReads
-							<< endl;
-				}
-
-				//initialize hits to zero
-				initHits(hits);
-
-				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-				for (vector<string>::const_iterator j = hashSigs.begin();
-						j != hashSigs.end(); ++j)
+#pragma omp parallel
+			for (FastqRecord rec;;) {
+				bool good;
+#pragma omp critical(sequence)
 				{
-					evaluateReadStd(rec, *j, hits);
+					good = sequence >> rec;
+					//track read progress
+					++totalReads;
+					if (totalReads % 1000000 == 0) {
+						cerr << "Currently Reading Read Number: " << totalReads
+								<< endl;
+					}
 				}
 
-				//Evaluate hit data and record for summary
-				resSummary.updateSummaryData(rec.seq.length(), hits);
+				if (good)
+				{
+					unordered_map<string, double> hits(filterNum);
+					//initialize hits to zero
+					initHits(hits);
+
+					//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
+					for (vector<string>::const_iterator j = hashSigs.begin();
+							j != hashSigs.end(); ++j)
+					{
+						evaluateReadStd(rec, *j, hits);
+					}
+
+					//Evaluate hit data and record for summary
+					resSummary.updateSummaryData(rec.seq.length(), hits);
+				}
+				else
+					break;
 			}
+			assert(sequence.eof());
 		}
 	}
 
@@ -1011,54 +1023,63 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 
 	double normalizationValue = rec.seq.length() - kmerSize + 1;
 	double threshold = scoreThreshold * normalizationValue;
+	double threshold_miss = 1.0 - threshold;
 
 	for (vector<string>::const_iterator i = idsInFilter.begin();
 			i != idsInFilter.end(); ++i)
 	{
-		size_t currentLoc = 0;
-		double score = 0;
-		uint16_t streak = 0;
 		bool pass = false;
-		uint16_t screeningHits = 0;
-		//First pass filtering
-		while (rec.seq.length() >= currentLoc + kmerSize) {
-			const unsigned char* currentKmer = proc.prepSeq(rec.seq,
-					currentLoc);
-			if (currentKmer != NULL) {
-				if (filtersSingle.at(*i)->contains(currentKmer)) {
-					screeningHits++;
-					if (screeningHits > minHit) {
-						pass = true;
-						break;
+		if (minHit > 0) {
+			uint16_t screeningHits = 0;
+			size_t screeningLoc = rec.seq.length() % kmerSize / 2;
+			//First pass filtering
+			while (rec.seq.length() >= screeningLoc + kmerSize) {
+				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
+						screeningLoc);
+				if (currentKmer != NULL) {
+					if (filtersSingle.at(*i)->contains(currentKmer)) {
+						screeningHits++;
+						if (screeningHits >= minHit) {
+							pass = true;
+							break;
+						}
 					}
 				}
+				screeningLoc += kmerSize;
 			}
-			currentLoc += kmerSize;
+		} else {
+			pass = true;
 		}
-		currentLoc = 0;
 		if (pass) {
+			size_t currentLoc = 0;
+			double score = 0;
+			uint16_t streak = 0;
 			while (rec.seq.length() >= currentLoc + kmerSize) {
 				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
 						currentLoc);
 				if (streak == 0) {
 					if (currentKmer != NULL) {
 						if (filtersSingle.at(*i)->contains(currentKmer)) {
-							score += 0.25;
+							score += 0.5;
 							++streak;
 						}
+						++currentLoc;
+					} else {
+						currentLoc += kmerSize + 1;
 					}
-					++currentLoc;
 				} else {
 					if (currentKmer != NULL) {
 						if (filtersSingle.at(*i)->contains(currentKmer)) {
 							++streak;
-							++score;
+							score += 1 - 1 / (2 * streak);
 							++currentLoc;
 							if (threshold <= score) {
 								break;
 							}
 							continue;
 						}
+					} else {
+						currentLoc += kmerSize + 1;
 					}
 					if (streak < streakThreshold) {
 						++currentLoc;

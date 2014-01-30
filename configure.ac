@@ -27,6 +27,7 @@ if test "$with_boost" -a -d "$with_boost"; then
 fi
 # Set compiler flags.
 AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $CPPFLAGS")
+AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
 
 # Checks for header files.
 AC_LANG([C++])	#sets the auto conf to look for c++ headers
@@ -34,6 +35,12 @@ AC_CHECK_HEADERS([boost/unordered/unordered_map.hpp])
 AC_CHECK_HEADERS([boost/property_tree/ptree.hpp])
 AC_CHECK_HEADERS([boost/property_tree/ini_parser.hpp])
 AC_CHECK_HEADERS([boost/tuple/tuple.hpp])
+
+# Check for OpenMP.
+AC_OPENMP
+if test -z $OPENMP_CXXFLAGS; then
+	OPENMP_CXXFLAGS=-Wno-unknown-pragmas -fopenmp
+fi
 
 # Checks for typedefs, structures, and compiler characteristics.
 
