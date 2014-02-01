@@ -29,11 +29,11 @@ public:
 
 	virtual ~BloomFilterGenerator();
 private:
-	size_t filterSize;
-	size_t expectedEntries;
-	size_t totalEntries;
 	int16_t kmerSize;
 	int8_t hashNum;
+	size_t expectedEntries;
+	size_t filterSize;
+	size_t totalEntries;
 	boost::unordered_map<string, vector<string> > fileNamesAndHeaders;
 };
 

@@ -370,53 +370,53 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 
 		//create char for forward
 
-		fw[outputIndex] |= fw0[sequence[index++]];
-		fw[outputIndex] |= fw1[sequence[index++]];
-		fw[outputIndex] |= fw2[sequence[index++]];
+		fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[index++])];
+		fw[outputIndex] |= fw1[static_cast<unsigned char>(sequence[index++])];
+		fw[outputIndex] |= fw2[static_cast<unsigned char>(sequence[index++])];
 
 		//-128 is used as I am working with signed chars
-		if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
+		if (fw[outputIndex] == 0xFF || fw3[static_cast<unsigned char>(sequence[index])] == 0xFF) {
 			return NULL;
 		}
 
-		fw[outputIndex] |= fw3[sequence[index++]];
+		fw[outputIndex] |= fw3[static_cast<unsigned char>(sequence[index++])];
 
 		//create char for rv
 
-		rv[outputIndex] |= rv0[sequence[revIndex--]];
-		rv[outputIndex] |= rv1[sequence[revIndex--]];
-		rv[outputIndex] |= rv2[sequence[revIndex--]];
+		rv[outputIndex] |= rv0[static_cast<unsigned char>(sequence[revIndex--])];
+		rv[outputIndex] |= rv1[static_cast<unsigned char>(sequence[revIndex--])];
+		rv[outputIndex] |= rv2[static_cast<unsigned char>(sequence[revIndex--])];
 
-		if (rv[outputIndex] == 0xFF || rv3[sequence[revIndex]] == 0xFF) {
+		if (rv[outputIndex] == 0xFF || rv3[static_cast<unsigned char>(sequence[revIndex])] == 0xFF) {
 			return NULL;
 		}
 
-		rv[outputIndex] |= rv3[sequence[revIndex--]];
+		rv[outputIndex] |= rv3[static_cast<unsigned char>(sequence[revIndex--])];
 
 		//compare and convert if not already established
 		//forward is smaller
 		if (fw[outputIndex] < rv[outputIndex]) {
 			//finish off sequence
-			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBasesExist;
+			for (++outputIndex; outputIndex + hangingBasesExist < kmerSizeInBytes;
 					++outputIndex)
 			{
 				//create char for forward
-				fw[outputIndex] |= fw0[sequence[index++]];
-				fw[outputIndex] |= fw1[sequence[index++]];
-				fw[outputIndex] |= fw2[sequence[index++]];
+				fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[index++])];
+				fw[outputIndex] |= fw1[static_cast<unsigned char>(sequence[index++])];
+				fw[outputIndex] |= fw2[static_cast<unsigned char>(sequence[index++])];
 
-				if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
+				if (fw[outputIndex] == 0xFF || fw3[static_cast<unsigned char>(sequence[index])] == 0xFF) {
 					return NULL;
 				}
-				fw[outputIndex] |= fw3[sequence[index++]];
+				fw[outputIndex] |= fw3[static_cast<unsigned char>(sequence[index++])];
 			}
 			//create last byte
 			if (hangingBasesExist) {
 				size_t lastPos = position + kmerSize - 1;
-				fw[outputIndex] = fw0[sequence[lastPos--]];
+				fw[outputIndex] = fw0[static_cast<unsigned char>(sequence[lastPos--])];
 				for (; index <= lastPos; --lastPos) {
 					fw[outputIndex] = fw[outputIndex] >> 2;
-					fw[outputIndex] |= fw0[sequence[lastPos]];
+					fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[lastPos])];
 				}
 				if (fw[outputIndex] == 0xFF) {
 					return NULL;
@@ -427,25 +427,25 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 		//reverse is smaller
 		else if (fw[outputIndex] > rv[outputIndex]) {
 			//finish off sequence
-			for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBasesExist;
+			for (++outputIndex; outputIndex + hangingBasesExist < kmerSizeInBytes;
 					++outputIndex)
 			{
-				rv[outputIndex] |= rv0[sequence[revIndex--]];
-				rv[outputIndex] |= rv1[sequence[revIndex--]];
-				rv[outputIndex] |= rv2[sequence[revIndex--]];
+				rv[outputIndex] |= rv0[static_cast<unsigned char>(sequence[revIndex--])];
+				rv[outputIndex] |= rv1[static_cast<unsigned char>(sequence[revIndex--])];
+				rv[outputIndex] |= rv2[static_cast<unsigned char>(sequence[revIndex--])];
 
-				if (rv[outputIndex] == 0xFF || rv3[sequence[revIndex]] == 0xFF)
+				if (rv[outputIndex] == 0xFF || rv3[static_cast<unsigned char>(sequence[revIndex])] == 0xFF)
 				{
 					return NULL;
 				}
-				rv[outputIndex] |= rv3[sequence[revIndex--]];
+				rv[outputIndex] |= rv3[static_cast<unsigned char>(sequence[revIndex--])];
 			}
 			//create last byte
 			if (hangingBasesExist) {
-				rv[outputIndex] = rv0[sequence[position++]];
+				rv[outputIndex] = rv0[static_cast<unsigned char>(sequence[position++])];
 				for (; revIndex >= position; ++position) {
 					rv[outputIndex] = rv[outputIndex] >> 2;
-					rv[outputIndex] |= rv0[sequence[position]];
+					rv[outputIndex] |= rv0[static_cast<unsigned char>(sequence[position])];
 				}
 				if (rv[outputIndex] == 0xFF) {
 					return NULL;
@@ -456,26 +456,26 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 	}
 	//palamdromic
 	//finish off sequence
-	for (++outputIndex; outputIndex < kmerSizeInBytes - hangingBasesExist;
+	for (++outputIndex; outputIndex + hangingBasesExist < kmerSizeInBytes;
 			++outputIndex)
 	{
 		//create char for forward
-		fw[outputIndex] |= fw0[sequence[index++]];
-		fw[outputIndex] |= fw1[sequence[index++]];
-		fw[outputIndex] |= fw2[sequence[index++]];
+		fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[index++])];
+		fw[outputIndex] |= fw1[static_cast<unsigned char>(sequence[index++])];
+		fw[outputIndex] |= fw2[static_cast<unsigned char>(sequence[index++])];
 
-		if (fw[outputIndex] == 0xFF || fw3[sequence[index]] == 0xFF) {
+		if (fw[outputIndex] == 0xFF || fw3[static_cast<unsigned char>(sequence[index])] == 0xFF) {
 			return NULL;
 		}
-		fw[outputIndex] |= fw3[sequence[index]];
+		fw[outputIndex] |= fw3[static_cast<unsigned char>(sequence[index])];
 	}
 	//create last byte
 	if (hangingBases) {
 		size_t lastPos = position + kmerSize - 1;
-		fw[outputIndex] |= fw0[sequence[lastPos]];
+		fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[lastPos])];
 		for (; index < lastPos; --lastPos) {
 			fw[outputIndex] = fw[outputIndex] << 2;
-			fw[outputIndex] |= fw0[sequence[lastPos]];
+			fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[lastPos])];
 		}
 		if (fw[outputIndex] == 0xFF) {
 			return NULL;

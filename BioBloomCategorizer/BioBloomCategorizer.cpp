@@ -4,7 +4,6 @@
  *  Created on: Sep 7, 2012
  *      Author: cjustin
  */
-//todo: UNIT TESTS!
 #include <sstream>
 #include <string>
 #include <getopt.h>
@@ -239,10 +238,8 @@ int main(int argc, char *argv[])
 	}
 
 #if defined(_OPENMP)
-	cout << opt::threads << endl;
 	if (opt::threads > 0)
 		omp_set_num_threads(opt::threads);
-	cout << opt::threads << endl;
 #endif
 
 	vector<string> filterFilePaths = convertInputString(filtersFile);

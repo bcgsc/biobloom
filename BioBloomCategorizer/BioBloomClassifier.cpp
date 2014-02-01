@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include "Common/Dynamicofstream.h"
 #include "ResultsManager.h"
+#include <queue>
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -20,10 +21,10 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		double scoreThreshold, const string &prefix,
 		const string &outputPostFix, uint16_t streakThreshold, uint16_t minHit,
 		bool minHitOnly) :
-		scoreThreshold(scoreThreshold), filterNum(filterFilePaths.size()), noMatch(
-				"noMatch"), multiMatch("multiMatch"), prefix(prefix), postfix(
-				outputPostFix), streakThreshold(streakThreshold), minHit(
-				minHit), minHitOnly(minHitOnly)
+		scoreThreshold(scoreThreshold), filterNum(filterFilePaths.size()), prefix(
+				prefix), postfix(outputPostFix), streakThreshold(
+				streakThreshold), minHit(minHit), minHitOnly(minHitOnly), noMatch(
+				"noMatch"), multiMatch("multiMatch")
 {
 	loadFilters(filterFilePaths);
 }
@@ -43,78 +44,46 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 
 	cerr << "Filtering Start" << endl;
 
-	if (minHitOnly) {
-		for (vector<string>::const_iterator it = inputFiles.begin();
-				it != inputFiles.end(); ++it)
-		{
-			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
-			FastqRecord rec;
-
-			//stored out of loop so reallocation does not have to be done
-			unordered_map<string, double> hits(filterNum);
-			while (sequence >> rec) {
-
-				//track read progress
-				++totalReads;
-				if (totalReads % 1000000 == 0) {
-					cerr << "Currently Reading Read Number: " << totalReads
-							<< endl;
-				}
-
-				//initialize hits to zero
-				initHits(hits);
-
-				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-				for (vector<string>::const_iterator j = hashSigs.begin();
-						j != hashSigs.end(); ++j)
-				{
-					evaluateRead(rec, *j, hits);
-				}
-
-				//Evaluate hit data and record for summary
-				resSummary.updateSummaryData(rec.seq.length(), hits);
-			}
-		}
-	} else {
-		for (vector<string>::const_iterator it = inputFiles.begin();
-				it != inputFiles.end(); ++it)
-		{
-			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
+	for (vector<string>::const_iterator it = inputFiles.begin();
+			it != inputFiles.end(); ++it)
+	{
+		FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
 #pragma omp parallel
-			for (FastqRecord rec;;) {
-				bool good;
+		for (FastqRecord rec;;) {
+			bool good;
 #pragma omp critical(sequence)
+			{
+				good = sequence >> rec;
+				//track read progress
+			}
+			if (good) {
+#pragma omp critical(totalReads)
 				{
-					good = sequence >> rec;
-					//track read progress
 					++totalReads;
 					if (totalReads % 1000000 == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< endl;
 					}
 				}
+				unordered_map<string, bool> hits(filterNum);
 
-				if (good)
+				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
+				for (vector<string>::const_iterator j = hashSigs.begin();
+						j != hashSigs.end(); ++j)
 				{
-					unordered_map<string, double> hits(filterNum);
-					//initialize hits to zero
-					initHits(hits);
-
-					//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-					for (vector<string>::const_iterator j = hashSigs.begin();
-							j != hashSigs.end(); ++j)
-					{
+					if (minHitOnly) {
+						evaluateRead(rec, *j, hits);
+					} else {
 						evaluateReadStd(rec, *j, hits);
 					}
-
-					//Evaluate hit data and record for summary
-					resSummary.updateSummaryData(rec.seq.length(), hits);
 				}
-				else
-					break;
-			}
-			assert(sequence.eof());
+
+				//Evaluate hit data and record for summary
+				resSummary.updateSummaryData(hits);
+			} else
+				break;
 		}
+		assert(sequence.eof());
 	}
 
 	cerr << "Total Reads:" << totalReads << endl;
@@ -170,85 +139,61 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 
 	cerr << "Filtering Start" << endl;
 
-	if (minHitOnly) {
-
-		for (vector<string>::const_iterator it = inputFiles.begin();
-				it != inputFiles.end(); ++it)
-		{
-			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
-			FastqRecord rec;
-			//hits results stored in hashmap of filternames and hits
-			unordered_map<string, double> hits(filterNum);
-			while (sequence >> rec) {
-
-				++totalReads;
-				if (totalReads % 1000000 == 0) {
-					cerr << "Currently Reading Read Number: " << totalReads
-							<< endl;
+	for (vector<string>::const_iterator it = inputFiles.begin();
+			it != inputFiles.end(); ++it)
+	{
+		FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
+#pragma omp parallel
+		for (FastqRecord rec;;) {
+			bool good;
+#pragma omp critical(sequence)
+			{
+				good = sequence >> rec;
+			}
+			if (good) {
+#pragma omp critical(totalReads)
+				{
+					++totalReads;
+					if (totalReads % 1000000 == 0) {
+						cerr << "Currently Reading Read Number: " << totalReads
+								<< endl;
+					}
 				}
-
-				//initialize hits to zero
-				initHits(hits);
+				unordered_map<string, bool> hits(filterNum);
 
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = hashSigs.begin();
 						j != hashSigs.end(); ++j)
 				{
-					evaluateRead(rec, *j, hits);
+					if (minHitOnly) {
+						evaluateRead(rec, *j, hits);
+					} else {
+						evaluateReadStd(rec, *j, hits);
+					}
 				}
 
 				//Evaluate hit data and record for summary
-				const string &outputFileName = resSummary.updateSummaryData(
-						rec.seq.length(), hits);
-
-				if (outputType == "fa") {
-					(*outputFiles[outputFileName]) << ">" << rec.id << "\n"
-							<< rec.seq << "\n";
-				} else {
-					(*outputFiles[outputFileName]) << "@" << rec.id << "\n"
-							<< rec.seq << "\n+\n" << rec.qual << "\n";
-				}
-			}
-		}
-	} else {
-
-		for (vector<string>::const_iterator it = inputFiles.begin();
-				it != inputFiles.end(); ++it)
-		{
-			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
-			FastqRecord rec;
-			//hits results stored in hashmap of filternames and hits
-			unordered_map<string, double> hits(filterNum);
-			while (sequence >> rec) {
-				++totalReads;
-				if (totalReads % 1000000 == 0) {
-					cerr << "Currently Reading Read Number: " << totalReads
-							<< endl;
-				}
-
-				//initialize hits to zero
-				initHits(hits);
-
-				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-				for (vector<string>::const_iterator j = hashSigs.begin();
-						j != hashSigs.end(); ++j)
+#pragma omp critical(resSummary)
 				{
-					evaluateReadStd(rec, *j, hits);
-				}
-
-				//Evaluate hit data and record for summary
-				const string &outputFileName = resSummary.updateSummaryData(
-						rec.seq.length(), hits);
-
+					const string &outputFileName = resSummary.updateSummaryData(hits);
 				if (outputType == "fa") {
-					(*outputFiles[outputFileName]) << ">" << rec.id << "\n"
-							<< rec.seq << "\n";
+#pragma omp critical(outputFiles)
+					{
+						(*outputFiles[outputFileName]) << ">" << rec.id << "\n"
+								<< rec.seq << "\n";
+					}
 				} else {
-					(*outputFiles[outputFileName]) << "@" << rec.id << "\n"
-							<< rec.seq << "\n+\n" << rec.qual << "\n";
+#pragma omp critical(outputFiles)
+					{
+						(*outputFiles[outputFileName]) << "@" << rec.id << "\n"
+								<< rec.seq << "\n+\n" << rec.qual << "\n";
+					}
 				}
-			}
+				}
+			} else
+				break;
 		}
+		assert(sequence.eof());
 	}
 
 	//close sorting files
@@ -277,28 +222,36 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 
 	size_t totalReads = 0;
 
-	//print out header info and initialize variables for summary
-
 	cerr << "Filtering Start" << "\n";
 
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
 	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
-	FastqRecord rec1;
-	FastqRecord rec2;
-	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, double> hits1(filterNum);
-	unordered_map<string, double> hits2(filterNum);
+#pragma omp parallel
+	for (FastqRecord rec1;;) {
+		FastqRecord rec2;
+		bool good1;
+		bool good2;
 
-	if (minHitOnly) {
-		while (sequence1 >> rec1 && sequence2 >> rec2) {
-			++totalReads;
-			if (totalReads % 1000000 == 0) {
-				cerr << "Currently Reading Read Number: " << totalReads << endl;
+#pragma omp critical(sequence1)
+		{
+			good1 = sequence1 >> rec1;
+			good2 = sequence2 >> rec2;
+			//track read progress
+		}
+
+		if (good1 && good2) {
+#pragma omp critical(totalReads)
+			{
+				++totalReads;
+				if (totalReads % 1000000 == 0) {
+					cerr << "Currently Reading Read Number: " << totalReads
+							<< endl;
+				}
 			}
 
-			//initialize hits to zero
-			initHits(hits1);
-			initHits(hits2);
+			//hits results stored in hashmap of filter names and hits
+			unordered_map<string, bool> hits1(filterNum);
+			unordered_map<string, bool> hits2(filterNum);
 
 			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 			for (vector<string>::const_iterator j = hashSigs.begin();
@@ -307,8 +260,13 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 				if (tempStr1 == tempStr2) {
-					evaluateRead(rec1, *j, hits1);
-					evaluateRead(rec2, *j, hits2);
+					if (minHitOnly) {
+						evaluateRead(rec1, *j, hits1);
+						evaluateRead(rec2, *j, hits2);
+					} else {
+						evaluateReadStd(rec1, *j, hits1);
+						evaluateReadStd(rec2, *j, hits2);
+					}
 				} else {
 					cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
 							<< tempStr2 << endl;
@@ -319,46 +277,12 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 			string readID = rec1.id.substr(0, rec1.id.length() - 2);
 
 			//Evaluate hit data and record for summary
-			resSummary.updateSummaryData(rec1.seq.length(), rec2.seq.length(),
-					hits1, hits2);
-		}
-	} else {
-
-		while (sequence1 >> rec1 && sequence2 >> rec2) {
-			++totalReads;
-			if (totalReads % 1000000 == 0) {
-				cerr << "Currently Reading Read Number: " << totalReads << endl;
-			}
-
-			//initialize hits to zero
-			initHits(hits1);
-			initHits(hits2);
-
-			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-			for (vector<string>::const_iterator j = hashSigs.begin();
-					j != hashSigs.end(); ++j)
-			{
-				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
-				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
-				if (tempStr1 == tempStr2) {
-					evaluateReadStd(rec1, *j, hits1);
-					evaluateReadStd(rec2, *j, hits2);
-				} else {
-					cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
-							<< tempStr2 << endl;
-					exit(1);
-				}
-			}
-
-			string readID = rec1.id.substr(0, rec1.id.length() - 2);
-
-			//Evaluate hit data and record for summary
-			resSummary.updateSummaryData(rec1.seq.length(), rec2.seq.length(),
-					hits1, hits2);
-		}
+#pragma omp critical(resSummary)
+			resSummary.updateSummaryData(hits1, hits2);
+		} else
+			break;
 	}
-
-	if (sequence2 >> rec2 && sequence1.eof() && sequence2.eof()) {
+	if (sequence1.eof() && sequence2.eof()) {
 		cerr
 				<< "error: eof bit not flipped. Input files may be different lengths"
 				<< endl;
@@ -423,28 +347,40 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 		}
 	}
 
-	//print out header info and initialize variables for summary
+	//for output files in consistent order
+	queue<string> g_pq;
 
 	cerr << "Filtering Start" << "\n";
 
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
 	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
-	FastqRecord rec1;
-	FastqRecord rec2;
-	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, double> hits1(filterNum);
-	unordered_map<string, double> hits2(filterNum);
+#pragma omp parallel
+	for (FastqRecord rec1;;) {
+		FastqRecord rec2;
+		bool good1;
+		bool good2;
 
-	if (minHitOnly) {
-		while (sequence1 >> rec1 && sequence2 >> rec2) {
-			++totalReads;
-			if (totalReads % 1000000 == 0) {
-				cerr << "Currently Reading Read Number: " << totalReads << endl;
+#pragma omp critical(sequence1)
+		{
+			good1 = sequence1 >> rec1;
+			good2 = sequence2 >> rec2;
+			g_pq.push(rec1.id);
+			//track read progress
+		}
+
+		if (good1 && good2) {
+#pragma omp critical(totalReads)
+			{
+				++totalReads;
+				if (totalReads % 1000000 == 0) {
+					cerr << "Currently Reading Read Number: " << totalReads
+							<< endl;
+				}
 			}
 
-			//initialize hits to zero
-			initHits(hits1);
-			initHits(hits2);
+			//hits results stored in hashmap of filter names and hits
+			unordered_map<string, bool> hits1(filterNum);
+			unordered_map<string, bool> hits2(filterNum);
 
 			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 			for (vector<string>::const_iterator j = hashSigs.begin();
@@ -453,8 +389,13 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 				if (tempStr1 == tempStr2) {
-					evaluateRead(rec1, *j, hits1);
-					evaluateRead(rec2, *j, hits2);
+					if (minHitOnly) {
+						evaluateRead(rec1, *j, hits1);
+						evaluateRead(rec2, *j, hits2);
+					} else {
+						evaluateReadStd(rec1, *j, hits1);
+						evaluateReadStd(rec2, *j, hits2);
+					}
 				} else {
 					cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
 							<< tempStr2 << endl;
@@ -464,70 +405,45 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 			string readID = rec1.id.substr(0, rec1.id.length() - 2);
 
+			string outputFileName;
+
 			//Evaluate hit data and record for summary
-			const string &outputFileName = resSummary.updateSummaryData(
-					rec1.seq.length(), rec2.seq.length(), hits1, hits2);
-
-			if (outputType == "fa") {
-				(*outputFiles[outputFileName + "1"]) << ">" << rec1.id << "\n"
-						<< rec1.seq << "\n";
-				(*outputFiles[outputFileName + "2"]) << ">" << rec2.id << "\n"
-						<< rec2.seq << "\n";
-			} else {
-				(*outputFiles[outputFileName + "1"]) << "@" << rec1.id << "\n"
-						<< rec1.seq << "\n+\n" << rec1.qual << "\n";
-				(*outputFiles[outputFileName + "2"]) << "@" << rec2.id << "\n"
-						<< rec2.seq << "\n+\n" << rec2.qual << "\n";
-			}
-		}
-	} else {
-
-		while (sequence1 >> rec1 && sequence2 >> rec2) {
-			++totalReads;
-			if (totalReads % 1000000 == 0) {
-				cerr << "Currently Reading Read Number: " << totalReads << endl;
-			}
-
-			//initialize hits to zero
-			initHits(hits1);
-			initHits(hits2);
-
-			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-			for (vector<string>::const_iterator j = hashSigs.begin();
-					j != hashSigs.end(); ++j)
+#pragma omp critical(resSummary)
 			{
-				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
-				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
-				if (tempStr1 == tempStr2) {
-					evaluateReadStd(rec1, *j, hits1);
-					evaluateReadStd(rec2, *j, hits2);
-				} else {
-					cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
-							<< tempStr2 << endl;
-					exit(1);
+				outputFileName = resSummary.updateSummaryData(hits1, hits2);
+			}
+
+			bool print = false;
+			do {
+#pragma omp critical(outputFiles)
+				{
+#pragma omp critical(g_pq)
+					if (!print) {
+						print = g_pq.front() == rec1.id;
+						if (print)
+							g_pq.pop();
+					}
+					if (print) {
+						if (outputType == "fa") {
+							(*outputFiles[outputFileName + "1"]) << ">"
+									<< rec1.id << "\n" << rec1.seq << "\n";
+							(*outputFiles[outputFileName + "2"]) << ">"
+									<< rec2.id << "\n" << rec2.seq << "\n";
+						} else {
+							(*outputFiles[outputFileName + "1"]) << "@"
+									<< rec1.id << "\n" << rec1.seq << "\n+\n"
+									<< rec1.qual << "\n";
+							(*outputFiles[outputFileName + "2"]) << "@"
+									<< rec2.id << "\n" << rec2.seq << "\n+\n"
+									<< rec2.qual << "\n";
+						}
+					}
 				}
-			}
-
-			string readID = rec1.id.substr(0, rec1.id.length() - 2);
-
-			//Evaluate hit data and record for summary
-			const string &outputFileName = resSummary.updateSummaryData(
-					rec1.seq.length(), rec2.seq.length(), hits1, hits2);
-
-			if (outputType == "fa") {
-				(*outputFiles[outputFileName + "1"]) << ">" << rec1.id << "\n"
-						<< rec1.seq << "\n";
-				(*outputFiles[outputFileName + "2"]) << ">" << rec2.id << "\n"
-						<< rec2.seq << "\n";
-			} else {
-				(*outputFiles[outputFileName + "1"]) << "@" << rec1.id << "\n"
-						<< rec1.seq << "\n+\n" << rec1.qual << "\n";
-				(*outputFiles[outputFileName + "2"]) << "@" << rec2.id << "\n"
-						<< rec2.seq << "\n+\n" << rec2.qual << "\n";
-			}
-		}
+			} while (!print); // spinlock :(
+		} else
+			break;
 	}
-	if (sequence2 >> rec2 && sequence1.eof() && sequence2.eof()) {
+	if (sequence1.eof() && sequence2.eof()) {
 		cerr
 				<< "error: eof bit not flipped. Input files may be different lengths"
 				<< endl;
@@ -567,119 +483,67 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 	cerr << "Filtering Start" << "\n";
 
 	FastaReader sequence(file.c_str(), FastaReader::NO_FOLD_CASE);
-	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, double> hits1(filterNum);
-	unordered_map<string, double> hits2(filterNum);
-
-	if (minHitOnly) {
-		while (!sequence.eof()) {
-			FastqRecord rec;
-			if (sequence >> rec) {
+#pragma omp parallel
+	for (FastqRecord rec;;) {
+		bool good;
+		bool pairfound;
+		FastqRecord rec1;
+		FastqRecord rec2;
+#pragma omp critical(unPairedReads)
+		{
+			good = sequence >> rec;
+			//track read progress
+			if (good) {
 				string readID = rec.id.substr(0, rec.id.length() - 2);
 				if (unPairedReads.find(readID) != unPairedReads.end()) {
+					rec1 = rec.id.at(rec.id.length() - 1) == '1' ?
+							rec : unPairedReads[readID];
+					rec2 = rec.id.at(rec.id.length() - 1) == '2' ?
+							rec : unPairedReads[readID];
+					pairfound = true;
+					unPairedReads.erase(readID);
+				} else {
+					pairfound = false;
+					unPairedReads[readID] = rec;
+				}
+			}
+		}
 
-					const FastqRecord &rec1 =
-							rec.id.at(rec.id.length() - 1) == '1' ?
-									rec : unPairedReads[readID];
-					const FastqRecord &rec2 =
-							rec.id.at(rec.id.length() - 1) == '2' ?
-									rec : unPairedReads[readID];
-
+		if (good) {
+			if (pairfound) {
+#pragma omp critical(totalReads)
+				{
 					++totalReads;
 					if (totalReads % 1000000 == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< endl;
 					}
-
-					//initialize hits to zero
-					initHits(hits1);
-					initHits(hits2);
-
-					//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-					for (vector<string>::const_iterator j = hashSigs.begin();
-							j != hashSigs.end(); ++j)
-					{
-						string tempStr1 = rec1.id.substr(0,
-								rec1.id.find_last_of("/"));
-						string tempStr2 = rec2.id.substr(0,
-								rec2.id.find_last_of("/"));
-						if (tempStr1 == tempStr2) {
-							evaluateRead(rec1, *j, hits1);
-							evaluateRead(rec2, *j, hits2);
-						} else {
-							cerr << "Read IDs do not match" << "\n" << tempStr1
-									<< "\n" << tempStr2 << endl;
-							exit(1);
-						}
-					}
-
-					//Evaluate hit data and record for summary
-					resSummary.updateSummaryData(rec1.seq.length(),
-							rec2.seq.length(), hits1, hits2);
-
-					//clean up reads
-					unPairedReads.erase(readID);
-
-				} else {
-					unPairedReads[readID] = rec;
 				}
-			}
-		}
-	} else {
-		while (!sequence.eof()) {
-			FastqRecord rec;
-			if (sequence >> rec) {
-				string readID = rec.id.substr(0, rec.id.length() - 2);
-				if (unPairedReads.find(readID) != unPairedReads.end()) {
 
-					const FastqRecord &rec1 =
-							rec.id.at(rec.id.length() - 1) == '1' ?
-									rec : unPairedReads[readID];
-					const FastqRecord &rec2 =
-							rec.id.at(rec.id.length() - 1) == '2' ?
-									rec : unPairedReads[readID];
+				unordered_map<string, bool> hits1(filterNum);
+				unordered_map<string, bool> hits2(filterNum);
 
-					++totalReads;
-					if (totalReads % 1000000 == 0) {
-						cerr << "Currently Reading Read Number: " << totalReads
-								<< endl;
+				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
+				for (vector<string>::const_iterator j = hashSigs.begin();
+						j != hashSigs.end(); ++j)
+				{
+					if (minHitOnly) {
+						evaluateRead(rec1, *j, hits1);
+						evaluateRead(rec2, *j, hits2);
+					} else {
+						evaluateReadStd(rec1, *j, hits1);
+						evaluateReadStd(rec2, *j, hits2);
 					}
-
-					//initialize hits to zero
-					initHits(hits1);
-					initHits(hits2);
-
-					//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-					for (vector<string>::const_iterator j = hashSigs.begin();
-							j != hashSigs.end(); ++j)
-					{
-						string tempStr1 = rec1.id.substr(0,
-								rec1.id.find_last_of("/"));
-						string tempStr2 = rec2.id.substr(0,
-								rec2.id.find_last_of("/"));
-						if (tempStr1 == tempStr2) {
-							evaluateReadStd(rec1, *j, hits1);
-							evaluateReadStd(rec2, *j, hits2);
-						} else {
-							cerr << "Read IDs do not match" << "\n" << tempStr1
-									<< "\n" << tempStr2 << endl;
-							exit(1);
-						}
-					}
-
-					//Evaluate hit data and record for summary
-					resSummary.updateSummaryData(rec1.seq.length(),
-							rec2.seq.length(), hits1, hits2);
-
-					//clean up reads
-					unPairedReads.erase(readID);
-
-				} else {
-					unPairedReads[readID] = rec;
 				}
+
+				//Evaluate hit data and record for summary
+#pragma omp critical(resSummary)
+				resSummary.updateSummaryData(hits1, hits2);
 			}
-		}
+		} else
+			break;
 	}
+	assert(sequence.eof());
 
 	Dynamicofstream summaryOutput(prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
@@ -690,7 +554,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
  * Filters reads -> uses paired end information
  * Assumes only one hash signature exists (load only filters with same
  * hash functions)
- * Prints reads into seperate files
+ * Prints reads into separate files
  */
 void BioBloomClassifier::filterPairBAMPrint(const string &file,
 		const string &outputType)
@@ -740,151 +604,114 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 		}
 	}
 
+	//for output files in consistent order
+	queue<string> g_pq;
+
 	//print out header info and initialize variables for summary
 	cerr << "Filtering Start" << "\n";
 
 	FastaReader sequence(file.c_str(), FastaReader::NO_FOLD_CASE);
-	//hits results stored in hashmap of filter names and hits
-	unordered_map<string, double> hits1(filterNum);
-	unordered_map<string, double> hits2(filterNum);
-
-	if (minHitOnly) {
-		while (!sequence.eof()) {
-			FastqRecord rec;
-			if (sequence >> rec) {
+#pragma omp parallel
+	for (FastqRecord rec;;) {
+		bool good;
+		bool pairfound = false;
+		FastqRecord rec1;
+		FastqRecord rec2;
+#pragma omp critical(unPairedReads)
+		{
+			good = sequence >> rec;
+			//track read progress
+			if (good) {
 				string readID = rec.id.substr(0, rec.id.length() - 2);
 				if (unPairedReads.find(readID) != unPairedReads.end()) {
-
-					const FastqRecord &rec1 =
-							rec.id.at(rec.id.length() - 1) == '1' ?
-									rec : unPairedReads[readID];
-					const FastqRecord &rec2 =
-							rec.id.at(rec.id.length() - 1) == '2' ?
-									rec : unPairedReads[readID];
-
+					rec1 = rec.id.at(rec.id.length() - 1) == '1' ?
+							rec : unPairedReads[readID];
+					rec2 = rec.id.at(rec.id.length() - 1) == '2' ?
+							rec : unPairedReads[readID];
+					pairfound = true;
+					unPairedReads.erase(readID);
+					g_pq.push(rec1.id);
+				} else {
+					unPairedReads[readID] = rec;
+				}
+			}
+		}
+		if (good) {
+			if (pairfound) {
+#pragma omp critical(totalReads)
+				{
 					++totalReads;
 					if (totalReads % 1000000 == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< endl;
 					}
+				}
 
-					//initialize hits to zero
-					initHits(hits1);
-					initHits(hits2);
+				unordered_map<string, bool> hits1(filterNum);
+				unordered_map<string, bool> hits2(filterNum);
 
-					//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-					for (vector<string>::const_iterator j = hashSigs.begin();
-							j != hashSigs.end(); ++j)
-					{
-						string tempStr1 = rec1.id.substr(0,
-								rec1.id.find_last_of("/"));
-						string tempStr2 = rec2.id.substr(0,
-								rec2.id.find_last_of("/"));
-						if (tempStr1 == tempStr2) {
+				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
+				for (vector<string>::const_iterator j = hashSigs.begin();
+						j != hashSigs.end(); ++j)
+				{
+					string tempStr1 = rec1.id.substr(0,
+							rec1.id.find_last_of("/"));
+					string tempStr2 = rec2.id.substr(0,
+							rec2.id.find_last_of("/"));
+					if (tempStr1 == tempStr2) {
+						if (minHitOnly) {
 							evaluateRead(rec1, *j, hits1);
 							evaluateRead(rec2, *j, hits2);
 						} else {
-							cerr << "Read IDs do not match" << "\n" << tempStr1
-									<< "\n" << tempStr2 << endl;
-							exit(1);
-						}
-					}
-
-					//Evaluate hit data and record for summary
-					const string &outputFileName = resSummary.updateSummaryData(
-							rec1.seq.length(), rec2.seq.length(), hits1, hits2);
-
-					if (outputType == "fa") {
-						(*outputFiles[outputFileName + "1"]) << ">" << rec1.id
-								<< "\n" << rec1.seq << "\n";
-						(*outputFiles[outputFileName + "2"]) << ">" << rec2.id
-								<< "\n" << rec2.seq << "\n";
-					} else {
-						(*outputFiles[outputFileName + "1"]) << "@" << rec1.id
-								<< "\n" << rec1.seq << "\n+\n" << rec1.qual
-								<< "\n";
-						(*outputFiles[outputFileName + "2"]) << "@" << rec2.id
-								<< "\n" << rec2.seq << "\n+\n" << rec2.qual
-								<< "\n";
-					}
-
-					//clean up reads
-					unPairedReads.erase(readID);
-
-				} else {
-					unPairedReads[readID] = rec;
-				}
-			}
-		}
-	} else {
-		while (!sequence.eof()) {
-			FastqRecord rec;
-			if (sequence >> rec) {
-				string readID = rec.id.substr(0, rec.id.length() - 2);
-				if (unPairedReads.find(readID) != unPairedReads.end()) {
-
-					const FastqRecord &rec1 =
-							rec.id.at(rec.id.length() - 1) == '1' ?
-									rec : unPairedReads[readID];
-					const FastqRecord &rec2 =
-							rec.id.at(rec.id.length() - 1) == '2' ?
-									rec : unPairedReads[readID];
-
-					++totalReads;
-					if (totalReads % 1000000 == 0) {
-						cerr << "Currently Reading Read Number: " << totalReads
-								<< endl;
-					}
-
-					//initialize hits to zero
-					initHits(hits1);
-					initHits(hits2);
-
-					//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
-					for (vector<string>::const_iterator j = hashSigs.begin();
-							j != hashSigs.end(); ++j)
-					{
-						string tempStr1 = rec1.id.substr(0,
-								rec1.id.find_last_of("/"));
-						string tempStr2 = rec2.id.substr(0,
-								rec2.id.find_last_of("/"));
-						if (tempStr1 == tempStr2) {
 							evaluateReadStd(rec1, *j, hits1);
 							evaluateReadStd(rec2, *j, hits2);
-						} else {
-							cerr << "Read IDs do not match" << "\n" << tempStr1
-									<< "\n" << tempStr2 << endl;
-							exit(1);
+						}
+					} else {
+						cerr << "Read IDs do not match" << "\n" << tempStr1
+								<< "\n" << tempStr2 << endl;
+						exit(1);
+					}
+				}
+
+				string outputFileName;
+
+				//Evaluate hit data and record for summary
+#pragma omp critical(resSummary)
+				{
+					outputFileName = resSummary.updateSummaryData(hits1, hits2);
+				}
+				bool print = false;
+				do {
+#pragma omp critical(outputFiles)
+					{
+#pragma omp critical(g_pq)
+						if (!print) {
+							print = g_pq.front() == rec1.id;
+							if (print)
+								g_pq.pop();
+						}
+						if (print) {
+							if (outputType == "fa") {
+								(*outputFiles[outputFileName + "1"]) << ">"
+										<< rec1.id << "\n" << rec1.seq << "\n";
+								(*outputFiles[outputFileName + "2"]) << ">"
+										<< rec2.id << "\n" << rec2.seq << "\n";
+							} else {
+								(*outputFiles[outputFileName + "1"]) << "@"
+										<< rec1.id << "\n" << rec1.seq
+										<< "\n+\n" << rec1.qual << "\n";
+								(*outputFiles[outputFileName + "2"]) << "@"
+										<< rec2.id << "\n" << rec2.seq
+										<< "\n+\n" << rec2.qual << "\n";
+							}
 						}
 					}
-
-					//Evaluate hit data and record for summary
-					const string &outputFileName = resSummary.updateSummaryData(
-							rec1.seq.length(), rec2.seq.length(), hits1, hits2);
-
-					if (outputType == "fa") {
-						(*outputFiles[outputFileName + "1"]) << ">" << rec1.id
-								<< "\n" << rec1.seq << "\n";
-						(*outputFiles[outputFileName + "2"]) << ">" << rec2.id
-								<< "\n" << rec2.seq << "\n";
-					} else {
-						(*outputFiles[outputFileName + "1"]) << "@" << rec1.id
-								<< "\n" << rec1.seq << "\n+\n" << rec1.qual
-								<< "\n";
-						(*outputFiles[outputFileName + "2"]) << "@" << rec2.id
-								<< "\n" << rec2.seq << "\n+\n" << rec2.qual
-								<< "\n";
-					}
-
-					//clean up reads
-					unPairedReads.erase(readID);
-
-				} else {
-					unPairedReads[readID] = rec;
-				}
+				} while (!print); // spinlock :(
 			}
-		}
+		} else
+			break;
 	}
+	assert(sequence.eof());
 
 	//close sorting files
 	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j =
@@ -967,7 +794,7 @@ const bool BioBloomClassifier::fexists(const string &filename) const
  * Faster variant that assume there a redundant tile of 0
  */
 void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
-		const string &hashSig, unordered_map<string, double> &hits)
+		const string &hashSig, unordered_map<string, bool> &hits)
 {
 	//get filterIDs to iterate through has in a consistent order
 	const vector<string> &idsInFilter = (*filters[hashSig]).getFilterIds();
@@ -975,9 +802,17 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	//get kmersize for set of info files
 	uint16_t kmerSize = infoFiles.at(hashSig).front()->getKmerSize();
 
+	unordered_map<string, uint16_t> tempHits;
+
 	//Establish tiling pattern
 	uint16_t startModifier1 = (rec.seq.length() % kmerSize) / 2;
 	size_t currentKmerNum = 0;
+
+	for (vector<string>::const_iterator i = idsInFilter.begin();
+			i != idsInFilter.end(); ++i)
+	{
+		tempHits[*i] = 0;
+	}
 
 	ReadsProcessor proc(kmerSize);
 	//cut read into kmer size given
@@ -996,12 +831,17 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 			for (vector<string>::const_iterator i = idsInFilter.begin();
 					i != idsInFilter.end(); ++i)
 			{
-				if (results.find(*i)->second) {
-					++hits[*i];
+				if (results.at(*i)) {
+					++tempHits[*i];
 				}
 			}
 		}
 		++currentKmerNum;
+	}
+	for (vector<string>::const_iterator i = idsInFilter.begin();
+			i != idsInFilter.end(); ++i)
+	{
+		hits[*i] = tempHits.at(*i) > minHit;
 	}
 }
 
@@ -1011,7 +851,7 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
  * Updates hits value to number of hits (hashSig is used to as key)
  */
 void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
-		const string &hashSig, unordered_map<string, double> &hits)
+		const string &hashSig, unordered_map<string, bool> &hits)
 {
 
 	//get filterIDs to iterate through has in a consistent order
@@ -1023,12 +863,12 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 
 	double normalizationValue = rec.seq.length() - kmerSize + 1;
 	double threshold = scoreThreshold * normalizationValue;
-	double threshold_miss = 1.0 - threshold;
 
 	for (vector<string>::const_iterator i = idsInFilter.begin();
 			i != idsInFilter.end(); ++i)
 	{
 		bool pass = false;
+		hits[*i] = false;
 		if (minHit > 0) {
 			uint16_t screeningHits = 0;
 			size_t screeningLoc = rec.seq.length() % kmerSize / 2;
@@ -1074,6 +914,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 							score += 1 - 1 / (2 * streak);
 							++currentLoc;
 							if (threshold <= score) {
+								hits[*i] = true;
 								break;
 							}
 							continue;
@@ -1089,105 +930,9 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 					streak = 0;
 				}
 			}
-			hits[*i] = score / normalizationValue;
 		}
 	}
 }
-
-///*
-// * Initializes Summary Variables. Also prints headers for read status.
-// */
-//const string BioBloomClassifier::getReadSummaryHeader(
-//		const vector<string> &hashSigs)
-//{
-//	stringstream readStatusOutput;
-//	readStatusOutput << "readID\tseqSize";
-//
-//	//initialize variables and print filter ids
-//	for (vector<string>::const_iterator j = hashSigs.begin();
-//			j != hashSigs.end(); ++j)
-//	{
-//		vector<string> idsInFilter = (*filters[*j]).getFilterIds();
-//		for (vector<string>::const_iterator i = idsInFilter.begin();
-//				i != idsInFilter.end(); ++i)
-//		{
-//			readStatusOutput << "\t" << *i << "_"
-//					<< (*(infoFiles[*j].front())).getKmerSize();
-//		}
-//	}
-//	readStatusOutput << "\n";
-//	return readStatusOutput.str();
-//}
-
-/*
- * Initializes hits results to zero
- */
-void BioBloomClassifier::initHits(unordered_map<string, double> &hits)
-{
-	//initialize hits to zero
-	for (vector<string>::const_iterator j = hashSigs.begin();
-			j != hashSigs.end(); ++j)
-	{
-		const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i)
-		{
-			hits[*i] = 0;
-		}
-	}
-}
-
-///*
-// * return results of hits to be output for read status
-// */
-//const string BioBloomClassifier::getReadStatStr(string const &readID,
-//		size_t readLength, unordered_map<string, double> &hits)
-//{
-//	stringstream str;
-//	str << readID << "\t" << readLength;
-//	//print readID
-//	for (vector<string>::const_iterator j = hashSigs.begin();
-//			j != hashSigs.end(); ++j)
-//	{
-//		//update summary
-//		const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
-//		for (vector<string>::const_iterator i = idsInFilter.begin();
-//				i != idsInFilter.end(); ++i)
-//		{
-//			//print to file
-//			str << "\t" << hits[*i];
-//		}
-//	}
-//	str << "\n";
-//	return str.str();
-//}
-//
-///*
-// * return results of hits to be output for read status for paired end mode
-// */
-//const string BioBloomClassifier::getReadStatStrPair(string const &readID,
-//		size_t readLength1, size_t readLength2,
-//		unordered_map<string, double> &hits1,
-//		unordered_map<string, double> &hits2)
-//{
-//	stringstream str;
-//	str << readID << "\t" << readLength1 << "|" << readLength2;
-//	//print readID
-//	for (vector<string>::const_iterator j = hashSigs.begin();
-//			j != hashSigs.end(); ++j)
-//	{
-//		//update summary
-//		const vector<string> &idsInFilter = (*filters[*j]).getFilterIds();
-//		for (vector<string>::const_iterator i = idsInFilter.begin();
-//				i != idsInFilter.end(); ++i)
-//		{
-//			//print to file
-//			str << "\t" << hits1[*i] << "|" << hits2[*i];
-//		}
-//	}
-//	str << "\n";
-//	return str.str();
-//}
 
 BioBloomClassifier::~BioBloomClassifier()
 {

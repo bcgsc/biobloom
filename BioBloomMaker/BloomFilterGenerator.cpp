@@ -26,8 +26,8 @@
  * filenames with corresponding headers to make filter from.
  */
 BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
-		uint16_t kmerSize, uint8_t hashNum) :
-		hashNum(hashNum), kmerSize(kmerSize), expectedEntries(0), filterSize(0), totalEntries(
+		uint16_t kmerSize, uint8_t hashNum):
+		kmerSize(kmerSize), hashNum(hashNum), expectedEntries(0), filterSize(0), totalEntries(
 				0) {
 
 	//for each file loop over all headers and obtain max number of elements
@@ -51,7 +51,7 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
  */
 BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 		uint16_t kmerSize, uint8_t hashNum, size_t numElements) :
-		hashNum(hashNum), kmerSize(kmerSize), expectedEntries(numElements), filterSize(
+		kmerSize(kmerSize), hashNum(hashNum),  expectedEntries(numElements), filterSize(
 				0), totalEntries(0) {
 	//for each file loop over all headers and obtain max number of elements
 	for (vector<string>::const_iterator i = filenames.begin();

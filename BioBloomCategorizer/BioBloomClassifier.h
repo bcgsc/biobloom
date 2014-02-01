@@ -42,17 +42,9 @@ private:
 	void loadFilters(const vector<string> &filterFilePaths);
 	const bool fexists(const string &filename) const;
 	void evaluateReadStd(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, double> &hits);
+			unordered_map<string, bool> &hits);
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, double> &hits);
-
-//	const string getReadSummaryHeader(const vector<string> &hashSigs);
-	void initHits(unordered_map<string, double> &hits);
-//	const string getReadStatStr(string const &readID, size_t readLength,
-//			unordered_map<string, double> &hits);
-//	const string getReadStatStrPair(string const &readID, size_t readLength1,
-//			size_t readLength2, unordered_map<string, double> &hits1,
-//			unordered_map<string, double> &hits2);
+			unordered_map<string, bool> &hits);
 
 	//group filters with same hash number
 	unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > infoFiles;
@@ -61,8 +53,8 @@ private:
 	vector<string> hashSigs;
 	double scoreThreshold;
 	uint8_t filterNum;
-	const string &postfix;
 	const string &prefix;
+	const string &postfix;
 	const uint16_t streakThreshold;
 	const uint16_t minHit;
 	const bool minHitOnly;

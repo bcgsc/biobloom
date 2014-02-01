@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
 	//set number of hash functions used
 	if (hashNum == 0) {
 		//get optimal number of hash functions
-		hashNum = calcOptiHashNum(fpr);
+		hashNum = uint16_t(-log(fpr) / log(2));
 	}
 
 	//create filter
