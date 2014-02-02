@@ -828,7 +828,7 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	for (vector<string>::const_iterator i = idsInFilter.begin();
 			i != idsInFilter.end(); ++i)
 	{
-		hits[*i] = tempHits.at(*i) > minHit;
+		hits[*i] = tempHits.at(*i) >= minHit;
 	}
 }
 
