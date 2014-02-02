@@ -22,8 +22,8 @@ using namespace std;
 #define PROGRAM "biobloomcategorizer"
 
 namespace opt {
-	/** The number of parallel threads. */
-	static unsigned threads = 1;
+/** The number of parallel threads. */
+static unsigned threads = 1;
 }
 
 void printVersion()
@@ -70,6 +70,7 @@ void printHelpDialog()
 {
 	const char dialog[] =
 			"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
+					"biobloomcategorizer [OPTION]... -e -f \"[FILTER1]...\" [FILE1.fq] [FILE2.fq]\n"
 					"Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or\n"
 					"BAM format and compressed with gz, bz2 or xz and may be tarred.\n"
 					"\n"
@@ -80,11 +81,11 @@ void printHelpDialog()
 					"  -e, --paired_mode      Uses paired-end information. For BAM or SAM file if\n"
 					"                         they are poorly ordered, memory usage will be much\n"
 					"                         larger than normal. Sorting by read name may be needed.\n"
-					"  -s, --score=N          Score threshold for matching. Maximum threshold \n"
-					"                         is 1 (highest specificity), minimum is 0 (highest \n"
-					"                         .sensitivity). Lower score threshold will decrease\n"
-					"                         run time. [0.15]\n"
-					"  -t, --threads=N        The number of threads to use. [1]"
+					"  -s, --score=N          Score threshold for matching. Maximum threshold is 1\n"
+					"                         (highest specificity), minimum is 0 (highest\n"
+					"                         sensitivity). Lower score threshold will decrease run\n"
+					"                         time. [0.15]\n"
+					"  -t, --threads=N        The number of threads to use. [1]\n"
 					"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
 					"      --fa               Output categorized reads in Fasta files.\n"
 					"      --fq               Output categorized reads in Fastq files.\n"
@@ -102,9 +103,9 @@ void printHelpDialog()
 					"  -r, --streak=N         The number of hit tiling in second pass needed to jump\n"
 					"                         Several tiles upon a miss. Small values decrease runtime\n"
 					"                         but decrease sensitivity. [3]\n"
-					"  -o, --min_hit_only     Use initial pass filtering only to evaluate reads. Very\n"
-					"                         fast but prone to false positives, use only on long\n"
-					"                         reads (>100bp).\n"
+					"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Very\n"
+					"                         fast but lower sensitivity and specificity, use only on\n"
+					"                         long reads (>100bp).\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
@@ -204,7 +205,7 @@ int main(int argc, char *argv[])
 		}
 		case 't': {
 			stringstream convert(optarg);
-			if (!(convert >> opt::threads )) {
+			if (!(convert >> opt::threads)) {
 				cerr << "Error - Invalid parameter! t: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
@@ -239,7 +240,7 @@ int main(int argc, char *argv[])
 
 #if defined(_OPENMP)
 	if (opt::threads > 0)
-		omp_set_num_threads(opt::threads);
+	omp_set_num_threads(opt::threads);
 #endif
 
 	vector<string> filterFilePaths = convertInputString(filtersFile);
