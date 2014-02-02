@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 	int fastq = 0;
 	int fasta = 0;
 	string filePostfix = "";
-	double score = 0.2;
+	double score = 0.15;
 
 	//advanced options
 	uint16_t minHit = 1;

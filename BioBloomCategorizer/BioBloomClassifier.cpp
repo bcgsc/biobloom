@@ -173,9 +173,8 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				}
 
 				//Evaluate hit data and record for summary
-#pragma omp critical(resSummary)
-				{
-					const string &outputFileName = resSummary.updateSummaryData(hits);
+				const string &outputFileName = resSummary.updateSummaryData(
+						hits);
 				if (outputType == "fa") {
 #pragma omp critical(outputFiles)
 					{
@@ -188,7 +187,6 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 						(*outputFiles[outputFileName]) << "@" << rec.id << "\n"
 								<< rec.seq << "\n+\n" << rec.qual << "\n";
 					}
-				}
 				}
 			} else
 				break;
@@ -277,12 +275,11 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 			string readID = rec1.id.substr(0, rec1.id.length() - 2);
 
 			//Evaluate hit data and record for summary
-#pragma omp critical(resSummary)
 			resSummary.updateSummaryData(hits1, hits2);
 		} else
 			break;
 	}
-	if (sequence1.eof() && sequence2.eof()) {
+	if (!sequence1.eof() || !sequence2.eof()) {
 		cerr
 				<< "error: eof bit not flipped. Input files may be different lengths"
 				<< endl;
@@ -405,13 +402,9 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 			string readID = rec1.id.substr(0, rec1.id.length() - 2);
 
-			string outputFileName;
-
 			//Evaluate hit data and record for summary
-#pragma omp critical(resSummary)
-			{
-				outputFileName = resSummary.updateSummaryData(hits1, hits2);
-			}
+
+			const string &outputFileName = resSummary.updateSummaryData(hits1, hits2);
 
 			bool print = false;
 			do {
@@ -443,7 +436,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 		} else
 			break;
 	}
-	if (sequence1.eof() && sequence2.eof()) {
+	if (!sequence1.eof() || !sequence2.eof()) {
 		cerr
 				<< "error: eof bit not flipped. Input files may be different lengths"
 				<< endl;
@@ -537,7 +530,6 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 				}
 
 				//Evaluate hit data and record for summary
-#pragma omp critical(resSummary)
 				resSummary.updateSummaryData(hits1, hits2);
 			}
 		} else
@@ -673,13 +665,8 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 					}
 				}
 
-				string outputFileName;
-
 				//Evaluate hit data and record for summary
-#pragma omp critical(resSummary)
-				{
-					outputFileName = resSummary.updateSummaryData(hits1, hits2);
-				}
+				const string &outputFileName = resSummary.updateSummaryData(hits1, hits2);
 				bool print = false;
 				do {
 #pragma omp critical(outputFiles)

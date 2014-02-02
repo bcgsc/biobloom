@@ -25,9 +25,9 @@ public:
 			const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
 			double scoreThreshold);
 
-	const string updateSummaryData(unordered_map<string, bool> &hits);
-	const string updateSummaryData(unordered_map<string, bool> &hits1,
-			unordered_map<string, bool> &hits2);
+	const string updateSummaryData(const unordered_map<string, bool> &hits);
+	const string updateSummaryData(const unordered_map<string, bool> &hits1,
+			const unordered_map<string, bool> &hits2);
 
 	const string getResultsSummary(size_t readCount) const;
 	virtual ~ResultsManager();

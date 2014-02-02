@@ -7,6 +7,10 @@
 
 #include "ResultsManager.h"
 #include <sstream>
+#if _OPENMP
+# include <omp.h>
+#endif
+
 
 ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
 		const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
@@ -35,9 +39,9 @@ ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
  * Returns qualifying read IDs that meet threshold
  */
 const string ResultsManager::updateSummaryData(
-		unordered_map<string, bool> &hits)
+		const unordered_map<string, bool> &hits)
 {
-	string filterID = "noMatch";
+	string filterID;
 	bool noMatchFlag = true;
 	bool multiMatchFlag = false;
 
@@ -50,25 +54,27 @@ const string ResultsManager::updateSummaryData(
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			if (hits[*i]) {
+			if (hits.at(*i)) {
 #pragma omp atomic
 				++aboveThreshold[*i];
 				if (noMatchFlag) {
 					noMatchFlag = false;
 					filterID = *i;
-#pragma omp atomic
-					++noMatch;
 				} else {
 					multiMatchFlag = true;
-#pragma omp atomic
-					++multiMatch;
 				}
 			}
 		}
 	}
-	if (!noMatchFlag) {
+	if (noMatchFlag) {
+		filterID = "noMatch";
+#pragma omp atomic
+		++noMatch;
+	} else {
 		if (multiMatchFlag) {
 			filterID = "multiMatch";
+#pragma omp atomic
+			++multiMatch;
 		} else {
 #pragma omp atomic
 			++unique[filterID];
@@ -83,9 +89,12 @@ const string ResultsManager::updateSummaryData(
  * both reads must qualify
  */
 const string ResultsManager::updateSummaryData(
-		unordered_map<string, bool> &hits1, unordered_map<string, bool> &hits2)
+		const unordered_map<string, bool> &hits1,
+		const unordered_map<string, bool> &hits2)
 {
-	string filterID = "noMatch";
+	string filterID;
+	bool noMatchFlag = true;
+	bool multiMatchFlag = false;
 
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
@@ -96,14 +105,30 @@ const string ResultsManager::updateSummaryData(
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			if (hits1[*i] && hits2[*i]) {
+			if (hits1.at(*i) && hits2.at(*i)) {
+#pragma omp atomic
 				++aboveThreshold[*i];
-				if (filterID == "noMatch") {
+				if (noMatchFlag) {
+					noMatchFlag = false;
 					filterID = *i;
 				} else {
-					filterID = "multiMatch";
+					multiMatchFlag = true;
 				}
 			}
+		}
+	}
+	if (noMatchFlag) {
+		filterID = "noMatch";
+#pragma omp atomic
+		++noMatch;
+	} else {
+		if (multiMatchFlag) {
+			filterID = "multiMatch";
+#pragma omp atomic
+			++multiMatch;
+		} else {
+#pragma omp atomic
+			++unique[filterID];
 		}
 	}
 	return filterID;
@@ -116,7 +141,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 
 	//print header
 	summaryOutput
-			<< "filter_id\thits\tmisses\tshared\tperc_hit\tperc_miss\tprec_shared\n";
+			<< "filter_id\thits\tmisses\tshared\tperc_hit\tperc_miss\tperc_shared\n";
 
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
@@ -131,7 +156,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 			summaryOutput << *i << "_" << tempVect.front()->getKmerSize();
 			summaryOutput << "\t" << aboveThreshold.at(*i);
 			summaryOutput << "\t" << readCount - aboveThreshold.at(*i);
-			summaryOutput << "\t" << aboveThreshold.at(*i) - unique.at(*i);
+			summaryOutput << "\t" << (aboveThreshold.at(*i) - unique.at(*i));
 			summaryOutput << "\t"
 					<< double(aboveThreshold.at(*i)) / double(readCount);
 			summaryOutput << "\t"
@@ -143,6 +168,24 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 			summaryOutput << "\n";
 		}
 	}
+
+	summaryOutput << "multiMatch";
+	summaryOutput << "\t" << multiMatch;
+	summaryOutput << "\t" << readCount - multiMatch;
+	summaryOutput << "\t" << 0;
+	summaryOutput << "\t" << double(multiMatch) / double(readCount);
+	summaryOutput << "\t" << double(readCount - multiMatch) / double(readCount);
+	summaryOutput << "\t" << 0.0;
+	summaryOutput << "\n";
+
+	summaryOutput << "noMatch";
+	summaryOutput << "\t" << noMatch;
+	summaryOutput << "\t" << readCount - noMatch;
+	summaryOutput << "\t" << 0;
+	summaryOutput << "\t" << double(noMatch) / double(readCount);
+	summaryOutput << "\t" << double(readCount - noMatch) / double(readCount);
+	summaryOutput << "\t" << 0.0;
+	summaryOutput << "\n";
 
 	cout << summaryOutput.str() << endl;
 	return summaryOutput.str();
