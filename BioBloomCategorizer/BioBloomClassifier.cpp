@@ -12,7 +12,6 @@
 #include <sys/stat.h>
 #include "Common/Dynamicofstream.h"
 #include "ResultsManager.h"
-#include <queue>
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -345,7 +344,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	}
 
 	//for output files in consistent order
-	queue<string> g_pq;
 
 	cerr << "Filtering Start" << "\n";
 
@@ -361,8 +359,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 		{
 			good1 = sequence1 >> rec1;
 			good2 = sequence2 >> rec2;
-			g_pq.push(rec1.id);
-			//track read progress
 		}
 
 		if (good1 && good2) {
@@ -404,35 +400,22 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 			//Evaluate hit data and record for summary
 
-			const string &outputFileName = resSummary.updateSummaryData(hits1, hits2);
-
-			bool print = false;
-			do {
+			const string &outputFileName = resSummary.updateSummaryData(hits1,
+					hits2);
 #pragma omp critical(outputFiles)
-				{
-#pragma omp critical(g_pq)
-					if (!print) {
-						print = g_pq.front() == rec1.id;
-						if (print)
-							g_pq.pop();
-					}
-					if (print) {
-						if (outputType == "fa") {
-							(*outputFiles[outputFileName + "1"]) << ">"
-									<< rec1.id << "\n" << rec1.seq << "\n";
-							(*outputFiles[outputFileName + "2"]) << ">"
-									<< rec2.id << "\n" << rec2.seq << "\n";
-						} else {
-							(*outputFiles[outputFileName + "1"]) << "@"
-									<< rec1.id << "\n" << rec1.seq << "\n+\n"
-									<< rec1.qual << "\n";
-							(*outputFiles[outputFileName + "2"]) << "@"
-									<< rec2.id << "\n" << rec2.seq << "\n+\n"
-									<< rec2.qual << "\n";
-						}
-					}
+			{
+				if (outputType == "fa") {
+					(*outputFiles[outputFileName + "1"]) << ">" << rec1.id
+							<< "\n" << rec1.seq << "\n";
+					(*outputFiles[outputFileName + "2"]) << ">" << rec2.id
+							<< "\n" << rec2.seq << "\n";
+				} else {
+					(*outputFiles[outputFileName + "1"]) << "@" << rec1.id
+							<< "\n" << rec1.seq << "\n+\n" << rec1.qual << "\n";
+					(*outputFiles[outputFileName + "2"]) << "@" << rec2.id
+							<< "\n" << rec2.seq << "\n+\n" << rec2.qual << "\n";
 				}
-			} while (!print); // spinlock :(
+			}
 		} else
 			break;
 	}
@@ -596,9 +579,6 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 		}
 	}
 
-	//for output files in consistent order
-	queue<string> g_pq;
-
 	//print out header info and initialize variables for summary
 	cerr << "Filtering Start" << "\n";
 
@@ -622,7 +602,6 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 							rec : unPairedReads[readID];
 					pairfound = true;
 					unPairedReads.erase(readID);
-					g_pq.push(rec1.id);
 				} else {
 					unPairedReads[readID] = rec;
 				}
@@ -666,34 +645,25 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 				}
 
 				//Evaluate hit data and record for summary
-				const string &outputFileName = resSummary.updateSummaryData(hits1, hits2);
-				bool print = false;
-				do {
+				const string &outputFileName = resSummary.updateSummaryData(
+						hits1, hits2);
 #pragma omp critical(outputFiles)
-					{
-#pragma omp critical(g_pq)
-						if (!print) {
-							print = g_pq.front() == rec1.id;
-							if (print)
-								g_pq.pop();
-						}
-						if (print) {
-							if (outputType == "fa") {
-								(*outputFiles[outputFileName + "1"]) << ">"
-										<< rec1.id << "\n" << rec1.seq << "\n";
-								(*outputFiles[outputFileName + "2"]) << ">"
-										<< rec2.id << "\n" << rec2.seq << "\n";
-							} else {
-								(*outputFiles[outputFileName + "1"]) << "@"
-										<< rec1.id << "\n" << rec1.seq
-										<< "\n+\n" << rec1.qual << "\n";
-								(*outputFiles[outputFileName + "2"]) << "@"
-										<< rec2.id << "\n" << rec2.seq
-										<< "\n+\n" << rec2.qual << "\n";
-							}
-						}
+				{
+
+					if (outputType == "fa") {
+						(*outputFiles[outputFileName + "1"]) << ">" << rec1.id
+								<< "\n" << rec1.seq << "\n";
+						(*outputFiles[outputFileName + "2"]) << ">" << rec2.id
+								<< "\n" << rec2.seq << "\n";
+					} else {
+						(*outputFiles[outputFileName + "1"]) << "@" << rec1.id
+								<< "\n" << rec1.seq << "\n+\n" << rec1.qual
+								<< "\n";
+						(*outputFiles[outputFileName + "2"]) << "@" << rec2.id
+								<< "\n" << rec2.seq << "\n+\n" << rec2.qual
+								<< "\n";
 					}
-				} while (!print); // spinlock :(
+				}
 			}
 		} else
 			break;
