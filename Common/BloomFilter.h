@@ -12,7 +12,7 @@
 #include <vector>
 #include <stdint.h>
 #include <omp.h>
-#include "city.h"
+#include "MurmurHash3.h"
 #include <math.h>
 
 using namespace std;
@@ -33,8 +33,11 @@ static inline vector<size_t> multiHash(const unsigned char* kmer, size_t num,
 	size_t kmerSizeInBytes = (kmerSize + 4 - 1) / 4;
 
 	for (size_t i = 0; i < num; ++i) {
-		tempHashValues[i] = CityHash64WithSeed(
-				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i);
+		uint64_t hashVals[2];
+		MurmurHash3_x64_128(kmer, kmerSizeInBytes, i, hashVals);
+		tempHashValues[i] = hashVals[0];
+		if(++i < num)
+			tempHashValues[i] = hashVals[1];
 	}
 	return tempHashValues;
 }
