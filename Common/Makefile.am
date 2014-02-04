@@ -5,7 +5,7 @@ libcommon_a_CPPFLAGS = -I$(top_srcdir)
 libcommon_a_SOURCES = \
 	BloomFilter.cpp BloomFilter.h \
 	BloomFilterInfo.cpp BloomFilterInfo.h \
-	MurmerHash3.cpp MurmerHash3.h \
+	city.cc city.h \
 	Dynamicofstream.cpp Dynamicofstream.h \
 	Fcontrol.cpp Fcontrol.h \
 	gzstream.C gzstream.h \

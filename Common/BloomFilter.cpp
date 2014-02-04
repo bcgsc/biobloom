@@ -81,6 +81,10 @@ void BloomFilter::insert(vector<size_t> const &precomputed) {
 	//iterates through hashed values adding it to the filter
 	for (size_t i = 0; i < hashNum; ++i) {
 		size_t normalizedValue = precomputed.at(i) % size;
+
+//		cout << normalizedValue << endl;
+//		exit(1);
+
 		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 				% bitsPerChar];
 	}
@@ -89,16 +93,10 @@ void BloomFilter::insert(vector<size_t> const &precomputed) {
 void BloomFilter::insert(const unsigned char* kmer) {
 	//iterates through hashed values adding it to the filter
 	for (size_t i = 0; i < hashNum ; ++i) {
-		uint64_t hashVals[2];
-		MurmurHash3_x64_128(kmer, kmerSizeInBytes, i, hashVals);
-		size_t normalizedValue = hashVals[0];
+		size_t normalizedValue = CityHash64WithSeed(
+				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i) % size;
 		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 				% bitsPerChar];
-		if (++i < hashNum) {
-			normalizedValue = hashVals[1];
-			filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
-					% bitsPerChar];
-		}
 	}
 }
 
@@ -121,22 +119,11 @@ const bool BloomFilter::contains(vector<size_t> const &values) const {
  */
 const bool BloomFilter::contains(const unsigned char* kmer) const {
 	for (int i = 0; i < hashNum; ++i) {
-		uint64_t hashVals[2];
-		MurmurHash3_x64_128(kmer, kmerSizeInBytes, i, hashVals);
-		size_t normalizedValue = hashVals[0];
-		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
-				% bitsPerChar];
+		size_t normalizedValue = CityHash64WithSeed(
+				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i) % size;
 		unsigned char bit = bitMask[normalizedValue % bitsPerChar];
 		if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
 			return false;
-		}
-		if (++i < hashNum) {
-			normalizedValue = hashVals[1];
-			bit = bitMask[normalizedValue % bitsPerChar];
-
-			if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
-				return false;
-			}
 		}
 	}
 	return true;
