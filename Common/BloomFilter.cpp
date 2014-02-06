@@ -22,42 +22,45 @@
  * kmerSize refers to the number of bases the kmer has
  * k-mers supplied to this object should be binary (2 bits per base)
  */
-BloomFilter::BloomFilter(size_t filterSize, uint8_t hashNum, uint16_t kmerSize) :
-		size(filterSize), hashNum(hashNum), kmerSize(kmerSize), kmerSizeInBytes(
+BloomFilter::BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize) :
+		m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize), m_kmerSizeInBytes(
 				(kmerSize + 4 - 1) / 4) {
-	initSize(size);
-	memset(filter, 0, sizeInBytes);
+	initSize(m_size);
+	memset(m_filter, 0, m_sizeInBytes);
 }
 
 /*
  * Loads the filter (file is a .bf file) from path specified
  */
-BloomFilter::BloomFilter(size_t filterSize, uint8_t hashNum, uint16_t kmerSize,
+BloomFilter::BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize,
 		string const &filterFilePath) :
-		size(filterSize), hashNum(hashNum), kmerSize(kmerSize), kmerSizeInBytes(
+		m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize), m_kmerSizeInBytes(
 				(kmerSize + 4 - 1) / 4) {
-	initSize(size);
+	initSize(m_size);
 
 	//Check file size is correct size
-	struct stat sb;
-	stat(filterFilePath.c_str(), &sb);
-	if (static_cast<size_t>(sb.st_size) != filterSize / 8) {
+	ifstream binaryFile(filterFilePath.c_str(), ios::binary);
+	binaryFile.seekg(0, std::ios::end);
+	size_t fileSize = binaryFile.tellg();
+	binaryFile.seekg(0, std::ios::beg);
+	if ( fileSize != m_sizeInBytes) {
 		cerr << "Error: " << filterFilePath
 				<< " does not match size given by its information file. Size: "
-				<< sb.st_size << "/" << filterSize / 8 << " bytes." << endl;
+				<< fileSize << " vs " << m_sizeInBytes << " bytes." << endl;
 		exit(1);
 	}
 
 	//load in blocks to a vector
-	ifstream binaryFile(filterFilePath.c_str(), ios::binary);
 	if (binaryFile.is_open()) {
-		binaryFile.read(reinterpret_cast<char*>(filter), size);
+		binaryFile.read(reinterpret_cast<char*>(m_filter), m_size);
 	} else {
 		cerr << "file \"" << filterFilePath << "\" could not be read." << endl;
 		binaryFile.close();
 		exit(1);
 	}
 	binaryFile.close();
+	assert(binaryFile);
+	assert((size_t) binaryFile.gcount() == m_sizeInBytes);
 }
 
 /*
@@ -69,8 +72,8 @@ void BloomFilter::initSize(size_t size) {
 				<< endl;
 		exit(1);
 	}
-	sizeInBytes = size / bitsPerChar;
-	filter = new unsigned char[sizeInBytes];
+	m_sizeInBytes = size / bitsPerChar;
+	m_filter = new unsigned char[m_sizeInBytes];
 }
 
 /*
@@ -79,23 +82,20 @@ void BloomFilter::initSize(size_t size) {
 void BloomFilter::insert(vector<size_t> const &precomputed) {
 
 	//iterates through hashed values adding it to the filter
-	for (size_t i = 0; i < hashNum; ++i) {
-		size_t normalizedValue = precomputed.at(i) % size;
+	for (size_t i = 0; i < m_hashNum; ++i) {
+		size_t normalizedValue = precomputed.at(i) % m_size;
 
-//		cout << normalizedValue << endl;
-//		exit(1);
-
-		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
+		m_filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 				% bitsPerChar];
 	}
 }
 
 void BloomFilter::insert(const unsigned char* kmer) {
 	//iterates through hashed values adding it to the filter
-	for (size_t i = 0; i < hashNum ; ++i) {
+	for (size_t i = 0; i < m_hashNum ; ++i) {
 		size_t normalizedValue = CityHash64WithSeed(
-				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i) % size;
-		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
+				reinterpret_cast<const char*>(kmer), m_kmerSizeInBytes, i) % m_size;
+		m_filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 				% bitsPerChar];
 	}
 }
@@ -103,11 +103,11 @@ void BloomFilter::insert(const unsigned char* kmer) {
 /*
  * Accepts a list of precomputed hash values. Faster than rehashing each time.
  */
-const bool BloomFilter::contains(vector<size_t> const &values) const {
-	for (size_t i = 0; i < hashNum; ++i) {
-		size_t normalizedValue = values.at(i) % size;
+bool BloomFilter::contains(vector<size_t> const &values) const {
+	for (size_t i = 0; i < m_hashNum; ++i) {
+		size_t normalizedValue = values.at(i) % m_size;
 		unsigned char bit = bitMask[normalizedValue % bitsPerChar];
-		if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
+		if ((m_filter[normalizedValue / bitsPerChar] & bit) != bit) {
 			return false;
 		}
 	}
@@ -117,12 +117,12 @@ const bool BloomFilter::contains(vector<size_t> const &values) const {
 /*
  * Single pass filtering, computes hash values on the fly
  */
-const bool BloomFilter::contains(const unsigned char* kmer) const {
-	for (int i = 0; i < hashNum; ++i) {
+bool BloomFilter::contains(const unsigned char* kmer) const {
+	for (unsigned i = 0; i < m_hashNum; ++i) {
 		size_t normalizedValue = CityHash64WithSeed(
-				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i) % size;
+				reinterpret_cast<const char*>(kmer), m_kmerSizeInBytes, i) % m_size;
 		unsigned char bit = bitMask[normalizedValue % bitsPerChar];
-		if ((filter[normalizedValue / bitsPerChar] & bit) != bit) {
+		if ((m_filter[normalizedValue / bitsPerChar] & bit) != bit) {
 			return false;
 		}
 	}
@@ -131,29 +131,30 @@ const bool BloomFilter::contains(const unsigned char* kmer) const {
 
 /*
  * Stores the filter as a binary file to the path specified
- * Stores uncompressed because the random data tend to
+ * Stores uncompressed because the random data tends to
  * compress poorly anyway
  */
 void BloomFilter::storeFilter(string const &filterFilePath) const {
 	ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
 
-	assert(myFile.good());
+	cerr << "Storing filter. Filter is " << m_sizeInBytes << "bytes." << endl;
+
+	assert(myFile);
 	//write out each block
-	for (size_t i = 0; i < sizeInBytes; i++) {
-		myFile << filter[i];
-	}
-	assert(myFile.good());
+	myFile.write(reinterpret_cast<char*>(m_filter), m_sizeInBytes);
+
 	myFile.close();
+	assert(myFile);
 }
 
 uint8_t BloomFilter::getHashNum() const {
-	return hashNum;
+	return m_hashNum;
 }
 
 uint8_t BloomFilter::getKmerSize() const {
-	return kmerSize;
+	return m_kmerSize;
 }
 
 BloomFilter::~BloomFilter() {
-	delete[] filter;
+	delete[] m_filter;
 }

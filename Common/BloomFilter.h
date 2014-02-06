@@ -42,29 +42,29 @@ static inline vector<size_t> multiHash(const unsigned char* kmer, size_t num,
 class BloomFilter {
 public:
 	//for generating a new filter
-	explicit BloomFilter(size_t filterSize, uint8_t hashNum, uint16_t kmerSize);
+	explicit BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize);
 	void insert(vector<size_t> const &precomputed);
 	void insert(const unsigned char* kmer);
-	const bool contains(vector<size_t> const &precomputed) const;
-	const bool contains(const unsigned char* kmer) const;
+	bool contains(vector<size_t> const &precomputed) const;
+	bool contains(const unsigned char* kmer) const;
 
 	uint8_t getHashNum() const;
 	uint8_t getKmerSize() const;
 
 	//for storing/restoring the filter
 	void storeFilter(string const &filterFilePath) const;
-	explicit BloomFilter(size_t filterSize, uint8_t hashNum, uint16_t kmerSize,
+	explicit BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize,
 			string const &filterFilePath);
 
 	virtual ~BloomFilter();
 private:
 	void initSize(size_t size);
-	unsigned char* filter;
-	size_t size;
-	size_t sizeInBytes;
-	uint8_t hashNum;
-	uint16_t kmerSize;
-	uint16_t kmerSizeInBytes;
+	uint8_t* m_filter;
+	size_t m_size;
+	size_t m_sizeInBytes;
+	unsigned m_hashNum;
+	unsigned m_kmerSize;
+	unsigned m_kmerSizeInBytes;
 };
 
 #endif /* BLOOMFILTER_H_ */
