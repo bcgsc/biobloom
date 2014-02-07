@@ -24,7 +24,8 @@
  */
 BloomFilter::BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize) :
 		m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize), m_kmerSizeInBytes(
-				(kmerSize + 4 - 1) / 4) {
+				(kmerSize + 4 - 1) / 4)
+{
 	initSize(m_size);
 	memset(m_filter, 0, m_sizeInBytes);
 }
@@ -35,38 +36,67 @@ BloomFilter::BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize)
 BloomFilter::BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize,
 		string const &filterFilePath) :
 		m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize), m_kmerSizeInBytes(
-				(kmerSize + 4 - 1) / 4) {
+				(kmerSize + 4 - 1) / 4)
+{
 	initSize(m_size);
 
-	//Check file size is correct size
-	ifstream binaryFile(filterFilePath.c_str(), ios::binary);
-	binaryFile.seekg(0, std::ios::end);
-	size_t fileSize = binaryFile.tellg();
-	binaryFile.seekg(0, std::ios::beg);
-	if ( fileSize != m_sizeInBytes) {
+	FILE *file = fopen(filterFilePath.c_str(), "rb");
+	if (file == NULL) {
+		cerr << "file \"" << filterFilePath << "\" could not be read." << endl;
+		exit(1);
+	}
+
+	long int lCurPos = ftell(file);
+	fseek(file, 0, 2);
+	size_t fileSize = ftell(file);
+	fseek(file, lCurPos, 0);
+	if (fileSize != m_sizeInBytes) {
 		cerr << "Error: " << filterFilePath
 				<< " does not match size given by its information file. Size: "
 				<< fileSize << " vs " << m_sizeInBytes << " bytes." << endl;
 		exit(1);
 	}
 
-	//load in blocks to a vector
-	if (binaryFile.is_open()) {
-		binaryFile.read(reinterpret_cast<char*>(m_filter), m_size);
-	} else {
+	fread(m_filter, fileSize, 1, file);
+	if(fclose(file) != 0)
+	{
 		cerr << "file \"" << filterFilePath << "\" could not be read." << endl;
-		binaryFile.close();
 		exit(1);
 	}
-	binaryFile.close();
-	assert(binaryFile);
-	assert((size_t) binaryFile.gcount() == m_sizeInBytes);
+
+//	//Check file size is correct size
+//	ifstream binaryFile(filterFilePath.c_str(), ios::binary);
+//	binaryFile.seekg(0, std::ios::end);
+//	size_t fileSize = binaryFile.tellg();
+//	binaryFile.seekg(0, std::ios::beg);
+//	if ( fileSize != m_sizeInBytes) {
+//		cerr << "Error: " << filterFilePath
+//				<< " does not match size given by its information file. Size: "
+//				<< fileSize << " vs " << m_sizeInBytes << " bytes." << endl;
+//		exit(1);
+//	}
+//
+//	assert(binaryFile.good());
+//	//load in blocks to a vector
+//	if (binaryFile.is_open()) {
+//		binaryFile.read(reinterpret_cast<char*>(m_filter[0]), m_size);
+//	} else {
+//		cerr << "file \"" << filterFilePath << "\" could not be read." << endl;
+//		binaryFile.close();
+//		exit(1);
+//	}
+//	binaryFile.close();
+//	assert(binaryFile.eof());
+//	assert(!binaryFile.fail());
+//	assert(!binaryFile.bad());
+//	assert((size_t) binaryFile.gcount() == m_sizeInBytes);
 }
 
 /*
  * Checks filter size and initializes filter
  */
-void BloomFilter::initSize(size_t size) {
+void BloomFilter::initSize(size_t size)
+{
 	if (size % 8 != 0) {
 		cerr << "ERROR: Filter Size \"" << size << "\" is not a multiple of 8."
 				<< endl;
@@ -79,7 +109,8 @@ void BloomFilter::initSize(size_t size) {
 /*
  * Accepts a list of precomputed hash values. Faster than rehashing each time.
  */
-void BloomFilter::insert(vector<size_t> const &precomputed) {
+void BloomFilter::insert(vector<size_t> const &precomputed)
+{
 
 	//iterates through hashed values adding it to the filter
 	for (size_t i = 0; i < m_hashNum; ++i) {
@@ -90,11 +121,13 @@ void BloomFilter::insert(vector<size_t> const &precomputed) {
 	}
 }
 
-void BloomFilter::insert(const unsigned char* kmer) {
+void BloomFilter::insert(const unsigned char* kmer)
+{
 	//iterates through hashed values adding it to the filter
-	for (size_t i = 0; i < m_hashNum ; ++i) {
+	for (size_t i = 0; i < m_hashNum; ++i) {
 		size_t normalizedValue = CityHash64WithSeed(
-				reinterpret_cast<const char*>(kmer), m_kmerSizeInBytes, i) % m_size;
+				reinterpret_cast<const char*>(kmer), m_kmerSizeInBytes, i)
+				% m_size;
 		m_filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 				% bitsPerChar];
 	}
@@ -103,7 +136,8 @@ void BloomFilter::insert(const unsigned char* kmer) {
 /*
  * Accepts a list of precomputed hash values. Faster than rehashing each time.
  */
-bool BloomFilter::contains(vector<size_t> const &values) const {
+bool BloomFilter::contains(vector<size_t> const &values) const
+{
 	for (size_t i = 0; i < m_hashNum; ++i) {
 		size_t normalizedValue = values.at(i) % m_size;
 		unsigned char bit = bitMask[normalizedValue % bitsPerChar];
@@ -117,10 +151,12 @@ bool BloomFilter::contains(vector<size_t> const &values) const {
 /*
  * Single pass filtering, computes hash values on the fly
  */
-bool BloomFilter::contains(const unsigned char* kmer) const {
+bool BloomFilter::contains(const unsigned char* kmer) const
+{
 	for (unsigned i = 0; i < m_hashNum; ++i) {
 		size_t normalizedValue = CityHash64WithSeed(
-				reinterpret_cast<const char*>(kmer), m_kmerSizeInBytes, i) % m_size;
+				reinterpret_cast<const char*>(kmer), m_kmerSizeInBytes, i)
+				% m_size;
 		unsigned char bit = bitMask[normalizedValue % bitsPerChar];
 		if ((m_filter[normalizedValue / bitsPerChar] & bit) != bit) {
 			return false;
@@ -134,7 +170,8 @@ bool BloomFilter::contains(const unsigned char* kmer) const {
  * Stores uncompressed because the random data tends to
  * compress poorly anyway
  */
-void BloomFilter::storeFilter(string const &filterFilePath) const {
+void BloomFilter::storeFilter(string const &filterFilePath) const
+{
 	ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
 
 	cerr << "Storing filter. Filter is " << m_sizeInBytes << "bytes." << endl;
@@ -147,14 +184,17 @@ void BloomFilter::storeFilter(string const &filterFilePath) const {
 	assert(myFile);
 }
 
-uint8_t BloomFilter::getHashNum() const {
+uint8_t BloomFilter::getHashNum() const
+{
 	return m_hashNum;
 }
 
-uint8_t BloomFilter::getKmerSize() const {
+uint8_t BloomFilter::getKmerSize() const
+{
 	return m_kmerSize;
 }
 
-BloomFilter::~BloomFilter() {
+BloomFilter::~BloomFilter()
+{
 	delete[] m_filter;
 }

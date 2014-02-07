@@ -22,12 +22,12 @@ using namespace boost;
 class WindowedFileParser {
 public:
 	//constructor/destructor
-	explicit WindowedFileParser(const string &fileName, uint16_t windowSize);
+	explicit WindowedFileParser(const string &fileName, unsigned windowSize);
 	const vector<string> getHeaders() const;
 	void setLocationByHeader( const string &header);
-	const size_t getSequenceSize( const string &header) const;
+	size_t getSequenceSize( const string &header) const;
 	const unsigned char* getNextSeq();
-	const bool notEndOfSeqeunce() const;
+	bool notEndOfSeqeunce() const;
 
 	virtual ~WindowedFileParser();
 
@@ -40,19 +40,19 @@ private:
 		size_t charsPerLine;
 	};
 
-	unordered_map<string, FastaIndexValue> fastaIndex;
-	ifstream fastaFileHandle;
-	unsigned short windowSize;
-	vector<string> headers;
-	string currentHeader;
-	size_t currentCharNumber;
-	size_t currentLinePos;
-	string window;
-	string currentString;
-	ReadsProcessor proc;
-	bool sequenceNotEnd;
+	unordered_map<string, FastaIndexValue> m_fastaIndex;
+	ifstream m_fastaFileHandle;
+	unsigned m_windowSize;
+	vector<string> m_headers;
+	string m_currentHeader;
+	size_t m_currentCharNumber;
+	size_t m_currentLinePos;
+	string m_window;
+	string m_currentString;
+	ReadsProcessor m_proc;
+	bool m_sequenceNotEnd;
 
-	string bufferString; //so reallocation does not need to occur
+	string m_bufferString; //so reallocation does not need to occur
 
 	//helper methods
 	void initializeIndex(string const &fileName);

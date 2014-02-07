@@ -67,8 +67,8 @@ int main(int argc, char *argv[]) {
 	double fpr = 0.02;
 	string filterPrefix = "";
 	string outputDir = "";
-	uint16_t kmerSize = 25;
-	uint16_t hashNum = 0;
+	unsigned kmerSize = 25;
+	unsigned hashNum = 0;
 	string subtractFilter = "";
 	size_t entryNum = 0;
 

@@ -26,19 +26,19 @@
  * filenames with corresponding headers to make filter from.
  */
 BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
-		uint16_t kmerSize, uint8_t hashNum):
-		kmerSize(kmerSize), hashNum(hashNum), expectedEntries(0), filterSize(0), totalEntries(
+		unsigned kmerSize, unsigned hashNum):
+		m_kmerSize(kmerSize), m_hashNum(hashNum), m_expectedEntries(0), m_filterSize(0), m_totalEntries(
 				0) {
 
 	//for each file loop over all headers and obtain max number of elements
 	for (vector<string>::const_iterator i = filenames.begin();
 			i != filenames.end(); ++i) {
 		WindowedFileParser parser(*i, kmerSize);
-		fileNamesAndHeaders[*i] = parser.getHeaders();
-		for (vector<string>::iterator j = fileNamesAndHeaders[*i].begin();
-				j != fileNamesAndHeaders[*i].end(); ++j) {
+		m_fileNamesAndHeaders[*i] = parser.getHeaders();
+		for (vector<string>::iterator j = m_fileNamesAndHeaders[*i].begin();
+				j != m_fileNamesAndHeaders[*i].end(); ++j) {
 			//subtract kmer size for max number of possible kmers
-			expectedEntries += parser.getSequenceSize(*j) - kmerSize;
+			m_expectedEntries += parser.getSequenceSize(*j) - kmerSize;
 		}
 	}
 }
@@ -50,14 +50,14 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
  * Variant allows users to set a specific filter size before hand
  */
 BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
-		uint16_t kmerSize, uint8_t hashNum, size_t numElements) :
-		kmerSize(kmerSize), hashNum(hashNum),  expectedEntries(numElements), filterSize(
-				0), totalEntries(0) {
+		unsigned kmerSize, unsigned hashNum, size_t numElements) :
+		m_kmerSize(kmerSize), m_hashNum(hashNum),  m_expectedEntries(numElements), m_filterSize(
+				0), m_totalEntries(0) {
 	//for each file loop over all headers and obtain max number of elements
 	for (vector<string>::const_iterator i = filenames.begin();
 			i != filenames.end(); ++i) {
 		WindowedFileParser parser(*i, kmerSize);
-		fileNamesAndHeaders[*i] = parser.getHeaders();
+		m_fileNamesAndHeaders[*i] = parser.getHeaders();
 	}
 }
 
@@ -71,13 +71,13 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 size_t BloomFilterGenerator::generate(const string &filename) {
 
 	//need the number of hash functions used to be greater than 0
-	assert(hashNum > 0);
+	assert(m_hashNum > 0);
 
 	//need the filter to be greater than the size of the number of expected entries
-	assert(filterSize > expectedEntries);
+	assert(m_filterSize > m_expectedEntries);
 
 	//setup bloom filter
-	BloomFilter filter(filterSize, hashNum, kmerSize);
+	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
 	//redundancy metric value
 	size_t redundancy = 0;
@@ -85,10 +85,10 @@ size_t BloomFilterGenerator::generate(const string &filename) {
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	for (boost::unordered_map<string, vector<string> >::iterator i =
-			fileNamesAndHeaders.begin(); i != fileNamesAndHeaders.end(); ++i) {
+			m_fileNamesAndHeaders.begin(); i != m_fileNamesAndHeaders.end(); ++i) {
 		//let user know that files are being read
 		cerr << "Processing File: " << i->first << endl;
-		WindowedFileParser parser(i->first, kmerSize);
+		WindowedFileParser parser(i->first, m_kmerSize);
 		for (vector<string>::iterator j = i->second.begin();
 				j != i->second.end(); ++j) {
 			parser.setLocationByHeader(*j);
@@ -99,12 +99,12 @@ size_t BloomFilterGenerator::generate(const string &filename) {
 				const unsigned char* currentSeq = parser.getNextSeq();
 				if (currentSeq != NULL) {
 					const vector<size_t> &tempHash = multiHash(currentSeq,
-							hashNum, kmerSize);
+							m_hashNum, m_kmerSize);
 					if (filter.contains(tempHash)) {
 						redundancy++;
 					} else {
 						filter.insert(tempHash);
-						totalEntries++;
+						m_totalEntries++;
 					}
 				}
 			}
@@ -127,13 +127,13 @@ size_t BloomFilterGenerator::generate(const string &filename,
 		const string &subtractFilter) {
 
 	//need the number of hash functions used to be greater than 0
-	assert(hashNum > 0);
+	assert(m_hashNum > 0);
 
 	//need the filter to be greater than the size of the number of expected entries
-	assert(filterSize > expectedEntries);
+	assert(m_filterSize > m_expectedEntries);
 
 	//setup bloom filter
-	BloomFilter filter(filterSize, hashNum, kmerSize);
+	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
 	//load other bloom filter info
 	string infoFileName = (subtractFilter).substr(0,
@@ -144,7 +144,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
 			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
 
-	if (subInfo.getKmerSize() > kmerSize) {
+	if (subInfo.getKmerSize() > m_kmerSize) {
 		cerr
 				<< "Error: Subtraction filter's k-mer size is larger than output filter's k-mer size."
 				<< endl;
@@ -162,10 +162,10 @@ size_t BloomFilterGenerator::generate(const string &filename,
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	for (boost::unordered_map<string, vector<string> >::iterator i =
-			fileNamesAndHeaders.begin(); i != fileNamesAndHeaders.end(); ++i) {
+			m_fileNamesAndHeaders.begin(); i != m_fileNamesAndHeaders.end(); ++i) {
 		//let user know that files are being read
 		cerr << "Processing File: " << i->first << endl;
-		WindowedFileParser parser(i->first, kmerSize);
+		WindowedFileParser parser(i->first, m_kmerSize);
 		for (vector<string>::iterator j = i->second.begin();
 				j != i->second.end(); ++j) {
 			parser.setLocationByHeader(*j);
@@ -179,7 +179,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 					bool allowKmer = false;
 
 					//Check if kmer or subkmers are located in filter
-					if (subInfo.getKmerSize() == kmerSize) {
+					if (subInfo.getKmerSize() == m_kmerSize) {
 						//if kmer does not exists set allowance to true
 						allowKmer = !filterSub.contains(currentSeq);
 					} else {
@@ -200,12 +200,12 @@ size_t BloomFilterGenerator::generate(const string &filename,
 
 					if (allowKmer) {
 						const vector<size_t> &tempHash = multiHash(currentSeq,
-								hashNum, kmerSize);
+								m_hashNum, m_kmerSize);
 						if (filter.contains(tempHash)) {
 							redundancy++;
 						} else {
 							filter.insert(tempHash);
-							totalEntries++;
+							m_totalEntries++;
 						}
 					} else {
 						++kmerRemoved;
@@ -223,7 +223,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 
 //setters
 void BloomFilterGenerator::setFilterSize(size_t bits) {
-	filterSize = bits;
+	m_filterSize = bits;
 }
 
 //getters
@@ -231,15 +231,15 @@ void BloomFilterGenerator::setFilterSize(size_t bits) {
 /*
  * Returns the total number of inserted filter entries
  */
-const size_t BloomFilterGenerator::getTotalEntries() const {
-	return totalEntries;
+size_t BloomFilterGenerator::getTotalEntries() const {
+	return m_totalEntries;
 }
 
 /*
  * Returns the maximum possible number of expected filter entries based on inputs
  */
-const size_t BloomFilterGenerator::getExpectedEntries() const {
-	return expectedEntries;
+size_t BloomFilterGenerator::getExpectedEntries() const {
+	return m_expectedEntries;
 }
 
 //destructor

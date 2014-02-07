@@ -26,11 +26,10 @@ using namespace std;
 //static uint8_t calcOptiHashNum(float fpr) {
 //	return uint8_t(-log(fpr) / log(2));
 //}
-
 class BloomFilterInfo {
 public:
-	explicit BloomFilterInfo(string const &filterID, uint16_t kmerSize,
-			uint8_t hashNum, float desiredFPR, size_t expectedSize,
+	explicit BloomFilterInfo(string const &filterID, unsigned kmerSize,
+			unsigned hashNum, double desiredFPR, size_t expectedSize,
 			const vector<string> &seqSrc);
 	explicit BloomFilterInfo(string const &fileName);
 	void addHashFunction(const string &fnName, size_t seed);
@@ -41,9 +40,9 @@ public:
 	virtual ~BloomFilterInfo();
 
 	//getters
-	uint16_t getKmerSize() const;
-	uint16_t getHashNum() const;
-	const size_t getCalcuatedFilterSize() const;
+	unsigned getKmerSize() const;
+	unsigned getHashNum() const;
+	size_t getCalcuatedFilterSize() const;
 	const string &getFilterID() const;
 	const string &getPresetType() const;
 	double getRedundancyFPR() const;
@@ -51,12 +50,12 @@ public:
 
 private:
 	//user specified input
-	string filterID;
-	uint16_t kmerSize;
-	float desiredFPR;
-	vector<string> seqSrcs;
-	uint16_t hashNum;
-	size_t expectedNumEntries;
+	string m_filterID;
+	unsigned m_kmerSize;
+	double m_desiredFPR;
+	vector<string> m_seqSrcs;
+	unsigned m_hashNum;
+	size_t m_expectedNumEntries;
 
 	//determined at run time
 	struct runtime {
@@ -67,16 +66,15 @@ private:
 		double redundantFPR;
 	};
 
-	runtime runInfo;
+	runtime m_runInfo;
 
 	const vector<string> convertSeqSrcString(const string &seqSrcStr) const;
-	const vector<string> convertHashFuncString(const string &hashFnStr) const;
-	const double calcApproxFPR(size_t size, size_t numEntr,
+	double calcApproxFPR(size_t size, size_t numEntr,
 			uint16_t hashFunctNum) const;
-	const double calcRedunancyFPR(size_t size, size_t numEntr,
+	double calcRedunancyFPR(size_t size, size_t numEntr,
 			uint16_t hashFunctNum) const;
-	const size_t calcOptimalSize(size_t entries, float fpr) const;
-	const size_t calcOptimalSize(size_t entries, float fpr,
+	size_t calcOptimalSize(size_t entries, float fpr) const;
+	size_t calcOptimalSize(size_t entries, float fpr,
 			uint16_t hashNum) const;
 };
 

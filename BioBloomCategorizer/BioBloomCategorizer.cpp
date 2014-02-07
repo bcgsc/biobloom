@@ -104,8 +104,7 @@ void printHelpDialog()
 					"                         Several tiles upon a miss. Small values decrease runtime\n"
 					"                         but decrease sensitivity. [3]\n"
 					"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Very\n"
-					"                         fast but lower sensitivity and specificity, use only on\n"
-					"                         long reads (>100bp).\n"
+					"                         fast but specificity, use only on long reads (>100bp).\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
@@ -135,8 +134,8 @@ int main(int argc, char *argv[])
 	double score = 0.15;
 
 	//advanced options
-	uint16_t minHit = 1;
-	uint16_t streak = 3;
+	unsigned minHit = 1;
+	unsigned streak = 3;
 	bool minHitOnly = false;
 
 	//long form arguments
