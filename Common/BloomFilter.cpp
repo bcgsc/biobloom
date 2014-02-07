@@ -32,26 +32,28 @@ BloomFilter::BloomFilter(size_t filterSize, string const &filterFilePath,
 {
 	initSize(size);
 
-	//Check file size is correct size
-	struct stat sb;
-	stat(filterFilePath.c_str(), &sb);
-	if (sb.st_size != filterSize / 8) {
-		cerr << "Error: " << filterFilePath
-				<< " does not match size given by its information file. Size: "
-				<< sb.st_size << "/" << filterSize / 8 << " bytes." << endl;
+	FILE *file = fopen(filterFilePath.c_str(), "rb");
+	if (file == NULL) {
+		cerr << "file \"" << filterFilePath << "\" could not be read." << endl;
 		exit(1);
 	}
 
-	//load in blocks to a vector
-	ifstream binaryFile(filterFilePath.c_str(), ios::binary);
-	if (binaryFile.is_open()) {
-		binaryFile.read(filter, size);
-	} else {
-		cerr << "file \"" << filterFilePath << "\" could not be read." << endl;
-		binaryFile.close();
+	long int lCurPos = ftell(file);
+	fseek(file, 0, 2);
+	size_t fileSize = ftell(file);
+	fseek(file, lCurPos, 0);
+	if (fileSize != sizeInBytes) {
+		cerr << "Error: " << filterFilePath
+				<< " does not match size given by its information file. Size: "
+				<< fileSize << " vs " << sizeInBytes << " bytes." << endl;
 		exit(1);
 	}
-	binaryFile.close();
+
+	fread(filter, fileSize, 1, file);
+	if (fclose(file) != 0) {
+		cerr << "file \"" << filterFilePath << "\" could not be read." << endl;
+		exit(1);
+	}
 }
 
 /*
@@ -75,7 +77,8 @@ void BloomFilter::insert(vector<size_t> const &precomputed)
 {
 	//iterates through hashed values adding it to the filter
 
-	for (vector<size_t>::const_iterator it = precomputed.begin(); it != precomputed.end(); ++it)
+	for (vector<size_t>::const_iterator it = precomputed.begin();
+			it != precomputed.end(); ++it)
 	{
 		size_t normalizedValue = *it % size;
 		filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
@@ -94,11 +97,9 @@ void BloomFilter::storeFilter(string const &filterFilePath) const
 
 	assert(myFile.good());
 	//write out each block
-	for (int i = 0; i < sizeInBytes; i++) {
-		myFile << filter[i];
-	}
-	assert(myFile.good());
+	myFile.write(filter, sizeInBytes);
 	myFile.close();
+	assert(myFile);
 }
 
 /*
