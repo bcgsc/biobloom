@@ -39,7 +39,6 @@ ostream& Dynamicofstream::operator <<(unsigned o)
 
 
 void Dynamicofstream::close(){
-	assert(filestream->good());
 	filestream->flush();
 	if (gz){
 		ogzstream *temp = dynamic_cast<ogzstream*>(filestream);
@@ -49,6 +48,7 @@ void Dynamicofstream::close(){
 		ofstream *temp = dynamic_cast<ofstream*>(filestream);
 		temp->close();
 	}
+	assert(filestream->good());
 }
 
 Dynamicofstream::~Dynamicofstream()
