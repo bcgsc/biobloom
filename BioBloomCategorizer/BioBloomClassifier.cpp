@@ -59,7 +59,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
-					if (totalReads % 1000000 == 0) {
+					if (totalReads % 10000000 == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< endl;
 					}
@@ -153,7 +153,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
-					if (totalReads % 1000000 == 0) {
+					if (totalReads % 10000000 == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< endl;
 					}
@@ -240,7 +240,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 #pragma omp critical(totalReads)
 			{
 				++totalReads;
-				if (totalReads % 1000000 == 0) {
+				if (totalReads % 10000000 == 0) {
 					cerr << "Currently Reading Read Number: " << totalReads
 							<< endl;
 				}
@@ -365,7 +365,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 #pragma omp critical(totalReads)
 			{
 				++totalReads;
-				if (totalReads % 1000000 == 0) {
+				if (totalReads % 10000000 == 0) {
 					cerr << "Currently Reading Read Number: " << totalReads
 							<< endl;
 				}
@@ -490,7 +490,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
-					if (totalReads % 1000000 == 0) {
+					if (totalReads % 10000000 == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< endl;
 					}
@@ -612,7 +612,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
-					if (totalReads % 1000000 == 0) {
+					if (totalReads % 10000000 == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< endl;
 					}
@@ -757,12 +757,12 @@ void BioBloomClassifier::evaluateRead(const FastqRecord &rec,
 	const vector<string> &idsInFilter = (*m_filters[hashSig]).getFilterIds();
 
 	//get kmersize for set of info files
-	uint16_t kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
+	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
 
-	unordered_map<string, uint16_t> tempHits;
+	unordered_map<string, unsigned> tempHits;
 
 	//Establish tiling pattern
-	uint16_t startModifier1 = (rec.seq.length() % kmerSize) / 2;
+	unsigned startModifier1 = (rec.seq.length() % kmerSize) / 2;
 	size_t currentKmerNum = 0;
 
 	for (vector<string>::const_iterator i = idsInFilter.begin();
@@ -814,7 +814,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 	//get filterIDs to iterate through has in a consistent order
 	const vector<string> &idsInFilter = (*m_filters[hashSig]).getFilterIds();
 
-	uint16_t kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
+	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
 
 	ReadsProcessor proc(kmerSize);
 
@@ -827,7 +827,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 		bool pass = false;
 		hits[*i] = false;
 		if (m_minHit > 0) {
-			uint16_t screeningHits = 0;
+			unsigned screeningHits = 0;
 			size_t screeningLoc = rec.seq.length() % kmerSize / 2;
 			//First pass filtering
 			while (rec.seq.length() >= screeningLoc + kmerSize) {
@@ -850,7 +850,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 		if (pass) {
 			size_t currentLoc = 0;
 			double score = 0;
-			uint16_t streak = 0;
+			unsigned streak = 0;
 			while (rec.seq.length() >= currentLoc + kmerSize) {
 				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
 						currentLoc);

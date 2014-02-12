@@ -33,11 +33,11 @@ BloomFilterInfo::BloomFilterInfo(string const &fileName)
 	boost::property_tree::ptree pt;
 	boost::property_tree::ini_parser::read_ini(fileName, pt);
 	m_filterID = pt.get<string>("user_input_options.filter_id");
-	m_kmerSize = pt.get<uint16_t>("user_input_options.kmer_size");
+	m_kmerSize = pt.get<unsigned>("user_input_options.kmer_size");
 	m_desiredFPR = pt.get<float>("user_input_options.desired_false_positve_rate");
 	string tempSeqSrcs = pt.get<string>("user_input_options.sequence_sources");
 	m_seqSrcs = convertSeqSrcString(tempSeqSrcs);
-	m_hashNum = pt.get<uint16_t>("user_input_options.number_of_hash_functions");
+	m_hashNum = pt.get<unsigned>("user_input_options.number_of_hash_functions");
 
 	//runtime params
 	m_runInfo.size = pt.get<size_t>("runtime_options.size");
@@ -170,18 +170,18 @@ const vector<string> BloomFilterInfo::convertSeqSrcString(
  * see http://en.wikipedia.org/wiki/Bloom_filter
  */
 double BloomFilterInfo::calcApproxFPR(size_t size, size_t numEntr,
-		uint16_t hashFunctNum) const
+		unsigned hashFunctNum) const
 {
 	return pow(
 			1.0 - pow(1.0 - 1.0 / double(size), double(numEntr) * hashFunctNum),
-			hashFunctNum);
+			double(hashFunctNum));
 }
 
 /*
  * Calculates redundancy FPR
  */
 double BloomFilterInfo::calcRedunancyFPR(size_t size, size_t numEntr,
-		uint16_t hashFunctNum) const
+		unsigned hashFunctNum) const
 {
 	double total = log(calcApproxFPR(size, 1, hashFunctNum));
 	for (size_t i = 2; i < numEntr; ++i) {
@@ -210,7 +210,7 @@ size_t BloomFilterInfo::calcOptimalSize(size_t entries, float fpr) const
  * see http://en.wikipedia.org/wiki/Bloom_filter
  */
 size_t BloomFilterInfo::calcOptimalSize(size_t entries, float fpr,
-		uint16_t hashNum) const
+		unsigned hashNum) const
 {
 	size_t non64ApproxVal = size_t(
 			-double(entries) * double(hashNum)

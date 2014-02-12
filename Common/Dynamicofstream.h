@@ -26,7 +26,7 @@ public:
 //	void write(const string &input);
 //	Dynamicofstream& operator <<(Dynamicofstream& out, const string& o);
 	ostream& operator <<(const string& o);
-	ostream& operator <<(uint16_t o);
+	ostream& operator <<(unsigned o);
 	void close();
 	virtual ~Dynamicofstream();
 private:

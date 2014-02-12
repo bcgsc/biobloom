@@ -27,7 +27,7 @@ static const unsigned char bitMask[0x08] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
  * For precomputing hash values. kmerSize is the number of bytes of the string used.
  */
 static inline vector<size_t> multiHash(const unsigned char* kmer, size_t num,
-		uint16_t kmerSize) {
+		unsigned kmerSize) {
 	vector<size_t> tempHashValues(num);
 	//use raw kmer number as first hash value
 	size_t kmerSizeInBytes = (kmerSize + 4 - 1) / 4;
@@ -48,8 +48,8 @@ public:
 	bool contains(vector<size_t> const &precomputed) const;
 	bool contains(const unsigned char* kmer) const;
 
-	uint8_t getHashNum() const;
-	uint8_t getKmerSize() const;
+	unsigned getHashNum() const;
+	unsigned getKmerSize() const;
 
 	//for storing/restoring the filter
 	void storeFilter(string const &filterFilePath) const;

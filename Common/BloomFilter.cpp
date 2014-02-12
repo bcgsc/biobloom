@@ -184,12 +184,12 @@ void BloomFilter::storeFilter(string const &filterFilePath) const
 	assert(myFile);
 }
 
-uint8_t BloomFilter::getHashNum() const
+unsigned BloomFilter::getHashNum() const
 {
 	return m_hashNum;
 }
 
-uint8_t BloomFilter::getKmerSize() const
+unsigned BloomFilter::getKmerSize() const
 {
 	return m_kmerSize;
 }

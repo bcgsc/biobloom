@@ -31,7 +31,7 @@ ostream& Dynamicofstream::operator <<(const string& o)
 	return *filestream;
 }
 
-ostream& Dynamicofstream::operator <<(uint16_t o)
+ostream& Dynamicofstream::operator <<(unsigned o)
 {
 	*filestream << o;
 	return *filestream;

@@ -14,7 +14,7 @@ using namespace std;
 
 class ReadsProcessor {
 public:
-	ReadsProcessor(uint16_t windowSize);
+	ReadsProcessor(unsigned windowSize);
 	const unsigned char* prepSeq(string const &sequence, size_t position);
 	const string getBases(const unsigned char* c); //for debuging purposes
 	virtual ~ReadsProcessor();
@@ -22,11 +22,11 @@ private:
 	//so reallocation does not have to be done
 	unsigned char* fw;
 	unsigned char* rv;
-	const uint16_t kmerSize;
-	uint16_t kmerSizeInBytes;
-	uint16_t halfSizeOfKmerInBytes;
-	uint8_t hangingBases; // used if k-mer is indivisible by 4
-	uint8_t hangingBasesExist;
+	const unsigned kmerSize;
+	unsigned kmerSizeInBytes;
+	unsigned halfSizeOfKmerInBytes;
+	unsigned hangingBases; // used if k-mer is indivisible by 4
+	unsigned hangingBasesExist;
 };
 
 #endif /* READSPROCESSOR_H_ */

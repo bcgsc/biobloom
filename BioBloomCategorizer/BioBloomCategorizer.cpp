@@ -99,7 +99,7 @@ void printHelpDialog()
 //					"                         will be slightly slower with this option."
 					"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
 					"                         needed over initial tiling of read to continue.\n"
-					"                         Higher values decrease runtime but lower sensitivity.[1]\n"
+					"                         Higher values decrease runtime but lower sensitivity.[0]\n"
 					"  -r, --streak=N         The number of hit tiling in second pass needed to jump\n"
 					"                         Several tiles upon a miss. Small values decrease runtime\n"
 					"                         but decrease sensitivity. [3]\n"
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 	double score = 0.15;
 
 	//advanced options
-	unsigned minHit = 1;
+	unsigned minHit = 0;
 	unsigned streak = 3;
 	bool minHitOnly = false;
 

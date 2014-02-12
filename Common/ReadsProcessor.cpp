@@ -18,7 +18,7 @@
 /*
  * Needed for use of optimized char* returning prepSeq
  */
-ReadsProcessor::ReadsProcessor(uint16_t windowSize) :
+ReadsProcessor::ReadsProcessor(unsigned windowSize) :
 		kmerSize(windowSize), kmerSizeInBytes(windowSize / 4), halfSizeOfKmerInBytes(
 				windowSize / 8), hangingBases(0), hangingBasesExist(0){
 	//parsing code require kmer larger than 3
@@ -326,7 +326,7 @@ const string ReadsProcessor::getBases(const unsigned char* c)
 
 	int currentIndex = 0;
 	int currentOffset = 3;
-	for (int i = 0; i < kmerSize; ++i) {
+	for (unsigned i = 0; i < kmerSize; ++i) {
 		if (currentOffset == -1) {
 			currentIndex++;
 			currentOffset = 3;

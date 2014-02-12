@@ -70,12 +70,12 @@ private:
 
 	const vector<string> convertSeqSrcString(const string &seqSrcStr) const;
 	double calcApproxFPR(size_t size, size_t numEntr,
-			uint16_t hashFunctNum) const;
+			unsigned hashFunctNum) const;
 	double calcRedunancyFPR(size_t size, size_t numEntr,
-			uint16_t hashFunctNum) const;
+			unsigned hashFunctNum) const;
 	size_t calcOptimalSize(size_t entries, float fpr) const;
 	size_t calcOptimalSize(size_t entries, float fpr,
-			uint16_t hashNum) const;
+			unsigned hashNum) const;
 };
 
 #endif /* BLOOMFILTERINFO_H_ */
