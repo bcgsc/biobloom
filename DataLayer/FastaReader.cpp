@@ -133,7 +133,7 @@ next_record:
 	q.clear();
 
 	// Discard comments.
-	while (peek() == '#')
+	while (!feof(m_in) && peek() == '#')
 		ignoreLines(1);
 
 	signed char recordType = peek();
