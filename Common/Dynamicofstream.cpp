@@ -48,7 +48,7 @@ void Dynamicofstream::close(){
 		ofstream *temp = dynamic_cast<ofstream*>(filestream);
 		temp->close();
 	}
-	assert(filestream->good());
+	assert(filestream);
 }
 
 Dynamicofstream::~Dynamicofstream()
