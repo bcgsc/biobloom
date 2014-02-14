@@ -133,7 +133,7 @@ next_record:
 	q.clear();
 
 	// Discard comments.
-	while (!feof(m_in) && peek() == '#')
+	while (peek() == '#')
 		ignoreLines(1);
 
 	signed char recordType = peek();
@@ -143,8 +143,7 @@ next_record:
 	if (eof() || recordType == EOF || ftell(m_in) >= m_end) {
 		string header;
 		getline(header);
-//		m_in.seekg(0, ios::end);
-//		clear();
+
 		return s;
 	} else if (recordType == '>' || recordType == '@') {
 		// Read the header.
