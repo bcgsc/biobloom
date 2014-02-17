@@ -103,8 +103,8 @@ void printHelpDialog()
 					"  -r, --streak=N         The number of hit tiling in second pass needed to jump\n"
 					"                         Several tiles upon a miss. Small values decrease runtime\n"
 					"                         but decrease sensitivity. [3]\n"
-					"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Very\n"
-					"                         fast but specificity, use only on long reads (>100bp).\n"
+					"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
+					"                         but low specificity, use only on long reads (>100bp).\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
 					"fq", no_argument, &fastq, 1 }, {
 					"fa", no_argument, &fasta, 1 }, {
-					"version", no_argument, NULL, 0 }, {
+					"version", no_argument, NULL, 'v' }, {
 					"min_hit_thr", required_argument, NULL, 'm' }, {
 					"streak", optional_argument, NULL, 'r' }, {
 					NULL, 0, NULL, 0 } };
