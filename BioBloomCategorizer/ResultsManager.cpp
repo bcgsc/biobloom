@@ -141,7 +141,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 
 	//print header
 	summaryOutput
-			<< "filter_id\thits\tmisses\tshared\tperc_hit\tperc_miss\tperc_shared\n";
+			<< "filter_id\thits\tmisses\tshared\trate_hit\trate_miss\trate_shared\n";
 
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
