@@ -299,11 +299,10 @@ const double BloomFilterInfo::calcRedunancyFPR(size_t size, size_t numEntr,
 		uint16_t hashFunctNum, size_t redundantSeqs) const
 {
 	double total = log(calcApproxFPR(size, 1, hashFunctNum));
-	size_t trueEntries = numEntr - redundantSeqs;
-	for (size_t i = 2; i < trueEntries; ++i) {
+	for (size_t i = 2; i < numEntr; ++i) {
 		total = log(exp(total) + calcApproxFPR(size, i, hashFunctNum));
 	}
-	return exp(total) / trueEntries;
+	return exp(total) / numEntr;
 }
 
 /*
