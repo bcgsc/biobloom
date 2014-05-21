@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <getopt.h>
+#include <iostream>
 #include "boost/unordered/unordered_map.hpp"
 #include <vector>
 #include <sys/stat.h>

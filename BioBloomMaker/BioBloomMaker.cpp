@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <iostream>
 #include "BloomFilterGenerator.h"
 #include "Common/BloomFilterInfo.h"
 #include <boost/unordered/unordered_map.hpp>
