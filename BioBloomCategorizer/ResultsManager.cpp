@@ -7,6 +7,7 @@
 
 #include "ResultsManager.h"
 #include <sstream>
+#include <iostream>
 #if _OPENMP
 # include <omp.h>
 #endif
