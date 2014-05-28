@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <iostream>
 #include "BloomFilterGenerator.h"
 #include "Common/BloomFilterInfo.h"
 #include <boost/unordered/unordered_map.hpp>
@@ -18,8 +19,7 @@ using namespace std;
 
 #define PROGRAM "biobloommaker"
 
-void printVersion()
-{
+void printVersion() {
 	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"
 	"Written by Justin Chu.\n"
 	"\n"
@@ -28,8 +28,7 @@ void printVersion()
 	exit(EXIT_SUCCESS);
 }
 
-void printHelpDialog()
-{
+void printHelpDialog() {
 	static const char dialog[] =
 			"Usage: biobloommaker -p [FILTERID] [OPTION]... [FILE]...\n"
 					"Creates a bf and txt file from a list of fasta files. The input sequences are\n"
@@ -41,32 +40,24 @@ void printHelpDialog()
 					"  -h, --help             Display this dialog.\n"
 					"  -v  --version          Display version information.\n"
 					"\nAdvanced options:\n"
-					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.02]\n"
+					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.075]\n"
 					"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
 					"                         of automatically using calculated optimal number of\n"
 					"                         functions.\n"
 					"  -k, --kmer_size=N      K-mer size to use to create filter. [25]\n"
 					"  -s, --subtract=N       Path to filter that you want to uses to prevent the\n"
 					"                         addition of k-mers contained into new filter. You may\n"
-					"                         only use filters with k-mer sizes <= the one you wish\n"
-					"                         to create.\n"
+					"                         only use filters with k-mer sizes equal the one you\n"
+					"                         wish to create.\n"
 					"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 					"                         is determined from sequences sizes within files. [0]"
-					"\nOption presets:\n"
-					"      --default          Create filter assuming default presets (ie. no advanced\n"
-					"                         options toggled) [default]\n"
-					"      --low_mem          Create filter with presets designed for lower memory\n"
-					"                         usage.\n"
-					"      --minimize_fpr     Create filter with presets designed for minimizing the\n"
-					"                         false positive rate.\n"
 					"\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(0);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 
 	bool die = false;
 
@@ -74,42 +65,29 @@ int main(int argc, char *argv[])
 	int c;
 
 	//command line variables
-	double fpr = 0.02;
+	double fpr = 0.075;
 	string filterPrefix = "";
 	string outputDir = "";
-	uint16_t kmerSize = 25;
-	uint16_t hashNum = 0;
+	unsigned kmerSize = 25;
+	unsigned hashNum = 0;
 	string subtractFilter = "";
 	size_t entryNum = 0;
 
-	//preset options
-	int defaultSettings = 0;
-	int lowMem = 0;
-	int minimizefpr = 0;
-	string presetType = "default";
-
 	//long form arguments
-	static struct option long_options[] = {
-			{
-					"fal_pos_rate", required_argument, NULL, 'f' }, {
-					"file_prefix", required_argument, NULL, 'p' }, {
-					"output_dir", required_argument, NULL, 'o' }, {
-					"version", no_argument, NULL, 'v' }, {
-					"hash_num", required_argument, NULL, 'g' }, {
-					"kmer_size", required_argument, NULL, 'k' }, {
-					"subtract", required_argument, NULL, 's' }, {
-					"num_ele", required_argument, NULL, 'n' }, {
-					"default", no_argument, &defaultSettings, 1 }, {
-					"low_mem", no_argument, &lowMem, 1 }, {
-					"minimize_fpr", no_argument, &minimizefpr, 1 }, {
-					"help", no_argument, NULL, 'h' }, {
-					NULL, 0, NULL, 0 } };
+	static struct option long_options[] = { { "fal_pos_rate", required_argument,
+	NULL, 'f' }, { "file_prefix", required_argument, NULL, 'p' }, {
+			"output_dir", required_argument, NULL, 'o' }, { "version",
+	no_argument, NULL, 'v' }, { "hash_num", required_argument, NULL, 'g' }, {
+			"kmer_size",
+			required_argument, NULL, 'k' }, { "subtract",
+	required_argument, NULL, 's' }, { "num_ele",
+	required_argument, NULL, 'n' }, { "help", no_argument, NULL, 'h' }, {
+	NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
 	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:", long_options,
-			&option_index)) != -1)
-	{
+			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
 			stringstream convert(optarg);
@@ -122,7 +100,6 @@ int main(int argc, char *argv[])
 				cerr << "Error -f cannot be greater than 1 " << optarg << endl;
 				return 0;
 			}
-			presetType = "custom";
 			break;
 		}
 		case 'p': {
@@ -143,7 +120,6 @@ int main(int argc, char *argv[])
 						<< optarg << endl;
 				return 0;
 			}
-			presetType = "custom";
 			break;
 		}
 		case 'g': {
@@ -153,7 +129,6 @@ int main(int argc, char *argv[])
 						<< optarg << endl;
 				return 0;
 			}
-			presetType = "custom";
 			break;
 		}
 		case 'n': {
@@ -163,7 +138,6 @@ int main(int argc, char *argv[])
 						<< optarg << endl;
 				return 0;
 			}
-			presetType = "custom";
 			break;
 		}
 		case 'h': {
@@ -188,27 +162,6 @@ int main(int argc, char *argv[])
 			break;
 		}
 		}
-	}
-
-	//check if only one preset was set
-	if (defaultSettings || minimizefpr || lowMem) {
-		if (presetType == "custom" || !(defaultSettings ^ minimizefpr ^ lowMem))
-		{
-			cerr
-					<< "Error: Cannot mix option presets or add custom advanced options to presets"
-					<< endl;
-			exit(1);
-		}
-	}
-
-	//set presets
-	if (lowMem) {
-		fpr = 0.14;
-		kmerSize = 24;
-		presetType = "low_mem";
-	} else if (minimizefpr) {
-		kmerSize = 24;
-		presetType = "minimize_fpr";
 	}
 
 	//Stores fasta input file names
@@ -237,30 +190,25 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	//create filter
-	BloomFilterGenerator filterGen(inputFiles, kmerSize, entryNum);
-
-	if(entryNum == 0)
-	{
-		filterGen = BloomFilterGenerator(inputFiles, kmerSize);
-		entryNum = filterGen.getExpectedEntries();
-	}
-
 	//set number of hash functions used
 	if (hashNum == 0) {
 		//get optimal number of hash functions
-		hashNum = filterGen.calcOptiHashNum(fpr);
+		hashNum = unsigned(-log(fpr) / log(2));
 	}
 
-	BloomFilterInfo info(filterPrefix, kmerSize, fpr, entryNum, inputFiles,
-			hashNum, presetType);
+	//create filter
+	BloomFilterGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
+
+	if (entryNum == 0) {
+		filterGen = BloomFilterGenerator(inputFiles, kmerSize, hashNum);
+		entryNum = filterGen.getExpectedEntries();
+	}
+
+	BloomFilterInfo info(filterPrefix, kmerSize, hashNum, fpr, entryNum,
+			inputFiles);
 
 	//get calculated size of Filter
 	size_t filterSize = info.getCalcuatedFilterSize();
-
-	//Add seed to bloom filter and get them for info file
-	vector<size_t> seeds = filterGen.addHashFuncs(hashNum);
-	assert(seeds.size() == hashNum);
 	filterGen.setFilterSize(filterSize);
 
 	size_t redundNum = 0;
@@ -272,26 +220,18 @@ int main(int argc, char *argv[])
 				subtractFilter);
 	}
 	info.setTotalNum(filterGen.getTotalEntries());
-	info.setReduanacy(redundNum);
-
-	//set hash function info
-	vector<string> hashFunctions = filterGen.getHashFuncNames();
-
-	for (uint16_t i = 0; i < hashNum; ++i) {
-		info.addHashFunction(hashFunctions[i], seeds[i]);
-	}
+	info.setRedundancy(redundNum);
 
 	//code for redundancy checking
 	//calcuate redundancy rate
 	double redunRate = double(redundNum) / double(entryNum)
-			- info.getRedunancyFPR();
+			- info.getRedundancyFPR();
 	if (redunRate > 0.25) {
 		cerr << "Redundancy Rate is approximately: " << redunRate << endl;
 		cerr
-				<< "Consider checking your files for duplicate sequences and adjusting them accordingly."
-				<< endl;
-		cerr
-				<< "High redundancy will cause overestimation of filter sizes used."
+				<< "Consider checking your files for duplicate sequences and adjusting them accordingly.\n"
+						"High redundancy will cause filter sizes used overestimated, potentially resulting in a larger than needed filter.\n"
+						"Alternatively you can set the size of filter wanted with (-n) and ignore this message."
 				<< endl;
 	}
 

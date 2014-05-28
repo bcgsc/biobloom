@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 #include <cassert>
+#include <stdio.h>
 
 using namespace std;
 
@@ -22,15 +23,7 @@ int main(int argc, char **argv)
 
 	map.push_back("/home/pubseq/genomes/9606/hg19/bwa_ind/genome/human.fasta");
 
-	BloomFilterInfo info("HG19_chr21", 33, 0.02, 47000000, map, 6, "custom");
-
-	cout << 5 << endl;
-	info.addHashFunction("CityHash64", 0);
-	info.addHashFunction("CityHash64", 1);
-	info.addHashFunction("CityHash64", 2);
-	info.addHashFunction("CityHash64", 3);
-	info.addHashFunction("CityHash64", 4);
-	info.addHashFunction("CityHash64", 5);
+	BloomFilterInfo info("HG19_chr21", 6, 33, 0.02, 47000000, map);
 
 //	//test getting Optimal Number of hash functions' function.
 //	assert(info.calcOptiHashNum(16,1) == 11);
@@ -50,7 +43,6 @@ int main(int argc, char **argv)
 	//should be fairly identical
 	assert(info2.getCalcuatedFilterSize() == info.getCalcuatedFilterSize());
 	assert(info2.getFilterID() == info.getFilterID());
-	assert(info2.getSeedHashSigniture() == info.getSeedHashSigniture());
 
 	cout << "Asserts complete. cleaning up" << endl;
 	remove(infoFile.c_str());

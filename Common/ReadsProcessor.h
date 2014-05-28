@@ -14,18 +14,19 @@ using namespace std;
 
 class ReadsProcessor {
 public:
-
-	ReadsProcessor(uint16_t windowSize);
-	const string &prepSeq(string const &sequence, size_t position);
-	const string &prepSeqBisulf(string const &sequence, size_t position);
-
+	ReadsProcessor(unsigned windowSize);
+	const unsigned char* prepSeq(string const &sequence, size_t position);
+	const string getBases(const unsigned char* c); //for debuging purposes
 	virtual ~ReadsProcessor();
 private:
-	string outputFwd; //containers preventing reallocation of mem
-	string outputRev; //containers preventing reallocation of mem
-	string emptyResult;
-	uint16_t kmerSize;
-	uint16_t halfKmerSize;
+	//so reallocation does not have to be done
+	unsigned char* fw;
+	unsigned char* rv;
+	const unsigned kmerSize;
+	unsigned kmerSizeInBytes;
+	unsigned halfSizeOfKmerInBytes;
+	unsigned hangingBases; // used if k-mer is indivisible by 4
+	unsigned hangingBasesExist;
 };
 
 #endif /* READSPROCESSOR_H_ */

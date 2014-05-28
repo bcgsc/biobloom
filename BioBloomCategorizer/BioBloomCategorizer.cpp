@@ -4,21 +4,28 @@
  *  Created on: Sep 7, 2012
  *      Author: cjustin
  */
-//todo: UNIT TESTS!
 #include <sstream>
 #include <string>
 #include <getopt.h>
+#include <iostream>
 #include "boost/unordered/unordered_map.hpp"
-#include "Common/HashManager.h"
 #include <vector>
 #include <sys/stat.h>
 #include "BioBloomClassifier.h"
 #include "DataLayer/Options.h"
 #include "config.h"
+#if defined(_OPENMP)
+# include <omp.h>
+#endif
 
 using namespace std;
 
 #define PROGRAM "biobloomcategorizer"
+
+namespace opt {
+/** The number of parallel threads. */
+static unsigned threads = 1;
+}
 
 void printVersion()
 {
@@ -64,6 +71,7 @@ void printHelpDialog()
 {
 	const char dialog[] =
 			"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
+					"biobloomcategorizer [OPTION]... -e -f \"[FILTER1]...\" [FILE1.fq] [FILE2.fq]\n"
 					"Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or\n"
 					"BAM format and compressed with gz, bz2 or xz and may be tarred.\n"
 					"\n"
@@ -74,8 +82,11 @@ void printHelpDialog()
 					"  -e, --paired_mode      Uses paired-end information. For BAM or SAM file if\n"
 					"                         they are poorly ordered, memory usage will be much\n"
 					"                         larger than normal. Sorting by read name may be needed.\n"
-					"  -c, --counts=N         Outputs summary of raw counts of user specified hit\n"
-					"                         counts to each filter of each read or read-pair. [0]\n"
+					"  -s, --score=N          Score threshold for matching. Maximum threshold is 1\n"
+					"                         (highest specificity), minimum is 0 (highest\n"
+					"                         sensitivity). Lower score threshold will decrease run\n"
+					"                         time. [0.15]\n"
+					"  -t, --threads=N        The number of threads to use. [1]\n"
 					"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
 					"      --fa               Output categorized reads in Fasta files.\n"
 					"      --fq               Output categorized reads in Fastq files.\n"
@@ -83,20 +94,18 @@ void printHelpDialog()
 					"      --no-chastity      Do not discard unchaste reads. [default]\n"
 					"  -v  --version          Display version information.\n"
 					"  -h, --help             Display this dialog.\n"
-					"\nAdvanced options:\n"
-					"  -t, --min_hit_thr=N    Minimum Hit Threshold Value. The absolute hit number\n"
-					"                         needed for a hit to be considered a match. [2]\n"
-					"  -m, --min_hit_pro=N    Minimum Hit Proportion Threshold Value. The proportion\n"
-					"                         needed for a hit to be considered a match. [0.2]\n"
-					"  -r, --redundant=N      The number of redundant tiles to use. Lowers effective\n"
-					"                         false positive rate at the cost of increasing the\n"
-					"                         effective kmer length by N. [0]\n"
-					"\nOption presets:\n"
-					"      --default          Run categorizer assuming default presets (ie. no\n"
-					"                         advanced options toggled) [default]\n"
-					"      --low_mem          Run categorizer assuming low memory presets.\n"
-					"      --minimize_fpr     Run categorizer assuming minimized false positive rate\n"
-					"                         presets.\n"
+					"Advanced options:\n"
+//					"      --best_hit         If using multiple filters bin reads based on filter with.\n"
+//			        "                         best hit rather than just score threshold. Execution time\n"
+//					"                         will be slightly slower with this option."
+					"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
+					"                         needed over initial tiling of read to continue.\n"
+					"                         Higher values decrease runtime but lower sensitivity.[0]\n"
+					"  -r, --streak=N         The number of hit tiling in second pass needed to jump\n"
+					"                         Several tiles upon a miss. Small values decrease runtime\n"
+					"                         but decrease sensitivity. [3]\n"
+					"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
+					"                         but low specificity, use only on long reads (>100bp).\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
@@ -119,73 +128,63 @@ int main(int argc, char *argv[])
 	string filtersFile = "";
 	string outputReadType = "";
 	bool paired = false;
-	size_t rawCounts = 0;
 
 	int fastq = 0;
 	int fasta = 0;
 	string filePostfix = "";
+	double score = 0.15;
 
 	//advanced options
-	size_t minHit = 2;
-	double percentHit = 0.2;
-	size_t tileModifier = 0;
-
-	//preset options
-	int defaultSettings = 0;
-	int lowMem = 0;
-	int minimizefpr = 0;
-	string presetType = "default";
+	unsigned minHit = 0;
+	unsigned streak = 3;
+	bool minHitOnly = false;
 
 	//long form arguments
 	static struct option long_options[] = {
 			{
 					"prefix", optional_argument, NULL, 'p' }, {
-					"min_hit_thr", optional_argument, NULL, 't' }, {
-					"min_hit_pro", optional_argument, NULL, 'm' }, {
 					"filter_files", required_argument, NULL, 'f' }, {
 					"paired_mode", no_argument, NULL, 'e' }, {
-					"counts", no_argument, NULL, 'c' }, {
+					"score", no_argument, NULL, 's' }, {
 					"help", no_argument, NULL, 'h' }, {
+					"threads", required_argument, NULL, 't' }, {
 					"gz_output", no_argument, NULL, 'g' }, {
-					"redundant", required_argument, NULL, 'r' }, {
 					"chastity", no_argument, &opt::chastityFilter, 1 }, {
 					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
 					"fq", no_argument, &fastq, 1 }, {
 					"fa", no_argument, &fasta, 1 }, {
-					"default", no_argument, &defaultSettings, 1 }, {
-					"low_mem", no_argument, &lowMem, 1 }, {
-					"minimize_fpr", no_argument, &minimizefpr, 1 }, {
-					"version", no_argument, NULL, 0 }, {
+					"version", no_argument, NULL, 'v' }, {
+					"min_hit_thr", required_argument, NULL, 'm' }, {
+					"streak", optional_argument, NULL, 'r' }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:t:m:p:hec:gr:v", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hec:gvs:or:t:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
 		switch (c) {
 		case 'm': {
 			stringstream convert(optarg);
-			if (!(convert >> percentHit)) {
+			if (!(convert >> minHit)) {
 				cerr << "Error - Invalid parameter! m: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
-			if (percentHit > 1) {
-				cerr << "Error -m cannot be greater than 1 " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			presetType = "custom";
 			break;
 		}
-		case 't': {
+		case 's': {
 			stringstream convert(optarg);
-			if (!(convert >> minHit)) {
-				cerr << "Error - Invalid parameter! t: " << optarg << endl;
+			if (!(convert >> score)) {
+				cerr << "Error - Invalid parameter! s: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
-			presetType = "custom";
+			if (score < 0 || score > 1) {
+				cerr << "Error - s must be between 0 and 1, input given:"
+						<< optarg << endl;
+				exit(EXIT_FAILURE);
+			}
 			break;
 		}
 		case 'f': {
@@ -204,19 +203,10 @@ int main(int argc, char *argv[])
 			paired = true;
 			break;
 		}
-		case 'r': {
+		case 't': {
 			stringstream convert(optarg);
-			if (!(convert >> tileModifier)) {
-				cerr << "Error - Invalid parameter! r: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			presetType = "custom";
-			break;
-		}
-		case 'c': {
-			stringstream convert(optarg);
-			if (!(convert >> rawCounts)) {
-				cerr << "Error - Invalid parameter! c: " << optarg << endl;
+			if (!(convert >> opt::threads)) {
+				cerr << "Error - Invalid parameter! t: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -229,6 +219,18 @@ int main(int argc, char *argv[])
 			printVersion();
 			break;
 		}
+		case 'o': {
+			minHitOnly = true;
+			break;
+		}
+		case 'r': {
+			stringstream convert(optarg);
+			if (!(convert >> streak)) {
+				cerr << "Error - Invalid parameter! r: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
 		case '?': {
 			die = true;
 			break;
@@ -236,24 +238,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	//check if only one preset was set
-	if (defaultSettings || minimizefpr || lowMem) {
-		if (presetType == "custom" || !(defaultSettings ^ minimizefpr ^ lowMem)) {
-			cerr << "Error: Cannot mix option presets or add custom advanced options to presets" << endl;
-			exit(1);
-		}
-	}
-
-	//set presets
-
-	if (lowMem) {
-		tileModifier = 1;
-		presetType = "low_mem";
-	} else if (minimizefpr) {
-		tileModifier = 1;
-		percentHit = 0.25;
-		presetType = "minimum_fpr";
-	}
+#if defined(_OPENMP)
+	if (opt::threads > 0)
+	omp_set_num_threads(opt::threads);
+#endif
 
 	vector<string> filterFilePaths = convertInputString(filtersFile);
 	vector<string> inputFiles = convertInputString(rawInputFiles);
@@ -268,9 +256,9 @@ int main(int argc, char *argv[])
 	//check validity of inputs for paired end mode
 	if (paired) {
 		if (inputFiles.size() == 1
-				&& (inputFiles[0].substr(inputFiles[0].size() - 4) != "bam"
+				&& (inputFiles[0].substr(inputFiles[0].size() - 4) == "bam"
 						|| inputFiles[0].substr(inputFiles[0].size() - 4)
-								!= "sam"))
+								== "sam"))
 		{
 			pairedBAMSAM = true;
 		} else if (inputFiles.size() == 2) {
@@ -316,17 +304,8 @@ int main(int argc, char *argv[])
 	}
 
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths, minHit, percentHit, rawCounts,
-			outputPrefix, filePostfix, tileModifier);
-
-	//check filter preset type
-	if (presetType != "custom") {
-		if (!BBC.checkFilterPresetType(presetType)) {
-			cerr
-					<< "If you know what you are doing please ignore these warnings. Program will proceed."
-					<< endl;
-		}
-	}
+	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix,
+			streak, minHit, minHitOnly);
 
 	//filtering step
 	//create directory structure if it does not exist

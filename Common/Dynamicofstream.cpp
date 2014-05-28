@@ -31,7 +31,7 @@ ostream& Dynamicofstream::operator <<(const string& o)
 	return *filestream;
 }
 
-ostream& Dynamicofstream::operator <<(uint16_t o)
+ostream& Dynamicofstream::operator <<(unsigned o)
 {
 	*filestream << o;
 	return *filestream;
@@ -39,7 +39,6 @@ ostream& Dynamicofstream::operator <<(uint16_t o)
 
 
 void Dynamicofstream::close(){
-	assert(filestream->good());
 	filestream->flush();
 	if (gz){
 		ogzstream *temp = dynamic_cast<ogzstream*>(filestream);

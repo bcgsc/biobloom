@@ -15,63 +15,67 @@
 
 using namespace std;
 
+// For Calculating aspects of bloom filter
+// todo: Tweak calculations as they are approximations and may not be 100% optimal
+// see http://en.wikipedia.org/wiki/Bloom_filter
+
+/*
+ * Calculation assumes optimal ratio of bytes per entry given a fpr
+ */
+//Note: Rounded down because in practice you want to calculate as few hash values as possible
+//static uint8_t calcOptiHashNum(float fpr) {
+//	return uint8_t(-log(fpr) / log(2));
+//}
 class BloomFilterInfo {
 public:
-	explicit BloomFilterInfo(string const &filterID, uint16_t kmerSize,
-			float desiredFPR, size_t expectedSize, const vector<string> &seqSrcs,
-			uint16_t hashNum, const string &optionType);
+	explicit BloomFilterInfo(string const &filterID, unsigned kmerSize,
+			unsigned hashNum, double desiredFPR, size_t expectedSize,
+			const vector<string> &seqSrc);
 	explicit BloomFilterInfo(string const &fileName);
 	void addHashFunction(const string &fnName, size_t seed);
-	void setReduanacy(size_t redunSeq);
+	void setRedundancy(size_t redunSeq);
 	void setTotalNum(size_t totalNum);
 
 	void printInfoFile(const string &fileName) const;
 	virtual ~BloomFilterInfo();
 
 	//getters
-	const uint16_t getKmerSize() const;
-	const size_t getCalcuatedFilterSize() const;
-	const vector<string> &getHashFunctionNames() const;
-	const vector<size_t> &getSeedValues() const;
-	const string getSeedHashSigniture() const;
+	unsigned getKmerSize() const;
+	unsigned getHashNum() const;
+	size_t getCalcuatedFilterSize() const;
 	const string &getFilterID() const;
 	const string &getPresetType() const;
-	double getRedunancyFPR() const;
+	double getRedundancyFPR() const;
 	double getFPR() const;
 
 private:
 	//user specified input
-	string filterID;
-	uint16_t kmerSize;
-	float desiredFPR;
-	vector<string> seqSrcs;
-	uint16_t hashNum;
-	string optionType;
-	size_t expectedNumEntries;
+	string m_filterID;
+	unsigned m_kmerSize;
+	double m_desiredFPR;
+	vector<string> m_seqSrcs;
+	unsigned m_hashNum;
+	size_t m_expectedNumEntries;
 
 	//determined at run time
 	struct runtime {
 		size_t size;
 		size_t numEntries;
 		double FPR;
-		vector<string> hashFunctions;
-		vector<size_t> seeds;
 		size_t redundantSequences;
 		double redundantFPR;
 	};
 
-	runtime runInfo;
+	runtime m_runInfo;
 
 	const vector<string> convertSeqSrcString(const string &seqSrcStr) const;
-	const vector<string> convertHashFuncString(const string &hashFnStr) const;
-	const vector<size_t> convertSeedString(const string &seedStr) const;
-	const double calcApproxFPR(size_t size, size_t numEntr,
-			uint16_t hashFunctNum) const;
-	const double calcRedunancyFPR(size_t size, size_t numEntr,
-			uint16_t hashFunctNum, size_t redundantSeqs) const;
-	const size_t calcOptimalSize(size_t entries, float fpr) const;
-	const size_t calcOptimalSize(size_t entries, float fpr,
-			uint16_t hashNum) const;
+	double calcApproxFPR(size_t size, size_t numEntr,
+			unsigned hashFunctNum) const;
+	double calcRedunancyFPR(size_t size, size_t numEntr,
+			unsigned hashFunctNum) const;
+	size_t calcOptimalSize(size_t entries, float fpr) const;
+	size_t calcOptimalSize(size_t entries, float fpr,
+			unsigned hashNum) const;
 };
 
 #endif /* BLOOMFILTERINFO_H_ */

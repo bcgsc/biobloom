@@ -11,44 +11,44 @@
 #include "DataLayer/FastaIndex.h"
 
 WindowedFileParser::WindowedFileParser(string const &fileName,
-		uint16_t windowSize) :
-		windowSize(windowSize), proc(ReadsProcessor(windowSize))
+		unsigned windowSize) :
+		m_windowSize(windowSize), m_proc(ReadsProcessor(windowSize))
 {
-	fastaFileHandle.open(fileName.c_str(), ifstream::in);
-	assert(fastaFileHandle);
+	m_fastaFileHandle.open(fileName.c_str(), ifstream::in);
+	assert(m_fastaFileHandle);
 
-//create in memory index
+	//create in memory index
 	WindowedFileParser::initializeIndex(fileName);
-	currentHeader = "";
-	setLocationByHeader(headers[0]);
+	m_currentHeader = "";
+	setLocationByHeader(m_headers[0]);
 }
 
 const vector<string> WindowedFileParser::getHeaders() const
 {
-	return headers;
+	return m_headers;
 }
 
 //sets the location in the file to the start of the sequence given a header
 void WindowedFileParser::setLocationByHeader(string const &header)
 {
-	sequenceNotEnd = true;
-	currentHeader = header;
-	fastaFileHandle.seekg(fastaIndex[header].start, ios::beg);
-	currentCharNumber = 0;
+	m_sequenceNotEnd = true;
+	m_currentHeader = header;
+	m_fastaFileHandle.seekg(m_fastaIndex[header].start, ios::beg);
+	m_currentCharNumber = 0;
 	string bufferString;
-	getline(fastaFileHandle, currentString);
-	while ((currentString.length() < windowSize)
-			&& (currentCharNumber < fastaIndex[currentHeader].size)
-			&& getline(fastaFileHandle, bufferString))
+	getline(m_fastaFileHandle, m_currentString);
+	while ((m_currentString.length() < m_windowSize)
+			&& (m_currentCharNumber < m_fastaIndex[m_currentHeader].size)
+			&& getline(m_fastaFileHandle, bufferString))
 	{
-		currentString += bufferString;
+		m_currentString += bufferString;
 	}
-	currentLinePos = 0;
+	m_currentLinePos = 0;
 }
 
-const size_t WindowedFileParser::getSequenceSize(string const &header)
+size_t WindowedFileParser::getSequenceSize(string const &header) const
 {
-	return fastaIndex[header].size;
+	return m_fastaIndex.at(header).size;
 }
 
 //Todo: Optimize to skip sections when finding a non ATCG character
@@ -57,37 +57,38 @@ const size_t WindowedFileParser::getSequenceSize(string const &header)
  * Return the next string in sliding window, also cleans and formats
  * sequences using ReadProcessor
  */
-const string &WindowedFileParser::getNextSeq()
+const unsigned char* WindowedFileParser::getNextSeq()
 {
-	if (currentString.length() < windowSize + currentLinePos) {
-		currentString.erase(0, currentLinePos);
-		currentLinePos = 0;
+	if (m_currentString.length() < m_windowSize + m_currentLinePos) {
+		m_currentString.erase(0, m_currentLinePos);
+		m_currentLinePos = 0;
 		//grow the sequence to match the correct window size
 		//stop if there are no more lines left in fasta file
-		while (fastaFileHandle.is_open()
-				&& (currentString.length() < windowSize)
-				&& (currentCharNumber < fastaIndex[currentHeader].size)
-				&& getline(fastaFileHandle, bufferString))
+		while (m_fastaFileHandle.is_open()
+				&& (m_currentString.length() < m_windowSize)
+				&& (m_currentCharNumber < m_fastaIndex[m_currentHeader].size)
+				&& getline(m_fastaFileHandle, m_bufferString))
 		{
-			currentString += bufferString;
+			m_currentString += m_bufferString;
 		}
+
 		//if there is not enough sequence for a full kmer
-		if (currentString.length() < windowSize) {
-			sequenceNotEnd = false;
-			return currentString;
+		if (m_currentString.length() < m_windowSize) {
+			m_sequenceNotEnd = false;
+			return NULL;
 		}
 	}
-
-	return proc.prepSeq(currentString, currentLinePos++);
+	return m_proc.prepSeq(m_currentString, m_currentLinePos++);
 }
 
-const bool WindowedFileParser::notEndOfSeqeunce()
+bool WindowedFileParser::notEndOfSeqeunce() const
 {
-	return sequenceNotEnd;
+	return m_sequenceNotEnd;
 }
 
 /*
- * Initializes fasta index in memory. Will output index if not present.
+ * Initializes fasta index in memory.
+ * If no index exists derive one from input file
  * Input file refers to input fasta file not the index file.
  */
 void WindowedFileParser::initializeIndex(string const &fileName)
@@ -97,8 +98,7 @@ void WindowedFileParser::initializeIndex(string const &fileName)
 	//append .fai to end of filename
 	ifstream indexFile;
 	indexFile.open(faiFile.c_str(), ifstream::in);
-	if (!indexFile)
-	{
+	if (!indexFile) {
 		cerr << "Fasta files must be indexed. Use samtools faidx." << endl;
 		exit(1);
 	}
@@ -112,9 +112,9 @@ void WindowedFileParser::initializeIndex(string const &fileName)
 			FastaIndexValue value;
 			ss >> header >> value.size >> value.start >> value.bpPerLine
 					>> value.charsPerLine;
-			value.index = headers.size();
-			fastaIndex[header] = value;
-			headers.push_back(header);
+			value.index = m_headers.size();
+			m_fastaIndex[header] = value;
+			m_headers.push_back(header);
 		}
 		indexFile.close();
 	}
@@ -122,6 +122,6 @@ void WindowedFileParser::initializeIndex(string const &fileName)
 
 WindowedFileParser::~WindowedFileParser()
 {
-	fastaFileHandle.close();
+	m_fastaFileHandle.close();
 }
 

@@ -5,8 +5,6 @@
  *      Author: cjustin
  */
 
-//#include "BloomFilter.h"
-#include "Common/HashManager.h"
 #include "Common/BloomFilter.h"
 #include <string>
 #include <assert.h>
@@ -14,6 +12,8 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <omp.h>
+#include "Common/ReadsProcessor.h"
 
 using namespace std;
 
@@ -36,39 +36,26 @@ int memory_usage() {
 }
 
 int main(int argc, char **argv) {
-	HashManager hashMan;
-	for (unsigned int i = 0; i < 12; ++i) {
-		hashMan.addHashFunction("CityHash64", i);
-	}
-	const vector<size_t> &hashedValues = hashMan.multiHash("ATCGGGTCATCAACCAATAT");
-	cout << hashedValues.size() << endl;
-	for (unsigned int i = 0; i < hashedValues.size() - 1; ++i) {
-		for (unsigned int j = i + 1; j < hashedValues.size(); ++j) {
-			assert(hashedValues.at(j) != hashedValues.at(i));
-		}
-	}
-
-	// end of testing hash manager, numbers should all be different.
-	cout << "hashing tests done" << endl;
-
 	//memory usage from before
 	int memUsage = memory_usage();
 
 	size_t filterSize = 1000000000;
-	BloomFilter filter(filterSize, hashMan);
-	filter.insert("ATCGGGTCATCAACCAATAT");
-	filter.insert("ATCGGGTCATCAACCAATAC");
-	filter.insert("ATCGGGTCATCAACCAATAG");
-	filter.insert("ATCGGGTCATCAACCAATAA");
+	BloomFilter filter(filterSize, 5, 20);
+	ReadsProcessor proc(20);
+
+	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAT", 0));
+	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAC", 0));
+	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAG", 0));
+	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAA", 0));
 
 	//Check if filter is able to report expected results
-	assert(filter.contains("ATCGGGTCATCAACCAATAT"));
-	assert(filter.contains("ATCGGGTCATCAACCAATAC"));
-	assert(filter.contains("ATCGGGTCATCAACCAATAG"));
-	assert(filter.contains("ATCGGGTCATCAACCAATAA"));
+	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAT", 0)));
+	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAC", 0)));
+	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAG", 0)));
+	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAA", 0)));
 
-	assert(!filter.contains("ATCGGGTCATCAACCAATTA"));
-	assert(!filter.contains("ATCGGGTCATCAACCAATTC"));
+	assert(!filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATTA",0)));
+	assert(!filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATTC",0)));
 
 	//should be size of bf (amortized)
 	cout << memory_usage() - memUsage << "kb" << endl;
@@ -76,7 +63,7 @@ int main(int argc, char **argv) {
 	cout << "de novo bf tests done" << endl;
 
 	//Check storage can occur properly
-	string filename = "/home/cjustin/workspace/TestData/bloomFilter.bf";
+	string filename = "/tmp/bloomFilter.bf";
 	filter.storeFilter(filename);
 	ifstream ifile(filename.c_str());
 	assert(ifile.is_open());
@@ -94,24 +81,30 @@ int main(int argc, char **argv) {
 	cout << memory_usage() - memUsage << "kb" << endl;
 
 	//check loading of stored filter
-	BloomFilter filter2(filterSize, filename, hashMan);
+	BloomFilter filter2(filterSize, 5, 20, filename);
 
 	//should be double size of bf (amortized)
 	cout << memory_usage() - memUsage << "kb" << endl;
 
 	//Check if loaded filter is able to report expected results
-	assert(filter2.contains("ATCGGGTCATCAACCAATAT"));
-	assert(filter2.contains("ATCGGGTCATCAACCAATAC"));
-	assert(filter2.contains("ATCGGGTCATCAACCAATAG"));
-	assert(filter2.contains("ATCGGGTCATCAACCAATAA"));
-	assert(!filter2.contains("ATCGGGTCATCAACCAATTT"));
+	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAT", 0)));
+	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAC", 0)));
+	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAG", 0)));
+	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAA", 0)));
+
+	assert(!filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATTA",0)));
+	assert(!filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATTC",0)));
 	cout << "premade bf tests done" << endl;
 
 	//memory leak tests
-	BloomFilter* filter3 = new BloomFilter(filterSize, hashMan);
+	BloomFilter* filter3 = new BloomFilter(filterSize, 5, 20);
+
+	size_t tempMem = memory_usage() - memUsage;
+
 	cout << memory_usage() - memUsage << "kb" << endl;
 	delete(filter3);
 	cout << memory_usage() - memUsage << "kb" << endl;
+	assert(tempMem != memory_usage() - memUsage);
 
 //	vector<vector<int> > test(1, vector<int>(1, 1));
 
@@ -120,6 +113,31 @@ int main(int argc, char **argv) {
 
 	cout << "memory leak prevention tests done" << endl;
 	cout << memory_usage() - memUsage << "kb" << endl;
+
+	remove(filename.c_str());
+
+//	//check parallelized code speed
+//	cout << "testing code parallelization" << endl;
+//	double start_s = omp_get_wtime();
+//
+//	cout << "parallelization" << endl;
+//	for( int i =0; i < 10000000; i++)
+//	{
+//		vector<size_t> values = multiHash("ATCGGGTCATCAACCAATAA", 5, 20);
+//		filter.contains(values);
+//	}
+//	double stop_s=omp_get_wtime();
+//	cout << "time: " << stop_s-start_s << endl;
+//
+//	start_s = omp_get_wtime();
+//	cout << "non parallelization" << endl;
+//	for( int i =0; i < 10000000; i++)
+//	{
+//		vector<size_t> values = multiHashNonPara("ATCGGGTCATCAACCAATAA", 5, 20);
+//		filter.contains(values);
+//	}
+//	stop_s=omp_get_wtime();
+//	cout << "time: " << stop_s-start_s << endl;
 
 	cout << "done" << endl;
 	return 0;

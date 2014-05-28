@@ -1,9 +1,9 @@
-bin_PROGRAMS = BloomFilterTests \
+bin_PROGRAMS = ReadProcessorTests \
+	BloomFilterTests \
 	BloomFilterCategorizerTests \
 	BloomFilterMakerTests \
 	WindowedParser \
-	BloomFilterInfoTests \
-	ReadProcessorTests
+	BloomFilterInfoTests
 
 ReadProcessorTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a -lz

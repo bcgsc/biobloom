@@ -9,7 +9,6 @@
 #define MULTIFILTER_H_
 #include <string>
 #include <vector>
-#include "Common/HashManager.h"
 #include "Common/BloomFilter.h"
 #include "boost/unordered/unordered_map.hpp"
 #include "boost/shared_ptr.hpp"
@@ -17,19 +16,18 @@ using namespace std;
 
 class MultiFilter {
 public:
-	MultiFilter(vector<string> const &hashFn, vector<size_t> const &seeds);
-	void addFilter(size_t filterSize, string const &filterID,
-			string const &filePath);
-	const boost::unordered_map<string, bool> &multiContains(string const &kmer);
-	const boost::unordered_map<string, bool> &multiContains(string const &kmer,
+	MultiFilter(uint16_t hashNum, uint16_t kmerSize);
+	void addFilter(string const &filterID, boost::shared_ptr<BloomFilter> filter);
+	const boost::unordered_map<string, bool> multiContains(const unsigned char* kmer);
+	const boost::unordered_map<string, bool> multiContains(const unsigned char* kmer,
 			vector<string> const &tempFilters);
+	const BloomFilter &getFilter(const string &filterID);
 	const vector<string> &getFilterIds() const;
 	virtual ~MultiFilter();
 private:
-	//so don't have to reallocated memory multiple times
-	boost::unordered_map<string, bool> tempResults;
 	boost::unordered_map<string, boost::shared_ptr<BloomFilter> > filters;
-	HashManager hashMan;
+	uint16_t hashNum;
+	uint16_t kmerSize;
 	vector<string> filterIDs;
 };
 

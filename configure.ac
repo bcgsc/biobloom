@@ -2,11 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-<<<<<<< HEAD
-AC_INIT(BIOBLOOMTOOLS, 1.2.9, cjustin@bcgsc.ca)
-=======
 AC_INIT(BIOBLOOMTOOLS, 2.0.5, cjustin@bcgsc.ca)
->>>>>>> refs/remotes/origin/confirmAlgorithm
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([BioBloomMaker/BioBloomMaker.cpp])
 AC_CONFIG_HEADER([config.h])

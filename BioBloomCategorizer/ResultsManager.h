@@ -23,30 +23,25 @@ public:
 	explicit ResultsManager(const vector<string> &hashSigsRef,
 			const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
 			const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
-			size_t minHit, double percHit, size_t maxHitValue, uint8_t tileModifier);
+			double scoreThreshold);
 
-	const string updateSummaryData(size_t seqLen,
-			unordered_map<string, size_t> &hits);
-	const string updateSummaryData(size_t seqLen1, size_t seqLen2,
-			unordered_map<string, size_t> &hits1,
-			unordered_map<string, size_t> &hits2);
+	const string updateSummaryData(const unordered_map<string, bool> &hits);
+	const string updateSummaryData(const unordered_map<string, bool> &hits1,
+			const unordered_map<string, bool> &hits2);
 
 	const string getResultsSummary(size_t readCount) const;
-	const string getCountSummary(size_t readCount) const;
 	virtual ~ResultsManager();
 private:
 	//Variables copied from biobloomcategorizer
-	const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > infoFiles;
-	const unordered_map<string, shared_ptr<MultiFilter> > filters;
 	const vector<string> hashSigs;
-	const size_t minHit;
-	const double percentMinHit;
-	const size_t maxHitValue;
-	const uint8_t tileModifier;
+	const unordered_map<string, shared_ptr<MultiFilter> > filters;
+	const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > infoFiles;
+	const double scoreThreshold;
 
 	unordered_map<string, size_t> aboveThreshold;
-	unordered_map<string, size_t> belowThreshold;
-	unordered_map<string, vector<size_t> > rawHits;
+	unordered_map<string, size_t> unique;
+	size_t multiMatch;
+	size_t noMatch;
 };
 
 #endif /* RESULTSMANAGER_H_ */
