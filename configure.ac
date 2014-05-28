@@ -2,7 +2,11 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
+<<<<<<< HEAD
 AC_INIT(BIOBLOOMTOOLS, 1.2.9, cjustin@bcgsc.ca)
+=======
+AC_INIT(BIOBLOOMTOOLS, 2.0.5, cjustin@bcgsc.ca)
+>>>>>>> refs/remotes/origin/confirmAlgorithm
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([BioBloomMaker/BioBloomMaker.cpp])
 AC_CONFIG_HEADER([config.h])
@@ -25,6 +29,15 @@ AC_ARG_WITH(boost, AS_HELP_STRING([--with-boost=PATH],
 if test "$with_boost" -a -d "$with_boost"; then
 	boost_cppflags="-I$with_boost/include"
 fi
+# MPI
+AC_ARG_WITH(mpi, AS_HELP_STRING([--with-mpi=PATH],
+	[specify prefix directory for the installed MPI parallel
+	computing library]))
+if test "$with_mpi" -a -d "$with_mpi"; then
+	mpi_cppflags="-I$with_mpi/include"
+	mpi_ldflags="-L$with_mpi/lib"
+fi
+
 # Set compiler flags.
 AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $CPPFLAGS")
 
@@ -34,6 +47,15 @@ AC_CHECK_HEADERS([boost/unordered/unordered_map.hpp])
 AC_CHECK_HEADERS([boost/property_tree/ptree.hpp])
 AC_CHECK_HEADERS([boost/property_tree/ini_parser.hpp])
 AC_CHECK_HEADERS([boost/tuple/tuple.hpp])
+
+# Check for OpenMP.
+AC_OPENMP
+if test -z $OPENMP_CXXFLAGS; then
+	OPENMP_CXXFLAGS=-Wno-unknown-pragmas
+fi
+
+# Set compiler flags.
+AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
 
 # Checks for typedefs, structures, and compiler characteristics.
 
