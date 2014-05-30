@@ -25,14 +25,6 @@ AC_ARG_WITH(boost, AS_HELP_STRING([--with-boost=PATH],
 if test "$with_boost" -a -d "$with_boost"; then
 	boost_cppflags="-I$with_boost/include"
 fi
-# MPI
-AC_ARG_WITH(mpi, AS_HELP_STRING([--with-mpi=PATH],
-	[specify prefix directory for the installed MPI parallel
-	computing library]))
-if test "$with_mpi" -a -d "$with_mpi"; then
-	mpi_cppflags="-I$with_mpi/include"
-	mpi_ldflags="-L$with_mpi/lib"
-fi
 
 # Set compiler flags.
 AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $CPPFLAGS")
