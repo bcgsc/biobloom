@@ -2,7 +2,8 @@ bin_PROGRAMS = biobloommaker
 
 biobloommaker_CPPFLAGS = -I$(top_srcdir)/BioBloomMaker \
 	-I$(top_srcdir)/Common \
-	-I$(top_srcdir)/DataLayer
+	-I$(top_srcdir)/DataLayer \
+	-I$(top_srcdir)
 
 biobloommaker_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a
