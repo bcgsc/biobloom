@@ -57,7 +57,7 @@ BloomFilter::BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize,
 		exit(1);
 	}
 
-	fread(m_filter, fileSize, 1, file);
+	assert(fread(m_filter, fileSize, 1, file) == 1);
 	if(fclose(file) != 0)
 	{
 		cerr << "file \"" << filterFilePath << "\" could not be read." << endl;
