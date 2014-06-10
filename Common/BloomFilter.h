@@ -11,9 +11,11 @@
 #include <string>
 #include <vector>
 #include <stdint.h>
-#include <omp.h>
 #include "city.h"
 #include <math.h>
+#if _OPENMP
+# include <omp.h>
+#endif
 
 using namespace std;
 

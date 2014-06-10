@@ -14,7 +14,7 @@
 #include "BioBloomClassifier.h"
 #include "DataLayer/Options.h"
 #include "config.h"
-#if defined(_OPENMP)
+#if _OPENMP
 # include <omp.h>
 #endif
 

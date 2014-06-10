@@ -12,8 +12,10 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <omp.h>
 #include "Common/ReadsProcessor.h"
+#if _OPENMP
+# include <omp.h>
+#endif
 
 using namespace std;
 
