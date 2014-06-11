@@ -26,10 +26,8 @@ if test "$with_boost" -a -d "$with_boost"; then
 	boost_cppflags="-isystem$with_boost/include"
 fi
 
-# Find the absolute path to the source.
-pushd $srcdir >/dev/null
-my_abs_srcdir=`pwd`
-popd >/dev/null
+# Find the absolute paths.
+my_abs_srcdir=$(cd $srcdir; pwd)
 
 # Set compiler flags.
 boost_ver=1.55.0
