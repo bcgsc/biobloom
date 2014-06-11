@@ -23,7 +23,7 @@ AC_TYPE_SIZE_T
 AC_ARG_WITH(boost, AS_HELP_STRING([--with-boost=PATH],
 			[specify directory for the boost header files]))
 if test "$with_boost" -a -d "$with_boost"; then
-	boost_cppflags="-I$with_boost/include"
+	boost_cppflags="-isystem$with_boost/include"
 fi
 
 # Set compiler flags.
