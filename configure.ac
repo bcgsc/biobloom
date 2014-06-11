@@ -26,8 +26,15 @@ if test "$with_boost" -a -d "$with_boost"; then
 	boost_cppflags="-isystem$with_boost/include"
 fi
 
+# Find the absolute path to the source.
+pushd $srcdir >/dev/null
+my_abs_srcdir=`pwd`
+popd >/dev/null
+
 # Set compiler flags.
-AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $CPPFLAGS")
+boost_ver=1.55.0
+boost_ver_dir=1_55_0
+AC_SUBST(CPPFLAGS,"-I$my_abs_srcdir $boost_cppflags $CPPFLAGS -isystem$my_abs_srcdir/$boost_ver_dir")
 
 # Checks for header files.
 AC_LANG([C++])	#sets the auto conf to look for c++ headers
@@ -52,10 +59,10 @@ if test $ac_cv_header_boost_unordered_unordered_map_hpp != yes; then
 	AC_MSG_ERROR([Requires the Boost C++ libraries, which may
 	be downloaded from here: http://www.boost.org/users/download/
 	The following commands will download and install Boost:
-	wget http://downloads.sourceforge.net/project/boost/boost/1.51.0/boost_1_51_0.tar.bz2
-	tar jxf boost_1_51_0.tar.bz2
-	ln -s boost_1_51_0/boost boost
-	])
+	cd $my_abs_srcdir
+	wget http://downloads.sourceforge.net/project/boost/boost/$boost_ver/$boost_ver_dir.tar.bz2
+	tar jxf $boost_ver_dir.tar.bz2
+	cd -])
 fi
 
 AC_CONFIG_FILES([
