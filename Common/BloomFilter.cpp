@@ -57,39 +57,12 @@ BloomFilter::BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize,
 		exit(1);
 	}
 
-	assert(fread(m_filter, fileSize, 1, file) == 1);
-	if(fclose(file) != 0)
+	size_t countRead = fread(m_filter, fileSize, 1, file);
+	if(countRead != 1 && fclose(file) != 0)
 	{
 		cerr << "file \"" << filterFilePath << "\" could not be read." << endl;
 		exit(1);
 	}
-
-//	//Check file size is correct size
-//	ifstream binaryFile(filterFilePath.c_str(), ios::binary);
-//	binaryFile.seekg(0, std::ios::end);
-//	size_t fileSize = binaryFile.tellg();
-//	binaryFile.seekg(0, std::ios::beg);
-//	if ( fileSize != m_sizeInBytes) {
-//		cerr << "Error: " << filterFilePath
-//				<< " does not match size given by its information file. Size: "
-//				<< fileSize << " vs " << m_sizeInBytes << " bytes." << endl;
-//		exit(1);
-//	}
-//
-//	assert(binaryFile.good());
-//	//load in blocks to a vector
-//	if (binaryFile.is_open()) {
-//		binaryFile.read(reinterpret_cast<char*>(m_filter[0]), m_size);
-//	} else {
-//		cerr << "file \"" << filterFilePath << "\" could not be read." << endl;
-//		binaryFile.close();
-//		exit(1);
-//	}
-//	binaryFile.close();
-//	assert(binaryFile.eof());
-//	assert(!binaryFile.fail());
-//	assert(!binaryFile.bad());
-//	assert((size_t) binaryFile.gcount() == m_sizeInBytes);
 }
 
 /*
