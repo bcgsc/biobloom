@@ -40,7 +40,7 @@ void printHelpDialog() {
 					"  -h, --help             Display this dialog.\n"
 					"  -v  --version          Display version information.\n"
 					"\nAdvanced options:\n"
-					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.075]\n"
+					"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]\n"
 					"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
 					"                         of automatically using calculated optimal number of\n"
 					"                         functions.\n"
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 	int c;
 
 	//command line variables
-	double fpr = 0.075;
+	double fpr = 0.0075;
 	string filterPrefix = "";
 	string outputDir = "";
 	unsigned kmerSize = 25;
