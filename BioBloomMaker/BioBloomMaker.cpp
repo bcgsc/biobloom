@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
 	info.setRedundancy(redundNum);
 
 	//code for redundancy checking
-	//calcuate redundancy rate
+	//calculate redundancy rate
 	double redunRate = double(redundNum) / double(filterGen.getTotalEntries())
 			- info.getRedundancyFPR();
 	if (redunRate > 0.25) {
