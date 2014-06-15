@@ -224,14 +224,14 @@ int main(int argc, char *argv[]) {
 
 	//code for redundancy checking
 	//calcuate redundancy rate
-	double redunRate = double(redundNum) / double(entryNum)
+	double redunRate = double(redundNum) / double(filterGen.getTotalEntries())
 			- info.getRedundancyFPR();
 	if (redunRate > 0.25) {
-		cerr << "Redundancy Rate is approximately: " << redunRate << endl;
+		cerr << "The ratio between redundant k-mers and unique k-mers is approximately: " << redunRate << endl;
 		cerr
 				<< "Consider checking your files for duplicate sequences and adjusting them accordingly.\n"
 						"High redundancy will cause filter sizes used overestimated, potentially resulting in a larger than needed filter.\n"
-						"Alternatively you can set the size of filter wanted with (-n) and ignore this message."
+						"Alternatively you can set the number of elements wanted in the filter with (-n) and ignore this message."
 				<< endl;
 	}
 
