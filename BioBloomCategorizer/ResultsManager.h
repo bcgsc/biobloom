@@ -45,8 +45,10 @@ private:
 	const uint8_t tileModifier;
 
 	unordered_map<string, size_t> aboveThreshold;
-	unordered_map<string, size_t> belowThreshold;
+	unordered_map<string, size_t> unique;
 	unordered_map<string, vector<size_t> > rawHits;
+	size_t multiMatch;
+	size_t noMatch;
 };
 
 #endif /* RESULTSMANAGER_H_ */
