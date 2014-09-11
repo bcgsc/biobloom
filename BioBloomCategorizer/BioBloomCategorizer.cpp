@@ -106,6 +106,8 @@ void printHelpDialog()
 					"                         but decrease sensitivity. [3]\n"
 					"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
 					"                         but low specificity, use only on long reads (>100bp).\n"
+					"  -c, --collab			  Use collaborative filtering. Only functions when multiple\n"
+					"						  filters are used (experimental)."
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
@@ -138,6 +140,7 @@ int main(int argc, char *argv[])
 	unsigned minHit = 0;
 	unsigned streak = 3;
 	bool minHitOnly = false;
+	bool collab = false;
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -156,12 +159,13 @@ int main(int argc, char *argv[])
 					"version", no_argument, NULL, 'v' }, {
 					"min_hit_thr", required_argument, NULL, 'm' }, {
 					"streak", optional_argument, NULL, 'r' }, {
+					"collab", no_argument, NULL, 'c'}, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hec:gvs:or:t:", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hec:gvs:or:t:c", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -229,6 +233,10 @@ int main(int argc, char *argv[])
 				cerr << "Error - Invalid parameter! r: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
+			break;
+		}
+		case 'c': {
+			collab = true;
 			break;
 		}
 		case '?': {
