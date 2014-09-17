@@ -159,13 +159,14 @@ int main(int argc, char *argv[])
 					"version", no_argument, NULL, 'v' }, {
 					"min_hit_thr", required_argument, NULL, 'm' }, {
 					"streak", optional_argument, NULL, 'r' }, {
+					"min_hit_only", no_argument, NULL, 'o'}, {
 					"collab", no_argument, NULL, 'c'}, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hec:gvs:or:t:c", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegvs:or:t:c", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -314,6 +315,10 @@ int main(int argc, char *argv[])
 	//load filters
 	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix,
 			streak, minHit, minHitOnly);
+
+	if (collab){
+		BBC.setCollabFilter();
+	}
 
 	//filtering step
 	//create directory structure if it does not exist
