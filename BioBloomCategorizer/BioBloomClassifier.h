@@ -21,6 +21,8 @@
 using namespace std;
 using namespace boost;
 
+//TODO: some inlining may help performance
+
 class BioBloomClassifier {
 public:
 	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
@@ -36,6 +38,10 @@ public:
 	void filterPairBAM(const string &file);
 	void filterPairBAMPrint(const string &file, const string &outputType);
 
+	void setCollabFilter(){
+		m_collab = true;
+	}
+
 	virtual ~BioBloomClassifier();
 
 private:
@@ -44,6 +50,8 @@ private:
 	void evaluateReadStd(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
+			unordered_map<string, bool> &hits);
+	void evaluateReadCollab(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
 
 	//group filters with same hash number
@@ -58,6 +66,8 @@ private:
 	const unsigned m_streakThreshold;
 	const unsigned m_minHit;
 	const bool m_minHitOnly;
+
+	bool m_collab;
 
 	//Todo: is this really better than hard-coding them in the class?
 	const string m_noMatch;
