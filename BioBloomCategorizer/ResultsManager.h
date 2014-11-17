@@ -33,15 +33,14 @@ public:
 	virtual ~ResultsManager();
 private:
 	//Variables copied from biobloomcategorizer
-	const vector<string> hashSigs;
-	const unordered_map<string, shared_ptr<MultiFilter> > filters;
-	const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > infoFiles;
-	const double scoreThreshold;
+	const vector<string> m_hashSigs;
+	const unordered_map<string, shared_ptr<MultiFilter> > m_filters;
+	const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > m_infoFiles;
 
-	unordered_map<string, size_t> aboveThreshold;
-	unordered_map<string, size_t> unique;
-	size_t multiMatch;
-	size_t noMatch;
+	unordered_map<string, size_t> m_aboveThreshold;
+	unordered_map<string, size_t> m_unique;
+	size_t m_multiMatch;
+	size_t m_noMatch;
 };
 
 #endif /* RESULTSMANAGER_H_ */
