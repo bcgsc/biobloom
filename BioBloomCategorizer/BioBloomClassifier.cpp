@@ -24,7 +24,9 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		m_scoreThreshold(scoreThreshold), m_filterNum(filterFilePaths.size()), m_prefix(
 				prefix), m_postfix(outputPostFix), m_streakThreshold(
 				streakThreshold), m_minHit(minHit), m_minHitOnly(minHitOnly), m_noMatch(
-				"noMatch"), m_multiMatch("multiMatch")
+				"noMatch"), m_multiMatch("multiMatch"), m_resSummary(
+				ResultsManager(m_hashSigs, m_filters, m_infoFiles,
+						m_scoreThreshold))
 {
 	m_collab = false;
 	loadFilters(filterFilePaths);
