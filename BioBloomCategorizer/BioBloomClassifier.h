@@ -17,6 +17,7 @@
 #include "Common/ReadsProcessor.h"
 #include "Common/Uncompress.h"
 #include "Common/BloomFilter.h"
+#include "ResultsManager.h"
 
 using namespace std;
 using namespace boost;
@@ -45,6 +46,8 @@ private:
 			unordered_map<string, bool> &hits);
 	void evaluateRead(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
+
+	ResultsManager m_resSummary;
 
 	//group filters with same hash number
 	unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > m_infoFiles;
