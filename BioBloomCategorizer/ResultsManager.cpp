@@ -12,12 +12,12 @@
 # include <omp.h>
 #endif
 
-
 ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
 		const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
 		const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
 		double scoreThreshold) :
-		m_hashSigs(hashSigsRef), m_filters(filtersRef), m_infoFiles(infoFilesRef), m_multiMatch(0), m_noMatch(0)
+		m_hashSigs(hashSigsRef), m_filters(filtersRef), m_infoFiles(
+				infoFilesRef), m_multiMatch(0), m_noMatch(0)
 {
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = m_hashSigs.begin();
@@ -151,12 +151,13 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			const vector<shared_ptr<BloomFilterInfo> > &tempVect = m_infoFiles.at(
-					*j);
+			const vector<shared_ptr<BloomFilterInfo> > &tempVect =
+					m_infoFiles.at(*j);
 			summaryOutput << *i << "_" << tempVect.front()->getKmerSize();
 			summaryOutput << "\t" << m_aboveThreshold.at(*i);
 			summaryOutput << "\t" << readCount - m_aboveThreshold.at(*i);
-			summaryOutput << "\t" << (m_aboveThreshold.at(*i) - m_unique.at(*i));
+			summaryOutput << "\t"
+					<< (m_aboveThreshold.at(*i) - m_unique.at(*i));
 			summaryOutput << "\t"
 					<< double(m_aboveThreshold.at(*i)) / double(readCount);
 			summaryOutput << "\t"
@@ -174,7 +175,8 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	summaryOutput << "\t" << readCount - m_multiMatch;
 	summaryOutput << "\t" << 0;
 	summaryOutput << "\t" << double(m_multiMatch) / double(readCount);
-	summaryOutput << "\t" << double(readCount - m_multiMatch) / double(readCount);
+	summaryOutput << "\t"
+			<< double(readCount - m_multiMatch) / double(readCount);
 	summaryOutput << "\t" << 0.0;
 	summaryOutput << "\n";
 
