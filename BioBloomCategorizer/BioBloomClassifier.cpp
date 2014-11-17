@@ -11,6 +11,7 @@
 #include <sstream>
 #include <sys/stat.h>
 #include "Common/Dynamicofstream.h"
+#include "ResultsManager.h"
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -22,7 +23,7 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		m_scoreThreshold(scoreThreshold), m_filterNum(filterFilePaths.size()), m_prefix(
 				prefix), m_postfix(outputPostFix), m_streakThreshold(
 				streakThreshold), m_minHit(minHit), m_minHitOnly(minHitOnly), m_noMatch(
-				"noMatch"), m_multiMatch("multiMatch")
+				"noMatch"), m_multiMatch("multiMatch"), m_resSummary(ResultsManager(m_hashSigs, m_filters, m_infoFiles, m_scoreThreshold))
 {
 	loadFilters(filterFilePaths);
 }
@@ -32,6 +33,9 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
  */
 void BioBloomClassifier::filter(const vector<string> &inputFiles)
 {
+
+	//results summary object
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_scoreThreshold);
 
 	size_t totalReads = 0;
 
@@ -74,7 +78,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 				}
 
 				//Evaluate hit data and record for summary
-				m_resSummary.updateSummaryData(hits);
+				resSummary.updateSummaryData(hits);
 			} else
 				break;
 		}
@@ -84,7 +88,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 	cerr << "Total Reads:" << totalReads << endl;
 
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
-	summaryOutput << m_resSummary.getResultsSummary(totalReads);
+	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
 }
 
@@ -99,6 +103,9 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 		const string &outputType)
 {
+
+	//results summary object
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_scoreThreshold);
 
 	size_t totalReads = 0;
 
@@ -165,7 +172,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				}
 
 				//Evaluate hit data and record for summary
-				const string &outputFileName = m_resSummary.updateSummaryData(
+				const string &outputFileName = resSummary.updateSummaryData(
 						hits);
 				if (outputType == "fa") {
 #pragma omp critical(outputFiles)
@@ -195,7 +202,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	cerr << "Total Reads:" << totalReads << endl;
 
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
-	summaryOutput << m_resSummary.getResultsSummary(totalReads);
+	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
 }
 
@@ -206,6 +213,9 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
  */
 void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 {
+
+	//results summary object
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_scoreThreshold);
 
 	size_t totalReads = 0;
 
@@ -264,7 +274,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 			string readID = rec1.id.substr(0, rec1.id.length() - 2);
 
 			//Evaluate hit data and record for summary
-			m_resSummary.updateSummaryData(hits1, hits2);
+			resSummary.updateSummaryData(hits1, hits2);
 		} else
 			break;
 	}
@@ -277,7 +287,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 	cerr << "Total Reads:" << totalReads << endl;
 
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
-	summaryOutput << m_resSummary.getResultsSummary(totalReads);
+	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
 }
 
@@ -290,6 +300,9 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 void BioBloomClassifier::filterPairPrint(const string &file1,
 		const string &file2, const string &outputType)
 {
+
+	//results summary object
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_scoreThreshold);
 
 	size_t totalReads = 0;
 
@@ -387,7 +400,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 			//Evaluate hit data and record for summary
 
-			const string &outputFileName = m_resSummary.updateSummaryData(hits1,
+			const string &outputFileName = resSummary.updateSummaryData(hits1,
 					hits2);
 #pragma omp critical(outputFiles)
 			{
@@ -422,7 +435,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	cerr << "Total Reads:" << totalReads << endl;
 
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
-	summaryOutput << m_resSummary.getResultsSummary(totalReads);
+	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
 }
 
@@ -433,6 +446,9 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
  */
 void BioBloomClassifier::filterPairBAM(const string &file)
 {
+
+	//results summary object
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_scoreThreshold);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -497,7 +513,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 				}
 
 				//Evaluate hit data and record for summary
-				m_resSummary.updateSummaryData(hits1, hits2);
+				resSummary.updateSummaryData(hits1, hits2);
 			}
 		} else
 			break;
@@ -505,7 +521,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 	assert(sequence.eof());
 
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
-	summaryOutput << m_resSummary.getResultsSummary(totalReads);
+	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
 }
 
@@ -518,6 +534,9 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 void BioBloomClassifier::filterPairBAMPrint(const string &file,
 		const string &outputType)
 {
+
+	//results summary object
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_scoreThreshold);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -626,7 +645,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 				}
 
 				//Evaluate hit data and record for summary
-				const string &outputFileName = m_resSummary.updateSummaryData(
+				const string &outputFileName = resSummary.updateSummaryData(
 						hits1, hits2);
 #pragma omp critical(outputFiles)
 				{
@@ -659,7 +678,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	}
 
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
-	summaryOutput << m_resSummary.getResultsSummary(totalReads);
+	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
 }
 
