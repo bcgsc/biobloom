@@ -20,8 +20,6 @@ ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
 		hashSigs(hashSigsRef), filters(filtersRef), infoFiles(infoFilesRef), scoreThreshold(
 				scoreThreshold), multiMatch(0), noMatch(0)
 {
-	//TODO: remove scoreThreshold from ResultsManager!
-	(void)ResultsManager::scoreThreshold;
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = hashSigs.begin();
 			j != hashSigs.end(); ++j)
@@ -190,7 +188,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	summaryOutput << "\t" << 0.0;
 	summaryOutput << "\n";
 
-	cout << summaryOutput.str() << endl;
+	cerr << summaryOutput.str() << endl;
 	return summaryOutput.str();
 }
 
