@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 	bool minHitOnly = false;
 	bool collab = false;
 
-	string mainFilter = NULL;
+	string mainFilter = "";
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -341,7 +341,7 @@ int main(int argc, char *argv[])
 		BBC.setCollabFilter();
 	}
 
-	if (mainFilter != NULL){;
+	if (mainFilter != ""){
 		BBC.setMainFilter(mainFilter);
 	}
 
