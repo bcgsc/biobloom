@@ -43,6 +43,8 @@ public:
 		m_collab = true;
 	}
 
+	void setMainFilter(const string &filtername);
+
 	virtual ~BioBloomClassifier();
 
 private:
@@ -61,6 +63,7 @@ private:
 	unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > m_infoFiles;
 	unordered_map<string, shared_ptr<MultiFilter> > m_filters;
 	unordered_map<string, shared_ptr<BloomFilter> > m_filtersSingle;
+	vector<string> m_filterOrder;
 	vector<string> m_hashSigs;
 	double m_scoreThreshold;
 	unsigned m_filterNum;
@@ -69,6 +72,8 @@ private:
 	const unsigned m_streakThreshold;
 	const unsigned m_minHit;
 	const bool m_minHitOnly;
+
+	string m_mainFilter;
 
 	bool m_collab;
 

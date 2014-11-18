@@ -95,9 +95,6 @@ void printHelpDialog()
 					"  -v  --version          Display version information.\n"
 					"  -h, --help             Display this dialog.\n"
 					"Advanced options:\n"
-//					"  -d, --stdout_filter=N  Outputs all unique reads to stdout for the specified\n"
-//					"                         filter. Reads are outputted in fastq, and if paired will\n"
-//					"                         output in an interlaced form."
 //					"      --best_hit         If using multiple filters bin reads based on filter with.\n"
 //			        "                         best hit rather than just score threshold. Execution time\n"
 //					"                         will be slightly slower with this option."
@@ -111,6 +108,9 @@ void printHelpDialog()
 					"                         but low specificity, use only on long reads (>100bp).\n"
 					"  -c, --collab			  Use collaborative filtering. Only functions when multiple\n"
 					"						  filters are used (experimental)."
+					"  -d, --stdout_filter=N  Outputs all unique reads to stdout for the specified\n"
+					"                         filter. Reads are outputted in fastq, and if paired will\n"
+					"                         output in an interlaced form."
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
@@ -145,6 +145,8 @@ int main(int argc, char *argv[])
 	bool minHitOnly = false;
 	bool collab = false;
 
+	string mainFilter = NULL;
+
 	//long form arguments
 	static struct option long_options[] = {
 			{
@@ -164,12 +166,13 @@ int main(int argc, char *argv[])
 					"streak", optional_argument, NULL, 'r' }, {
 					"min_hit_only", no_argument, NULL, 'o'}, {
 					"collab", no_argument, NULL, 'c'}, {
+					"stdout_filter", required_argument, NULL, 'd'}, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegvs:or:t:c", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegvs:or:t:cd:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -241,6 +244,10 @@ int main(int argc, char *argv[])
 		}
 		case 'c': {
 			collab = true;
+			break;
+		}
+		case 'd': {
+			mainFilter = optarg;
 			break;
 		}
 		case '?': {
@@ -321,6 +328,10 @@ int main(int argc, char *argv[])
 
 	if (collab){
 		BBC.setCollabFilter();
+	}
+
+	if (mainFilter != NULL){;
+		BBC.setMainFilter(mainFilter);
 	}
 
 	//filtering step

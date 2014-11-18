@@ -26,7 +26,7 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 				streakThreshold), m_minHit(minHit), m_minHitOnly(minHitOnly), m_noMatch(
 				"noMatch"), m_multiMatch("multiMatch"), m_resSummary(
 				ResultsManager(m_hashSigs, m_filters, m_infoFiles,
-						m_scoreThreshold)), m_collab(false)
+						m_scoreThreshold)), m_collab(false), m_mainFilter(NULL)
 {
 	loadFilters(filterFilePaths);
 }
@@ -79,6 +79,10 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 					} else {
 						evaluateReadStd(rec, *j, hits);
 					}
+				}
+
+				if(hits.at(m_mainFilter)){
+					cout << rec;
 				}
 
 				//Evaluate hit data and record for summary
@@ -172,6 +176,10 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 					} else {
 						evaluateReadStd(rec, *j, hits);
 					}
+				}
+
+				if(hits.at(m_mainFilter)){
+					cout << rec;
 				}
 
 				//Evaluate hit data and record for summary
@@ -273,7 +281,13 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 				}
 			}
 
-			string readID = rec1.id.substr(0, rec1.id.length() - 2);
+#pragma omp critical(cout)
+			{
+				if(hits1.at(m_mainFilter) && hits2.at(m_mainFilter)){
+					cout << rec1;
+					cout << rec2;
+				}
+			}
 
 			//Evaluate hit data and record for summary
 			resSummary.updateSummaryData(hits1, hits2);
@@ -402,7 +416,13 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				}
 			}
 
-			string readID = rec1.id.substr(0, rec1.id.length() - 2);
+#pragma omp critical(cout)
+			{
+				if(hits1.at(m_mainFilter) && hits2.at(m_mainFilter)){
+					cout << rec1;
+					cout << rec2;
+				}
+			}
 
 			//Evaluate hit data and record for summary
 
@@ -514,6 +534,14 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 					} else {
 						evaluateReadStd(rec1, *j, hits1);
 						evaluateReadStd(rec2, *j, hits2);
+					}
+				}
+
+#pragma omp critical(cout)
+				{
+					if (hits1.at(m_mainFilter) && hits2.at(m_mainFilter)) {
+						cout << rec1;
+						cout << rec2;
 					}
 				}
 
@@ -653,6 +681,14 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 					}
 				}
 
+#pragma omp critical(cout)
+				{
+					if (hits1.at(m_mainFilter) && hits2.at(m_mainFilter)) {
+						cout << rec1;
+						cout << rec2;
+					}
+				}
+
 				//Evaluate hit data and record for summary
 				const string &outputFileName = resSummary.updateSummaryData(
 						hits1, hits2);
@@ -737,6 +773,7 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 						info->getHashNum(), info->getKmerSize(), *it));
 		m_filters[hashSig.str()]->addFilter(info->getFilterID(), filter);
 		m_filtersSingle[info->getFilterID()] = filter;
+		m_filterOrder.push_back(info->getFilterID());
 		cerr << "Loaded Filter: " + info->getFilterID() << endl;
 	}
 	cerr << "Filter Loading Complete." << endl;
@@ -759,7 +796,6 @@ void BioBloomClassifier::evaluateReadCollab(const FastqRecord &rec,
 		const string &hashSig, unordered_map<string, bool> &hits)
 {
 	//get filterIDs to iterate through has in a consistent order
-	const vector<string> &idsInFilter = (*m_filters[hashSig]).getFilterIds();
 	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
 
 	ReadsProcessor proc(kmerSize);
@@ -769,8 +805,8 @@ void BioBloomClassifier::evaluateReadCollab(const FastqRecord &rec,
 
 	//base for each filter until one filter obtains hit threshold
 	//TODO: staggered pattering
-	for (vector<string>::const_iterator i = idsInFilter.begin();
-			i != idsInFilter.end(); ++i) {
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i) {
 		hits[*i] = false;
 		unsigned screeningHits = 0;
 		size_t screeningLoc = rec.seq.length() % kmerSize / 2;
@@ -985,6 +1021,21 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 			}
 		}
 	}
+}
+
+void BioBloomClassifier::setMainFilter(const string &filtername)
+{
+	if (m_filtersSingle.find(filtername) != m_filtersSingle.end()) {
+		stderr << "Filter with this name does not exist\n";
+		stderr << "Valid filter Names:\n";
+		for (vector<string>::const_iterator itr = m_filterOrder.begin();
+				itr != m_filterOrder.end(); ++itr)
+		{
+			cerr << *itr << endl;
+		}
+		exit(1);
+	}
+	m_mainFilter = filtername;
 }
 
 BioBloomClassifier::~BioBloomClassifier()
