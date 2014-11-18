@@ -14,8 +14,7 @@
 
 ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
 		const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
-		const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef,
-		double scoreThreshold) :
+		const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef) :
 		m_hashSigs(hashSigsRef), m_filters(filtersRef), m_infoFiles(
 				infoFilesRef), m_multiMatch(0), m_noMatch(0)
 {
