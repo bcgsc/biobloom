@@ -13,12 +13,10 @@
 
 Dynamicofstream::Dynamicofstream(const string &filename)
 {
-	if(endsWith(filename, ".gz"))
-	{
+	if (endsWith(filename, ".gz")) {
 		filestream = new ogzstream(filename.c_str(), ios::out);
 		gz = true;
-	}
-	else{
+	} else {
 		filestream = new ofstream(filename.c_str(), ios::out);
 		gz = false;
 	}
@@ -37,15 +35,18 @@ ostream& Dynamicofstream::operator <<(unsigned o)
 	return *filestream;
 }
 
-
-void Dynamicofstream::close(){
+void Dynamicofstream::close()
+{
+	assert(filestream->good());
 	filestream->flush();
-	if (gz){
+	assert(filestream->good());
+	if (gz) {
 		ogzstream *temp = dynamic_cast<ogzstream*>(filestream);
+		assert(filestream->good());
 		temp->close();
-	}
-	else{
+	} else {
 		ofstream *temp = dynamic_cast<ofstream*>(filestream);
+		assert(filestream->good());
 		temp->close();
 	}
 	assert(filestream);
