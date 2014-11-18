@@ -22,6 +22,9 @@
 using namespace std;
 using namespace boost;
 
+static const string NO_MATCH = "noMatch";
+static const string MULTI_MATCH = "multiMatch";
+
 //TODO: some inlining may help performance
 
 class BioBloomClassifier {
@@ -76,10 +79,6 @@ private:
 	const unsigned m_streakThreshold;
 	const unsigned m_minHit;
 	const bool m_minHitOnly;
-
-	//Todo: is this really better than hard-coding them in the class?
-	const string m_noMatch;
-	const string m_multiMatch;
 
 	bool m_collab;
 	string m_mainFilter;

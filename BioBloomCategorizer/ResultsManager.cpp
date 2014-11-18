@@ -8,6 +8,7 @@
 #include "ResultsManager.h"
 #include <sstream>
 #include <iostream>
+#include <BioBloomClassifier.h>
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -66,12 +67,12 @@ const string ResultsManager::updateSummaryData(
 		}
 	}
 	if (noMatchFlag) {
-		filterID = "m_noMatch";
+		filterID = NO_MATCH;
 #pragma omp atomic
 		++m_noMatch;
 	} else {
 		if (multiMatchFlag) {
-			filterID = "m_multiMatch";
+			filterID = MULTI_MATCH;
 #pragma omp atomic
 			++m_multiMatch;
 		} else {
@@ -117,12 +118,12 @@ const string ResultsManager::updateSummaryData(
 		}
 	}
 	if (noMatchFlag) {
-		filterID = "m_noMatch";
+		filterID = NO_MATCH;
 #pragma omp atomic
 		++m_noMatch;
 	} else {
 		if (multiMatchFlag) {
-			filterID = "m_multiMatch";
+			filterID = MULTI_MATCH;
 #pragma omp atomic
 			++m_multiMatch;
 		} else {
@@ -169,7 +170,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 		}
 	}
 
-	summaryOutput << "m_multiMatch";
+	summaryOutput << MULTI_MATCH;
 	summaryOutput << "\t" << m_multiMatch;
 	summaryOutput << "\t" << readCount - m_multiMatch;
 	summaryOutput << "\t" << 0;
@@ -179,7 +180,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	summaryOutput << "\t" << 0.0;
 	summaryOutput << "\n";
 
-	summaryOutput << "m_noMatch";
+	summaryOutput << NO_MATCH;
 	summaryOutput << "\t" << m_noMatch;
 	summaryOutput << "\t" << readCount - m_noMatch;
 	summaryOutput << "\t" << 0;

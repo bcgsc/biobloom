@@ -23,9 +23,8 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		bool minHitOnly) :
 		m_scoreThreshold(scoreThreshold), m_filterNum(filterFilePaths.size()), m_prefix(
 				prefix), m_postfix(outputPostFix), m_streakThreshold(
-				streakThreshold), m_minHit(minHit), m_minHitOnly(minHitOnly), m_noMatch(
-				"noMatch"), m_multiMatch("multiMatch"), m_collab(false), m_mainFilter(
-				"")
+				streakThreshold), m_minHit(minHit), m_minHitOnly(minHitOnly), m_collab(
+				false), m_mainFilter("")
 {
 	loadFilters(filterFilePaths);
 }
@@ -122,13 +121,13 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	unordered_map<string, shared_ptr<Dynamicofstream> > outputFiles;
 	shared_ptr<Dynamicofstream> no_match(
 			new Dynamicofstream(
-					m_prefix + "_" + m_noMatch + "." + outputType + m_postfix));
+					m_prefix + "_" + NO_MATCH + "." + outputType + m_postfix));
 	shared_ptr<Dynamicofstream> multi_match(
 			new Dynamicofstream(
-					m_prefix + "_" + m_multiMatch + "." + outputType
+					m_prefix + "_" + MULTI_MATCH + "." + outputType
 							+ m_postfix));
-	outputFiles[m_noMatch] = no_match;
-	outputFiles[m_multiMatch] = multi_match;
+	outputFiles[NO_MATCH] = no_match;
+	outputFiles[MULTI_MATCH] = multi_match;
 
 	//initialize variables
 	for (vector<string>::const_iterator j = m_hashSigs.begin();
@@ -192,6 +191,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				//Evaluate hit data and record for summary
 				const string &outputFileName = resSummary.updateSummaryData(
 						hits);
+				cout << outputFileName << endl;
 				if (outputType == "fa") {
 #pragma omp critical(outputFiles)
 					{
@@ -205,6 +205,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 								<< rec.seq << "\n+\n" << rec.qual << "\n";
 					}
 				}
+				cout << "2" << endl;
 			} else
 				break;
 		}
@@ -343,24 +344,24 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	unordered_map<string, shared_ptr<Dynamicofstream> > outputFiles;
 	shared_ptr<Dynamicofstream> noMatch1(
 			new Dynamicofstream(
-					m_prefix + "_" + m_noMatch + "_1." + outputType
+					m_prefix + "_" + NO_MATCH + "_1." + outputType
 							+ m_postfix));
 	shared_ptr<Dynamicofstream> noMatch2(
 			new Dynamicofstream(
-					m_prefix + "_" + m_noMatch + "_2." + outputType
+					m_prefix + "_" + NO_MATCH + "_2." + outputType
 							+ m_postfix));
 	shared_ptr<Dynamicofstream> multiMatch1(
 			new Dynamicofstream(
-					m_prefix + "_" + m_multiMatch + "_1." + outputType
+					m_prefix + "_" + MULTI_MATCH + "_1." + outputType
 							+ m_postfix));
 	shared_ptr<Dynamicofstream> multiMatch2(
 			new Dynamicofstream(
-					m_prefix + "_" + m_multiMatch + "_2." + outputType
+					m_prefix + "_" + MULTI_MATCH + "_2." + outputType
 							+ m_postfix));
-	outputFiles[m_noMatch + "1"] = noMatch1;
-	outputFiles[m_noMatch + "2"] = noMatch2;
-	outputFiles[m_multiMatch + "1"] = multiMatch1;
-	outputFiles[m_multiMatch + "2"] = multiMatch2;
+	outputFiles[NO_MATCH + "1"] = noMatch1;
+	outputFiles[NO_MATCH + "2"] = noMatch2;
+	outputFiles[MULTI_MATCH + "1"] = multiMatch1;
+	outputFiles[MULTI_MATCH + "2"] = multiMatch2;
 
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = m_hashSigs.begin();
@@ -616,24 +617,24 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	unordered_map<string, shared_ptr<Dynamicofstream> > outputFiles;
 	shared_ptr<Dynamicofstream> noMatch1(
 			new Dynamicofstream(
-					m_prefix + "_" + m_noMatch + "_1." + outputType
+					m_prefix + "_" + NO_MATCH + "_1." + outputType
 							+ m_postfix));
 	shared_ptr<Dynamicofstream> noMatch2(
 			new Dynamicofstream(
-					m_prefix + "_" + m_noMatch + "_2." + outputType
+					m_prefix + "_" + NO_MATCH + "_2." + outputType
 							+ m_postfix));
 	shared_ptr<Dynamicofstream> multiMatch1(
 			new Dynamicofstream(
-					m_prefix + "_" + m_multiMatch + "_1." + outputType
+					m_prefix + "_" + MULTI_MATCH + "_1." + outputType
 							+ m_postfix));
 	shared_ptr<Dynamicofstream> multiMatch2(
 			new Dynamicofstream(
-					m_prefix + "_" + m_multiMatch + "_2." + outputType
+					m_prefix + "_" + MULTI_MATCH + "_2." + outputType
 							+ m_postfix));
-	outputFiles[m_noMatch + "1"] = noMatch1;
-	outputFiles[m_noMatch + "2"] = noMatch2;
-	outputFiles[m_multiMatch + "1"] = multiMatch1;
-	outputFiles[m_multiMatch + "2"] = multiMatch2;
+	outputFiles[NO_MATCH + "1"] = noMatch1;
+	outputFiles[NO_MATCH + "2"] = noMatch2;
+	outputFiles[MULTI_MATCH + "1"] = multiMatch1;
+	outputFiles[MULTI_MATCH + "2"] = multiMatch2;
 
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = m_hashSigs.begin();
@@ -1085,7 +1086,8 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 void BioBloomClassifier::setMainFilter(const string &filtername)
 {
 	if (m_filtersSingle.find(filtername) == m_filtersSingle.end()) {
-		cerr << "Filter with this name \"" << filtername << "\" does not exist\n";
+		cerr << "Filter with this name \"" << filtername
+				<< "\" does not exist\n";
 		cerr << "Valid filter Names:\n";
 		for (vector<string>::const_iterator itr = m_filterOrder.begin();
 				itr != m_filterOrder.end(); ++itr)
