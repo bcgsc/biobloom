@@ -24,9 +24,7 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		m_scoreThreshold(scoreThreshold), m_filterNum(filterFilePaths.size()), m_prefix(
 				prefix), m_postfix(outputPostFix), m_streakThreshold(
 				streakThreshold), m_minHit(minHit), m_minHitOnly(minHitOnly), m_noMatch(
-				"noMatch"), m_multiMatch("multiMatch"), m_resSummary(
-				ResultsManager(m_hashSigs, m_filters, m_infoFiles,
-						m_scoreThreshold)), m_collab(false), m_mainFilter("")
+				"noMatch"), m_multiMatch("multiMatch"), m_collab(false), m_mainFilter("")
 {
 	loadFilters(filterFilePaths);
 }
@@ -38,8 +36,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles,
-			m_scoreThreshold);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
 
 	size_t totalReads = 0;
 
@@ -113,8 +110,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles,
-			m_scoreThreshold);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
 
 	size_t totalReads = 0;
 
@@ -227,8 +223,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles,
-			m_scoreThreshold);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
 
 	size_t totalReads = 0;
 
@@ -323,8 +318,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles,
-			m_scoreThreshold);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
 
 	size_t totalReads = 0;
 
@@ -481,8 +475,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles,
-			m_scoreThreshold);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -580,8 +573,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles,
-			m_scoreThreshold);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -1040,8 +1032,8 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 void BioBloomClassifier::setMainFilter(const string &filtername)
 {
 	if (m_filtersSingle.find(filtername) != m_filtersSingle.end()) {
-		stderr << "Filter with this name does not exist\n";
-		stderr << "Valid filter Names:\n";
+		cerr << "Filter with this name does not exist\n";
+		cerr << "Valid filter Names:\n";
 		for (vector<string>::const_iterator itr = m_filterOrder.begin();
 				itr != m_filterOrder.end(); ++itr)
 		{

@@ -41,6 +41,12 @@ public:
 
 	void setCollabFilter(){
 		m_collab = true;
+		if (m_hashSigs.size() != 1) {
+			cerr
+					<< "To use collaborative filtering all filters must use the same k and same number of hash functions."
+					<< endl;
+			exit(1);
+		}
 	}
 
 	void setMainFilter(const string &filtername);
@@ -57,8 +63,6 @@ private:
 	void evaluateReadCollab(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
 
-	ResultsManager m_resSummary;
-
 	//group filters with same hash number
 	unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > m_infoFiles;
 	unordered_map<string, shared_ptr<MultiFilter> > m_filters;
@@ -73,13 +77,12 @@ private:
 	const unsigned m_minHit;
 	const bool m_minHitOnly;
 
-	string m_mainFilter;
-
-	bool m_collab;
-
 	//Todo: is this really better than hard-coding them in the class?
 	const string m_noMatch;
 	const string m_multiMatch;
+
+	bool m_collab;
+	string m_mainFilter;
 };
 
 #endif /* BIOBLOOMCLASSIFIER_H_ */
