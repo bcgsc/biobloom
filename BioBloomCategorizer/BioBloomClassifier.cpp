@@ -171,7 +171,9 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
 						j != m_hashSigs.end(); ++j) {
-					if (m_minHitOnly) {
+					if (m_collab) {
+						evaluateReadCollab(rec, *j, hits);
+					} else if (m_minHitOnly) {
 						evaluateRead(rec, *j, hits);
 					} else {
 						evaluateReadStd(rec, *j, hits);
@@ -267,7 +269,10 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 				if (tempStr1 == tempStr2) {
-					if (m_minHitOnly) {
+					if (m_collab) {
+						evaluateReadCollab(rec1, *j, hits1);
+						evaluateReadCollab(rec2, *j, hits2);
+					} else if (m_minHitOnly) {
 						evaluateRead(rec1, *j, hits1);
 						evaluateRead(rec2, *j, hits2);
 					} else {
@@ -402,7 +407,10 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 				if (tempStr1 == tempStr2) {
-					if (m_minHitOnly) {
+					if (m_collab) {
+						evaluateReadCollab(rec1, *j, hits1);
+						evaluateReadCollab(rec2, *j, hits2);
+					} else if (m_minHitOnly) {
 						evaluateRead(rec1, *j, hits1);
 						evaluateRead(rec2, *j, hits2);
 					} else {
@@ -528,7 +536,10 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
 						j != m_hashSigs.end(); ++j) {
-					if (m_minHitOnly) {
+					if (m_collab) {
+						evaluateReadCollab(rec1, *j, hits1);
+						evaluateReadCollab(rec2, *j, hits2);
+					} else if (m_minHitOnly) {
 						evaluateRead(rec1, *j, hits1);
 						evaluateRead(rec2, *j, hits2);
 					} else {
@@ -667,7 +678,10 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 					string tempStr2 = rec2.id.substr(0,
 							rec2.id.find_last_of("/"));
 					if (tempStr1 == tempStr2) {
-						if (m_minHitOnly) {
+						if (m_collab) {
+							evaluateReadCollab(rec1, *j, hits1);
+							evaluateReadCollab(rec2, *j, hits2);
+						} else if (m_minHitOnly) {
 							evaluateRead(rec1, *j, hits1);
 							evaluateRead(rec2, *j, hits2);
 						} else {

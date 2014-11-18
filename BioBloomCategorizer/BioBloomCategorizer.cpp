@@ -106,8 +106,11 @@ void printHelpDialog()
 					"                         but decrease sensitivity. [3]\n"
 					"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
 					"                         but low specificity, use only on long reads (>100bp).\n"
-					"  -c, --collab			  Use collaborative filtering. Only functions when multiple\n"
-					"						  filters are used (experimental)."
+					"  -c, --collab			  Use collaborative filtering. Order of filters matters\n"
+					"                         (see manual for details). Only functions when multiple\n"
+					"						  filters are used (experimental). Does not work with -i.\n"
+					"                         Only taken advantage of when k-mer sizes and number of\n"
+					"                         hash functions are the same."
 					"  -d, --stdout_filter=N  Outputs all unique reads to stdout for the specified\n"
 					"                         filter. Reads are outputted in fastq, and if paired will\n"
 					"                         output in an interlaced form."
@@ -322,11 +325,19 @@ int main(int argc, char *argv[])
 		outputReadType = "fa";
 	}
 
+
 	//load filters
 	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix,
 			streak, minHit, minHitOnly);
 
-	if (collab){
+	//set file output type
+	if (collab && minHit) {
+		cerr
+				<< "Error: -m -c outputs types cannot be both set"
+				<< endl;
+		exit(1);
+	}
+	else if (collab){
 		BBC.setCollabFilter();
 	}
 
