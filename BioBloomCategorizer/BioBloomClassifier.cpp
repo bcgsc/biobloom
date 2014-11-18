@@ -801,7 +801,7 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 			m_infoFiles[hashSig.str()] = tempVect;
 		}
 		m_infoFiles[hashSig.str()].push_back(info);
-		boost::shared_ptr<BloomFilter> filter(
+		shared_ptr<BloomFilter> filter(
 				new BloomFilter(info->getCalcuatedFilterSize(),
 						info->getHashNum(), info->getKmerSize(), *it));
 		m_filters[hashSig.str()]->addFilter(info->getFilterID(), filter);
