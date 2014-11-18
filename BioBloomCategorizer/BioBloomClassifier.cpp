@@ -191,7 +191,6 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				//Evaluate hit data and record for summary
 				const string &outputFileName = resSummary.updateSummaryData(
 						hits);
-				cout << outputFileName << endl;
 				if (outputType == "fa") {
 #pragma omp critical(outputFiles)
 					{
@@ -205,7 +204,6 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 								<< rec.seq << "\n+\n" << rec.qual << "\n";
 					}
 				}
-				cout << "2" << endl;
 			} else
 				break;
 		}
