@@ -95,6 +95,8 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 
 	cerr << "Total Reads:" << totalReads << endl;
 
+	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
+
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
@@ -214,8 +216,12 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 			outputFiles.begin(); j != outputFiles.end(); ++j)
 	{
 		j->second->close();
+		cerr << "File written to: "
+				<< m_prefix + "_" + j->first + "." + outputType + m_postfix
+				<< endl;
 	}
 	cerr << "Total Reads:" << totalReads << endl;
+	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
 
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
@@ -312,6 +318,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 	}
 
 	cerr << "Total Reads:" << totalReads << endl;
+	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
 
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
@@ -474,9 +481,13 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 			outputFiles.begin(); j != outputFiles.end(); ++j)
 	{
 		j->second->close();
+		cerr << "File written to: "
+				<< m_prefix + "_" + j->first + "." + outputType + m_postfix
+				<< endl;
 	}
 
 	cerr << "Total Reads:" << totalReads << endl;
+	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
 
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
@@ -576,6 +587,9 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 			break;
 	}
 	assert(sequence.eof());
+
+	cerr << "Total Reads:" << totalReads << endl;
+	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
 
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
@@ -751,7 +765,13 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 			outputFiles.begin(); j != outputFiles.end(); ++j)
 	{
 		j->second->close();
+		cerr << "File written to: "
+				<< m_prefix + "_" + j->first + "." + outputType + m_postfix
+				<< endl;
 	}
+
+	cerr << "Total Reads:" << totalReads << endl;
+	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
 
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
