@@ -112,7 +112,7 @@ void printHelpDialog()
 					"                         hash functions are the same.\n"
 					"  -d, --stdout_filter=N  Outputs all unique reads to stdout for the specified\n"
 					"                         filter. Reads are outputted in fastq, and if paired will\n"
-					"                         output in an interlaced form."
+					"                         output in an interlaced form.\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
