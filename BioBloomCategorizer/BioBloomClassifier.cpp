@@ -118,11 +118,11 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 
 	size_t totalReads = 0;
 
-	unordered_map<string, shared_ptr<Dynamicofstream> > outputFiles;
-	shared_ptr<Dynamicofstream> no_match(
+	unordered_map<string, boost::shared_ptr<Dynamicofstream> > outputFiles;
+	boost::shared_ptr<Dynamicofstream> no_match(
 			new Dynamicofstream(
 					m_prefix + "_" + NO_MATCH + "." + outputType + m_postfix));
-	shared_ptr<Dynamicofstream> multi_match(
+	boost::shared_ptr<Dynamicofstream> multi_match(
 			new Dynamicofstream(
 					m_prefix + "_" + MULTI_MATCH + "." + outputType
 							+ m_postfix));
@@ -137,7 +137,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			shared_ptr<Dynamicofstream> temp(
+			boost::shared_ptr<Dynamicofstream> temp(
 					new Dynamicofstream(
 							m_prefix + "_" + *i + "." + outputType
 									+ m_postfix));
@@ -211,7 +211,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	}
 
 	//close sorting files
-	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j =
+	for (unordered_map<string, boost::shared_ptr<Dynamicofstream> >::iterator j =
 			outputFiles.begin(); j != outputFiles.end(); ++j)
 	{
 		j->second->close();
@@ -339,20 +339,20 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	size_t totalReads = 0;
 
-	unordered_map<string, shared_ptr<Dynamicofstream> > outputFiles;
-	shared_ptr<Dynamicofstream> noMatch1(
+	unordered_map<string, boost::shared_ptr<Dynamicofstream> > outputFiles;
+	boost::shared_ptr<Dynamicofstream> noMatch1(
 			new Dynamicofstream(
 					m_prefix + "_" + NO_MATCH + "_1." + outputType
 							+ m_postfix));
-	shared_ptr<Dynamicofstream> noMatch2(
+	boost::shared_ptr<Dynamicofstream> noMatch2(
 			new Dynamicofstream(
 					m_prefix + "_" + NO_MATCH + "_2." + outputType
 							+ m_postfix));
-	shared_ptr<Dynamicofstream> multiMatch1(
+	boost::shared_ptr<Dynamicofstream> multiMatch1(
 			new Dynamicofstream(
 					m_prefix + "_" + MULTI_MATCH + "_1." + outputType
 							+ m_postfix));
-	shared_ptr<Dynamicofstream> multiMatch2(
+	boost::shared_ptr<Dynamicofstream> multiMatch2(
 			new Dynamicofstream(
 					m_prefix + "_" + MULTI_MATCH + "_2." + outputType
 							+ m_postfix));
@@ -369,11 +369,11 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			shared_ptr<Dynamicofstream> temp1(
+			boost::shared_ptr<Dynamicofstream> temp1(
 					new Dynamicofstream(
 							m_prefix + "_" + *i + "_1." + outputType
 									+ m_postfix));
-			shared_ptr<Dynamicofstream> temp2(
+			boost::shared_ptr<Dynamicofstream> temp2(
 					new Dynamicofstream(
 							m_prefix + "_" + *i + "_2." + outputType
 									+ m_postfix));
@@ -476,7 +476,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	}
 
 	//close sorting files
-	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j =
+	for (unordered_map<string, boost::shared_ptr<Dynamicofstream> >::iterator j =
 			outputFiles.begin(); j != outputFiles.end(); ++j)
 	{
 		j->second->close();
@@ -612,20 +612,20 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 
 	size_t totalReads = 0;
 
-	unordered_map<string, shared_ptr<Dynamicofstream> > outputFiles;
-	shared_ptr<Dynamicofstream> noMatch1(
+	unordered_map<string, boost::shared_ptr<Dynamicofstream> > outputFiles;
+	boost::shared_ptr<Dynamicofstream> noMatch1(
 			new Dynamicofstream(
 					m_prefix + "_" + NO_MATCH + "_1." + outputType
 							+ m_postfix));
-	shared_ptr<Dynamicofstream> noMatch2(
+	boost::shared_ptr<Dynamicofstream> noMatch2(
 			new Dynamicofstream(
 					m_prefix + "_" + NO_MATCH + "_2." + outputType
 							+ m_postfix));
-	shared_ptr<Dynamicofstream> multiMatch1(
+	boost::shared_ptr<Dynamicofstream> multiMatch1(
 			new Dynamicofstream(
 					m_prefix + "_" + MULTI_MATCH + "_1." + outputType
 							+ m_postfix));
-	shared_ptr<Dynamicofstream> multiMatch2(
+	boost::shared_ptr<Dynamicofstream> multiMatch2(
 			new Dynamicofstream(
 					m_prefix + "_" + MULTI_MATCH + "_2." + outputType
 							+ m_postfix));
@@ -642,11 +642,11 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			shared_ptr<Dynamicofstream> temp1(
+			boost::shared_ptr<Dynamicofstream> temp1(
 					new Dynamicofstream(
 							m_prefix + "_" + *i + "_1." + outputType
 									+ m_postfix));
-			shared_ptr<Dynamicofstream> temp2(
+			boost::shared_ptr<Dynamicofstream> temp2(
 					new Dynamicofstream(
 							m_prefix + "_" + *i + "_2." + outputType
 									+ m_postfix));
@@ -760,7 +760,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	assert(sequence.eof());
 
 	//close sorting files
-	for (unordered_map<string, shared_ptr<Dynamicofstream> >::iterator j =
+	for (unordered_map<string, boost::shared_ptr<Dynamicofstream> >::iterator j =
 			outputFiles.begin(); j != outputFiles.end(); ++j)
 	{
 		j->second->close();
@@ -805,7 +805,7 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 		}
 
 		//info file creation
-		shared_ptr<BloomFilterInfo> info(new BloomFilterInfo(infoFileName));
+		boost::shared_ptr<BloomFilterInfo> info(new BloomFilterInfo(infoFileName));
 		//append kmer size to hash signature to insure correct kmer size is used
 		stringstream hashSig;
 		hashSig << info->getHashNum() << info->getKmerSize();
@@ -813,14 +813,14 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 		//if hashSig exists add filter to list
 		if (m_infoFiles.count(hashSig.str()) != 1) {
 			m_hashSigs.push_back(hashSig.str());
-			vector<shared_ptr<BloomFilterInfo> > tempVect;
-			shared_ptr<MultiFilter> temp(
+			vector<boost::shared_ptr<BloomFilterInfo> > tempVect;
+			boost::shared_ptr<MultiFilter> temp(
 					new MultiFilter(info->getHashNum(), info->getKmerSize()));
 			m_filters[hashSig.str()] = temp;
 			m_infoFiles[hashSig.str()] = tempVect;
 		}
 		m_infoFiles[hashSig.str()].push_back(info);
-		shared_ptr<BloomFilter> filter(
+		boost::shared_ptr<BloomFilter> filter(
 				new BloomFilter(info->getCalcuatedFilterSize(),
 						info->getHashNum(), info->getKmerSize(), *it));
 		m_filters[hashSig.str()]->addFilter(info->getFilterID(), filter);

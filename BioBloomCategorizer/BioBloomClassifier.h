@@ -67,9 +67,9 @@ private:
 			unordered_map<string, bool> &hits);
 
 	//group filters with same hash number
-	unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > m_infoFiles;
-	unordered_map<string, shared_ptr<MultiFilter> > m_filters;
-	unordered_map<string, shared_ptr<BloomFilter> > m_filtersSingle;
+	unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > m_infoFiles;
+	unordered_map<string, boost::shared_ptr<MultiFilter> > m_filters;
+	unordered_map<string, boost::shared_ptr<BloomFilter> > m_filtersSingle;
 	vector<string> m_filterOrder;
 	vector<string> m_hashSigs;
 	double m_scoreThreshold;

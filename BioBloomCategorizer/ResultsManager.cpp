@@ -14,8 +14,8 @@
 #endif
 
 ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
-		const unordered_map<string, shared_ptr<MultiFilter> > &filtersRef,
-		const unordered_map<string, vector<shared_ptr<BloomFilterInfo> > > &infoFilesRef) :
+		const unordered_map<string, boost::shared_ptr<MultiFilter> > &filtersRef,
+		const unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > &infoFilesRef) :
 		m_hashSigs(hashSigsRef), m_filters(filtersRef), m_infoFiles(
 				infoFilesRef), m_multiMatch(0), m_noMatch(0)
 {
@@ -23,7 +23,7 @@ ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
 	for (vector<string>::const_iterator j = m_hashSigs.begin();
 			j != m_hashSigs.end(); ++j)
 	{
-		const shared_ptr<MultiFilter> &temp = m_filters.at(*j);
+		const boost::shared_ptr<MultiFilter> &temp = m_filters.at(*j);
 		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
@@ -49,7 +49,7 @@ const string ResultsManager::updateSummaryData(
 			j != m_hashSigs.end(); ++j)
 	{
 		//update summary
-		const shared_ptr<MultiFilter> &temp = m_filters.at(*j);
+		const boost::shared_ptr<MultiFilter> &temp = m_filters.at(*j);
 		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
@@ -100,7 +100,7 @@ const string ResultsManager::updateSummaryData(
 			j != m_hashSigs.end(); ++j)
 	{
 		//update summary
-		const shared_ptr<MultiFilter> &temp = m_filters.at(*j);
+		const boost::shared_ptr<MultiFilter> &temp = m_filters.at(*j);
 		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
@@ -146,12 +146,12 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	for (vector<string>::const_iterator j = m_hashSigs.begin();
 			j != m_hashSigs.end(); ++j)
 	{
-		const shared_ptr<MultiFilter> &temp = m_filters.at(*j);
+		const boost::shared_ptr<MultiFilter> &temp = m_filters.at(*j);
 		const vector<string> &idsInFilter = temp->getFilterIds();
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			const vector<shared_ptr<BloomFilterInfo> > &tempVect =
+			const vector<boost::shared_ptr<BloomFilterInfo> > &tempVect =
 					m_infoFiles.at(*j);
 			summaryOutput << *i << "_" << tempVect.front()->getKmerSize();
 			summaryOutput << "\t" << m_aboveThreshold.at(*i);
