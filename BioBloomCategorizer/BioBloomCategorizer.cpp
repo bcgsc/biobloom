@@ -82,6 +82,8 @@ void printHelpDialog()
 					"  -e, --paired_mode      Uses paired-end information. For BAM or SAM files, if\n"
 					"                         they are poorly ordered, the memory usage will be much\n"
 					"                         larger than normal. Sorting by read name may be needed.\n"
+					"  -i, --inclusive        If one paired read matches, both reads will be included.\n"
+					"                         in the filter. \n"
 					"  -s, --score=N          Score threshold for matching. Maximum threshold is 1\n"
 					"                         (highest specificity), minimum is 0 (highest\n"
 					"                         sensitivity). AlLower score threshold will decrease run\n"
@@ -107,10 +109,10 @@ void printHelpDialog()
 					"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
 					"                         but low specificity, use only on long reads (>100bp).\n"
 					"  -c, --collab           Use collaborative filtering. Order of filters matters\n"
-					"                         (see manual for details). Does not work with -i.\n"
+					"                         (filters list first have higher priority).\n"
 					"                         Only taken advantage of when k-mer sizes and number of\n"
 					"                         hash functions are the same.\n"
-					"  -d, --stdout_filter=N  Outputs all unique reads to stdout for the specified\n"
+					"  -d, --stdout_filter=N  Outputs all matching reads to stdout for the specified\n"
 					"                         filter. Reads are outputted in fastq, and if paired will\n"
 					"                         output in an interlaced form.\n"
 					"Report bugs to <cjustin@bcgsc.ca>.";
@@ -135,6 +137,7 @@ int main(int argc, char *argv[])
 	string filtersFile = "";
 	string outputReadType = "";
 	bool paired = false;
+	bool inclusive = false;
 
 	int fastq = 0;
 	int fasta = 0;
@@ -155,6 +158,7 @@ int main(int argc, char *argv[])
 					"prefix", optional_argument, NULL, 'p' }, {
 					"filter_files", required_argument, NULL, 'f' }, {
 					"paired_mode", no_argument, NULL, 'e' }, {
+					"inclusive", no_argument, NULL, 'i' }, {
 					"score", no_argument, NULL, 's' }, {
 					"help", no_argument, NULL, 'h' }, {
 					"threads", required_argument, NULL, 't' }, {
@@ -166,9 +170,9 @@ int main(int argc, char *argv[])
 					"version", no_argument, NULL, 'v' }, {
 					"min_hit_thr", required_argument, NULL, 'm' }, {
 					"streak", optional_argument, NULL, 'r' }, {
-					"min_hit_only", no_argument, NULL, 'o'}, {
-					"collab", no_argument, NULL, 'c'}, {
-					"stdout_filter", required_argument, NULL, 'd'}, {
+					"min_hit_only", no_argument, NULL, 'o' }, {
+					"collab", no_argument, NULL, 'c' }, {
+					"stdout_filter", required_argument, NULL, 'd' }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
@@ -214,6 +218,10 @@ int main(int argc, char *argv[])
 		}
 		case 'e': {
 			paired = true;
+			break;
+		}
+		case 'e': {
+			inclusive = true;
 			break;
 		}
 		case 't': {
@@ -324,29 +332,29 @@ int main(int argc, char *argv[])
 		outputReadType = "fa";
 	}
 
-
 	//load filters
 	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix,
 			streak, minHit, minHitOnly);
 
 	//set file output type
 	if (collab && minHit) {
-		cerr
-				<< "Error: -m -c outputs types cannot be both set"
-				<< endl;
+		cerr << "Error: -m -c outputs types cannot be both set" << endl;
 		exit(1);
-	}
-	else if (collab){
+	} else if (collab) {
 		BBC.setCollabFilter();
 	}
 
-	if (mainFilter != ""){
+	if (mainFilter != "") {
 		BBC.setMainFilter(mainFilter);
 	}
+
 
 	//filtering step
 	//create directory structure if it does not exist
 	if (paired) {
+		if (inclusive) {
+			BBC.setInclusive();
+		}
 		if (outputReadType != "") {
 			if (pairedBAMSAM) {
 				BBC.filterPairBAMPrint(inputFiles[0], outputReadType);

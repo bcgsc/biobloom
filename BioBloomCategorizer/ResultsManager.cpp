@@ -15,9 +15,10 @@
 
 ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
 		const unordered_map<string, boost::shared_ptr<MultiFilter> > &filtersRef,
-		const unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > &infoFilesRef) :
+		const unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > &infoFilesRef,
+		bool inclusive) :
 		m_hashSigs(hashSigsRef), m_filters(filtersRef), m_infoFiles(
-				infoFilesRef), m_multiMatch(0), m_noMatch(0)
+				infoFilesRef), m_multiMatch(0), m_noMatch(0), m_inclusive(inclusive)
 {
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = m_hashSigs.begin();
@@ -105,14 +106,28 @@ const string ResultsManager::updateSummaryData(
 		for (vector<string>::const_iterator i = idsInFilter.begin();
 				i != idsInFilter.end(); ++i)
 		{
-			if (hits1.at(*i) && hits2.at(*i)) {
+			if(m_inclusive)
+			{
+				if (hits1.at(*i) || hits2.at(*i)) {
 #pragma omp atomic
-				++m_aboveThreshold[*i];
-				if (noMatchFlag) {
-					noMatchFlag = false;
-					filterID = *i;
-				} else {
-					multiMatchFlag = true;
+					++m_aboveThreshold[*i];
+					if (noMatchFlag) {
+						noMatchFlag = false;
+						filterID = *i;
+					} else {
+						multiMatchFlag = true;
+					}
+				}
+			} else {
+				if (hits1.at(*i) && hits2.at(*i)) {
+#pragma omp atomic
+					++m_aboveThreshold[*i];
+					if (noMatchFlag) {
+						noMatchFlag = false;
+						filterID = *i;
+					} else {
+						multiMatchFlag = true;
+					}
 				}
 			}
 		}

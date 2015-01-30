@@ -22,7 +22,8 @@ class ResultsManager {
 public:
 	explicit ResultsManager(const vector<string> &hashSigsRef,
 			const unordered_map<string, boost::shared_ptr<MultiFilter> > &filtersRef,
-			const unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > &infoFilesRef);
+			const unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > &infoFilesRef,
+			bool inclusive);
 
 	const string updateSummaryData(const unordered_map<string, bool> &hits);
 	const string updateSummaryData(const unordered_map<string, bool> &hits1,
@@ -35,6 +36,8 @@ private:
 	const vector<string> m_hashSigs;
 	const unordered_map<string, boost::shared_ptr<MultiFilter> > m_filters;
 	const unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > m_infoFiles;
+
+	bool m_inclusive;
 
 	unordered_map<string, size_t> m_aboveThreshold;
 	unordered_map<string, size_t> m_unique;

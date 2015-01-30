@@ -24,7 +24,7 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		m_scoreThreshold(scoreThreshold), m_filterNum(filterFilePaths.size()), m_prefix(
 				prefix), m_postfix(outputPostFix), m_streakThreshold(
 				streakThreshold), m_minHit(minHit), m_minHitOnly(minHitOnly), m_collab(
-				false), m_mainFilter("")
+				false), m_mainFilter(""), m_inclusive(false)
 {
 	loadFilters(filterFilePaths);
 }
@@ -36,7 +36,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -114,7 +114,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -236,7 +236,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -297,12 +297,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 
 #pragma omp critical(cout)
 			{
-				if (m_mainFilter != "" && hits1.at(m_mainFilter)
-						&& hits2.at(m_mainFilter))
-				{
-					cout << rec1;
-					cout << rec2;
-				}
+				printPair(rec1, rec2, hits1, hits2);
 			}
 
 			//Evaluate hit data and record for summary
@@ -335,7 +330,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -440,12 +435,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 #pragma omp critical(cout)
 			{
-				if (m_mainFilter != "" && hits1.at(m_mainFilter)
-						&& hits2.at(m_mainFilter))
-				{
-					cout << rec1;
-					cout << rec2;
-				}
+				printPair(rec1, rec2, hits1, hits2);
 			}
 
 			//Evaluate hit data and record for summary
@@ -502,7 +492,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -571,12 +561,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 
 #pragma omp critical(cout)
 				{
-					if (m_mainFilter != "" && hits1.at(m_mainFilter)
-							&& hits2.at(m_mainFilter))
-					{
-						cout << rec1;
-						cout << rec2;
-					}
+					printPair(rec1, rec2, hits1, hits2);
 				}
 
 				//Evaluate hit data and record for summary
@@ -606,7 +591,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles);
+	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -725,12 +710,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 
 #pragma omp critical(cout)
 				{
-					if (m_mainFilter != "" && m_mainFilter != ""
-							&& hits1.at(m_mainFilter) && hits2.at(m_mainFilter))
-					{
-						cout << rec1;
-						cout << rec2;
-					}
+					printPair(rec1, rec2, hits1, hits2);
 				}
 
 				//Evaluate hit data and record for summary
@@ -805,7 +785,8 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 		}
 
 		//info file creation
-		boost::shared_ptr<BloomFilterInfo> info(new BloomFilterInfo(infoFileName));
+		boost::shared_ptr<BloomFilterInfo> info(
+				new BloomFilterInfo(infoFileName));
 		//append kmer size to hash signature to insure correct kmer size is used
 		stringstream hashSig;
 		hashSig << info->getHashNum() << info->getKmerSize();

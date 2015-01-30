@@ -31,8 +31,8 @@ class BioBloomClassifier {
 public:
 	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
 			double scoreThreshold, const string &outputPrefix,
-			const string &outputPostFix, unsigned streakThreshold, unsigned minHit,
-			bool minHitOnly);
+			const string &outputPostFix, unsigned streakThreshold,
+			unsigned minHit, bool minHitOnly);
 	void filter(const vector<string> &inputFiles);
 	void filterPrint(const vector<string> &inputFiles,
 			const string &outputType);
@@ -42,7 +42,8 @@ public:
 	void filterPairBAM(const string &file);
 	void filterPairBAMPrint(const string &file, const string &outputType);
 
-	void setCollabFilter(){
+	void setCollabFilter()
+	{
 		m_collab = true;
 		if (m_hashSigs.size() != 1) {
 			cerr
@@ -50,6 +51,11 @@ public:
 					<< endl;
 			exit(1);
 		}
+	}
+
+	void setInclusive()
+	{
+		m_inclusive = true;
 	}
 
 	void setMainFilter(const string &filtername);
@@ -66,6 +72,45 @@ private:
 	void evaluateReadCollab(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
 
+	inline void printPair(const FastqRecord &rec1, const FastqRecord &rec2,
+			unordered_map<string, bool> &hits1,
+			unordered_map<string, bool> &hits2)
+	{
+		if (m_inclusive) {
+			if (m_mainFilter != ""
+					&& (hits1.at(m_mainFilter) || hits2.at(m_mainFilter)))
+			{
+				cout << rec1;
+				cout << rec2;
+			}
+		} else {
+			if (m_mainFilter != "" && hits1.at(m_mainFilter)
+					&& hits2.at(m_mainFilter))
+			{
+				cout << rec1;
+				cout << rec2;
+			}
+		}
+	}
+
+//	inline void printPairToFile(const string &outputFileName,
+//			const FastqRecord &rec1, const FastqRecord &rec2,
+//			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
+//			const string &outputType)
+//	{
+//		if (outputType == "fa") {
+//			(*outputFiles[outputFileName + "1"]) << ">" << rec1.id << "\n"
+//					<< rec1.seq << "\n";
+//			(*outputFiles[outputFileName + "2"]) << ">" << rec2.id << "\n"
+//					<< rec2.seq << "\n";
+//		} else {
+//			(*outputFiles[outputFileName + "1"]) << "@" << rec1.id << "\n"
+//					<< rec1.seq << "\n+\n" << rec1.qual << "\n";
+//			(*outputFiles[outputFileName + "2"]) << "@" << rec2.id << "\n"
+//					<< rec2.seq << "\n+\n" << rec2.qual << "\n";
+//		}
+//	}
+
 	//group filters with same hash number
 	unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > m_infoFiles;
 	unordered_map<string, boost::shared_ptr<MultiFilter> > m_filters;
@@ -79,6 +124,7 @@ private:
 	const unsigned m_streakThreshold;
 	const unsigned m_minHit;
 	const bool m_minHitOnly;
+	bool m_inclusive;
 
 	bool m_collab;
 	string m_mainFilter;
