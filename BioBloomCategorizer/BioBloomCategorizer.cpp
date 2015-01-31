@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegvs:or:t:cd:", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegvs:or:t:cd:i", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
 			paired = true;
 			break;
 		}
-		case 'e': {
+		case 'i': {
 			inclusive = true;
 			break;
 		}

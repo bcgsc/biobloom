@@ -37,12 +37,12 @@ private:
 	const unordered_map<string, boost::shared_ptr<MultiFilter> > m_filters;
 	const unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > m_infoFiles;
 
-	bool m_inclusive;
-
 	unordered_map<string, size_t> m_aboveThreshold;
 	unordered_map<string, size_t> m_unique;
 	size_t m_multiMatch;
 	size_t m_noMatch;
+
+	bool m_inclusive;
 };
 
 #endif /* RESULTSMANAGER_H_ */

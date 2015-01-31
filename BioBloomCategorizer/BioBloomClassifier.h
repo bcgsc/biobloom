@@ -124,10 +124,11 @@ private:
 	const unsigned m_streakThreshold;
 	const unsigned m_minHit;
 	const bool m_minHitOnly;
-	bool m_inclusive;
 
 	bool m_collab;
 	string m_mainFilter;
+
+	bool m_inclusive;
 };
 
 #endif /* BIOBLOOMCLASSIFIER_H_ */
