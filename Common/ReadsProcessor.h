@@ -19,11 +19,14 @@ public:
 	const string getBases(const unsigned char* c); //for debuging purposes
 	virtual ~ReadsProcessor();
 private:
-	const unsigned kmerSize;
-	unsigned kmerSizeInBytes;
-	unsigned halfSizeOfKmerInBytes;
-	unsigned hangingBases; // used if k-mer is indivisible by 4
-	unsigned hangingBasesExist;
+	//so reallocation does not have to be done
+	unsigned char* m_fw;
+	unsigned char* m_rv;
+	const unsigned m_kmerSize;
+	unsigned m_kmerSizeInBytes;
+	unsigned m_halfSizeOfKmerInBytes;
+	unsigned m_hangingBases; // used if k-mer is indivisible by 4
+	unsigned m_hangingBasesExist;
 };
 
 #endif /* READSPROCESSOR_H_ */

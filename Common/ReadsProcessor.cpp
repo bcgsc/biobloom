@@ -17,19 +17,21 @@
  * Needed for use of optimized char* returning prepSeq
  */
 ReadsProcessor::ReadsProcessor(unsigned windowSize) :
-		kmerSize(windowSize), kmerSizeInBytes(windowSize / 4), halfSizeOfKmerInBytes(
-				windowSize / 8), hangingBases(0), hangingBasesExist(0){
+		m_kmerSize(windowSize), m_kmerSizeInBytes(windowSize / 4), m_halfSizeOfKmerInBytes(
+				windowSize / 8), m_hangingBases(0), m_hangingBasesExist(0){
 	//parsing code require kmer larger than 3
-	assert(kmerSize > 3);
+	assert(m_kmerSize > 3);
 
 	if (windowSize % 8 != 0) {
-		halfSizeOfKmerInBytes++;
-		hangingBases = windowSize % 4;
-		if (hangingBases % 4 != 0) {
-			kmerSizeInBytes++;
-			hangingBasesExist = 1;
+		m_halfSizeOfKmerInBytes++;
+		m_hangingBases = windowSize % 4;
+		if (m_hangingBases % 4 != 0) {
+			m_kmerSizeInBytes++;
+			m_hangingBasesExist = 1;
 		}
 	}
+	m_fw = new unsigned char[m_kmerSizeInBytes];
+	m_rv = new unsigned char[m_kmerSizeInBytes];
 }
 
 static const uint8_t fw3[256] = {
@@ -321,7 +323,7 @@ const string ReadsProcessor::getBases(const unsigned char* c)
 
 	int currentIndex = 0;
 	int currentOffset = 3;
-	for (unsigned i = 0; i < kmerSize; ++i) {
+	for (unsigned i = 0; i < m_kmerSize; ++i) {
 		if (currentOffset == -1) {
 			currentIndex++;
 			currentOffset = 3;
@@ -338,6 +340,7 @@ const string ReadsProcessor::getBases(const unsigned char* c)
 	return bases;
 }
 
+//TODO: NOT THREAD SAFE
 /* Prepares DNA sequence for insertion into bloom filter by:
  * - Turning all lower-case sequences to upper-case
  * - Also looks into reverse compliment version and returns consistently
@@ -346,140 +349,137 @@ const string ReadsProcessor::getBases(const unsigned char* c)
  * 		-use if(*currentSeq != 0)
  * - If sequence is palamdromic a char with only the first half recorded is used
  *   because that is all that is needed to uniquely identify the sequence
- * - kmersize must be greater than 3 otherwise undefined behavior will occur
+ * - m_kmerSize must be greater than 3 otherwise undefined behavior will occur
  * requires a start position
  */
 const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t position)
 {
 	size_t index = position;
-	size_t revIndex = position + kmerSize - 1;
+	size_t revIndex = position + m_kmerSize - 1;
 	size_t outputIndex = 0;
 
-	unsigned char fw[kmerSizeInBytes];
-	unsigned char rv[kmerSizeInBytes];
-
-//	memset(fw, 0, kmerSizeInBytes);
-//	memset(rv, 0, kmerSizeInBytes);
+	memset(m_fw, 0, m_kmerSizeInBytes);
+	memset(m_rv, 0, m_kmerSizeInBytes);
 
 	// determines which compliment to use
 	// parse through string converting and checking for lower-case and non ATCG characters
 	// half the length of seq because after this point will be palindromic and is not worth checking
-	for (; outputIndex < halfSizeOfKmerInBytes; ++outputIndex) {
+	for (; outputIndex < m_halfSizeOfKmerInBytes; ++outputIndex) {
 
 		//create char for forward
 
-		fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[index++])];
-		fw[outputIndex] |= fw1[static_cast<unsigned char>(sequence[index++])];
-		fw[outputIndex] |= fw2[static_cast<unsigned char>(sequence[index++])];
+		m_fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[index++])];
+		m_fw[outputIndex] |= fw1[static_cast<unsigned char>(sequence[index++])];
+		m_fw[outputIndex] |= fw2[static_cast<unsigned char>(sequence[index++])];
 
 		//-128 is used as I am working with signed chars
-		if (fw[outputIndex] == 0xFF || fw3[static_cast<unsigned char>(sequence[index])] == 0xFF) {
+		if (m_fw[outputIndex] == 0xFF || fw3[static_cast<unsigned char>(sequence[index])] == 0xFF) {
 			return NULL;
 		}
 
-		fw[outputIndex] |= fw3[static_cast<unsigned char>(sequence[index++])];
+		m_fw[outputIndex] |= fw3[static_cast<unsigned char>(sequence[index++])];
 
 		//create char for rv
 
-		rv[outputIndex] |= rv0[static_cast<unsigned char>(sequence[revIndex--])];
-		rv[outputIndex] |= rv1[static_cast<unsigned char>(sequence[revIndex--])];
-		rv[outputIndex] |= rv2[static_cast<unsigned char>(sequence[revIndex--])];
+		m_rv[outputIndex] |= rv0[static_cast<unsigned char>(sequence[revIndex--])];
+		m_rv[outputIndex] |= rv1[static_cast<unsigned char>(sequence[revIndex--])];
+		m_rv[outputIndex] |= rv2[static_cast<unsigned char>(sequence[revIndex--])];
 
-		if (rv[outputIndex] == 0xFF || rv3[static_cast<unsigned char>(sequence[revIndex])] == 0xFF) {
+		if (m_rv[outputIndex] == 0xFF || rv3[static_cast<unsigned char>(sequence[revIndex])] == 0xFF) {
 			return NULL;
 		}
 
-		rv[outputIndex] |= rv3[static_cast<unsigned char>(sequence[revIndex--])];
+		m_rv[outputIndex] |= rv3[static_cast<unsigned char>(sequence[revIndex--])];
 
 		//compare and convert if not already established
 		//forward is smaller
-		if (fw[outputIndex] < rv[outputIndex]) {
+		if (m_fw[outputIndex] < m_rv[outputIndex]) {
 			//finish off sequence
-			for (++outputIndex; outputIndex + hangingBasesExist < kmerSizeInBytes;
+			for (++outputIndex; outputIndex + m_hangingBasesExist < m_kmerSizeInBytes;
 					++outputIndex)
 			{
 				//create char for forward
-				fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[index++])];
-				fw[outputIndex] |= fw1[static_cast<unsigned char>(sequence[index++])];
-				fw[outputIndex] |= fw2[static_cast<unsigned char>(sequence[index++])];
+				m_fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[index++])];
+				m_fw[outputIndex] |= fw1[static_cast<unsigned char>(sequence[index++])];
+				m_fw[outputIndex] |= fw2[static_cast<unsigned char>(sequence[index++])];
 
-				if (fw[outputIndex] == 0xFF || fw3[static_cast<unsigned char>(sequence[index])] == 0xFF) {
+				if (m_fw[outputIndex] == 0xFF || fw3[static_cast<unsigned char>(sequence[index])] == 0xFF) {
 					return NULL;
 				}
-				fw[outputIndex] |= fw3[static_cast<unsigned char>(sequence[index++])];
+				m_fw[outputIndex] |= fw3[static_cast<unsigned char>(sequence[index++])];
 			}
 			//create last byte
-			if (hangingBasesExist) {
-				size_t lastPos = position + kmerSize - 1;
-				fw[outputIndex] = fw0[static_cast<unsigned char>(sequence[lastPos--])];
+			if (m_hangingBasesExist) {
+				size_t lastPos = position + m_kmerSize - 1;
+				m_fw[outputIndex] = fw0[static_cast<unsigned char>(sequence[lastPos--])];
 				for (; index <= lastPos; --lastPos) {
-					fw[outputIndex] = fw[outputIndex] >> 2;
-					fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[lastPos])];
+					m_fw[outputIndex] = m_fw[outputIndex] >> 2;
+					m_fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[lastPos])];
 				}
-				if (fw[outputIndex] == 0xFF) {
+				if (m_fw[outputIndex] == 0xFF) {
 					return NULL;
 				}
 			}
-			return fw;
+			return m_fw;
 		}
 		//reverse is smaller
-		else if (fw[outputIndex] > rv[outputIndex]) {
+		else if (m_fw[outputIndex] > m_rv[outputIndex]) {
 			//finish off sequence
-			for (++outputIndex; outputIndex + hangingBasesExist < kmerSizeInBytes;
+			for (++outputIndex; outputIndex + m_hangingBasesExist < m_kmerSizeInBytes;
 					++outputIndex)
 			{
-				rv[outputIndex] |= rv0[static_cast<unsigned char>(sequence[revIndex--])];
-				rv[outputIndex] |= rv1[static_cast<unsigned char>(sequence[revIndex--])];
-				rv[outputIndex] |= rv2[static_cast<unsigned char>(sequence[revIndex--])];
+				m_rv[outputIndex] |= rv0[static_cast<unsigned char>(sequence[revIndex--])];
+				m_rv[outputIndex] |= rv1[static_cast<unsigned char>(sequence[revIndex--])];
+				m_rv[outputIndex] |= rv2[static_cast<unsigned char>(sequence[revIndex--])];
 
-				if (rv[outputIndex] == 0xFF || rv3[static_cast<unsigned char>(sequence[revIndex])] == 0xFF)
+				if (m_rv[outputIndex] == 0xFF || rv3[static_cast<unsigned char>(sequence[revIndex])] == 0xFF)
 				{
 					return NULL;
 				}
-				rv[outputIndex] |= rv3[static_cast<unsigned char>(sequence[revIndex--])];
+				m_rv[outputIndex] |= rv3[static_cast<unsigned char>(sequence[revIndex--])];
 			}
 			//create last byte
-			if (hangingBasesExist) {
-				rv[outputIndex] = rv0[static_cast<unsigned char>(sequence[position++])];
+			if (m_hangingBasesExist) {
+				m_rv[outputIndex] = rv0[static_cast<unsigned char>(sequence[position++])];
 				for (; revIndex >= position; ++position) {
-					rv[outputIndex] = rv[outputIndex] >> 2;
-					rv[outputIndex] |= rv0[static_cast<unsigned char>(sequence[position])];
+					m_rv[outputIndex] = m_rv[outputIndex] >> 2;
+					m_rv[outputIndex] |= rv0[static_cast<unsigned char>(sequence[position])];
 				}
-				if (rv[outputIndex] == 0xFF) {
+				if (m_rv[outputIndex] == 0xFF) {
 					return NULL;
 				}
 			}
-			return rv;
+			return m_rv;
 		}
 	}
 	//palamdromic
 	//finish off sequence
-	for (++outputIndex; outputIndex + hangingBasesExist < kmerSizeInBytes;
+	for (++outputIndex; outputIndex + m_hangingBasesExist < m_kmerSizeInBytes;
 			++outputIndex)
 	{
 		//create char for forward
-		fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[index++])];
-		fw[outputIndex] |= fw1[static_cast<unsigned char>(sequence[index++])];
-		fw[outputIndex] |= fw2[static_cast<unsigned char>(sequence[index++])];
+		m_fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[index++])];
+		m_fw[outputIndex] |= fw1[static_cast<unsigned char>(sequence[index++])];
+		m_fw[outputIndex] |= fw2[static_cast<unsigned char>(sequence[index++])];
 
-		if (fw[outputIndex] == 0xFF || fw3[static_cast<unsigned char>(sequence[index])] == 0xFF) {
+		if (m_fw[outputIndex] == 0xFF || fw3[static_cast<unsigned char>(sequence[index])] == 0xFF) {
 			return NULL;
 		}
-		fw[outputIndex] |= fw3[static_cast<unsigned char>(sequence[index])];
+		m_fw[outputIndex] |= fw3[static_cast<unsigned char>(sequence[index])];
 	}
 	//create last byte
-	if (hangingBases) {
-		size_t lastPos = position + kmerSize - 1;
-		fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[lastPos])];
+	if (m_hangingBases) {
+		size_t lastPos = position + m_kmerSize - 1;
+		m_fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[lastPos])];
 		for (; index < lastPos; --lastPos) {
-			fw[outputIndex] = fw[outputIndex] << 2;
-			fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[lastPos])];
+			m_fw[outputIndex] = m_fw[outputIndex] << 2;
+			m_fw[outputIndex] |= fw0[static_cast<unsigned char>(sequence[lastPos])];
 		}
-		if (fw[outputIndex] == 0xFF) {
+		if (m_fw[outputIndex] == 0xFF) {
 			return NULL;
 		}
 	}
-	return fw;
+	return m_fw;
 }
 
 ReadsProcessor::~ReadsProcessor() {
