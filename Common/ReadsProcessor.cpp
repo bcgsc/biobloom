@@ -2,8 +2,6 @@
  * ReadsProcessor.cpp
  * Contains methods for formatting sequences to place into bloom filter
  * For memory management purposes the kmer is intermediately stored here.
- * DO NOT USE THE SAME READ PROCESSER FOR MULTIPLE THREADS
- * YOU MUST FINISH PROCESSING ONE KMER BEFORE MOVING TO NEXT KMER
  *
  *  Created on: Aug 8, 2012
  *      Author: cjustin
@@ -32,9 +30,6 @@ ReadsProcessor::ReadsProcessor(unsigned windowSize) :
 			hangingBasesExist = 1;
 		}
 	}
-
-	fw = new unsigned char[kmerSizeInBytes];
-	rv = new unsigned char[kmerSizeInBytes];
 }
 
 static const uint8_t fw3[256] = {
@@ -360,8 +355,11 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 	size_t revIndex = position + kmerSize - 1;
 	size_t outputIndex = 0;
 
-	memset(fw, 0, kmerSizeInBytes);
-	memset(rv, 0, kmerSizeInBytes);
+	unsigned char fw[kmerSizeInBytes];
+	unsigned char rv[kmerSizeInBytes];
+
+//	memset(fw, 0, kmerSizeInBytes);
+//	memset(rv, 0, kmerSizeInBytes);
 
 	// determines which compliment to use
 	// parse through string converting and checking for lower-case and non ATCG characters
@@ -485,7 +483,5 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence, size_t posi
 }
 
 ReadsProcessor::~ReadsProcessor() {
-	delete[] fw;
-	delete[] rv;
 }
 

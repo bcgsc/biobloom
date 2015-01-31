@@ -19,9 +19,6 @@ public:
 	const string getBases(const unsigned char* c); //for debuging purposes
 	virtual ~ReadsProcessor();
 private:
-	//so reallocation does not have to be done
-	unsigned char* fw;
-	unsigned char* rv;
 	const unsigned kmerSize;
 	unsigned kmerSizeInBytes;
 	unsigned halfSizeOfKmerInBytes;
