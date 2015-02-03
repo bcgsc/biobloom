@@ -850,7 +850,7 @@ void BioBloomClassifier::evaluateReadCollab(const FastqRecord &rec,
 					screeningLoc);
 			if (currentKmer != NULL) {
 				if (m_filtersSingle.at(*i)->contains(currentKmer)) {
-					screeningHits++;
+					++screeningHits;
 				}
 			}
 			screeningLoc += kmerSize;
