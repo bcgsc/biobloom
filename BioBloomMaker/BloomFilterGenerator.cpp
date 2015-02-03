@@ -38,7 +38,7 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 		for (vector<string>::iterator j = m_fileNamesAndHeaders[*i].begin();
 				j != m_fileNamesAndHeaders[*i].end(); ++j) {
 			//subtract kmer size for max number of possible kmers
-			m_expectedEntries += parser.getSequenceSize(*j) - kmerSize;
+			m_expectedEntries += parser.getSequenceSize(*j) - kmerSize + 1;
 		}
 	}
 }
