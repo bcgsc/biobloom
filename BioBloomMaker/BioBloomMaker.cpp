@@ -14,10 +14,18 @@
 #include <boost/unordered/unordered_map.hpp>
 #include <getopt.h>
 #include "config.h"
+#if _OPENMP
+# include <omp.h>
+#endif
 
 using namespace std;
 
 #define PROGRAM "biobloommaker"
+
+namespace opt {
+/** The number of parallel threads. */
+static unsigned threads = 1;
+}
 
 void printVersion() {
 	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"
@@ -39,7 +47,7 @@ void printHelpDialog() {
 		"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
 		"  -h, --help             Display this dialog.\n"
 		"  -v  --version          Display version information.\n"
-		"  -t, --threads=N        The number of threads to use. [1]\n"
+//		"  -t, --threads=N        The number of threads to use. [1]\n"
 		"\nAdvanced options:\n"
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]\n"
 		"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
@@ -75,19 +83,23 @@ int main(int argc, char *argv[]) {
 	size_t entryNum = 0;
 
 	//long form arguments
-	static struct option long_options[] = { { "fal_pos_rate", required_argument,
-	NULL, 'f' }, { "file_prefix", required_argument, NULL, 'p' }, {
-			"output_dir", required_argument, NULL, 'o' }, { "version",
-	no_argument, NULL, 'v' }, { "hash_num", required_argument, NULL, 'g' }, {
-			"kmer_size",
-			required_argument, NULL, 'k' }, { "subtract",
-	required_argument, NULL, 's' }, { "num_ele",
-	required_argument, NULL, 'n' }, { "help", no_argument, NULL, 'h' }, {
-	NULL, 0, NULL, 0 } };
+	static struct option long_options[] = {
+			{
+					"fal_pos_rate", required_argument, NULL, 'f' }, {
+					"file_prefix", required_argument, NULL, 'p' }, {
+					"output_dir", required_argument, NULL, 'o' }, {
+					"threads", required_argument, NULL, 't' }, {
+					"version", no_argument, NULL, 'v' }, {
+					"hash_num", required_argument, NULL, 'g' }, {
+					"kmer_size", required_argument, NULL, 'k' }, {
+					"subtract",	required_argument, NULL, 's' }, {
+					"num_ele", required_argument, NULL, 'n' }, {
+					"help", no_argument, NULL, 'h' }, {
+					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -111,6 +123,14 @@ int main(int argc, char *argv[]) {
 			outputDir = optarg;
 			if (outputDir.at(outputDir.length() - 1) != '/') {
 				outputDir = outputDir + '/';
+			}
+			break;
+		}
+		case 't': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::threads)) {
+				cerr << "Error - Invalid parameter! t: " << optarg << endl;
+				exit(EXIT_FAILURE);
 			}
 			break;
 		}
@@ -164,6 +184,11 @@ int main(int argc, char *argv[]) {
 		}
 		}
 	}
+
+#if defined(_OPENMP)
+	if (opt::threads > 0)
+	omp_set_num_threads(opt::threads);
+#endif
 
 	//Stores fasta input file names
 	vector<string> inputFiles;
