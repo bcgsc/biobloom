@@ -79,7 +79,6 @@ const string &WindowedFileParser::getNextSeq()
 			m_sequenceNotEnd = false;
 			return m_currentString;
 		}
-		cout << m_currentString << endl;
 	}
 	return m_proc.prepSeq(m_currentString, m_currentLinePos++);
 }
