@@ -34,11 +34,11 @@ void WindowedFileParser::setLocationByHeader(string const &header)
 	m_sequenceNotEnd = true;
 	m_currentHeader = header;
 	m_fastaFileHandle.seekg(m_fastaIndex[header].start, ios::beg);
-	m_currentCharNumber = 0;
+	m_currentEndSeqPos = m_windowSize - 1;
 	string bufferString;
 	getline(m_fastaFileHandle, m_currentString);
 	while ((m_currentString.length() < m_windowSize)
-			&& (m_currentCharNumber < m_fastaIndex[m_currentHeader].size)
+			&& (m_currentEndSeqPos < m_fastaIndex[m_currentHeader].size)
 			&& getline(m_fastaFileHandle, bufferString))
 	{
 		m_currentString += bufferString;
@@ -61,12 +61,13 @@ const unsigned char* WindowedFileParser::getNextSeq()
 {
 	if (m_currentString.length() < m_windowSize + m_currentLinePos) {
 		m_currentString.erase(0, m_currentLinePos);
+		m_currentEndSeqPos += m_currentLinePos;
 		m_currentLinePos = 0;
 		//grow the sequence to match the correct window size
 		//stop if there are no more lines left in fasta file
 		while (m_fastaFileHandle.is_open()
 				&& (m_currentString.length() < m_windowSize)
-				&& (m_currentCharNumber < m_fastaIndex[m_currentHeader].size)
+				&& (m_currentEndSeqPos < m_fastaIndex[m_currentHeader].size)
 				&& getline(m_fastaFileHandle, m_bufferString))
 		{
 			m_currentString += m_bufferString;
