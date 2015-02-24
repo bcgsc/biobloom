@@ -45,7 +45,7 @@ private:
 	unsigned m_windowSize;
 	vector<string> m_headers;
 	string m_currentHeader;
-	size_t m_currentCharNumber;
+	size_t m_currentEndSeqPos;
 	size_t m_currentLinePos;
 	string m_window;
 	string m_currentString;
