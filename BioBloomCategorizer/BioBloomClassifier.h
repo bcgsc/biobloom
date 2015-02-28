@@ -25,6 +25,9 @@ using namespace boost;
 static const string NO_MATCH = "noMatch";
 static const string MULTI_MATCH = "multiMatch";
 
+/** for modes of filtering */
+static enum mode { COLLAB, MINHITONLY, BESTHIT, STD };
+
 //TODO: some inlining may help performance
 
 class BioBloomClassifier {
@@ -44,7 +47,7 @@ public:
 
 	void setCollabFilter()
 	{
-		m_collab = true;
+		m_mode = COLLAB;
 		if (m_hashSigs.size() != 1) {
 			cerr
 					<< "To use collaborative filtering all filters must use the same k and same number of hash functions."
@@ -63,13 +66,34 @@ public:
 	virtual ~BioBloomClassifier();
 
 private:
+	//group filters with same hash number
+	unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > m_infoFiles;
+	unordered_map<string, boost::shared_ptr<MultiFilter> > m_filters;
+	unordered_map<string, boost::shared_ptr<BloomFilter> > m_filtersSingle;
+	vector<string> m_filterOrder;
+	vector<string> m_hashSigs;
+	double m_scoreThreshold;
+	unsigned m_filterNum;
+	const string &m_prefix;
+	const string &m_postfix;
+	const unsigned m_streakThreshold;
+	const unsigned m_minHit;
+
+	// modes of filtering
+	mode m_mode;
+
+	string m_mainFilter;
+	bool m_inclusive;
+
 	void loadFilters(const vector<string> &filterFilePaths);
 	bool fexists(const string &filename) const;
 	void evaluateReadStd(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
-	void evaluateRead(const FastqRecord &rec, const string &hashSig,
+	void evaluateReadMin(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
 	void evaluateReadCollab(const FastqRecord &rec, const string &hashSig,
+			unordered_map<string, bool> &hits);
+	double evaluateReadBestHit(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
 
 	inline void printPair(const FastqRecord &rec1, const FastqRecord &rec2,
@@ -93,42 +117,52 @@ private:
 		}
 	}
 
-//	inline void printPairToFile(const string &outputFileName,
-//			const FastqRecord &rec1, const FastqRecord &rec2,
-//			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
-//			const string &outputType)
-//	{
-//		if (outputType == "fa") {
-//			(*outputFiles[outputFileName + "1"]) << ">" << rec1.id << "\n"
-//					<< rec1.seq << "\n";
-//			(*outputFiles[outputFileName + "2"]) << ">" << rec2.id << "\n"
-//					<< rec2.seq << "\n";
-//		} else {
-//			(*outputFiles[outputFileName + "1"]) << "@" << rec1.id << "\n"
-//					<< rec1.seq << "\n+\n" << rec1.qual << "\n";
-//			(*outputFiles[outputFileName + "2"]) << "@" << rec2.id << "\n"
-//					<< rec2.seq << "\n+\n" << rec2.qual << "\n";
-//		}
-//	}
+	inline void printPairToFile(const string &outputFileName,
+			const FastqRecord &rec1, const FastqRecord &rec2,
+			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
+			const string &outputType)
+	{
+		if (outputType == "fa") {
+#pragma omp critical(outputFiles)
+			{
+				(*outputFiles[outputFileName + "1"]) << ">" << rec1.id << "\n"
+						<< rec1.seq << "\n";
+				(*outputFiles[outputFileName + "2"]) << ">" << rec2.id << "\n"
+						<< rec2.seq << "\n";
+			}
+		} else {
+#pragma omp critical(outputFiles)
+			{
+				(*outputFiles[outputFileName + "1"]) << "@" << rec1.id << "\n"
+						<< rec1.seq << "\n+\n" << rec1.qual << "\n";
+				(*outputFiles[outputFileName + "2"]) << "@" << rec2.id << "\n"
+						<< rec2.seq << "\n+\n" << rec2.qual << "\n";
+			}
+		}
+	}
 
-	//group filters with same hash number
-	unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > m_infoFiles;
-	unordered_map<string, boost::shared_ptr<MultiFilter> > m_filters;
-	unordered_map<string, boost::shared_ptr<BloomFilter> > m_filtersSingle;
-	vector<string> m_filterOrder;
-	vector<string> m_hashSigs;
-	double m_scoreThreshold;
-	unsigned m_filterNum;
-	const string &m_prefix;
-	const string &m_postfix;
-	const unsigned m_streakThreshold;
-	const unsigned m_minHit;
-	const bool m_minHitOnly;
-
-	bool m_collab;
-	string m_mainFilter;
-
-	bool m_inclusive;
+	inline void evaluateRead(const FastqRecord &rec, const string &hashSig,
+			unordered_map<string, bool> &hits, double &score)
+	{
+		switch(m_mode) {
+		case COLLAB:{
+			evaluateReadCollab(rec, hashSig, hits);
+			break;
+		}
+		case MINHITONLY: {
+			evaluateReadMin(rec, hashSig, hits);
+			break;
+		}
+		case BESTHIT: {
+			score = evaluateReadBestHit(rec, hashSig, hits);
+			break;
+		}
+		default: {
+			evaluateReadStd(rec, hashSig, hits);
+			break;
+		}
+		}
+	}
 };
 
 #endif /* BIOBLOOMCLASSIFIER_H_ */
