@@ -88,9 +88,10 @@ void BloomFilter::insert(vector<size_t> const &precomputed)
 	//iterates through hashed values adding it to the filter
 	for (size_t i = 0; i < m_hashNum; ++i) {
 		size_t normalizedValue = precomputed.at(i) % m_size;
-
-		m_filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
-				% bitsPerChar];
+		__sync_or_and_fetch(&m_filter[normalizedValue / bitsPerChar],
+						bitMask[normalizedValue % bitsPerChar]);
+//		m_filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
+//				% bitsPerChar];
 	}
 }
 
@@ -101,8 +102,10 @@ void BloomFilter::insert(const unsigned char* kmer)
 		size_t normalizedValue = CityHash64WithSeed(
 				reinterpret_cast<const char*>(kmer), m_kmerSizeInBytes, i)
 				% m_size;
-		m_filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
-				% bitsPerChar];
+		__sync_or_and_fetch(&m_filter[normalizedValue / bitsPerChar],
+				bitMask[normalizedValue % bitsPerChar]);
+//		m_filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
+//				% bitsPerChar];
 	}
 }
 
