@@ -25,9 +25,6 @@ using namespace std;
 namespace opt {
 /** The number of parallel threads. */
 static unsigned threads = 1;
-
-/** The size of length cutoff threshold */
-unsigned min_length = 0;
 }
 
 void printVersion()
@@ -87,10 +84,10 @@ void printHelpDialog()
 		"                         larger than normal. Sorting by read name may be needed.\n"
 		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
 		"                         in the filter. \n"
-		"  -s, --score=N          Score threshold for matching. Maximum threshold is <1\n"
+		"  -s, --score=N          Score threshold for matching. Maximum threshold is 1\n"
 		"                         (highest specificity), minimum is 0 (highest\n"
-		"                         sensitivity). AlLower score threshold will decrease run\n"
-		"                         time. If set to 1 best hit is used rather than\n"
+		"                         sensitivity). A lower score threshold will decrease run\n"
+		"                         time. If set to 1, best hit is used rather than\n"
 		"                         threshold and score will appended to the header of the\n"
 		"                         output read.[0.15]\n"
 		"  -t, --threads=N        The number of threads to use. [1]\n"
@@ -99,7 +96,7 @@ void printHelpDialog()
 		"      --fq               Output categorized reads in Fastq files.\n"
 		"      --chastity         Discard and do not evaluate unchaste reads.\n"
 		"      --no-chastity      Do not discard unchaste reads. [default]\n"
-//		"  -l  --length_cutoff=N  Discard reads shorter that the cutoff.\n"
+		"  -l  --length_cutoff=N  Discard reads shorter that the cutoff.\n"
 		"  -v  --version          Display version information.\n"
 		"  -h, --help             Display this dialog.\n"
 		"Advanced options:\n"
@@ -248,7 +245,11 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'l': {
-			opt::min_length = optarg;
+			stringstream convert(optarg);
+			if (!(convert >> opt::minLength)) {
+				cerr << "Error - Invalid parameter! l: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
 			break;
 		}
 		case 'v': {
@@ -345,6 +346,15 @@ int main(int argc, char *argv[])
 		outputReadType = "fq";
 	} else if (fasta) {
 		outputReadType = "fa";
+	}
+
+	//check for modes not yet supported
+	if(score == 1.0 && paired)
+	{
+		cerr
+				<< "best hit and paired mode not yet supported."
+				<< endl;
+		exit(1);
 	}
 
 	//load filters

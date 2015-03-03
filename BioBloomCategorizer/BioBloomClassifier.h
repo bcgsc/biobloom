@@ -18,6 +18,7 @@
 #include "Common/Uncompress.h"
 #include "Common/BloomFilter.h"
 #include "ResultsManager.h"
+#include "Common/Dynamicofstream.h"
 
 using namespace std;
 using namespace boost;
@@ -26,7 +27,7 @@ static const string NO_MATCH = "noMatch";
 static const string MULTI_MATCH = "multiMatch";
 
 /** for modes of filtering */
-static enum mode { COLLAB, MINHITONLY, BESTHIT, STD };
+enum mode { COLLAB, MINHITONLY, BESTHIT, STD };
 
 //TODO: some inlining may help performance
 
@@ -95,6 +96,62 @@ private:
 			unordered_map<string, bool> &hits);
 	double evaluateReadBestHit(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
+
+	inline void printSingle(const FastqRecord &rec,
+			unordered_map<string, bool> &hits, double score)
+	{
+		if (m_mainFilter != "" && hits.at(m_mainFilter)) {
+			if (m_mode == BESTHIT) {
+#pragma omp critical(cout)
+				{
+					cout << "@" << rec.id << " " << score << "\n" << rec.seq
+							<< "\n+\n" << rec.qual << "\n";
+				}
+			} else {
+#pragma omp critical(cout)
+				{
+					cout << rec;
+				}
+			}
+		}
+	}
+
+	inline void printSingleToFile(const string &outputFileName,
+			const FastqRecord &rec,
+			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
+			const string &outputType, double score)
+	{
+		if (outputType == "fa") {
+			if (m_mode == BESTHIT) {
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName]) << ">" << rec.id << " "
+							<< score << "\n" << rec.seq << "\n";
+				}
+			} else {
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName]) << ">" << rec.id << "\n"
+							<< rec.seq << "\n";
+				}
+			}
+		} else {
+			if (m_mode == BESTHIT) {
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName]) << "@" << rec.id << " "
+												<< score << "\n" << rec.seq << "\n+\n" << rec.qual
+												<< "\n";
+				}
+			} else {
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName]) << "@" << rec.id << "\n"
+							<< rec.seq << "\n+\n" << rec.qual << "\n";
+				}
+			}
+		}
+	}
 
 	inline void printPair(const FastqRecord &rec1, const FastqRecord &rec2,
 			unordered_map<string, bool> &hits1,
