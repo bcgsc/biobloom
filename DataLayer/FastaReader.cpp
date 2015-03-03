@@ -25,6 +25,9 @@ namespace opt {
 
 	/** quality offset, usually 33 or 64 */
 	int qualityOffset;
+
+	/** The size of length cutoff threshold */
+	size_t minLength = 0;
 }
 
 /** Output an error message. */
@@ -213,6 +216,10 @@ next_record:
 		if (s.empty()) {
 			die() << "sequence with ID `" << id << "' is empty\n";
 			exit(EXIT_FAILURE);
+		}
+
+		if (s.length() < opt::minLength) {
+			goto next_record;
 		}
 
 		bool colourSpace = isColourSpace(s);

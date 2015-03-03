@@ -6,6 +6,7 @@ namespace opt {
 	extern int trimMasked;
 	extern int qualityOffset;
 	extern int qualityThreshold;
+	extern size_t minLength;
 }
 
 #endif
