@@ -341,6 +341,7 @@ const string ReadsProcessor::getBases(const unsigned char* c)
 	return bases;
 }
 
+//TODO: find some way of returning position where sequence k-mer is missing
 //TODO: NOT THREAD SAFE
 /* Prepares DNA sequence for insertion into bloom filter by:
  * - Turning all lower-case sequences to upper-case
