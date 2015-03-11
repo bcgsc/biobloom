@@ -19,6 +19,7 @@
 #include "Common/BloomFilter.h"
 #include "ResultsManager.h"
 #include "Common/Dynamicofstream.h"
+#include "Common/SeqEval.h"
 
 using namespace std;
 using namespace boost;
@@ -29,14 +30,11 @@ static const string MULTI_MATCH = "multiMatch";
 /** for modes of filtering */
 enum mode { COLLAB, MINHITONLY, BESTHIT, STD };
 
-//TODO: some inlining may help performance
-
 class BioBloomClassifier {
 public:
 	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
 			double scoreThreshold, const string &outputPrefix,
-			const string &outputPostFix, unsigned streakThreshold,
-			unsigned minHit, bool minHitOnly);
+			const string &outputPostFix, unsigned minHit, bool minHitOnly);
 	void filter(const vector<string> &inputFiles);
 	void filterPrint(const vector<string> &inputFiles,
 			const string &outputType);
@@ -77,7 +75,6 @@ private:
 	unsigned m_filterNum;
 	const string &m_prefix;
 	const string &m_postfix;
-	const unsigned m_streakThreshold;
 	const unsigned m_minHit;
 
 	// modes of filtering

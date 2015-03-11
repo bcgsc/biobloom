@@ -11,6 +11,7 @@
 #include <sstream>
 #include <sys/stat.h>
 #include "ResultsManager.h"
+#include "Common/Options.h"
 #include <map>
 #if _OPENMP
 # include <omp.h>
@@ -18,12 +19,10 @@
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		double scoreThreshold, const string &prefix,
-		const string &outputPostFix, unsigned streakThreshold, unsigned minHit,
-		bool minHitOnly) :
+		const string &outputPostFix, unsigned minHit, bool minHitOnly) :
 		m_scoreThreshold(scoreThreshold), m_filterNum(filterFilePaths.size()), m_prefix(
-				prefix), m_postfix(outputPostFix), m_streakThreshold(
-				streakThreshold), m_minHit(minHit), m_mode(STD), m_mainFilter(""), m_inclusive(
-				false)
+				prefix), m_postfix(outputPostFix), m_minHit(minHit), m_mode(
+				STD), m_mainFilter(""), m_inclusive(false)
 {
 	if (minHitOnly) {
 		m_mode = MINHITONLY;
@@ -183,7 +182,8 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				const string &outputFileName = resSummary.updateSummaryData(
 						hits);
 
-				printSingleToFile(outputFileName, rec, outputFiles, outputType, score);
+				printSingleToFile(outputFileName, rec, outputFiles, outputType,
+						score);
 
 			} else
 				break;
@@ -814,51 +814,11 @@ void BioBloomClassifier::evaluateReadCollab(const FastqRecord &rec,
 			firstPassHits.rbegin(); i != firstPassHits.rend(); ++i)
 	{
 		string filterID = i->second;
-		size_t currentLoc = 0;
-		double score = 0;
-		unsigned streak = 0;
-//		bool jump = true; //TODO: only accounts for most cases (streak threshold == 1) may need to generalize for all streak thresholds
-		while (rec.seq.length() >= currentLoc + kmerSize) {
-			const unsigned char* currentKmer = proc.prepSeq(rec.seq,
-					currentLoc);
-			if (streak == 0) {
-				if (currentKmer != NULL) {
-					if (m_filtersSingle.at(filterID)->contains(currentKmer)) {
-						score += 0.5;
-						++streak;
-					}
-					++currentLoc;
-				} else {
-					currentLoc += kmerSize + 1;
-				}
-			} else {
-				if (currentKmer != NULL) {
-					if (m_filtersSingle.at(filterID)->contains(currentKmer)) {
-						++streak;
-//						if (jump) {
-						score += 1 - 1 / (2 * streak);
-//						}
-						++currentLoc;
-//						jump = true;
-						if (threshold <= score) {
-							hits[filterID] = true;
-							//end filtering if read is claimed by a filter
-							return;
-						}
-						continue;
-					}
-				} else {
-					currentLoc += kmerSize + 1;
-				}
-				if (streak < m_streakThreshold) {
-					++currentLoc;
-//					jump = false;
-				} else {
-					currentLoc += kmerSize;
-//					jump = true;
-				}
-				streak = 0;
-			}
+		BloomFilter &tempFilter = *m_filtersSingle.at(filterID);
+		if(SeqEval::evalSingle(rec, kmerSize, tempFilter, threshold))
+		{
+			hits[filterID] = true;
+			break;
 		}
 	}
 }
@@ -967,45 +927,8 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 			pass = true;
 		}
 		if (pass) {
-			size_t currentLoc = 0;
-			double score = 0;
-			unsigned streak = 0;
-			while (rec.seq.length() >= currentLoc + kmerSize) {
-				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
-						currentLoc);
-				if (streak == 0) {
-					if (currentKmer != NULL) {
-						if (m_filtersSingle.at(*i)->contains(currentKmer)) {
-							score += 0.5;
-							++streak;
-						}
-						++currentLoc;
-					} else {
-						currentLoc += kmerSize + 1;
-					}
-				} else {
-					if (currentKmer != NULL) {
-						if (m_filtersSingle.at(*i)->contains(currentKmer)) {
-							++streak;
-							score += 1 - 1 / (2 * streak);
-							++currentLoc;
-							if (threshold <= score) {
-								hits[*i] = true;
-								break;
-							}
-							continue;
-						}
-					} else {
-						currentLoc += kmerSize + 1;
-					}
-					if (streak < m_streakThreshold) {
-						++currentLoc;
-					} else {
-						currentLoc += kmerSize;
-					}
-					streak = 0;
-				}
-			}
+			BloomFilter &tempFilter = *m_filtersSingle.at(*i);
+			hits[*i] = SeqEval::evalSingle(rec, kmerSize, tempFilter, threshold);
 		}
 	}
 }
@@ -1086,7 +1009,7 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
 					} else {
 						currentLoc += kmerSize + 1;
 					}
-					if (streak < m_streakThreshold) {
+					if (streak < opt::streakThreshold) {
 						++currentLoc;
 					} else {
 						currentLoc += kmerSize;
@@ -1108,7 +1031,7 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
 			hits[bestFilters[i]] = true;
 		}
 	}
-	return maxScore/(rec.seq.length() - kmerSize + 1);
+	return maxScore / (rec.seq.length() - kmerSize + 1);
 }
 
 void BioBloomClassifier::setMainFilter(const string &filtername)

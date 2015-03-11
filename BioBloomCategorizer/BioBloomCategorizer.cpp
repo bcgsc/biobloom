@@ -14,6 +14,7 @@
 #include "BioBloomClassifier.h"
 #include "DataLayer/Options.h"
 #include "config.h"
+#include "Common/Options.h"
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -70,59 +71,59 @@ void folderCheck(const string &path)
 void printHelpDialog()
 {
 	const char dialog[] =
-		"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
-		"biobloomcategorizer [OPTION]... -e -f \"[FILTER1]...\" [FILE1.fq] [FILE2.fq]\n"
-		"Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or\n"
-		"BAM format and compressed with gz, bz2 or xz and may be tarred.\n"
-		"\n"
-		"  -p, --prefix=N         Output prefix to use. Otherwise will output to current\n"
-		"                         directory.\n"
-		"  -f, --filter_files=N   List of filter files to use. Required option. \n"
-		"                         eg. \"filter1.bf filter2.bf\"\n"
-		"  -e, --paired_mode      Uses paired-end information. For BAM or SAM files, if\n"
-		"                         they are poorly ordered, the memory usage will be much\n"
-		"                         larger than normal. Sorting by read name may be needed.\n"
-		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
-		"                         in the filter. \n"
-		"  -s, --score=N          Score threshold for matching. Maximum threshold is 1\n"
-		"                         (highest specificity), minimum is 0 (highest\n"
-		"                         sensitivity). A lower score threshold will decrease run\n"
-		"                         time. If set to 1, best hit is used rather than\n"
-		"                         threshold and score will appended to the header of the\n"
-		"                         output read.[0.15]\n"
-		"  -t, --threads=N        The number of threads to use. [1]\n"
-		"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
-		"      --fa               Output categorized reads in Fasta files.\n"
-		"      --fq               Output categorized reads in Fastq files.\n"
-		"      --chastity         Discard and do not evaluate unchaste reads.\n"
-		"      --no-chastity      Do not discard unchaste reads. [default]\n"
-		"  -l  --length_cutoff=N  Discard reads shorter that the cutoff.\n"
-		"  -v  --version          Display version information.\n"
-		"  -h, --help             Display this dialog.\n"
-		"Advanced options:\n"
+			"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
+					"biobloomcategorizer [OPTION]... -e -f \"[FILTER1]...\" [FILE1.fq] [FILE2.fq]\n"
+					"Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or\n"
+					"BAM format and compressed with gz, bz2 or xz and may be tarred.\n"
+					"\n"
+					"  -p, --prefix=N         Output prefix to use. Otherwise will output to current\n"
+					"                         directory.\n"
+					"  -f, --filter_files=N   List of filter files to use. Required option. \n"
+					"                         eg. \"filter1.bf filter2.bf\"\n"
+					"  -e, --paired_mode      Uses paired-end information. For BAM or SAM files, if\n"
+					"                         they are poorly ordered, the memory usage will be much\n"
+					"                         larger than normal. Sorting by read name may be needed.\n"
+					"  -i, --inclusive        If one paired read matches, both reads will be included\n"
+					"                         in the filter. \n"
+					"  -s, --score=N          Score threshold for matching. Maximum threshold is 1\n"
+					"                         (highest specificity), minimum is 0 (highest\n"
+					"                         sensitivity). A lower score threshold will decrease run\n"
+					"                         time. If set to 1, best hit is used rather than\n"
+					"                         threshold and score will appended to the header of the\n"
+					"                         output read.[0.15]\n"
+					"  -t, --threads=N        The number of threads to use. [1]\n"
+					"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
+					"      --fa               Output categorized reads in Fasta files.\n"
+					"      --fq               Output categorized reads in Fastq files.\n"
+					"      --chastity         Discard and do not evaluate unchaste reads.\n"
+					"      --no-chastity      Do not discard unchaste reads. [default]\n"
+					"  -l  --length_cutoff=N  Discard reads shorter that the cutoff.\n"
+					"  -v  --version          Display version information.\n"
+					"  -h, --help             Display this dialog.\n"
+					"Advanced options:\n"
 //		"      --best_hit         If using multiple filters bin reads based on filter with.\n"
 //		"                         best hit rather than just score threshold. Execution time\n"
 //		"                         will be slightly slower with this option."
-		"  -b  --best_hit         If using multiple filters, bin reads based on filter\n"
-		"                         best hit rather than just score threshold. Score is\n"
-		"                         is appended to the header of the output read."
-		"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
-		"                         needed over initial tiling of read to continue.\n"
-		"                         Higher values decrease runtime but lower sensitivity.[0]\n"
-		"  -r, --streak=N         The number of hit tiling in second pass needed to jump\n"
-		"                         Several tiles upon a miss. Small values decrease runtime\n"
-		"                         but decrease sensitivity. [3]\n"
-		"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
-		"                         but low specificity, use only on long reads (>100bp).\n"
-		"  -c, --collab           Use collaborative filtering. Order of filters matters\n"
-		"                         (filters list first have higher priority).\n"
-		"                         Only taken advantage of when k-mer sizes and number of\n"
-		"                         hash functions are the same.\n"
-		"  -d, --stdout_filter=N  Outputs all matching reads to stdout for the specified\n"
-		"                         filter. N is the filter ID without file extension Reads\n"
-		"                         are outputed in fastq, and if paired will output will\n"
-		"                         be interlaced.\n"
-		"Report bugs to <cjustin@bcgsc.ca>.";
+					"  -b  --best_hit         If using multiple filters, bin reads based on filter\n"
+					"                         best hit rather than just score threshold. Score is\n"
+					"                         is appended to the header of the output read."
+					"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
+					"                         needed over initial tiling of read to continue.\n"
+					"                         Higher values decrease runtime but lower sensitivity.[0]\n"
+					"  -r, --streak=N         The number of hit tiling in second pass needed to jump\n"
+					"                         Several tiles upon a miss. Small values decrease runtime\n"
+					"                         but decrease sensitivity. [3]\n"
+					"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
+					"                         but low specificity, use only on long reads (>100bp).\n"
+					"  -c, --collab           Use collaborative filtering. Order of filters matters\n"
+					"                         (filters list first have higher priority).\n"
+					"                         Only taken advantage of when k-mer sizes and number of\n"
+					"                         hash functions are the same.\n"
+					"  -d, --stdout_filter=N  Outputs all matching reads to stdout for the specified\n"
+					"                         filter. N is the filter ID without file extension Reads\n"
+					"                         are outputed in fastq, and if paired will output will\n"
+					"                         be interlaced.\n"
+					"Report bugs to <cjustin@bcgsc.ca>.";
 
 	cerr << dialog << endl;
 	exit(EXIT_SUCCESS);
@@ -154,34 +155,34 @@ int main(int argc, char *argv[])
 
 	//advanced options
 	unsigned minHit = 0;
-	unsigned streak = 3;
 	bool minHitOnly = false;
 	bool collab = false;
 
 	string mainFilter = "";
 
 	//long form arguments
-	static struct option long_options[] = { {
-		"prefix", optional_argument, NULL, 'p' }, {
-		"filter_files", required_argument, NULL, 'f' }, {
-		"paired_mode", no_argument, NULL, 'e' }, {
-		"inclusive", no_argument, NULL, 'i' }, {
-		"score", no_argument, NULL, 's' }, {
-		"help", no_argument, NULL, 'h' }, {
-		"threads", required_argument, NULL, 't' }, {
-		"gz_output", no_argument, NULL, 'g' }, {
-		"chastity", no_argument, &opt::chastityFilter, 1 }, {
-		"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
-		"fq", no_argument, &fastq, 1 }, {
-		"fa", no_argument, &fasta, 1 }, {
-		"length_cutoff", required_argument, NULL, 'l' }, {
-		"version", no_argument, NULL, 'v' }, {
-		"min_hit_thr", required_argument, NULL, 'm' }, {
-		"streak", optional_argument, NULL, 'r' }, {
-		"min_hit_only", no_argument, NULL, 'o' }, {
-		"collab", no_argument, NULL, 'c' }, {
-		"stdout_filter", required_argument, NULL, 'd' }, {
-		NULL, 0, NULL, 0 } };
+	static struct option long_options[] = {
+			{
+					"prefix", optional_argument, NULL, 'p' }, {
+					"filter_files", required_argument, NULL, 'f' }, {
+					"paired_mode", no_argument, NULL, 'e' }, {
+					"inclusive", no_argument, NULL, 'i' }, {
+					"score", no_argument, NULL, 's' }, {
+					"help", no_argument, NULL, 'h' }, {
+					"threads", required_argument, NULL, 't' }, {
+					"gz_output", no_argument, NULL, 'g' }, {
+					"chastity", no_argument, &opt::chastityFilter, 1 }, {
+					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
+					"fq", no_argument, &fastq, 1 }, {
+					"fa", no_argument, &fasta, 1 }, {
+					"length_cutoff", required_argument, NULL, 'l' }, {
+					"version", no_argument, NULL, 'v' }, {
+					"min_hit_thr", required_argument, NULL, 'm' }, {
+					"streak", optional_argument, NULL, 'r' }, {
+					"min_hit_only", no_argument, NULL, 'o' }, {
+					"collab", no_argument, NULL, 'c' }, {
+					"stdout_filter", required_argument, NULL, 'd' }, {
+					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
@@ -262,7 +263,7 @@ int main(int argc, char *argv[])
 		}
 		case 'r': {
 			stringstream convert(optarg);
-			if (!(convert >> streak)) {
+			if (!(convert >> opt::streakThreshold)) {
 				cerr << "Error - Invalid parameter! r: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
@@ -349,17 +350,14 @@ int main(int argc, char *argv[])
 	}
 
 	//check for modes not yet supported
-	if(score == 1.0 && paired)
-	{
-		cerr
-				<< "best hit and paired mode not yet supported."
-				<< endl;
+	if (score == 1.0 && paired) {
+		cerr << "best hit and paired mode not yet supported." << endl;
 		exit(1);
 	}
 
 	//load filters
 	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix,
-			streak, minHit, minHitOnly);
+			minHit, minHitOnly);
 
 	//set file output type
 	if (collab && minHit) {
@@ -372,7 +370,6 @@ int main(int argc, char *argv[])
 	if (mainFilter != "") {
 		BBC.setMainFilter(mainFilter);
 	}
-
 
 	//filtering step
 	//create directory structure if it does not exist
