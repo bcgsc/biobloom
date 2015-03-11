@@ -1,8 +1,5 @@
 noinst_LIBRARIES = libdatalayer.a
 
-abyss_tofastq_CPPFLAGS = -I$(top_srcdir) \
-	-I$(top_srcdir)/Common
-
 libdatalayer_a_CPPFLAGS = -I$(top_srcdir) \
 	-I$(top_srcdir)/Common
 
