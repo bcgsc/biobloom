@@ -7,9 +7,8 @@
  */
 namespace opt {
 	extern bool colourSpace;
-	extern int numProc;
-	extern int rank;
 	extern int verbose;
+	extern unsigned streakThreshold;
 }
 
 #endif
