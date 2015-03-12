@@ -13,6 +13,7 @@ libcommon_a_SOURCES = \
 	Options.cpp Options.h \
 	ReadsProcessor.cpp ReadsProcessor.h \
 	Sequence.cpp Sequence.h \
+	SeqEval.h \
 	SignalHandler.cpp SignalHandler.h \
 	StringUtil.h \
 	Uncompress.cpp Uncompress.h
