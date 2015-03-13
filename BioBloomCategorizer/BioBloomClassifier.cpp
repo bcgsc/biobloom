@@ -779,6 +779,7 @@ void BioBloomClassifier::evaluateReadCollab(const FastqRecord &rec,
 	//get filterIDs to iterate through has in a consistent order
 	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
 
+	//todo: read proc possibly unneeded, see evalSingle
 	ReadsProcessor proc(kmerSize);
 
 	//create storage for hits per filter
@@ -896,6 +897,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 
 	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
 
+	//todo: read proc possibly unneeded, see evalSingle
 	ReadsProcessor proc(kmerSize);
 
 	double normalizationValue = rec.seq.length() - kmerSize + 1;
