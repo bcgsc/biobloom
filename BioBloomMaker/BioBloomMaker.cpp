@@ -39,6 +39,7 @@ void printVersion() {
 void printHelpDialog() {
 	static const char dialog[] =
 		"Usage: biobloommaker -p [FILTERID] [OPTION]... [FILE]...\n"
+		"Usage: biobloommaker -p [FILTERID] -r 0.2 [FILE]... [FASTQ1] [FASTQ2] \n"
 		"Creates a bf and txt file from a list of fasta files. The input sequences are\n"
 		"cut into a k-mers with a sliding window and their hash signatures are inserted\n"
 		"into a bloom filter.\n"
@@ -59,7 +60,8 @@ void printHelpDialog() {
 		"                         only use filters with k-mer sizes equal the one you\n"
 		"                         wish to create.\n"
 		"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
-		"                         is determined from sequences sizes within files. [0]"
+		"                         is determined from sequences sizes within files. [0]\n"
+		"  -r, --progressive=N    Progressive filter creation. Score threshold is N.\n"
 		"\n"
 		"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
@@ -81,6 +83,7 @@ int main(int argc, char *argv[]) {
 	unsigned hashNum = 0;
 	string subtractFilter = "";
 	size_t entryNum = 0;
+	double progressive = -1;
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -95,11 +98,12 @@ int main(int argc, char *argv[]) {
 					"subtract",	required_argument, NULL, 's' }, {
 					"num_ele", required_argument, NULL, 'n' }, {
 					"help", no_argument, NULL, 'h' }, {
+					"progressive", required_argument, NULL, 'r' }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:r:", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -178,6 +182,20 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		}
+		case 'r': {
+			stringstream convert(optarg);
+			if (!(convert >> progressive)) {
+				cerr << "Error - Invalid set of bloom filter parameters! r: "
+						<< optarg << endl;
+				return 0;
+			}
+			if (progressive < 0 || progressive > 1) {
+				cerr << "Error - s must be between 0 and 1, input given:"
+						<< optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
 		default: {
 			die = true;
 			break;
@@ -222,6 +240,22 @@ int main(int argc, char *argv[]) {
 		hashNum = unsigned(-log(fpr) / log(2));
 	}
 
+	string file1 = "";
+	string file2 = "";
+
+	if (progressive != -1) {
+		if (inputFiles.size() > 2) {
+			file1 = inputFiles.back();
+			inputFiles.pop_back();
+			file2 = inputFiles.back();
+			inputFiles.pop_back();
+		} else {
+			cerr << "require a least 3 input when using progressive mode"
+					<< endl;
+			exit(1);
+		}
+	}
+
 	//create filter
 	BloomFilterGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
 
@@ -239,11 +273,17 @@ int main(int argc, char *argv[]) {
 
 	size_t redundNum = 0;
 	//output filter
-	if (subtractFilter == "") {
-		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
-	} else {
+	if (!subtractFilter.empty() && progressive != -1) {
+		cerr << "cannot use both -p and -s" << endl;
+		exit(1);
+	} else if (!subtractFilter.empty()) {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
 				subtractFilter);
+	} else if (progressive != -1) {
+		redundNum = filterGen.generateProgressive(
+				outputDir + filterPrefix + ".bf", progressive, file1, file2);
+	} else {
+		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
 	}
 	info.setTotalNum(filterGen.getTotalEntries());
 	info.setRedundancy(redundNum);
@@ -253,7 +293,9 @@ int main(int argc, char *argv[]) {
 	double redunRate = double(redundNum) / double(filterGen.getTotalEntries())
 			- info.getRedundancyFPR();
 	if (redunRate > 0.25) {
-		cerr << "The ratio between redundant k-mers and unique k-mers is approximately: " << redunRate << endl;
+		cerr
+				<< "The ratio between redundant k-mers and unique k-mers is approximately: "
+				<< redunRate << endl;
 		cerr
 				<< "Consider checking your files for duplicate sequences and adjusting them accordingly.\n"
 						"High redundancy will cause filter sizes used overestimated, potentially resulting in a larger than needed filter.\n"
