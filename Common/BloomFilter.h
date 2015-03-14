@@ -60,6 +60,7 @@ public:
 
 	virtual ~BloomFilter();
 private:
+	BloomFilter(const BloomFilter& that); //to prevent copy construction
 	void initSize(size_t size);
 	uint8_t* m_filter;
 	size_t m_size;
