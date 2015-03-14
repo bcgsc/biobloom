@@ -40,7 +40,7 @@ FastaReader::FastaReader(const char* path, int flags, int len)
 	: m_path(path), m_blen(32768), m_bstart(0), m_bend(0),
 	m_fail(false), m_flags(flags), m_line(0), m_unchaste(0),
 	m_end(numeric_limits<streamsize>::max()),
-	m_maxLength(len)
+	m_maxLength(len), forceBreak(false)
 {
 	m_buff = new char[m_blen];
 	if (strcmp(path, "-") != 0)

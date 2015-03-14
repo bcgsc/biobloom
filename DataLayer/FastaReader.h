@@ -45,7 +45,7 @@ public:
 
 	~FastaReader()
 	{
-		if (!eof()) {
+		if (!eof() && !forceBreak) {
 			std::string line;
 			getline(line);
 			die() << "expected end-of-file near\n" << line << '\n';
@@ -61,9 +61,12 @@ public:
 	/** Return whether this stream is at end-of-file. */
 	bool eof() const
 	{
-		return m_bstart >= m_bend && feof(m_in);
+		return (m_bstart >= m_bend && feof(m_in)) || forceBreak;
 	}
-	;
+
+	void breakClose(){
+		forceBreak = true;
+	}
 
 	/** Return whether this stream is good. */
 	operator bool() const
@@ -177,6 +180,9 @@ private:
 
 	/** Trim sequences to this length. 0 is unlimited. */
 	const int m_maxLength;
+
+	/** for ending file reading prematurely*/
+	bool forceBreak;
 };
 
 /** A FASTA record. */
