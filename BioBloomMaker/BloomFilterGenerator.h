@@ -22,7 +22,7 @@ public:
 
 	size_t generate(const string &filename);
 	size_t generate(const string &filename, const string &subtractFilter);
-	size_t generateProgressive(const string &filename, unsigned score, const string &file1,
+	size_t generateProgressive(const string &filename, double score, const string &file1,
 			const string &file2);
 	void setFilterSize(size_t bits);
 
@@ -50,6 +50,7 @@ private:
 			insertKmer(tempHash, filter);
 		}
 	}
+
 	inline void insertKmer(const vector<size_t> &hashVals,
 			BloomFilter &filter)
 	{

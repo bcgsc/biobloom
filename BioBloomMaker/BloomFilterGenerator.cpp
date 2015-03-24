@@ -100,11 +100,6 @@ size_t BloomFilterGenerator::generate(const string &filename) {
 			}
 		}
 	}
-	//progressively add to bloom filter
-	FastaReader sequence(filename.c_str(), FastaReader::NO_FOLD_CASE);
-	//use scoring function of BBC
-
-
 	filter.storeFilter(filename);
 	return m_redundancy;
 }
@@ -120,7 +115,7 @@ size_t BloomFilterGenerator::generate(const string &filename) {
  * Outputs to fileName path
  */
 size_t BloomFilterGenerator::generateProgressive(const string &filename,
-		unsigned score, const string &file1, const string &file2)
+		double score, const string &file1, const string &file2)
 {
 
 	//need the number of hash functions used to be greater than 0

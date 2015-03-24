@@ -269,6 +269,7 @@ int main(int argc, char *argv[]) {
 
 	//get calculated size of Filter
 	size_t filterSize = info.getCalcuatedFilterSize();
+	cerr << "Allocating " << filterSize << " bits of space for filter and will output filter this size" << endl;
 	filterGen.setFilterSize(filterSize);
 
 	size_t redundNum = 0;
