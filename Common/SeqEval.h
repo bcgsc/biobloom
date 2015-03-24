@@ -25,7 +25,7 @@ namespace SeqEval {
  * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
  */
 inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, unsigned antiThreshold)
+		double threshold, size_t antiThreshold)
 {
 	ReadsProcessor proc(kmerSize);
 	size_t currentLoc = 0;

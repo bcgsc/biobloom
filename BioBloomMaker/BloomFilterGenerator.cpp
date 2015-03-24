@@ -193,8 +193,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				unsigned size2 = rec2.seq.length() - m_kmerSize + 1;
 				vector<vector<size_t> > hashValues1(size1);
 				vector<vector<size_t> > hashValues2(size2);
-				if (SeqEval::evalSingle(rec1, m_kmerSize, filter, score * size1,
-						(1.0 - score) * size1, m_hashNum, hashValues1))
+				if (SeqEval::evalSingle(rec1, m_kmerSize, filter, score * double(size1),
+						(1.0 - score) * double(size1), m_hashNum, hashValues1))
 				{
 					//load remaining sequences
 					for (unsigned i = 0; i < size1; ++i) {

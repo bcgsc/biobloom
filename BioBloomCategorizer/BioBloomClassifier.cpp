@@ -809,7 +809,7 @@ void BioBloomClassifier::evaluateReadCollab(const FastqRecord &rec,
 
 	double normalizationValue = rec.seq.length() - kmerSize + 1;
 	double threshold = m_scoreThreshold * normalizationValue;
-	unsigned antiThreshold = (1.0 - m_scoreThreshold) * normalizationValue;
+	size_t antiThreshold = static_cast<size_t>((1.0 - m_scoreThreshold) * normalizationValue);
 
 	//evaluate promising group first
 	for (multimap<unsigned, string>::reverse_iterator i =
@@ -902,7 +902,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 
 	double normalizationValue = rec.seq.length() - kmerSize + 1;
 	double threshold = m_scoreThreshold * normalizationValue;
-	unsigned antiThreshold = (1.0 - m_scoreThreshold) * normalizationValue;
+	size_t antiThreshold = static_cast<size_t>((1.0 - m_scoreThreshold) * normalizationValue);
 
 	for (vector<string>::const_iterator i = idsInFilter.begin();
 			i != idsInFilter.end(); ++i)
