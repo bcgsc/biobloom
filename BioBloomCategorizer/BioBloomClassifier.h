@@ -30,6 +30,9 @@ static const string MULTI_MATCH = "multiMatch";
 /** for modes of filtering */
 enum mode { COLLAB, MINHITONLY, BESTHIT, STD };
 
+///** for modes of printing out files */
+//enum printMode {FASTA, FASTQ, BEST_FASTA, BEST_FASTQ};
+
 class BioBloomClassifier {
 public:
 	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
@@ -94,10 +97,10 @@ private:
 	double evaluateReadBestHit(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
 
-	inline void printSingle(const FastqRecord &rec,
-			unordered_map<string, bool> &hits, double score)
+	inline void printSingle(const FastqRecord &rec, double score,
+			const string &filterID)
 	{
-		if (m_mainFilter != "" && hits.at(m_mainFilter)) {
+		if (m_mainFilter == filterID) {
 			if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
 				{
@@ -116,7 +119,7 @@ private:
 	inline void printSingleToFile(const string &outputFileName,
 			const FastqRecord &rec,
 			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
-			const string &outputType, double score)
+			string const &outputType, double score)
 	{
 		if (outputType == "fa") {
 			if (m_mode == BESTHIT) {
@@ -137,8 +140,8 @@ private:
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles[outputFileName]) << "@" << rec.id << " "
-												<< score << "\n" << rec.seq << "\n+\n" << rec.qual
-												<< "\n";
+							<< score << "\n" << rec.seq << "\n+\n" << rec.qual
+							<< "\n";
 				}
 			} else {
 #pragma omp critical(outputFiles)
@@ -151,22 +154,23 @@ private:
 	}
 
 	inline void printPair(const FastqRecord &rec1, const FastqRecord &rec2,
-			unordered_map<string, bool> &hits1,
-			unordered_map<string, bool> &hits2)
+			double score1, double score2, const string &filterID)
 	{
-		if (m_inclusive) {
-			if (m_mainFilter != ""
-					&& (hits1.at(m_mainFilter) || hits2.at(m_mainFilter)))
-			{
-				cout << rec1;
-				cout << rec2;
-			}
-		} else {
-			if (m_mainFilter != "" && hits1.at(m_mainFilter)
-					&& hits2.at(m_mainFilter))
-			{
-				cout << rec1;
-				cout << rec2;
+		if (m_mainFilter == filterID) {
+			if (m_mode == BESTHIT) {
+#pragma omp critical(cout)
+				{
+					cout << "@" << rec1.id << " " << score1 << "\n" << rec1.seq
+							<< "\n+\n" << rec1.qual << "\n";
+					cout << "@" << rec2.id << " " << score2 << "\n" << rec2.seq
+							<< "\n+\n" << rec2.qual << "\n";
+				}
+			} else {
+#pragma omp critical(cout)
+				{
+					cout << rec1;
+					cout << rec2;
+				}
 			}
 		}
 	}
@@ -174,23 +178,46 @@ private:
 	inline void printPairToFile(const string &outputFileName,
 			const FastqRecord &rec1, const FastqRecord &rec2,
 			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
-			const string &outputType)
+			string const &outputType, double score1, double score2)
 	{
 		if (outputType == "fa") {
+			if (m_mode == BESTHIT) {
 #pragma omp critical(outputFiles)
-			{
-				(*outputFiles[outputFileName + "1"]) << ">" << rec1.id << "\n"
-						<< rec1.seq << "\n";
-				(*outputFiles[outputFileName + "2"]) << ">" << rec2.id << "\n"
-						<< rec2.seq << "\n";
+				{
+					(*outputFiles[outputFileName + "1"]) << ">" << rec1.id
+							<< " " << score1 << "\n" << rec1.seq << "\n";
+					(*outputFiles[outputFileName + "2"]) << ">" << rec2.id
+							<< " " << score2 << "\n" << rec2.seq << "\n";
+				}
+			}
+			else {
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName + "1"]) << ">" << rec1.id
+							<< "\n" << rec1.seq << "\n";
+					(*outputFiles[outputFileName + "2"]) << ">" << rec2.id
+							<< "\n" << rec2.seq << "\n";
+				}
 			}
 		} else {
+			if (m_mode == BESTHIT) {
 #pragma omp critical(outputFiles)
-			{
-				(*outputFiles[outputFileName + "1"]) << "@" << rec1.id << "\n"
-						<< rec1.seq << "\n+\n" << rec1.qual << "\n";
-				(*outputFiles[outputFileName + "2"]) << "@" << rec2.id << "\n"
-						<< rec2.seq << "\n+\n" << rec2.qual << "\n";
+				{
+					(*outputFiles[outputFileName + "1"]) << "@" << rec1.id
+							<< " " << score1 << "\n" << rec1.seq << "\n+\n"
+							<< rec1.qual << "\n";
+					(*outputFiles[outputFileName + "2"]) << "@" << rec2.id
+							<< " " << score2 << "\n" << rec2.seq << "\n+\n"
+							<< rec2.qual << "\n";
+				}
+			} else {
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName + "1"]) << "@" << rec1.id
+							<< "\n" << rec1.seq << "\n+\n" << rec1.qual << "\n";
+					(*outputFiles[outputFileName + "2"]) << "@" << rec2.id
+							<< "\n" << rec2.seq << "\n+\n" << rec2.qual << "\n";
+				}
 			}
 		}
 	}

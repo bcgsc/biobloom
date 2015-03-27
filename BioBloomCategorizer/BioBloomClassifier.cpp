@@ -27,10 +27,13 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 	if (minHitOnly) {
 		m_mode = MINHITONLY;
 	}
+	loadFilters(filterFilePaths);
 	if (m_scoreThreshold == 1) {
 		m_mode = BESTHIT;
+		//TODO: make it possible later?
+		//best hit will not allow for more than one hash sig.
+		assert(m_mode == BESTHIT && m_hashSigs.size() == 1);
 	}
-	loadFilters(filterFilePaths);
 }
 
 /*
@@ -79,10 +82,9 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 					evaluateRead(rec, *j, hits, score);
 				}
 
-				printSingle(rec, hits, score);
+				//Evaluate hit data and record for summary and print if needed
+				printSingle(rec, score, resSummary.updateSummaryData(hits));
 
-				//Evaluate hit data and record for summary
-				resSummary.updateSummaryData(hits);
 			} else
 				break;
 		}
@@ -103,8 +105,6 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
  * Assumes only one hash signature exists (load only filters with same
  * hash functions)
  * Prints reads into seperate files
- *
- * outputType must be fa or fq
  */
 void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 		const string &outputType)
@@ -176,11 +176,11 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 					evaluateRead(rec, *j, hits, score);
 				}
 
-				printSingle(rec, hits, score);
-
 				//Evaluate hit data and record for summary
 				const string &outputFileName = resSummary.updateSummaryData(
 						hits);
+
+				printSingle(rec, score, outputFileName);
 
 				printSingleToFile(outputFileName, rec, outputFiles, outputType,
 						score);
@@ -252,6 +252,9 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 			unordered_map<string, bool> hits1(m_filterNum);
 			unordered_map<string, bool> hits2(m_filterNum);
 
+			double score1;
+			double score2;
+
 			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 			for (vector<string>::const_iterator j = m_hashSigs.begin();
 					j != m_hashSigs.end(); ++j)
@@ -259,8 +262,6 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 				if (tempStr1 == tempStr2) {
-					double score1;
-					double score2;
 					evaluateRead(rec1, *j, hits1, score1);
 					evaluateRead(rec2, *j, hits2, score2);
 				} else {
@@ -270,13 +271,9 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 				}
 			}
 
-#pragma omp critical(cout)
-			{
-				printPair(rec1, rec2, hits1, hits2);
-			}
-
-			//Evaluate hit data and record for summary
-			resSummary.updateSummaryData(hits1, hits2);
+			//Evaluate hit data and record for summary and print if needed
+			printPair(rec1, rec2, score1, score2,
+					resSummary.updateSummaryData(hits1, hits2));
 		} else
 			break;
 	}
@@ -384,6 +381,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 			unordered_map<string, bool> hits1(m_filterNum);
 			unordered_map<string, bool> hits2(m_filterNum);
 
+			double score1;
+			double score2;
 			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 			for (vector<string>::const_iterator j = m_hashSigs.begin();
 					j != m_hashSigs.end(); ++j)
@@ -391,8 +390,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 				if (tempStr1 == tempStr2) {
-					double score1;
-					double score2;
 					evaluateRead(rec1, *j, hits1, score1);
 					evaluateRead(rec2, *j, hits2, score2);
 				} else {
@@ -402,29 +399,13 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				}
 			}
 
-#pragma omp critical(cout)
-			{
-				printPair(rec1, rec2, hits1, hits2);
-			}
-
 			//Evaluate hit data and record for summary
 
 			const string &outputFileName = resSummary.updateSummaryData(hits1,
 					hits2);
-#pragma omp critical(outputFiles)
-			{
-				if (outputType == "fa") {
-					(*outputFiles[outputFileName + "1"]) << ">" << rec1.id
-							<< "\n" << rec1.seq << "\n";
-					(*outputFiles[outputFileName + "2"]) << ">" << rec2.id
-							<< "\n" << rec2.seq << "\n";
-				} else {
-					(*outputFiles[outputFileName + "1"]) << "@" << rec1.id
-							<< "\n" << rec1.seq << "\n+\n" << rec1.qual << "\n";
-					(*outputFiles[outputFileName + "2"]) << "@" << rec2.id
-							<< "\n" << rec2.seq << "\n+\n" << rec2.qual << "\n";
-				}
-			}
+			printPair(rec1, rec2, score1, score2, outputFileName);
+			printPairToFile(outputFileName, rec1, rec2, outputFiles, outputType,
+					score1, score2);
 		} else
 			break;
 	}
@@ -512,23 +493,19 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 				unordered_map<string, bool> hits1(m_filterNum);
 				unordered_map<string, bool> hits2(m_filterNum);
 
+				double score1;
+				double score2;
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
 						j != m_hashSigs.end(); ++j)
 				{
-					double score1;
-					double score2;
 					evaluateRead(rec1, *j, hits1, score1);
 					evaluateRead(rec2, *j, hits2, score2);
 				}
 
-#pragma omp critical(cout)
-				{
-					printPair(rec1, rec2, hits1, hits2);
-				}
-
 				//Evaluate hit data and record for summary
-				resSummary.updateSummaryData(hits1, hits2);
+				printPair(rec1, rec2, score1, score2,
+						resSummary.updateSummaryData(hits1, hits2));
 			}
 		} else
 			break;
@@ -645,6 +622,9 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 				unordered_map<string, bool> hits1(m_filterNum);
 				unordered_map<string, bool> hits2(m_filterNum);
 
+				double score1;
+				double score2;
+
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
 						j != m_hashSigs.end(); ++j)
@@ -654,8 +634,6 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 					string tempStr2 = rec2.id.substr(0,
 							rec2.id.find_last_of("/"));
 					if (tempStr1 == tempStr2) {
-						double score1;
-						double score2;
 						evaluateRead(rec1, *j, hits1, score1);
 						evaluateRead(rec2, *j, hits2, score2);
 					} else {
@@ -665,16 +643,12 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 					}
 				}
 
-#pragma omp critical(cout)
-				{
-					printPair(rec1, rec2, hits1, hits2);
-				}
-
 				//Evaluate hit data and record for summary
 				const string &outputFileName = resSummary.updateSummaryData(
 						hits1, hits2);
 				printPairToFile(outputFileName, rec1, rec2, outputFiles,
-						outputType);
+						outputType, score1, score2);
+				printPair(rec1, rec2, score1, score2, outputFileName);
 			}
 		} else
 			break;
