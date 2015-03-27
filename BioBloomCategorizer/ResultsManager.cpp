@@ -36,8 +36,8 @@ ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
 }
 
 /*
- * Records data for read status file based on thresholds
- * Returns qualifying read IDs that meet threshold
+ * Records data for read summary based on thresholds
+ * Returns filter ID that this read equals
  */
 const string ResultsManager::updateSummaryData(
 		const unordered_map<string, bool> &hits)
@@ -85,9 +85,8 @@ const string ResultsManager::updateSummaryData(
 }
 
 /*
- * Records data for read status file based on thresholds
- * Returns qualifying read IDs that meet threshold
- * both reads must qualify
+ * Records data for read summary based on thresholds
+ * Returns filter ID that this read pair equals
  */
 const string ResultsManager::updateSummaryData(
 		const unordered_map<string, bool> &hits1,
