@@ -91,6 +91,8 @@ void printHelpDialog()
 	"                         time. If set to 1, best hit is used rather than\n"
 	"                         threshold and score will appended to the header of the\n"
 	"                         output read.[0.15]\n"
+	"  -w, --with_score       Output multimatches with scores in the order of filters\n"
+//	"                         used. Will be slightly slower.\n"
 	"  -t, --threads=N        The number of threads to use. [1]\n"
 	"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
 	"      --fa               Output categorized reads in Fasta files.\n"
@@ -146,6 +148,7 @@ int main(int argc, char *argv[])
 	int fasta = 0;
 	string filePostfix = "";
 	double score = 0.15;
+	bool withScore = false;
 
 	//advanced options
 	unsigned minHit = 0;
@@ -155,33 +158,33 @@ int main(int argc, char *argv[])
 	string mainFilter = "";
 
 	//long form arguments
-	static struct option long_options[] = {
-			{
-					"prefix", optional_argument, NULL, 'p' }, {
-					"filter_files", required_argument, NULL, 'f' }, {
-					"paired_mode", no_argument, NULL, 'e' }, {
-					"inclusive", no_argument, NULL, 'i' }, {
-					"score", no_argument, NULL, 's' }, {
-					"help", no_argument, NULL, 'h' }, {
-					"threads", required_argument, NULL, 't' }, {
-					"gz_output", no_argument, NULL, 'g' }, {
-					"chastity", no_argument, &opt::chastityFilter, 1 }, {
-					"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
-					"fq", no_argument, &fastq, 1 }, {
-					"fa", no_argument, &fasta, 1 }, {
-					"length_cutoff", required_argument, NULL, 'l' }, {
-					"version", no_argument, NULL, 'v' }, {
-					"min_hit_thr", required_argument, NULL, 'm' }, {
-					"streak", optional_argument, NULL, 'r' }, {
-					"min_hit_only", no_argument, NULL, 'o' }, {
-					"collab", no_argument, NULL, 'c' }, {
-					"stdout_filter", required_argument, NULL, 'd' }, {
-					NULL, 0, NULL, 0 } };
+	static struct option long_options[] = { {
+		"prefix", optional_argument, NULL, 'p' }, {
+		"filter_files", required_argument, NULL, 'f' }, {
+		"paired_mode", no_argument, NULL, 'e' }, {
+		"inclusive", no_argument, NULL, 'i' }, {
+		"score", no_argument, NULL, 's' }, {
+		"help", no_argument, NULL, 'h' }, {
+		"threads", required_argument, NULL, 't' }, {
+		"gz_output", no_argument, NULL, 'g' }, {
+		"chastity", no_argument, &opt::chastityFilter, 1 }, {
+		"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
+		"fq", no_argument, &fastq, 1 }, {
+		"fa", no_argument, &fasta, 1 }, {
+		"length_cutoff", required_argument, NULL, 'l' }, {
+		"version", no_argument, NULL, 'v' }, {
+		"min_hit_thr", required_argument, NULL, 'm' }, {
+		"streak", optional_argument, NULL, 'r' }, {
+		"min_hit_only", no_argument, NULL, 'o' }, {
+		"collab", no_argument, NULL, 'c' }, {
+		"stdout_filter", required_argument, NULL, 'd' }, {
+		"with_score", no_argument, NULL, 'w' }, {
+		NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:or:t:cd:i", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:or:t:cd:iw", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -271,6 +274,10 @@ int main(int argc, char *argv[])
 			mainFilter = optarg;
 			break;
 		}
+		case 'w': {
+			withScore = true;
+			break;
+		}
 		case '?': {
 			die = true;
 			break;
@@ -341,12 +348,6 @@ int main(int argc, char *argv[])
 		outputReadType = "fq";
 	} else if (fasta) {
 		outputReadType = "fa";
-	}
-
-	//check for modes not yet supported
-	if (score == 1.0 && paired) {
-		cerr << "best hit and paired mode not yet supported." << endl;
-		exit(1);
 	}
 
 	//load filters

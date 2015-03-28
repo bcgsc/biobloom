@@ -167,7 +167,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 					}
 				}
 				unordered_map<string, bool> hits(m_filterNum);
-				double score = 0.0; //Todo: figure out what happens to this if multiple hashSigs are used
+				double score = 0.0;
 
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
@@ -956,45 +956,8 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
 			pass = true;
 		}
 		if (pass) {
-			size_t currentLoc = 0;
-			double score = 0;
-			unsigned streak = 0;
-			while (rec.seq.length() >= currentLoc + kmerSize) {
-				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
-						currentLoc);
-				if (streak == 0) {
-					if (currentKmer != NULL) {
-						if (m_filtersSingle.at(idsInFilter[i])->contains(
-								currentKmer))
-						{
-							score += 0.5;
-							++streak;
-						}
-						++currentLoc;
-					} else {
-						currentLoc += kmerSize + 1;
-					}
-				} else {
-					if (currentKmer != NULL) {
-						if (m_filtersSingle.at(idsInFilter[i])->contains(
-								currentKmer))
-						{
-							++streak;
-							score += 1 - 1 / (2 * streak);
-							++currentLoc;
-							continue;
-						}
-					} else {
-						currentLoc += kmerSize + 1;
-					}
-					if (streak < opt::streakThreshold) {
-						++currentLoc;
-					} else {
-						currentLoc += kmerSize;
-					}
-					streak = 0;
-				}
-			}
+			BloomFilter &tempFilter = *m_filtersSingle.at(idsInFilter[i]);
+			double score = SeqEval::evalSingleExhaust(rec, kmerSize, tempFilter);
 			if (maxScore < score) {
 				maxScore = score;
 				bestFilters.clear();
@@ -1010,6 +973,67 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
 		}
 	}
 	return maxScore / (rec.seq.length() - kmerSize + 1);
+}
+
+/*
+ * For a single read evaluate hits for a single hash signature
+ * Sections with ambiguity bases are treated as misses
+ * Updates hits value to number of hits (hashSig is used to as key)
+ */
+vector<double> BioBloomClassifier::evaluateReadWithScore(const FastqRecord &rec,
+		const string &hashSig, unordered_map<string, bool> &hits)
+{
+	//get filterIDs to iterate through has in a consistent order
+	const vector<string> &idsInFilter = (*m_filters[hashSig]).getFilterIds();
+
+	vector<double> scores;
+
+	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
+
+	//todo: read proc possibly unneeded, see evalSingle
+	ReadsProcessor proc(kmerSize);
+
+	double normalizationValue = rec.seq.length() - kmerSize + 1;
+	bool multiMatchFound = false;
+
+	for (unsigned i = 0; i < idsInFilter.size(); ++i) {
+		bool pass = false;
+		hits[idsInFilter[i]] = false;
+		if (m_minHit > 0) {
+			unsigned screeningHits = 0;
+			size_t screeningLoc = rec.seq.length() % kmerSize / 2;
+			//First pass filtering
+			while (rec.seq.length() >= screeningLoc + kmerSize) {
+				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
+						screeningLoc);
+				if (currentKmer != NULL) {
+					if (m_filtersSingle.at(idsInFilter[i])->contains(
+							currentKmer))
+					{
+						screeningHits++;
+						if (screeningHits >= m_minHit) {
+							pass = true;
+							break;
+						}
+					}
+				}
+				screeningLoc += kmerSize;
+			}
+		} else {
+			pass = true;
+		}
+		if (pass) {
+			BloomFilter &tempFilter = *m_filtersSingle.at(idsInFilter[i]);
+			scores[i] = SeqEval::evalSingleExhaust(rec, kmerSize, tempFilter)
+					/ normalizationValue;
+
+			//TODO: Possible optimization using start and end position of score
+			if (scores[i] > m_scoreThreshold) {
+				hits[*i] = true;
+			}
+		}
+	}
+	return scores;
 }
 
 void BioBloomClassifier::setMainFilter(const string &filtername)

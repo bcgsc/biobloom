@@ -28,10 +28,11 @@ static const string NO_MATCH = "noMatch";
 static const string MULTI_MATCH = "multiMatch";
 
 /** for modes of filtering */
-enum mode { COLLAB, MINHITONLY, BESTHIT, STD };
+enum mode { COLLAB, MINHITONLY, BESTHIT, STD, BOTH };
 
 ///** for modes of printing out files */
 //enum printMode {FASTA, FASTQ, BEST_FASTA, BEST_FASTQ};
+//enum printMode {NORMAL, WITH_SCORE};
 
 class BioBloomClassifier {
 public:
@@ -83,6 +84,8 @@ private:
 	// modes of filtering
 	mode m_mode;
 
+	bool with_score;
+
 	string m_mainFilter;
 	bool m_inclusive;
 
@@ -96,6 +99,8 @@ private:
 			unordered_map<string, bool> &hits);
 	double evaluateReadBestHit(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
+	vector<double> evaluateReadWithScore(const FastqRecord &rec,
+			const string &hashSig, unordered_map<string, bool> &hits);
 
 	inline void printSingle(const FastqRecord &rec, double score,
 			const string &filterID)
