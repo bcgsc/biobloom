@@ -860,7 +860,6 @@ void BioBloomClassifier::evaluateReadMin(const FastqRecord &rec,
 /*
  * For a single read evaluate hits for a single hash signature
  * Sections with ambiguity bases are treated as misses
- * Updates hits value to number of hits (hashSig is used to as key)
  */
 void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 		const string &hashSig, unordered_map<string, bool> &hits)
@@ -914,7 +913,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 /*
  * For a single read evaluate hits for a single hash signature
  * Sections with ambiguity bases are treated as misses
- * Updates hits value to number of hits (hashSig is used to as key)
+ * Reads are assigned to best hit
  */
 double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
 		const string &hashSig, unordered_map<string, bool> &hits)
@@ -978,7 +977,8 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
 /*
  * For a single read evaluate hits for a single hash signature
  * Sections with ambiguity bases are treated as misses
- * Updates hits value to number of hits (hashSig is used to as key)
+ * Will return scores in vector
+ * Will return partial score if threshold is not met
  */
 vector<double> BioBloomClassifier::evaluateReadWithScore(const FastqRecord &rec,
 		const string &hashSig, unordered_map<string, bool> &hits)
@@ -986,16 +986,26 @@ vector<double> BioBloomClassifier::evaluateReadWithScore(const FastqRecord &rec,
 	//get filterIDs to iterate through has in a consistent order
 	const vector<string> &idsInFilter = (*m_filters[hashSig]).getFilterIds();
 
-	vector<double> scores;
-
 	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
 
 	//todo: read proc possibly unneeded, see evalSingle
 	ReadsProcessor proc(kmerSize);
 
 	double normalizationValue = rec.seq.length() - kmerSize + 1;
-	bool multiMatchFound = false;
+	double threshold = m_scoreThreshold * normalizationValue;
+	double antiThreshold = normalizationValue - threshold;
 
+	unsigned hitCount = 0;
+
+	vector<vector<size_t> > hashValues(rec.seq.length() - kmerSize);
+	vector<bool> visited(rec.seq.length() - kmerSize);
+
+	//position of sequences
+	vector<unsigned> pos(rec.seq.length() - kmerSize);
+	//storage of scores
+	vector<double> scores(rec.seq.length() - kmerSize);
+
+	//first pass
 	for (unsigned i = 0; i < idsInFilter.size(); ++i) {
 		bool pass = false;
 		hits[idsInFilter[i]] = false;
@@ -1024,15 +1034,27 @@ vector<double> BioBloomClassifier::evaluateReadWithScore(const FastqRecord &rec,
 		}
 		if (pass) {
 			BloomFilter &tempFilter = *m_filtersSingle.at(idsInFilter[i]);
-			scores[i] = SeqEval::evalSingleExhaust(rec, kmerSize, tempFilter)
-					/ normalizationValue;
 
-			//TODO: Possible optimization using start and end position of score
-			if (scores[i] > m_scoreThreshold) {
-				hits[*i] = true;
-			}
+			//Evaluate sequences until threshold
+			//record end location
+			hits[*i] = SeqEval::eval(rec, kmerSize, tempFilter, threshold,
+					antiThreshold, visited, hashValues, pos[i], scores[i], proc);
+			hitCount += hits[*i];
 		}
 	}
+
+	//final pass if more than 2 reach threshold
+	if (hitCount > 1) {
+		for (unsigned i = 0; i < idsInFilter.size(); ++i) {
+			BloomFilter &tempFilter = *m_filtersSingle.at(idsInFilter[i]);
+
+			//Evaluate sequences until threshold
+			//record end location
+			SeqEval::eval(rec, kmerSize, tempFilter, 1, 0, visited, hashValues,
+					pos[i], scores[i], proc);
+		}
+	}
+
 	return scores;
 }
 
