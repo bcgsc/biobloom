@@ -19,15 +19,23 @@
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		double scoreThreshold, const string &prefix,
-		const string &outputPostFix, unsigned minHit, bool minHitOnly) :
+		const string &outputPostFix, unsigned minHit, bool minHitOnly, bool withScore) :
 		m_scoreThreshold(scoreThreshold), m_filterNum(filterFilePaths.size()), m_prefix(
 				prefix), m_postfix(outputPostFix), m_minHit(minHit), m_mode(
 				STD), m_mainFilter(""), m_inclusive(false)
 {
+	loadFilters(filterFilePaths);
+	if (minHitOnly && withScore) {
+		cerr << "minHit, withScore cannot be used together" << endl;
+		exit(1);
+	}
 	if (minHitOnly) {
 		m_mode = MINHITONLY;
 	}
-	loadFilters(filterFilePaths);
+	else if (withScore)
+	{
+		m_mode = SCORES;
+	}
 	if (m_scoreThreshold == 1) {
 		m_mode = BESTHIT;
 		//TODO: make it possible later?
@@ -43,7 +51,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
+	ResultsManager resSummary(m_filterOrder, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -74,12 +82,13 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 				}
 				unordered_map<string, bool> hits(m_filterNum);
 				double score = 0; //Todo: figure out what happens to this if multiple hashSigs are used
+				vector<double> scores(m_filterNum, 0.0);
 
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
 						j != m_hashSigs.end(); ++j)
 				{
-					evaluateRead(rec, *j, hits, score);
+					evaluateRead(rec, *j, hits, score, scores);
 				}
 
 				//Evaluate hit data and record for summary and print if needed
@@ -104,14 +113,14 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
  * Filters reads
  * Assumes only one hash signature exists (load only filters with same
  * hash functions)
- * Prints reads into seperate files
+ * Prints reads into separate files
  */
 void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 		const string &outputType)
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
+	ResultsManager resSummary(m_filterOrder, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -168,12 +177,13 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				}
 				unordered_map<string, bool> hits(m_filterNum);
 				double score = 0.0;
+				vector<double> scores(m_filterNum, 0.0);
 
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
 						j != m_hashSigs.end(); ++j)
 				{
-					evaluateRead(rec, *j, hits, score);
+					evaluateRead(rec, *j, hits, score, scores);
 				}
 
 				//Evaluate hit data and record for summary
@@ -183,7 +193,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				printSingle(rec, score, outputFileName);
 
 				printSingleToFile(outputFileName, rec, outputFiles, outputType,
-						score);
+						score, scores);
 
 			} else
 				break;
@@ -217,7 +227,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
+	ResultsManager resSummary(m_filterOrder, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -252,8 +262,11 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 			unordered_map<string, bool> hits1(m_filterNum);
 			unordered_map<string, bool> hits2(m_filterNum);
 
-			double score1;
-			double score2;
+			double score1 = 0;
+			double score2 = 0;
+
+			vector<double> scores1(m_filterNum, 0.0);
+			vector<double> scores2(m_filterNum, 0.0);
 
 			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 			for (vector<string>::const_iterator j = m_hashSigs.begin();
@@ -262,8 +275,8 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 				if (tempStr1 == tempStr2) {
-					evaluateRead(rec1, *j, hits1, score1);
-					evaluateRead(rec2, *j, hits2, score2);
+					evaluateRead(rec1, *j, hits1, score1, scores1);
+					evaluateRead(rec2, *j, hits2, score2, scores2);
 				} else {
 					cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
 							<< tempStr2 << endl;
@@ -302,7 +315,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
+	ResultsManager resSummary(m_filterOrder, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -381,8 +394,12 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 			unordered_map<string, bool> hits1(m_filterNum);
 			unordered_map<string, bool> hits2(m_filterNum);
 
-			double score1;
-			double score2;
+			double score1 = 0;
+			double score2 = 0;
+
+			vector<double> scores1(m_filterNum, 0.0);
+			vector<double> scores2(m_filterNum, 0.0);
+
 			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 			for (vector<string>::const_iterator j = m_hashSigs.begin();
 					j != m_hashSigs.end(); ++j)
@@ -390,8 +407,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 				if (tempStr1 == tempStr2) {
-					evaluateRead(rec1, *j, hits1, score1);
-					evaluateRead(rec2, *j, hits2, score2);
+					evaluateRead(rec1, *j, hits1, score1, scores1);
+					evaluateRead(rec2, *j, hits2, score2, scores2);
 				} else {
 					cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
 							<< tempStr2 << endl;
@@ -405,7 +422,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 					hits2);
 			printPair(rec1, rec2, score1, score2, outputFileName);
 			printPairToFile(outputFileName, rec1, rec2, outputFiles, outputType,
-					score1, score2);
+					score1, score2, scores1, scores2 );
 		} else
 			break;
 	}
@@ -442,7 +459,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
+	ResultsManager resSummary(m_filterOrder, m_inclusive);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -493,14 +510,18 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 				unordered_map<string, bool> hits1(m_filterNum);
 				unordered_map<string, bool> hits2(m_filterNum);
 
-				double score1;
-				double score2;
+				double score1 = 0;
+				double score2 = 0;
+
+				vector<double> scores1(m_filterNum, 0.0);
+				vector<double> scores2(m_filterNum, 0.0);
+
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
 						j != m_hashSigs.end(); ++j)
 				{
-					evaluateRead(rec1, *j, hits1, score1);
-					evaluateRead(rec2, *j, hits2, score2);
+					evaluateRead(rec1, *j, hits1, score1, scores1);
+					evaluateRead(rec2, *j, hits2, score2, scores2);
 				}
 
 				//Evaluate hit data and record for summary
@@ -531,7 +552,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 {
 
 	//results summary object
-	ResultsManager resSummary(m_hashSigs, m_filters, m_infoFiles, m_inclusive);
+	ResultsManager resSummary(m_filterOrder, m_inclusive);
 
 	unordered_map<string, FastqRecord> unPairedReads;
 
@@ -622,8 +643,11 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 				unordered_map<string, bool> hits1(m_filterNum);
 				unordered_map<string, bool> hits2(m_filterNum);
 
-				double score1;
-				double score2;
+				double score1 = 0;
+				double score2 = 0;
+
+				vector<double> scores1(m_filterNum, 0.0);
+				vector<double> scores2(m_filterNum, 0.0);
 
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
@@ -634,8 +658,8 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 					string tempStr2 = rec2.id.substr(0,
 							rec2.id.find_last_of("/"));
 					if (tempStr1 == tempStr2) {
-						evaluateRead(rec1, *j, hits1, score1);
-						evaluateRead(rec2, *j, hits2, score2);
+						evaluateRead(rec1, *j, hits1, score1, scores1);
+						evaluateRead(rec2, *j, hits2, score2, scores2);
 					} else {
 						cerr << "Read IDs do not match" << "\n" << tempStr1
 								<< "\n" << tempStr2 << endl;
@@ -647,7 +671,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 				const string &outputFileName = resSummary.updateSummaryData(
 						hits1, hits2);
 				printPairToFile(outputFileName, rec1, rec2, outputFiles,
-						outputType, score1, score2);
+						outputType, score1, score2, scores1, scores2);
 				printPair(rec1, rec2, score1, score2, outputFileName);
 			}
 		} else
@@ -980,8 +1004,8 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
  * Will return scores in vector
  * Will return partial score if threshold is not met
  */
-vector<double> BioBloomClassifier::evaluateReadWithScore(const FastqRecord &rec,
-		const string &hashSig, unordered_map<string, bool> &hits)
+void BioBloomClassifier::evaluateReadScore(const FastqRecord &rec,
+		const string &hashSig, unordered_map<string, bool> &hits, vector<double> &scores)
 {
 	//get filterIDs to iterate through has in a consistent order
 	const vector<string> &idsInFilter = (*m_filters[hashSig]).getFilterIds();
@@ -997,13 +1021,11 @@ vector<double> BioBloomClassifier::evaluateReadWithScore(const FastqRecord &rec,
 
 	unsigned hitCount = 0;
 
-	vector<vector<size_t> > hashValues(rec.seq.length() - kmerSize);
-	vector<bool> visited(rec.seq.length() - kmerSize);
+	vector<vector<size_t> > hashValues(normalizationValue);
+	vector<bool> visited(normalizationValue);
 
 	//position of sequences
-	vector<unsigned> pos(rec.seq.length() - kmerSize);
-	//storage of scores
-	vector<double> scores(rec.seq.length() - kmerSize);
+	vector<unsigned> pos(idsInFilter.size(), 0);
 
 	//first pass
 	for (unsigned i = 0; i < idsInFilter.size(); ++i) {
@@ -1037,9 +1059,9 @@ vector<double> BioBloomClassifier::evaluateReadWithScore(const FastqRecord &rec,
 
 			//Evaluate sequences until threshold
 			//record end location
-			hits[*i] = SeqEval::eval(rec, kmerSize, tempFilter, threshold,
+			hits[idsInFilter[i]] = SeqEval::eval(rec, kmerSize, tempFilter, threshold,
 					antiThreshold, visited, hashValues, pos[i], scores[i], proc);
-			hitCount += hits[*i];
+			hitCount += hits[idsInFilter[i]];
 		}
 	}
 
@@ -1052,10 +1074,9 @@ vector<double> BioBloomClassifier::evaluateReadWithScore(const FastqRecord &rec,
 			//record end location
 			SeqEval::eval(rec, kmerSize, tempFilter, 1, 0, visited, hashValues,
 					pos[i], scores[i], proc);
+			scores[i] /= normalizationValue;
 		}
 	}
-
-	return scores;
 }
 
 void BioBloomClassifier::setMainFilter(const string &filtername)

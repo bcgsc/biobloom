@@ -91,8 +91,7 @@ void printHelpDialog()
 	"                         time. If set to 1, best hit is used rather than\n"
 	"                         threshold and score will appended to the header of the\n"
 	"                         output read.[0.15]\n"
-	"  -w, --with_score       Output multimatches with scores in the order of filters\n"
-//	"                         used. Will be slightly slower.\n"
+	"  -w, --with_score       Output multimatches with scores in the order of filter.\n"
 	"  -t, --threads=N        The number of threads to use. [1]\n"
 	"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
 	"      --fa               Output categorized reads in Fasta files.\n"
@@ -350,11 +349,16 @@ int main(int argc, char *argv[])
 		outputReadType = "fa";
 	}
 
+	//-w option cannot be used without output method
+	if (withScore && (outputReadType == "")) {
+		cerr << "Error: -w option cannot be used without output method" << endl;
+		exit(1);
+	}
+
 	//load filters
 	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix,
-			minHit, minHitOnly);
+			minHit, minHitOnly, withScore);
 
-	//set file output type
 	if (collab && minHit) {
 		cerr << "Error: -m -c outputs types cannot be both set" << endl;
 		exit(1);

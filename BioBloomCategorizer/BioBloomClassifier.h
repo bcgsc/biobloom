@@ -28,7 +28,7 @@ static const string NO_MATCH = "noMatch";
 static const string MULTI_MATCH = "multiMatch";
 
 /** for modes of filtering */
-enum mode { COLLAB, MINHITONLY, BESTHIT, STD, BOTH };
+enum mode { COLLAB, MINHITONLY, BESTHIT, STD, SCORES };
 
 ///** for modes of printing out files */
 //enum printMode {FASTA, FASTQ, BEST_FASTA, BEST_FASTQ};
@@ -38,7 +38,8 @@ class BioBloomClassifier {
 public:
 	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
 			double scoreThreshold, const string &outputPrefix,
-			const string &outputPostFix, unsigned minHit, bool minHitOnly);
+			const string &outputPostFix, unsigned minHit, bool minHitOnly,
+			bool withScore);
 	void filter(const vector<string> &inputFiles);
 	void filterPrint(const vector<string> &inputFiles,
 			const string &outputType);
@@ -99,8 +100,8 @@ private:
 			unordered_map<string, bool> &hits);
 	double evaluateReadBestHit(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
-	vector<double> evaluateReadWithScore(const FastqRecord &rec,
-			const string &hashSig, unordered_map<string, bool> &hits);
+	void evaluateReadScore(const FastqRecord &rec, const string &hashSig,
+			unordered_map<string, bool> &hits, vector<double> &scores);
 
 	inline void printSingle(const FastqRecord &rec, double score,
 			const string &filterID)
@@ -124,10 +125,21 @@ private:
 	inline void printSingleToFile(const string &outputFileName,
 			const FastqRecord &rec,
 			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
-			string const &outputType, double score)
+			string const &outputType, double score, vector<double> &scores)
 	{
 		if (outputType == "fa") {
-			if (m_mode == BESTHIT) {
+			if (m_mode == SCORES && outputFileName == MULTI_MATCH) {
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName]) << ">" << rec.id;
+					for (vector<double>::iterator i = scores.begin();
+							i != scores.end(); ++i)
+					{
+						(*outputFiles[outputFileName]) << " " << *i;
+					}
+					(*outputFiles[outputFileName]) << "\n" << rec.seq << "\n";
+				}
+			} else if (m_mode == BESTHIT) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles[outputFileName]) << ">" << rec.id << " "
@@ -141,7 +153,19 @@ private:
 				}
 			}
 		} else {
-			if (m_mode == BESTHIT) {
+			if (m_mode == SCORES && outputFileName == MULTI_MATCH) {
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName]) << "@" << rec.id;
+					for (vector<double>::iterator i = scores.begin();
+							i != scores.end(); ++i)
+					{
+						(*outputFiles[outputFileName]) << " " << *i;
+					}
+					(*outputFiles[outputFileName]) << "\n" << rec.seq << "\n+\n"
+							<< rec.qual << "\n";
+				}
+			} else if (m_mode == BESTHIT) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles[outputFileName]) << "@" << rec.id << " "
@@ -183,10 +207,31 @@ private:
 	inline void printPairToFile(const string &outputFileName,
 			const FastqRecord &rec1, const FastqRecord &rec2,
 			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
-			string const &outputType, double score1, double score2)
+			string const &outputType, double score1, double score2, vector<double> &scores1, vector<double> &scores2)
 	{
 		if (outputType == "fa") {
-			if (m_mode == BESTHIT) {
+			if (m_mode == SCORES && outputFileName == MULTI_MATCH) {
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName]) << ">" << rec1.id;
+					for (vector<double>::iterator i = scores1.begin();
+							i != scores1.end(); ++i)
+					{
+						(*outputFiles[outputFileName]) << " " << *i;
+					}
+					(*outputFiles[outputFileName]) << "\n" << rec1.seq << "\n";
+				}
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName]) << ">" << rec2.id;
+					for (vector<double>::iterator i = scores2.begin();
+							i != scores2.end(); ++i)
+					{
+						(*outputFiles[outputFileName]) << " " << *i;
+					}
+					(*outputFiles[outputFileName]) << "\n" << rec2.seq << "\n";
+				}
+			} else if (m_mode == BESTHIT) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles[outputFileName + "1"]) << ">" << rec1.id
@@ -205,7 +250,30 @@ private:
 				}
 			}
 		} else {
-			if (m_mode == BESTHIT) {
+			if (m_mode == SCORES && outputFileName == MULTI_MATCH) {
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName]) << "@" << rec1.id;
+					for (vector<double>::iterator i = scores1.begin();
+							i != scores1.end(); ++i)
+					{
+						(*outputFiles[outputFileName]) << " " << *i;
+					}
+					(*outputFiles[outputFileName]) << "\n" << rec1.seq
+							<< "\n+\n" << rec1.qual << "\n";
+				}
+#pragma omp critical(outputFiles)
+				{
+					(*outputFiles[outputFileName]) << "@" << rec2.id;
+					for (vector<double>::iterator i = scores2.begin();
+							i != scores2.end(); ++i)
+					{
+						(*outputFiles[outputFileName]) << " " << *i;
+					}
+					(*outputFiles[outputFileName]) << "\n" << rec2.seq
+							<< "\n+\n" << rec2.qual << "\n";
+				}
+			} else if (m_mode == BESTHIT) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles[outputFileName + "1"]) << "@" << rec1.id
@@ -228,7 +296,7 @@ private:
 	}
 
 	inline void evaluateRead(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, bool> &hits, double &score)
+			unordered_map<string, bool> &hits, double &score, vector<double> &scores)
 	{
 		switch(m_mode) {
 		case COLLAB:{
@@ -241,6 +309,10 @@ private:
 		}
 		case BESTHIT: {
 			score = evaluateReadBestHit(rec, hashSig, hits);
+			break;
+		}
+		case SCORES: {
+			evaluateReadScore(rec, hashSig, hits, scores);
 			break;
 		}
 		default: {

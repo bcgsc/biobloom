@@ -13,25 +13,17 @@
 # include <omp.h>
 #endif
 
-ResultsManager::ResultsManager(const vector<string> &hashSigsRef,
-		const unordered_map<string, boost::shared_ptr<MultiFilter> > &filtersRef,
-		const unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > &infoFilesRef,
+ResultsManager::ResultsManager(const vector<string> &filterOrderRef,
 		bool inclusive) :
-		m_hashSigs(hashSigsRef), m_filters(filtersRef), m_infoFiles(
-				infoFilesRef), m_multiMatch(0), m_noMatch(0), m_inclusive(inclusive)
+		m_filterOrder(filterOrderRef), m_multiMatch(
+				0), m_noMatch(0), m_inclusive(inclusive)
 {
 	//initialize variables and print filter ids
-	for (vector<string>::const_iterator j = m_hashSigs.begin();
-			j != m_hashSigs.end(); ++j)
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i)
 	{
-		const boost::shared_ptr<MultiFilter> &temp = m_filters.at(*j);
-		const vector<string> &idsInFilter = temp->getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i)
-		{
-			m_aboveThreshold[*i] = 0;
-			m_unique[*i] = 0;
-		}
+		m_aboveThreshold[*i] = 0;
+		m_unique[*i] = 0;
 	}
 }
 
@@ -46,24 +38,17 @@ const string ResultsManager::updateSummaryData(
 	bool noMatchFlag = true;
 	bool multiMatchFlag = false;
 
-	for (vector<string>::const_iterator j = m_hashSigs.begin();
-			j != m_hashSigs.end(); ++j)
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i)
 	{
-		//update summary
-		const boost::shared_ptr<MultiFilter> &temp = m_filters.at(*j);
-		const vector<string> &idsInFilter = temp->getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i)
-		{
-			if (hits.at(*i)) {
+		if (hits.at(*i)) {
 #pragma omp atomic
-				++m_aboveThreshold[*i];
-				if (noMatchFlag) {
-					noMatchFlag = false;
-					filterID = *i;
-				} else {
-					multiMatchFlag = true;
-				}
+			++m_aboveThreshold[*i];
+			if (noMatchFlag) {
+				noMatchFlag = false;
+				filterID = *i;
+			} else {
+				multiMatchFlag = true;
 			}
 		}
 	}
@@ -96,37 +81,29 @@ const string ResultsManager::updateSummaryData(
 	bool noMatchFlag = true;
 	bool multiMatchFlag = false;
 
-	for (vector<string>::const_iterator j = m_hashSigs.begin();
-			j != m_hashSigs.end(); ++j)
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i)
 	{
-		//update summary
-		const boost::shared_ptr<MultiFilter> &temp = m_filters.at(*j);
-		const vector<string> &idsInFilter = temp->getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i)
-		{
-			if(m_inclusive)
-			{
-				if (hits1.at(*i) || hits2.at(*i)) {
+		if (m_inclusive) {
+			if (hits1.at(*i) || hits2.at(*i)) {
 #pragma omp atomic
-					++m_aboveThreshold[*i];
-					if (noMatchFlag) {
-						noMatchFlag = false;
-						filterID = *i;
-					} else {
-						multiMatchFlag = true;
-					}
+				++m_aboveThreshold[*i];
+				if (noMatchFlag) {
+					noMatchFlag = false;
+					filterID = *i;
+				} else {
+					multiMatchFlag = true;
 				}
-			} else {
-				if (hits1.at(*i) && hits2.at(*i)) {
+			}
+		} else {
+			if (hits1.at(*i) && hits2.at(*i)) {
 #pragma omp atomic
-					++m_aboveThreshold[*i];
-					if (noMatchFlag) {
-						noMatchFlag = false;
-						filterID = *i;
-					} else {
-						multiMatchFlag = true;
-					}
+				++m_aboveThreshold[*i];
+				if (noMatchFlag) {
+					noMatchFlag = false;
+					filterID = *i;
+				} else {
+					multiMatchFlag = true;
 				}
 			}
 		}
@@ -157,31 +134,22 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	summaryOutput
 			<< "filter_id\thits\tmisses\tshared\trate_hit\trate_miss\trate_shared\n";
 
-	for (vector<string>::const_iterator j = m_hashSigs.begin();
-			j != m_hashSigs.end(); ++j)
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i)
 	{
-		const boost::shared_ptr<MultiFilter> &temp = m_filters.at(*j);
-		const vector<string> &idsInFilter = temp->getFilterIds();
-		for (vector<string>::const_iterator i = idsInFilter.begin();
-				i != idsInFilter.end(); ++i)
-		{
-			const vector<boost::shared_ptr<BloomFilterInfo> > &tempVect =
-					m_infoFiles.at(*j);
-			summaryOutput << *i << "_" << tempVect.front()->getKmerSize();
-			summaryOutput << "\t" << m_aboveThreshold.at(*i);
-			summaryOutput << "\t" << readCount - m_aboveThreshold.at(*i);
-			summaryOutput << "\t"
-					<< (m_aboveThreshold.at(*i) - m_unique.at(*i));
-			summaryOutput << "\t"
-					<< double(m_aboveThreshold.at(*i)) / double(readCount);
-			summaryOutput << "\t"
-					<< double(readCount - m_aboveThreshold.at(*i))
-							/ double(readCount);
-			summaryOutput << "\t"
-					<< double(m_aboveThreshold.at(*i) - m_unique.at(*i))
-							/ double(readCount);
-			summaryOutput << "\n";
-		}
+		summaryOutput << *i;
+		summaryOutput << "\t" << m_aboveThreshold.at(*i);
+		summaryOutput << "\t" << readCount - m_aboveThreshold.at(*i);
+		summaryOutput << "\t" << (m_aboveThreshold.at(*i) - m_unique.at(*i));
+		summaryOutput << "\t"
+				<< double(m_aboveThreshold.at(*i)) / double(readCount);
+		summaryOutput << "\t"
+				<< double(readCount - m_aboveThreshold.at(*i))
+						/ double(readCount);
+		summaryOutput << "\t"
+				<< double(m_aboveThreshold.at(*i) - m_unique.at(*i))
+						/ double(readCount);
+		summaryOutput << "\n";
 	}
 
 	summaryOutput << MULTI_MATCH;
