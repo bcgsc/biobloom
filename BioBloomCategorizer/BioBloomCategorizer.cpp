@@ -302,9 +302,9 @@ int main(int argc, char *argv[])
 	//check validity of inputs for paired end mode
 	if (paired) {
 		if (inputFiles.size() == 1
-				&& (inputFiles[0].substr(inputFiles[0].size() - 4) == "bam"
+				&& (inputFiles[0].substr(inputFiles[0].size() - 4) == ".bam"
 						|| inputFiles[0].substr(inputFiles[0].size() - 4)
-								== "sam"))
+								== ".sam"))
 		{
 			pairedBAMSAM = true;
 		} else if (inputFiles.size() == 2) {
