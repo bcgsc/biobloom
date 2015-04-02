@@ -54,7 +54,6 @@ AC_CONFIG_FILES([
 		DataLayer/Makefile
 		BioBloomMaker/Makefile
 		BioBloomCategorizer/Makefile
-		Tests/Makefile
 ])
 AC_OUTPUT
 
