@@ -107,6 +107,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
+	cout.flush();
 }
 
 /*
@@ -216,6 +217,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
+	cout.flush();
 }
 
 /*
@@ -302,6 +304,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
+	cout.flush();
 }
 
 /*
@@ -448,6 +451,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
+	cout.flush();
 }
 
 /*
@@ -539,6 +543,7 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
+	cout.flush();
 }
 
 /*
@@ -695,6 +700,7 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
 	summaryOutput.close();
+	cout.flush();
 }
 
 //helper methods
