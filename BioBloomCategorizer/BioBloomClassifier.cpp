@@ -1021,7 +1021,7 @@ void BioBloomClassifier::evaluateReadScore(const FastqRecord &rec,
 	//todo: read proc possibly unneeded, see evalSingle
 	ReadsProcessor proc(kmerSize);
 
-	double normalizationValue = rec.seq.length() - kmerSize + 1;
+	size_t normalizationValue = rec.seq.length() - kmerSize + 1;
 	double threshold = m_scoreThreshold * normalizationValue;
 	double antiThreshold = normalizationValue - threshold;
 
