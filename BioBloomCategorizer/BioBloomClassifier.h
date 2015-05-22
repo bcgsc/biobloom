@@ -85,8 +85,6 @@ private:
 	// modes of filtering
 	mode m_mode;
 
-	bool with_score;
-
 	string m_mainFilter;
 	bool m_inclusive;
 

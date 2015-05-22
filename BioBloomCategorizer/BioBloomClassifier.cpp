@@ -1078,7 +1078,7 @@ void BioBloomClassifier::evaluateReadScore(const FastqRecord &rec,
 
 			//Evaluate sequences until threshold
 			//record end location
-			SeqEval::eval(rec, kmerSize, tempFilter, 1, 0, visited, hashValues,
+			SeqEval::eval(rec, kmerSize, tempFilter, normalizationValue, 0, visited, hashValues,
 					pos[i], scores[i], proc);
 			scores[i] /= normalizationValue;
 		}

@@ -62,6 +62,7 @@ const string ResultsManager::updateSummaryData(
 #pragma omp atomic
 			++m_multiMatch;
 		} else {
+		//TODO : USE LOCKS, # of locks == # of filterIDs
 #pragma omp atomic
 			++m_unique[filterID];
 		}
