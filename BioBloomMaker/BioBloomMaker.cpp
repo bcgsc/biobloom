@@ -48,7 +48,9 @@ void printHelpDialog() {
 		"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
 		"  -h, --help             Display this dialog.\n"
 		"  -v  --version          Display version information.\n"
-//		"  -t, --threads=N        The number of threads to use. [1]\n"
+		"  -t, --threads=N        The number of threads to use. Experimental. [1]\n"
+		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
+		"                         in the filter. \n"
 		"\nAdvanced options:\n"
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]\n"
 		"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
@@ -84,6 +86,7 @@ int main(int argc, char *argv[]) {
 	string subtractFilter = "";
 	size_t entryNum = 0;
 	double progressive = -1;
+	bool inclusive = false;
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -92,6 +95,7 @@ int main(int argc, char *argv[]) {
 					"file_prefix", required_argument, NULL, 'p' }, {
 					"output_dir", required_argument, NULL, 'o' }, {
 					"threads", required_argument, NULL, 't' }, {
+					"inclusive", no_argument, NULL, 'i' }, {
 					"version", no_argument, NULL, 'v' }, {
 					"hash_num", required_argument, NULL, 'g' }, {
 					"kmer_size", required_argument, NULL, 'k' }, {
@@ -103,7 +107,7 @@ int main(int argc, char *argv[]) {
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:r:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:r:i", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -136,6 +140,10 @@ int main(int argc, char *argv[]) {
 				cerr << "Error - Invalid parameter! t: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
+			break;
+		}
+		case 'i': {
+			inclusive = true;
 			break;
 		}
 		case 'k': {
@@ -281,8 +289,13 @@ int main(int argc, char *argv[]) {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
 				subtractFilter);
 	} else if (progressive != -1) {
+		createMode mode = PROG_STD;
+		if (inclusive) {
+			mode = PROG_INC;
+		}
 		redundNum = filterGen.generateProgressive(
-				outputDir + filterPrefix + ".bf", progressive, file1, file2);
+				outputDir + filterPrefix + ".bf", progressive, file1, file2,
+				mode);
 	} else {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
 	}

@@ -12,6 +12,8 @@
 #include "Common/BloomFilter.h"
 using namespace std;
 
+enum createMode{PROG_STD, PROG_INC};
+
 class BloomFilterGenerator {
 public:
 	explicit BloomFilterGenerator(vector<string> const &filenames,
@@ -20,10 +22,12 @@ public:
 	explicit BloomFilterGenerator(vector<string> const &filenames,
 			unsigned kmerSize, unsigned hashNum);
 
+
+	//TODO: THREAD ME!
 	size_t generate(const string &filename);
 	size_t generate(const string &filename, const string &subtractFilter);
 	size_t generateProgressive(const string &filename, double score, const string &file1,
-			const string &file2);
+			const string &file2, createMode mode);
 	void setFilterSize(size_t bits);
 
 	void setHashFuncs(unsigned numFunc);

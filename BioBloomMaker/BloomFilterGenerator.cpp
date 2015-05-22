@@ -115,7 +115,7 @@ size_t BloomFilterGenerator::generate(const string &filename) {
  * Outputs to fileName path
  */
 size_t BloomFilterGenerator::generateProgressive(const string &filename,
-		double score, const string &file1, const string &file2)
+		double score, const string &file1, const string &file2, createMode mode)
 {
 
 	//need the number of hash functions used to be greater than 0
@@ -193,47 +193,85 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				unsigned size2 = rec2.seq.length() - m_kmerSize + 1;
 				vector<vector<size_t> > hashValues1(size1);
 				vector<vector<size_t> > hashValues2(size2);
-				if (SeqEval::evalSingle(rec1, m_kmerSize, filter, score * double(size1),
-						(1.0 - score) * double(size1), m_hashNum, hashValues1))
-				{
-					//load remaining sequences
-					for (unsigned i = 0; i < size1; ++i) {
-						if (hashValues1[i].empty()) {
-							const unsigned char* currentSeq = proc.prepSeq(rec1.seq, i);
-							checkAndInsertKmer(currentSeq, filter);
-						} else {
-							insertKmer(hashValues1[i], filter);
+				switch (mode) {
+				case PROG_INC: {
+					if (SeqEval::evalSingle(rec1, m_kmerSize, filter,
+									score * double(size1),
+									(1.0 - score) * double(size1), m_hashNum,
+									hashValues1)) {
+						//load remaining sequences
+						for (unsigned i = 0; i < size1; ++i) {
+							if (hashValues1[i].empty()) {
+								const unsigned char* currentSeq = proc.prepSeq(
+										rec1.seq, i);
+								checkAndInsertKmer(currentSeq, filter);
+							} else {
+								insertKmer(hashValues1[i], filter);
+							}
 						}
-					}
-					//load store second read
-					for(unsigned i = 0; i < size2; ++i){
-						const unsigned char* currentSeq = proc.prepSeq(rec2.seq, i);
-						checkAndInsertKmer(currentSeq, filter);
-					}
-				}
-				else if(SeqEval::evalSingle(rec1, m_kmerSize, filter, score * size2,
-						(1.0 - score) * size2, m_hashNum, hashValues2))
-				{
-					//load remaining sequences
-					for (unsigned i = 0; i < size1; ++i) {
-						if (hashValues1[i].empty()) {
-							const unsigned char* currentSeq = proc.prepSeq(
-									rec1.seq, i);
-							checkAndInsertKmer(currentSeq, filter);
-						} else {
-							insertKmer(hashValues1[i], filter);
-						}
-					}
-					//load store second read
-					for (unsigned i = 0; i < size2; ++i) {
-						if (hashValues2[i].empty()) {
+						//load store second read
+						for (unsigned i = 0; i < size2; ++i) {
 							const unsigned char* currentSeq = proc.prepSeq(
 									rec2.seq, i);
 							checkAndInsertKmer(currentSeq, filter);
-						} else {
-							insertKmer(hashValues2[i], filter);
+						}
+					} else if (SeqEval::evalSingle(rec2, m_kmerSize, filter,
+									score * size2, (1.0 - score) * size2, m_hashNum,
+									hashValues2)) {
+						//load remaining sequences
+						for (unsigned i = 0; i < size1; ++i) {
+							if (hashValues1[i].empty()) {
+								const unsigned char* currentSeq = proc.prepSeq(
+										rec1.seq, i);
+								checkAndInsertKmer(currentSeq, filter);
+							} else {
+								insertKmer(hashValues1[i], filter);
+							}
+						}
+						//load store second read
+						for (unsigned i = 0; i < size2; ++i) {
+							if (hashValues2[i].empty()) {
+								const unsigned char* currentSeq = proc.prepSeq(
+										rec2.seq, i);
+								checkAndInsertKmer(currentSeq, filter);
+							} else {
+								insertKmer(hashValues2[i], filter);
+							}
 						}
 					}
+					break;
+				}
+				case PROG_STD: {
+					if (SeqEval::evalSingle(rec1, m_kmerSize, filter,
+							score * double(size1),
+							(1.0 - score) * double(size1), m_hashNum,
+							hashValues1)
+							&& SeqEval::evalSingle(rec2, m_kmerSize, filter,
+									score * size2, (1.0 - score) * size2,
+									m_hashNum, hashValues2)) {
+						//load remaining sequences
+						for (unsigned i = 0; i < size1; ++i) {
+							if (hashValues1[i].empty()) {
+								const unsigned char* currentSeq = proc.prepSeq(
+										rec1.seq, i);
+								checkAndInsertKmer(currentSeq, filter);
+							} else {
+								insertKmer(hashValues1[i], filter);
+							}
+						}
+						//load store second read
+						for (unsigned i = 0; i < size2; ++i) {
+							if (hashValues2[i].empty()) {
+								const unsigned char* currentSeq = proc.prepSeq(
+										rec2.seq, i);
+								checkAndInsertKmer(currentSeq, filter);
+							} else {
+								insertKmer(hashValues2[i], filter);
+							}
+						}
+					}
+					break;
+				}
 				}
 			} else {
 				cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
