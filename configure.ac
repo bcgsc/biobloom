@@ -30,8 +30,8 @@ fi
 srcdir=$(cd $srcdir; pwd)
 
 # Set compiler flags.
-boost_ver=1.55.0
-boost_ver_dir=1_55_0
+boost_ver=1.58.0
+boost_ver_dir=1_58_0
 AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $CPPFLAGS -isystem$srcdir/$boost_ver_dir")
 
 # Checks for header files.
