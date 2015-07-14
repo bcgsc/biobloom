@@ -110,7 +110,7 @@ void printHelpDialog()
 	"                         runtime but decrease sensitivity. [3]\n"
 	"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
 	"                         but low specificity, use only on long reads (>100bp).\n"
-	"  -c, --collab           Use collaborative filtering. Order of filters matters\n"
+	"  -c, --ordered          Use ordered filtering. Order of filters matters\n"
 	"                         (filters list first have higher priority). Only taken\n"
 	"                         advantage of when k-mer sizes and number of hash\n"
 	"                         functions are the same.\n"
@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 		"min_hit_thr", required_argument, NULL, 'm' }, {
 		"streak", optional_argument, NULL, 'r' }, {
 		"min_hit_only", no_argument, NULL, 'o' }, {
-		"collab", no_argument, NULL, 'c' }, {
+		"ordered", no_argument, NULL, 'c' }, {
 		"stdout_filter", required_argument, NULL, 'd' }, {
 		"with_score", no_argument, NULL, 'w' }, {
 		NULL, 0, NULL, 0 } };
