@@ -40,3 +40,50 @@ Table of Contents
   * How can I make my results more sensitive?
   * How can I make my results more specific?
   * How can I make the program faster?
+ 
+
+Compiling and Installing BioBloomTools
+======
+######Dependencies:
+* GCC (tested on 4.8.4)
+* Boost (tested on 1.54)
+* zlibdev
+* Autotools (if directly cloning from repo)
+
+######Compilation:
+If cloning directly from the repository run:
+```
+./autogen.sh
+```
+Compiling BioBloomTools should be as easy as:
+```
+./configure && make
+```
+To install BBT in a specified directory:
+```
+./configure --prefix=/BBT/PATH && make install
+```
+If your boost library headers are not in your PATH you can specify its location:
+```
+./configure –-with-boost=/boost/path --prefix=/BBT/PATH && make install
+```
+
+Generating Bloom Filters from Reference Sequences with Biobloommaker
+======
+To create bloom filters from a FastA file, the FastA file must by indexed. Indexing can
+be done by programs like [samtools](https://github.com/samtools/samtools) (faidx) or [fastahack](https://github.com/ekg/fastahack).
+
+After you have your FastA file and index, a .bf file with corresponding information text
+file can be created by running the command:
+./biobloommaker –p input input1.fasta input2.fasta
+-p is the prefix for the files being created, it also acts as an ID for the filter. The options above are the bare minimum options you must use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. See section 5 for advanced options. You can
+also using the -h command for a listing on the options.
+
+The optimal size of the filter will be calculated based on the maximum false positive rate (default is 0.075) and the number of hash functions (can be set but is optimized based on FPR).
+
+Two files will be generated binary Bloom filter file (.bf) and an information file in INI format (.txt). The information file must be kept with the .bf file to provide all the needed information to run the categorization.
+
+
+
+
+
