@@ -4,7 +4,7 @@ BioBloom Tools (BBT) provides the means to create filters for a given reference 
 
 This tool is free for academic use, please contact us if you wish to use the tools for comercial uses.
 
-Any comments and suggestions can be directed to (JustinChu)[https://github.com/JustinChu] or emailed to cjustin@bcgsc.ca.
+Any comments and suggestions can be directed to [JustinChu](https://github.com/JustinChu) or emailed to cjustin@bcgsc.ca.
 
 ######Affliations:
 Canada’s Michael Smith Genome Sciences Centre, BC Cancer Agency, Vancouver BC Canada V5Z 4S6
