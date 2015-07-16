@@ -43,8 +43,8 @@ Table of Contents
   * How can I make my results more specific?
   * How can I make the program faster?
  
-
-1. Compiling and Installing BioBloomTools <a name="1"></a>
+<a name="1"></a>
+1. Compiling and Installing BioBloomTools
 ======
 ######Dependencies:
 * GCC (tested on 4.8.4)
