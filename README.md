@@ -14,7 +14,7 @@ Department of Bioinformatics, University of British Columbia, Vancouver BC V6T 1
 
 Table of Contents
 ======
-1. Compiling and Installing BioBloomTools
+1. [Compiling and Installing BioBloomTools](#1)
   * Dependencies
   * How to Install
 2. Generating Bloom Filters from Reference Sequence with Biobloommaker
@@ -44,7 +44,7 @@ Table of Contents
   * How can I make the program faster?
  
 
-Compiling and Installing BioBloomTools
+1. Compiling and Installing BioBloomTools <a name="1"></a>
 ======
 ######Dependencies:
 * GCC (tested on 4.8.4)
@@ -77,9 +77,12 @@ be done by programs like [samtools](https://github.com/samtools/samtools) (faidx
 
 After you have your FastA file and index, a .bf file with corresponding information text
 file can be created by running the command:
+```
 ./biobloommaker –p input input1.fasta input2.fasta
--p is the prefix for the files being created, it also acts as an ID for the filter. The options above are the bare minimum options you must use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. See section 5 for advanced options. You can
-also using the -h command for a listing on the options.
+```
+-p is the prefix for the files being created, it also acts as an ID for the filter.
+
+The options above are the bare minimum options you must use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. See section 5 for advanced options. You can also use the -h command for a listing of the options.
 
 The optimal size of the filter will be calculated based on the maximum false positive rate (default is 0.075) and the number of hash functions (can be set but is optimized based on FPR).
 
