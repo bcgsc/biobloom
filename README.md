@@ -17,19 +17,19 @@ Table of Contents
 1. [Compiling and Installing BioBloomTools](#1)
   * Dependencies
   * How to Install
-2. Generating Bloom Filters from Reference Sequence with Biobloommaker
-3. Classifying and Analyzing Sequences with Biobloomcategorizer
-4. Program Outputs
+2. [Generating Bloom Filters from Reference Sequence with Biobloommaker](#2)
+3. [Classifying and Analyzing Sequences with Biobloomcategorizer](#3)
+4. [Program Outputs](#4)
   * Biobloommaker
     * Bloom Filter File (filterID.bf)
     * Bloom Filter Info File (filterID.txt)
   * Biobloomcategorizer
     * Summary File (summary.tsv)
     * Categorized Sequence FastA/FastQ Files
-5. Program Options
+5. [Program Options](#5)
   * Biobloommaker
   * Biobloomcategorizer
-6. Understanding BioBloomTools
+6. [Understanding BioBloomTools](#6)
   * About Bloom Filters
   * How false positive rates correlates to memory usage
   * How many hash functions should be used?
@@ -37,7 +37,7 @@ Table of Contents
   * What is inside the Bloom Filter Info File?
     * Obtaining the number of unique k-mers in the reference
     * Obtaining the number of redundant k-mers in the reference
-7. Advanced options and Best Practices
+7. [Advanced options and Best Practices](#7)
   * How can I reduce my memory usage?
   * How can I make my results more sensitive?
   * How can I make my results more specific?
@@ -70,7 +70,8 @@ If your boost library headers are not in your PATH you can specify its location:
 ./configure –-with-boost=/boost/path --prefix=/BBT/PATH && make install
 ```
 
-Generating Bloom Filters from Reference Sequences with Biobloommaker
+<a name="2"></a>
+2. Generating Bloom Filters from Reference Sequences with Biobloommaker
 ======
 To create bloom filters from a FastA file, the FastA file must by indexed. Indexing can
 be done by programs like [samtools](https://github.com/samtools/samtools) (faidx) or [fastahack](https://github.com/ekg/fastahack).
