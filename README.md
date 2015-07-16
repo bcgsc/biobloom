@@ -47,13 +47,13 @@ Table of Contents
 <a name="1"></a>
 1. Compiling and Installing BioBloomTools
 ======
-######Dependencies:
+#####Dependencies:
 * GCC (tested on 4.8.4)
 * Boost (tested on 1.54)
 * zlibdev
 * Autotools (if directly cloning from repo)
 
-######Compilation:
+#####Compilation:
 If cloning directly from the repository run:
 ```
 ./autogen.sh
@@ -93,16 +93,11 @@ Two files will be generated binary Bloom filter file (.bf) and an information fi
 <a name="3"></a>
 3. Classifying and Analyzing Sequences with Biobloomcategorizer
 ======
-Once you have filters created, you can use them with Biobloomcategorizer to categorize
-sequences. The file formats that can be used are the following: SAM, BAM, FastQ,
-FastA and qseq. Gzip and Bz2 compression is also handled if your system has gzip and
-bunzip2 installed.
+Once you have filters created, you can use them with Biobloomcategorizer to categorize sequences. The file formats that can be used are the following: SAM, BAM, FastQ, FastA and qseq. Gzip and Bz2 compression is also handled if your system has gzip and bunzip2 installed.
 
-Before starting make sure the listed .bf file is in the same directory as its corresponding
-information .txt file.
+Before starting make sure the listed .bf file is in the same directory as its corresponding information .txt file.
 
-A summary.tsv file, readStatus.tsv summary file, and FastA files containing categorized
-reads can be generated with the following command:
+A summary.tsv file, readStatus.tsv summary file, and FastA files containing categorized reads can be generated with the following command:
 ```
 ./biobloomcategorizer –-fa –p /output/prefix –f ”filter1.bf filter2.bf filter3.bf” inputReads1.bam.bz2 inputreads2_qseq.txt
 ```
@@ -117,34 +112,28 @@ one can use is the paired end mode `-e`:
 ```
 `-e` will require that both reads match when making the call about what reference they belong in.
 
-By default `-e` will
+By default `-e` will only count a read if both reads match a filter. If you want only it to count situations where only one read matches the filter then the `-i` (`--inclusive`) option can also be used.
 
-These are general use cases you can use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. See section 5 for advanced options. You can also using the `-h` command for a listing on the options.
+These are general usecases you can use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. See section 5 for advanced options. You can also using the `-h` command for a listing on the options.
 
 <a name="4"></a>
 4. Program Output
 ======
-A. Biobloommaker
-i. Bloom Filter File (filterID.bf)
-Simply a bit array representing the bloom filter dumped as a file. It is simple,
-so that it can be used in almost any system format. It is useless without its
-paired info file however.
-ii. Bloom Filter Info File (filterID.txt)
-This is the information file of the bloom filter, containing the information like
-false positive rate and hash functions used. It is in human readable INI
-format. It is intended to be read by Biobloomcategorizer in tandem with its
-paired .bf file to perform categorization.
+#####A. Biobloommaker
+######i. Bloom Filter File (filterID.bf)
+  Simply a bit array representing the bloom filter dumped as a file. It is simple, so that it can be used in     almost any system format. It is useless without its paired info file however.
 
-B. Biobloomcategorizer
-i. Summary File (summary.tsv)
- Tab separated file. Contains proportion information about reads mapping
+######ii. Bloom Filter Info File (filterID.txt)
+  This is the information file of the bloom filter, containing the information like false positive rate and hash functions used. It is in human readable INI format. It is intended to be read by Biobloomcategorizer in tandem with its paired .bf file to perform categorization.
+
+#####B. Biobloomcategorizer
+######i. Summary File (summary.tsv)
+  Tab separated file. Contains proportion information about reads mapping
 to each filter. Give a good overview of your results
-ii. Categorized Sequence FastA/FastQ Files
- In the output directory there will be files for every filter used in addition to
-“multiMatch” and “noMatch” files. The reads will be categorized in these
-locations based on the threshold (-m and -t) values used.
- Reads outputted will have a value (e.g. “/1”) appended to the end of each
-ID to denote pair information about the read.
+######ii. Categorized Sequence FastA/FastQ Files
+  In the output directory there will be files for every filter used in addition to “multiMatch” and “noMatch” files. The reads will be categorized in these locations based on the threshold (-m and -t) values used.
+  
+  Reads outputted will have a value (e.g. “/1”) appended to the end of each ID to denote pair information about the read.
 
 <a name="5"></a>
 5. Program options
