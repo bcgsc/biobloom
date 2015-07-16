@@ -2,7 +2,9 @@ BioBloomtools User Manual
 ------
 BioBloom Tools (BBT) provides the means to create filters for a given reference and then to categorizes sequences. This methodology is faster than alignment but does not provide mapping locations. BBT was initially intended to be used for pre-processing and QC applications like contamination detection, but is flexible to accommodate other purposes. This tool is intended to be a pipeline component to replace costly alignment steps.
 
-This tool is free for academic use, please contact us if you wish to use the tools for comercial uses.
+This tool is free for academic (BCCA licence).
+
+We have a comercial licence also, please contact us (prebstein@bccancer.bc.ca) if you wish to use the tools for comercial uses.
 
 Any comments and suggestions can be directed to [JustinChu](https://github.com/JustinChu) or emailed to cjustin@bcgsc.ca.
 
