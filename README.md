@@ -6,7 +6,7 @@ This tool is free for academic (BCCA licence).
 
 We have a comercial licence also, please contact us (prebstein@bccancer.bc.ca) if you wish to use the tools for comercial uses.
 
-Any comments and suggestions can be directed to [JustinChu](https://github.com/JustinChu) or emailed to cjustin@bcgsc.ca.
+Any questions, comments and suggestions can be directed to [JustinChu](https://github.com/JustinChu) or emailed to cjustin@bcgsc.ca.
 
 ######Affliations:
 Canada’s Michael Smith Genome Sciences Centre, BC Cancer Agency, Vancouver BC Canada V5Z 4S6
@@ -36,10 +36,6 @@ Table of Contents
     * Obtaining the number of unique k-mers in the reference
     * Obtaining the number of redundant k-mers in the reference
 6. [Advanced options and Best Practices](#6)
-  * How can I reduce my memory usage?
-  * How can I make my results more sensitive?
-  * How can I make my results more specific?
-  * How can I make the program faster?
  
 <a name="1"></a>
 1. Compiling and Installing BioBloomTools
@@ -145,70 +141,51 @@ The whole idea of using bloom filter centers on getting the time complexity of a
 
 #####B. How false positive rates correlates to memory usage
 ![false discovery rate and bits per entry](https://github.com/bcgsc/biobloom/blob/master/Doc/FDR_vs_Size.png)
-This figure shows the relationship (assuming optimal number of hash functions
-have been used) between false positive rate and the space cost per entry. To
-use this chart divide your amount of space in bits you have to work with to the
-number base pairs you have in your reference.
-For example, say I want the human genome (~ 3.4×10^9) filter to fit into~3GB of memory. (8×3×230
-)/4×109
-= ~8bits per entry, meaning a filter
-with 2% FPR at maximum should be used.
-C. How many hash functions should be used?
-The number of hash functions refers to the number of hash functions used. In
-practice the approximate optimal number of hash functions will be calculated
-automatically by our program. The relationship can be seen below.
 
-We give users the ability to change the number of hash functions because very
-low false positive rates will have an optimal number of associated hash functions
-that may be very large and may slow down classification.
-D. K-mer Tiling
-We use a sliding window across each read of size k to categorize sequences.
-Single base overlaps that both hit a filter are unlikely to be false positives. This
-information is used to reduce the effect of any false positives. This concept is
-also used to further improve speed, we also employ a jumping k-mer (rather than
-sliding) heuristic that skips k k-mers when a miss is detected after a long series
-of adjacent hits.
-E. What is inside the Bloom Filter Info File?
-i. Obtaining the number of unique k-mers in the reference:
-Within the information txt file for each bloom filter there is a “num_entries”
-entry that lets you know how many unique k-mers have been added to the
-filter. It is a lower bound estimate due to possible false positives.
-ii. Obtaining the number of redundant k-mers in the reference:
-Within the information txt file for each bloom filter there is a
-“redundant_sequences” entry that lets you know how many redundant k-mers
-have been added to the filter. It is an upper bound estimate due to possible
-false positives. The “redundant_fpr” represents the probability that one any
-random redundant k-mer is actually unique. Thus, to get the approximate
-number of unique k-mers take the “redundant_fpr” value and multiply it with
-the “redundant_sequences” sequences and add that to the “num_entries”.
+This figure shows the relationship (assuming optimal number of hash functions have been used) between false positive rate and the space cost per entry. To use this chart divide your amount of space in bits you have to work with to the number base pairs you have in your reference.
+
+For example, say I want the human genome (~ 3.4×10^9) filter to fit into~3GB of memory. (8×3×230)/4×10^9 = ~8bits per entry, meaning a filter with 2% FPR at maximum should be used.
+
+#####C. How many hash functions should be used?
+The number of hash functions refers to the number of hash functions used. In practice the approximate optimal number of hash functions will be calculated automatically by our program. The relationship can be seen below.
+
+We give users the ability to change the number of hash functions because very low false positive rates will have an optimal number of associated hash functions that may be very large and may slow down classification.
+
+#####D. K-mer Tiling
+We use a sliding window across each read of size k to categorize sequences. Single base overlaps that both hit a filter are unlikely to be false positives. This information is used to reduce the effect of any false positives. This concept is also used to further improve speed, we also employ a jumping k-mer (rather than sliding) heuristic that skips k k-mers when a miss is detected after a long series of adjacent hits.
+
+#####E. What is inside the Bloom Filter Info File?
+
+######i. Obtaining the number of unique k-mers in the reference:
+Within the information txt file for each bloom filter there is a “num_entries” entry that lets you know how many unique k-mers have been added to the filter. It is a lower bound estimate due to possible false positives.
+
+######ii. Obtaining the number of redundant k-mers in the reference:
+Within the information txt file for each bloom filter there is a “redundant_sequences” entry that lets you know how many redundant k-mers have been added to the filter. It is an upper bound estimate due to possible false positives. The “redundant_fpr” represents the probability that one any random redundant k-mer is actually unique. Thus, to get the approximate number of unique k-mers take the “redundant_fpr” value and multiply it with the “redundant_sequences” sequences and add that to the “num_entries”.
 
 <a name="6"></a>
 6. Advanced options and Best Practices
 ======
-A. How can I reduce my memory usage?
-Memory usage is directly dependent on the filter size, which is in turn a function
-of the false positive rate. In biobloommaker reduce memory increase the false
-positive rate (-f) until the memory usage is acceptable. You may need to increase
-score threshold (-s) in biobloomcategorizer to keep the specificity high.
-B. How can I make my results more sensitive?
-In biobloomcategorizer try to decrease the score threshold (-s). If that still does
-not work, in biobloommaker try reducing the k-mer (-k) size to allow more tiles
-can help with sensitivity.
-C. How can I make my results more specific?
-In biobloomcategorizer you can increase score threshold (-s).
-In biobloommaker decreasing the false positive rate (-f) and increasing the k-mer
-(-k) size to allow more tiles can help with specificity. Decreasing the filter false
-positive rate will increase memory usage.
-D. How can I make the program faster?
-In biobloomcategorizer use a min hit threshold (-m) of 1. This will use a faster
-prescreening categorization algorithm that uses jumping k-mer tiles to prescreen
-reads. This will decrease sensitivity but will increase speed. Large values will
-further decrease sensitivity.
-Using the min hit threshold only (-o) option will use only this screening method
-and not use the standard sliding tiles algorithm at all. This will greatly increase
-speed at the expense of sensitivity and specificity. This may be appropriate if
-your reads are long (>150bp), paired and have minimal read errors. If this
-method is used, it is recommended that you use an -m of at least 2 or 3.
 
+This section is out of date, updates to this section will be added
+
+#####A. How can I reduce my memory usage?
+
+Memory usage is directly dependent on the filter size, which is in turn a function of the false positive rate. In biobloommaker reduce memory increase the false positive rate (-f) until the memory usage is acceptable. You may need to increase score threshold (-s) in biobloomcategorizer to keep the specificity high.
+
+#####B. How can I make my results more sensitive?
+
+In biobloomcategorizer try to decrease the score threshold (-s). If that still does not work, in biobloommaker try reducing the k-mer (-k) size to allow more tiles can help with sensitivity.
+
+#####C. How can I make my results more specific?
+
+In biobloomcategorizer you can increase score threshold (-s).
+
+In biobloommaker decreasing the false positive rate (-f) and increasing the k-mer (-k) size to allow more tiles can help with specificity. Decreasing the filter false positive rate will increase memory usage.
+
+D. How can I make the program faster?
+
+In biobloomcategorizer use a min hit threshold (-m) of 1. This will use a faster rescreening categorization algorithm that uses jumping k-mer tiles to prescreen reads. This will decrease sensitivity but will increase speed. Large values will further decrease sensitivity.
+
+Using the min hit threshold only (-o) option will use only this screening method and not use the standard sliding tiles algorithm at all. This will greatly increase speed at the expense of sensitivity and specificity. This may be appropriate if your reads are long (>150bp), paired and have minimal read errors. If this method is used, it is recommended that you use an -m of at least 2 or 3.
 
 
