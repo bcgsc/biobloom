@@ -137,7 +137,7 @@ to each filter. Give a good overview of your results
 * Reads outputted will have a value (e.g. “/1”) appended to the end of each ID to denote pair information about the read.
 
 <a name="5"></a>
-6. Understanding BioBloomTools
+5. Understanding BioBloomTools
 ======
 
 #####A. About Bloom Filters
@@ -182,8 +182,8 @@ random redundant k-mer is actually unique. Thus, to get the approximate
 number of unique k-mers take the “redundant_fpr” value and multiply it with
 the “redundant_sequences” sequences and add that to the “num_entries”.
 
-<a name="7"></a>
-7. Advanced options and Best Practices
+<a name="6"></a>
+6. Advanced options and Best Practices
 ======
 A. How can I reduce my memory usage?
 Memory usage is directly dependent on the filter size, which is in turn a function
