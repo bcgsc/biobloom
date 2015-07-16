@@ -147,9 +147,12 @@ This figure shows the relationship (assuming optimal number of hash functions ha
 For example, say I want the human genome (~ 3.4×10^9) filter to fit into~3GB of memory. (8×3×230)/4×10^9 = ~8bits per entry, meaning a filter with 2% FPR at maximum should be used.
 
 #####C. How many hash functions should be used?
-The number of hash functions refers to the number of hash functions used. In practice the approximate optimal number of hash functions will be calculated automatically by our program. The relationship can be seen below.
 
-We give users the ability to change the number of hash functions because very low false positive rates will have an optimal number of associated hash functions that may be very large and may slow down classification.
+![false discovery rate and bits per entry](https://github.com/bcgsc/biobloom/blob/master/Doc/FDR_vs_Size.png)
+
+The number of hash functions refers to the number of hash functions used by a single filter per element. In practice the approximate optimal number of hash functions will be calculated automatically by our program.
+
+We give users the ability to change the number of hash functions because very low false positive rates will have an optimal number of associated hash functions that may be very large and may slow down classification. Also it is recomended that if running multiple filters at the same time that they all use the same number of hash functions.
 
 #####D. K-mer Tiling
 We use a sliding window across each read of size k to categorize sequences. Single base overlaps that both hit a filter are unlikely to be false positives. This information is used to reduce the effect of any false positives. This concept is also used to further improve speed, we also employ a jumping k-mer (rather than sliding) heuristic that skips k k-mers when a miss is detected after a long series of adjacent hits.
