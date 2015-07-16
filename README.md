@@ -10,6 +10,7 @@ Any comments and suggestions can be directed to [JustinChu](https://github.com/J
 
 ######Affliations:
 Canada’s Michael Smith Genome Sciences Centre, BC Cancer Agency, Vancouver BC Canada V5Z 4S6
+
 Department of Bioinformatics, University of British Columbia, Vancouver BC V6T 1Z4
 
 Table of Contents
