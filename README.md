@@ -182,7 +182,7 @@ In biobloomcategorizer you can increase score threshold (-s).
 
 In biobloommaker decreasing the false positive rate (-f) and increasing the k-mer (-k) size to allow more tiles can help with specificity. Decreasing the filter false positive rate will increase memory usage.
 
-D. How can I make the program faster?
+#####D. How can I make the program faster?
 
 In biobloomcategorizer use a min hit threshold (-m) of 1. This will use a faster rescreening categorization algorithm that uses jumping k-mer tiles to prescreen reads. This will decrease sensitivity but will increase speed. Large values will further decrease sensitivity.
 
