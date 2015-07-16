@@ -82,7 +82,7 @@ file can be created by running the command:
 ```
 ./biobloommaker –p input input1.fasta input2.fasta
 ```
--p is the prefix for the files being created, it also acts as an ID for the filter.
+`-p` is the prefix for the files being created, it also acts as an ID for the filter.
 
 The options above are the bare minimum options you must use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. See section 5 for advanced options. You can also use the -h command for a listing of the options.
 
@@ -97,25 +97,29 @@ Once you have filters created, you can use them with Biobloomcategorizer to cate
 sequences. The file formats that can be used are the following: SAM, BAM, FastQ,
 FastA and qseq. Gzip and Bz2 compression is also handled if your system has gzip and
 bunzip2 installed.
+
 Before starting make sure the listed .bf file is in the same directory as its corresponding
 information .txt file.
+
 A summary.tsv file, readStatus.tsv summary file, and FastA files containing categorized
 reads can be generated with the following command:
-./biobloomcategorizer –-fa –p /output/prefix –f ”filter1.bf filter2.bf
-filter3.bf” inputReads1.bam.bz2 inputreads2_qseq.txt
--p is the output directory for the output files.
--f is the filter(s) you used to categorize the sequences. You can specify as many as
+```
+./biobloomcategorizer –-fa –p /output/prefix –f ”filter1.bf filter2.bf filter3.bf” inputReads1.bam.bz2 inputreads2_qseq.txt
+```
+`-p` is the output directory for the output files.
+`-f` is the filter(s) you used to categorize the sequences. You can specify as many as
 you need.
+
 There are some advanced options open can use outlined in section 5. Notable option
-one can use is the paired end mode (-e):
-./biobloomcategorizer -e –p /output/prefix –f ”filter1.bf filter2.bf
-filter3.bf” inputReads1_1.fq inputreads1_2.fq
--e will require that both reads match when making the call about what reference they
-belong in.
-These are general use cases you can use to run the program, but it is possible to
-customize many aspects of your filter that can drastically change performance
-depending on your needs. See section 5 for advanced options. You can also using the -
-h command for a listing on the options.
+one can use is the paired end mode `-e`:
+```
+./biobloomcategorizer -e –p /output/prefix –f ”filter1.bf filter2.bf filter3.bf” inputReads1_1.fq inputreads1_2.fq
+```
+`-e` will require that both reads match when making the call about what reference they belong in.
+
+By default `-e` will
+
+These are general use cases you can use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. See section 5 for advanced options. You can also using the `-h` command for a listing on the options.
 
 <a name="4"></a>
 4. Program Output
