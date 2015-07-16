@@ -121,19 +121,23 @@ These are general usecases you can use to run the program, but it is possible to
 ======
 #####A. Biobloommaker
 ######i. Bloom Filter File (filterID.bf)
-  Simply a bit array representing the bloom filter dumped as a file. It is simple, so that it can be used in     almost any system format. It is useless without its paired info file however.
+
+* Simply a bit array representing the bloom filter dumped as a file. It is simple, so that it can be used in     almost any system format. It is useless without its paired info file however.
 
 ######ii. Bloom Filter Info File (filterID.txt)
-  This is the information file of the bloom filter, containing the information like false positive rate and hash functions used. It is in human readable INI format. It is intended to be read by Biobloomcategorizer in tandem with its paired .bf file to perform categorization.
+
+* This is the information file of the bloom filter, containing the information like false positive rate and hash functions used. It is in human readable INI format. It is intended to be read by Biobloomcategorizer in tandem with its paired .bf file to perform categorization.
 
 #####B. Biobloomcategorizer
 ######i. Summary File (summary.tsv)
-  Tab separated file. Contains proportion information about reads mapping
+
+* Tab separated file. Contains proportion information about reads mapping
 to each filter. Give a good overview of your results
+
 ######ii. Categorized Sequence FastA/FastQ Files
-  In the output directory there will be files for every filter used in addition to “multiMatch” and “noMatch” files. The reads will be categorized in these locations based on the threshold (-m and -t) values used.
-  
-  Reads outputted will have a value (e.g. “/1”) appended to the end of each ID to denote pair information about the read.
+
+* In the output directory there will be files for every filter used in addition to “multiMatch” and “noMatch” files. The reads will be categorized in these locations based on the threshold (-m and -t) values used.
+* Reads outputted will have a value (e.g. “/1”) appended to the end of each ID to denote pair information about the read.
 
 <a name="5"></a>
 5. Program options
