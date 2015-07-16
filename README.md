@@ -27,10 +27,7 @@ Table of Contents
   * Biobloomcategorizer
     * Summary File (summary.tsv)
     * Categorized Sequence FastA/FastQ Files
-5. [Program Options](#5)
-  * Biobloommaker
-  * Biobloomcategorizer
-6. [Understanding BioBloomTools](#6)
+5. [Understanding BioBloomTools](#5)
   * About Bloom Filters
   * How false positive rates correlates to memory usage
   * How many hash functions should be used?
@@ -38,7 +35,7 @@ Table of Contents
   * What is inside the Bloom Filter Info File?
     * Obtaining the number of unique k-mers in the reference
     * Obtaining the number of redundant k-mers in the reference
-7. [Advanced options and Best Practices](#7)
+6. [Advanced options and Best Practices](#6)
   * How can I reduce my memory usage?
   * How can I make my results more sensitive?
   * How can I make my results more specific?
@@ -140,130 +137,19 @@ to each filter. Give a good overview of your results
 * Reads outputted will have a value (e.g. “/1”) appended to the end of each ID to denote pair information about the read.
 
 <a name="5"></a>
-5. Program options
-======
-A. Biobloommaker
-Command line option Option description
--p
---file_prefix=N
-Filter prefix and filter ID. This is a required option to run
-biobloommaker. This gives the filter a name, which can be seen
-in the filename and information txt file.
--o
---output_dir=N
-Output location of the filter (.bf) and filter info (.txt) files.
--h
---help
-Displays help dialog.
--v
---version
-Displays program version information.
--f
---fal_pos_rate=N
-This is the maximum false positive rate to use in filter. Default is
-0.02, meaning a 0.02 false positive rate per evaluated k-mer.
--g
---hash_num=N
-Set number of hash functions to use in filter. By default an
-optimal number is used calculated from the false positive rate
-(see section 6c). This maybe important if one uses filters with
-different hash functions in biobloomcategorizer and runtime is
-slower than expected.
--k
---kmer_size=N
-K-mer size to use to create filter. The default is 25 bp. Do not go
-below 21 bp and this can adversely affect your specificity. Going
-to high can make it harder to correctly categorize shorter
-sequences (i.e. decrease sensitivity).
--s
---subtract=N
-Path to another filter to prevent k-mers to being added.
-Experimental method intended to allow the subtraction of kmers
-from one filter (i.e. take logical subtraction of).
--n
---num_ele=N
-Set the expected number of elements instead of deriving it from
-your input file.
-B. biobloomcategorzier
-Command line option Option description
--p
---prefix=N
-Output prefix to use in naming output file. Prefix can include
-a full file path so long as the path exists, otherwise will
-output to current directory.
--f
---filter_files=N
-List of filter files to use make sure the corresponding text is
-within the same path as the file. Required option. eg.
-"/pathof/filter1.bf /pathof/filter2.bf"
--e
---paired_mode=N
-Take into account both paired-end reads to categorize
-sequences. For BAM or SAM files, if they are poorly
-ordered, memory usage will be much larger than normal.
-Sorting by read name may be needed.
--s
---score=N
-Sets the score threshold used to categorize a read. Defaults
-at 0.15. Increasing it will increase specificity and higher
-values are recommended for shorter reads.
--g
---gz_output
-Outputs all of the largest output files compressed in gzip
-format.
-
---fa Output categorized reads in Fasta format. Otherwise no files
-will be outputted. Cannot be used with –fq option.
---fq Output categorized reads in Fastq format. Otherwise no files
-will be outputted. Cannot be used with –fa option.
---chasity Discard and do not evaluate unchaste reads.
---no-chastity Do not discard unchaste reads. This is on by default.
--v
---version
-Displays program version information.
--h
---help
-Displays program help dialog.
--m
---min_hit=N
-Minimum Hit Threshold Value. The absolute hit number
-needed for a hit to be considered a match used a
-prescreening method for speed. Default is 0 as it can reduce
-sensitivity significantly.
--r
---streak=N
-Used to modulate a heuristic to skip tiles when encountering
-a k-mer miss to improve speed. Small values will decrease
-runtime and sensitivity. Default is 3.
--o
---min_hit_only
-Use only the fast hit threshold screening in categorization,
-requires that m is at least 1. Very fast but also not as specific
-and sensitive as default algorithm.
-
-<a name="6"></a>
 6. Understanding BioBloomTools
 ======
 
-A. About Bloom Filters
-The whole idea of using bloom filter centers on getting the time complexity of a hash
-(i.e. a O(1) time complexity for look-ups) with a lower space requirement. This is
-resolved in a bloom filter by not storing the entry, but rather storing the entry’s bit
-signature (determined via hashing) in a bit array. However, this means there is no
-collision detection and all bloom filters will have some sort of false positive rate
-associated with them. The false positive rate must be carefully considered as it
-determines the expected size of the filter used. Too small of a false positive rate can
-mean a large bloom filter, but too large of a false positive rate could introduce too
-much error for the filter to be practical.
+#####A. About Bloom Filters
+The whole idea of using bloom filter centers on getting the time complexity of a hash (i.e. a O(1) time complexity for look-ups) with a lower space requirement. This is resolved in a bloom filter by not storing the entry, but rather storing the entry’s bit signature (determined via hashing) in a bit array. However, this means there is no collision detection and all bloom filters will have some sort of false positive rate associated with them. The false positive rate must be carefully considered as it determines the expected size of the filter used. Too small of a false positive rate can mean a large bloom filter, but too large of a false positive rate could introduce too much error for the filter to be practical.
 
-B. How false positive rates correlates to memory usage
- This table shows the relationship (assuming optimal number of hash functions
+#####B. How false positive rates correlates to memory usage
+
+This figure shows the relationship (assuming optimal number of hash functions
 have been used) between false positive rate and the space cost per entry. To
 use this chart divide your amount of space in bits you have to work with to the
 number base pairs you have in your reference.
-o For example, say I want the human genome (~ 3.4×109
-) filter to fit into
-~3GB of memory. (8×3×230
+For example, say I want the human genome (~ 3.4×10^9) filter to fit into~3GB of memory. (8×3×230
 )/4×109
 = ~8bits per entry, meaning a filter
 with 2% FPR at maximum should be used.
