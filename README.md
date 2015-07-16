@@ -148,7 +148,7 @@ For example, say I want the human genome (~ 3.4×10^9) filter to fit into~3GB of
 
 #####C. How many hash functions should be used?
 
-![false discovery rate and bits per entry](https://github.com/bcgsc/biobloom/blob/master/Doc/FDR_vs_HashFunc.png)
+![false discovery rate and bits per entry](https://github.com/bcgsc/biobloom/blob/master/Doc/FDR_vs_HashFunct.png)
 
 The number of hash functions refers to the number of hash functions used by a single filter per element. In practice the approximate optimal number of hash functions will be calculated automatically by our program.
 
