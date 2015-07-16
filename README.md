@@ -1,5 +1,5 @@
 BioBloomtools User Manual
-------
+======
 BioBloom Tools (BBT) provides the means to create filters for a given reference and then to categorizes sequences. This methodology is faster than alignment but does not provide mapping locations. BBT was initially intended to be used for pre-processing and QC applications like contamination detection, but is flexible to accommodate other purposes. This tool is intended to be a pipeline component to replace costly alignment steps.
 
 This tool is free for academic (BCCA licence).
@@ -14,7 +14,7 @@ Canada’s Michael Smith Genome Sciences Centre, BC Cancer Agency, Vancouver BC 
 Department of Bioinformatics, University of British Columbia, Vancouver BC V6T 1Z4
 
 Table of Contents
-======
+------
 1. [Compiling and Installing BioBloomTools](#1)
   * Dependencies
   * How to Install
@@ -39,7 +39,7 @@ Table of Contents
  
 <a name="1"></a>
 1. Compiling and Installing BioBloomTools
-======
+------
 #####Dependencies:
 * GCC (tested on 4.8.4)
 * Boost (tested on 1.54)
@@ -66,7 +66,7 @@ If your boost library headers are not in your PATH you can specify its location:
 
 <a name="2"></a>
 2. Generating Bloom Filters from Reference Sequences with Biobloommaker
-======
+------
 To create bloom filters from a FastA file, the FastA file must by indexed. Indexing can
 be done by programs like [samtools](https://github.com/samtools/samtools) (faidx) or [fastahack](https://github.com/ekg/fastahack).
 
@@ -85,7 +85,7 @@ Two files will be generated binary Bloom filter file (.bf) and an information fi
 
 <a name="3"></a>
 3. Classifying and Analyzing Sequences with Biobloomcategorizer
-======
+------
 Once you have filters created, you can use them with Biobloomcategorizer to categorize sequences. The file formats that can be used are the following: SAM, BAM, FastQ, FastA and qseq. Gzip and Bz2 compression is also handled if your system has gzip and bunzip2 installed.
 
 Before starting make sure the listed .bf file is in the same directory as its corresponding information .txt file.
@@ -111,7 +111,7 @@ These are general usecases you can use to run the program, but it is possible to
 
 <a name="4"></a>
 4. Program Output
-======
+------
 #####A. Biobloommaker
 ######i. Bloom Filter File (filterID.bf)
 
@@ -134,7 +134,7 @@ to each filter. Give a good overview of your results
 
 <a name="5"></a>
 5. Understanding BioBloomTools
-======
+------
 
 #####A. About Bloom Filters
 The whole idea of using bloom filter centers on getting the time complexity of a hash (i.e. a O(1) time complexity for look-ups) with a lower space requirement. This is resolved in a bloom filter by not storing the entry, but rather storing the entry’s bit signature (determined via hashing) in a bit array. However, this means there is no collision detection and all bloom filters will have some sort of false positive rate associated with them. The false positive rate must be carefully considered as it determines the expected size of the filter used. Too small of a false positive rate can mean a large bloom filter, but too large of a false positive rate could introduce too much error for the filter to be practical.
@@ -167,7 +167,7 @@ Within the information txt file for each bloom filter there is a “redundant_se
 
 <a name="6"></a>
 6. Advanced options and Best Practices
-======
+------
 
 This section is out of date, updates to this section will be added
 
