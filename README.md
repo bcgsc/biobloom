@@ -144,7 +144,7 @@ to each filter. Give a good overview of your results
 The whole idea of using bloom filter centers on getting the time complexity of a hash (i.e. a O(1) time complexity for look-ups) with a lower space requirement. This is resolved in a bloom filter by not storing the entry, but rather storing the entry’s bit signature (determined via hashing) in a bit array. However, this means there is no collision detection and all bloom filters will have some sort of false positive rate associated with them. The false positive rate must be carefully considered as it determines the expected size of the filter used. Too small of a false positive rate can mean a large bloom filter, but too large of a false positive rate could introduce too much error for the filter to be practical.
 
 #####B. How false positive rates correlates to memory usage
-
+![false discovery rate and bits per entry](https://github.com/bcgsc/biobloom/blob/master/Doc/FDR_vs_Size.png)
 This figure shows the relationship (assuming optimal number of hash functions
 have been used) between false positive rate and the space cost per entry. To
 use this chart divide your amount of space in bits you have to work with to the
