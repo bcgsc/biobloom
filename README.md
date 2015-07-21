@@ -6,9 +6,9 @@ Relevant [paper](http://bioinformatics.oxfordjournals.org/content/30/23/3402.lon
 
 This tool is free for academic use (BCCA licence).
 
-We have a comercial licence also, please contact us (prebstein@bccancer.bc.ca) if you wish to use the tools for comercial uses.
+We have a comercial licence also, please contact us (prebstein at bccancer dot bc dot ca) if you wish to use the tools for comercial uses.
 
-Any questions, comments and suggestions can be directed to [JustinChu](https://github.com/JustinChu) or emailed to cjustin@bcgsc.ca.
+Any questions, comments and suggestions can be directed to [JustinChu](https://github.com/JustinChu) or emailed to cjustin at bcgsc dot ca.
 
 ######Affliations:
 Canada’s Michael Smith Genome Sciences Centre, BC Cancer Agency, Vancouver BC Canada V5Z 4S6
