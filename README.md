@@ -4,7 +4,7 @@ BioBloom Tools (BBT) provides the means to create filters for a given reference 
 
 Relevant [paper](http://bioinformatics.oxfordjournals.org/content/30/23/3402.long).
 
-This tool is free for academic use (BCCA licence).
+This tool is free for academic use ([BCCA licence](COPYING)).
 
 We have a comercial licence also, please contact us (prebstein at bccancer dot bc dot ca) if you wish to use the tools for comercial uses.
 
