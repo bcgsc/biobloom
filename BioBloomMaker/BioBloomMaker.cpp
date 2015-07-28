@@ -283,8 +283,13 @@ int main(int argc, char *argv[]) {
 	size_t redundNum = 0;
 	//output filter
 	if (!subtractFilter.empty() && progressive != -1) {
-		cerr << "cannot use both -p and -s" << endl;
-		exit(1);
+		createMode mode = PROG_STD;
+		if (inclusive) {
+			mode = PROG_INC;
+		}
+		redundNum = filterGen.generateProgressive(
+				outputDir + filterPrefix + ".bf", progressive, file1, file2,
+				mode, subtractFilter);
 	} else if (!subtractFilter.empty()) {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
 				subtractFilter);

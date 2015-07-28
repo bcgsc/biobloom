@@ -26,8 +26,11 @@ public:
 	//TODO: THREAD ME!
 	size_t generate(const string &filename);
 	size_t generate(const string &filename, const string &subtractFilter);
-	size_t generateProgressive(const string &filename, double score, const string &file1,
-			const string &file2, createMode mode);
+	size_t generateProgressive(const string &filename, double score,
+			const string &file1, const string &file2, createMode mode);
+	size_t generateProgressive(const string &filename, double score,
+			const string &file1, const string &file2, createMode mode,
+			const string &subtractFilter);
 	void setFilterSize(size_t bits);
 
 	void setHashFuncs(unsigned numFunc);
