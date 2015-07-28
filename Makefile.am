@@ -5,6 +5,6 @@ SUBDIRS = \
 	BioBloomCategorizer
 
 dist_doc_DATA = \
-	README.md README.html
+	README.md
 	
 EXTRA_DIST = autogen.sh
