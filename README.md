@@ -1,16 +1,16 @@
 BioBloomtools User Manual
 ======
-BioBloom Tools (BBT) provides the means to create filters for a given reference and then to categorizes sequences. This methodology is faster than alignment but does not provide mapping locations. BBT was initially intended to be used for pre-processing and QC applications like contamination detection, but is flexible to accommodate other purposes. This tool is intended to be a pipeline component to replace costly alignment steps.
+BioBloom Tools (BBT) provides the means to create filters for a given reference and then to categorize sequences. This methodology is faster than alignment but does not provide mapping locations. BBT was initially intended to be used for pre-processing and QC applications like contamination detection, but is flexible to accommodate other purposes. This tool is intended to be a pipeline component to replace costly alignment steps.
 
 Relevant [paper](http://bioinformatics.oxfordjournals.org/content/30/23/3402.long).
 
 This tool is free for academic use ([BCCA licence](COPYING)).
 
-We have a comercial licence also, please contact us (prebstein at bccancer dot bc dot ca) if you wish to use the tools for comercial uses.
+We have a commercial licence also, please contact us (prebstein at bccancer dot bc dot ca) if you wish to use the tools for commercial uses.
 
 Any questions, comments and suggestions can be directed to [JustinChu](https://github.com/JustinChu) or emailed to cjustin at bcgsc dot ca.
 
-######Affliations:
+######Affiliations:
 Canada’s Michael Smith Genome Sciences Centre, BC Cancer Agency, Vancouver BC Canada V5Z 4S6
 
 Department of Bioinformatics, University of British Columbia, Vancouver BC V6T 1Z4
@@ -61,7 +61,7 @@ To install BBT in a specified directory:
 ```
 ./configure --prefix=/BBT/PATH && make install
 ```
-If your boost library headers are not in your PATH you can specify its location:
+If your boost library headers are not in your PATH you can specify their location:
 ```
 ./configure –-with-boost=/boost/path --prefix=/BBT/PATH && make install
 ```
@@ -109,7 +109,7 @@ one can use is the paired end mode `-e`:
 
 By default `-e` will only count a read if both reads match a filter. If you want only it to count situations where only one read matches the filter then the `-i` (`--inclusive`) option can also be used.
 
-These are general usecases you can use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. See section 5 for advanced options. You can also using the `-h` command for a listing on the options.
+These are general use cases you can use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. See section 5 for advanced options. You can also using the `-h` command for a listing on the options.
 
 <a name="4"></a>
 4. Program Output
@@ -154,7 +154,7 @@ For example, say I want the human genome (~ 3.4×10^9) filter to fit into~3GB of
 
 The number of hash functions refers to the number of hash functions used by a single filter per element. In practice the approximate optimal number of hash functions will be calculated automatically by our program.
 
-We give users the ability to change the number of hash functions because very low false positive rates will have an optimal number of associated hash functions that may be very large and may slow down classification. Also it is recomended that if running multiple filters at the same time that they all use the same number of hash functions.
+We give users the ability to change the number of hash functions because very low false positive rates will have an optimal number of associated hash functions that may be very large and may slow down classification. Also it is recommended that if running multiple filters at the same time that they all use the same number of hash functions.
 
 #####D. K-mer Tiling
 We use a sliding window across each read of size k to categorize sequences. Single base overlaps that both hit a filter are unlikely to be false positives. This information is used to reduce the effect of any false positives. This concept is also used to further improve speed, we also employ a jumping k-mer (rather than sliding) heuristic that skips k k-mers when a miss is detected after a long series of adjacent hits.
@@ -165,7 +165,7 @@ We use a sliding window across each read of size k to categorize sequences. Sing
 Within the information txt file for each bloom filter there is a “num_entries” entry that lets you know how many unique k-mers have been added to the filter. It is a lower bound estimate due to possible false positives.
 
 ######ii. Obtaining the number of redundant k-mers in the reference:
-Within the information txt file for each bloom filter there is a “redundant_sequences” entry that lets you know how many redundant k-mers have been added to the filter. It is an upper bound estimate due to possible false positives. The “redundant_fpr” represents the probability that one any random redundant k-mer is actually unique. Thus, to get the approximate number of unique k-mers take the “redundant_fpr” value and multiply it with the “redundant_sequences” sequences and add that to the “num_entries”.
+Within the information txt file for each bloom filter there is a “redundant_sequences” entry that lets you know how many redundant k-mers have been added to the filter. It is an upper bound estimate due to possible false positives. The “redundant_fpr” represents the probability that any one random redundant k-mer is actually unique. Thus, to get the approximate number of unique k-mers take the “redundant_fpr” value and multiply it with the “redundant_sequences” sequences and add that to the “num_entries”.
 
 <a name="6"></a>
 6. Advanced options and Best Practices
@@ -175,11 +175,11 @@ This section is out of date, updates to this section will be added
 
 #####A. How can I reduce my memory usage?
 
-Memory usage is directly dependent on the filter size, which is in turn a function of the false positive rate. In biobloommaker reduce memory increase the false positive rate (-f) until the memory usage is acceptable. You may need to increase score threshold (-s) in biobloomcategorizer to keep the specificity high.
+Memory usage is directly dependent on the filter size, which is in turn a function of the false positive rate. In biobloommaker reducing memory increases the false positive rate (-f) until the memory usage is acceptable. You may need to increase score threshold (-s) in biobloomcategorizer to keep the specificity high.
 
 #####B. How can I make my results more sensitive?
 
-In biobloomcategorizer try to decrease the score threshold (-s). If that still does not work, in biobloommaker try reducing the k-mer (-k) size to allow more tiles can help with sensitivity.
+In biobloomcategorizer try to decrease the score threshold (-s). If that still does not work, in biobloommaker try reducing the k-mer (-k) size to allow more tiles, which can help with sensitivity.
 
 #####C. How can I make my results more specific?
 
@@ -192,5 +192,4 @@ In biobloommaker decreasing the false positive rate (-f) and increasing the k-me
 In biobloomcategorizer use a min hit threshold (-m) of 1. This will use a faster rescreening categorization algorithm that uses jumping k-mer tiles to prescreen reads. This will decrease sensitivity but will increase speed. Large values will further decrease sensitivity.
 
 Using the min hit threshold only (-o) option will use only this screening method and not use the standard sliding tiles algorithm at all. This will greatly increase speed at the expense of sensitivity and specificity. This may be appropriate if your reads are long (>150bp), paired and have minimal read errors. If this method is used, it is recommended that you use an -m of at least 2 or 3.
-
 
