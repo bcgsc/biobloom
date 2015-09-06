@@ -13,6 +13,8 @@
 #define SEQEVAL_H_
 
 #include <string>
+#include <cmath>
+#include <cassert>
 #include "boost/unordered/unordered_map.hpp"
 #include "DataLayer/FastaReader.h"
 #include "Common/Options.h"
@@ -134,6 +136,73 @@ inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFil
 	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
 			&hashValues, &subtract);
 }
+
+/*
+ * Evaluation algorithm based on minimum number of contiguous matching bases.
+ */
+inline bool evalMinMatchLen(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
+		unsigned minMatchLen, unsigned hashNum, vector<vector<size_t> > *hashValues,
+		const BloomFilter *subtract)
+{
+	ReadsProcessor proc(kmerSize);
+	// number of contiguous k-mers matched
+	unsigned matchLen = 0;
+	size_t l = rec.seq.length();
+
+	for (size_t i = 0; i < l + kmerSize - 1; ++i) {
+		// quit early if there is no hope
+		if (l - i + matchLen < minMatchLen)
+			return false;
+		// get 2-bit encoding of k-mer at index i
+		const unsigned char* kmer = proc.prepSeq(rec.seq, i);
+		if (kmer == NULL) {
+			matchLen = 0;
+			continue;
+		}
+		// compute Bloom filter hash functions
+		vector<size_t> hash = multiHash(kmer, hashNum, kmerSize);
+		// cache hash values for future use
+		if (hashValues != NULL)
+			(*hashValues)[i] = hash;
+		// ignore k-mers in subtract filter
+		if (subtract != NULL && subtract->contains(hash)) {
+			matchLen = 0;
+			continue;
+		}
+		if (filter.contains(hash)) {
+			if (matchLen == 0)
+				matchLen = kmerSize;
+			else
+				++matchLen;
+		}
+		else {
+			matchLen = 0;
+		}
+		// if min match length reached
+		if (matchLen >= minMatchLen)
+			return true;
+	}
+	return false;
+}
+
+enum EvalMode { EVAL_STANDARD, EVAL_MIN_MATCH_LEN };
+
+inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
+		double threshold, double antiThreshold, unsigned hashNum,
+		vector<vector<size_t> > *hashValues, const BloomFilter *subtract, EvalMode mode)
+{
+	switch(mode) {
+	case EVAL_MIN_MATCH_LEN:
+		return evalMinMatchLen(rec, kmerSize, filter, (unsigned)round(threshold),
+			hashNum, hashValues, subtract);
+	case EVAL_STANDARD:
+	default:
+		return evalSingle(rec, kmerSize, filter, threshold, antiThreshold,
+			hashNum, hashValues, subtract);
+	}
+	assert(false);
+}
+
 /*
  * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
  * Returns score and does not have a stopping threshold
