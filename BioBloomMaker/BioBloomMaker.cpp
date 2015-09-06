@@ -11,6 +11,7 @@
 #include <iostream>
 #include "BloomFilterGenerator.h"
 #include "Common/BloomFilterInfo.h"
+#include "Common/SeqEval.h"
 #include <boost/unordered/unordered_map.hpp>
 #include <getopt.h>
 #include "config.h"
@@ -63,7 +64,12 @@ void printHelpDialog() {
 		"                         wish to create.\n"
 		"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 		"                         is determined from sequences sizes within files. [0]\n"
-		"  -r, --progressive=N    Progressive filter creation. Score threshold is N.\n"
+		"  -r, --progressive=N    Progressive filter creation. The score threshold is\n"
+		"                         specified by N, which may be either a floating point score\n"
+		"                         between 0 and 1 or a positive integer.  If N is a\n"
+		"                         positive integer, it is interpreted as the minimum\n"
+		"                         number of contiguous matching bases required for a\n"
+		"                         match.\n"
 		"\n"
 		"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
@@ -87,6 +93,7 @@ int main(int argc, char *argv[]) {
 	size_t entryNum = 0;
 	double progressive = -1;
 	bool inclusive = false;
+	SeqEval::EvalMode evalMode = SeqEval::EVAL_STANDARD;
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -192,15 +199,28 @@ int main(int argc, char *argv[]) {
 		}
 		case 'r': {
 			stringstream convert(optarg);
-			if (!(convert >> progressive)) {
-				cerr << "Error - Invalid set of bloom filter parameters! r: "
+			unsigned matchLen;
+			// if arg is a positive integer > 1, interpret as minimum match
+			// length in bases
+			if ((convert >> matchLen) && matchLen > 1) {
+				progressive = matchLen;
+				evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
+			} else {
+				// not a positive integer > 1, so interpret as floating
+				// point score between 0 and 1
+				stringstream convert2(optarg);
+				if (!(convert2 >> progressive)) {
+					cerr << "Error - Invalid set of bloom filter parameters! r: "
 						<< optarg << endl;
-				return 0;
-			}
-			if (progressive < 0 || progressive > 1) {
-				cerr << "Error - s must be between 0 and 1, input given:"
+					return 0;
+				}
+				if (progressive < 0 || progressive > 1) {
+					cerr << "Error - s must be a positive integer or a floating "
+						<< "point between 0 and 1. Input given:"
 						<< optarg << endl;
-				exit(EXIT_FAILURE);
+					exit(EXIT_FAILURE);
+				}
+				evalMode = SeqEval::EVAL_STANDARD;
 			}
 			break;
 		}
@@ -289,7 +309,7 @@ int main(int argc, char *argv[]) {
 		}
 		redundNum = filterGen.generateProgressive(
 				outputDir + filterPrefix + ".bf", progressive, file1, file2,
-				mode, subtractFilter);
+				mode, evalMode, subtractFilter);
 	} else if (!subtractFilter.empty()) {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
 				subtractFilter);
@@ -300,7 +320,7 @@ int main(int argc, char *argv[]) {
 		}
 		redundNum = filterGen.generateProgressive(
 				outputDir + filterPrefix + ".bf", progressive, file1, file2,
-				mode);
+				mode, evalMode);
 	} else {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
 	}

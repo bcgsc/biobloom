@@ -18,6 +18,7 @@
 #include "boost/unordered/unordered_map.hpp"
 #include "DataLayer/FastaReader.h"
 #include "Common/Options.h"
+#include "Common/ReadsProcessor.h"
 
 using namespace std;
 using namespace boost;
@@ -187,7 +188,7 @@ inline bool evalMinMatchLen(const FastqRecord &rec, unsigned kmerSize, const Blo
 
 enum EvalMode { EVAL_STANDARD, EVAL_MIN_MATCH_LEN };
 
-inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
+inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
 		double threshold, double antiThreshold, unsigned hashNum,
 		vector<vector<size_t> > *hashValues, const BloomFilter *subtract, EvalMode mode)
 {
@@ -201,6 +202,22 @@ inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFil
 			hashNum, hashValues, subtract);
 	}
 	assert(false);
+}
+
+inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
+		double threshold, double antiThreshold, unsigned hashNum,
+		vector<vector<size_t> > &hashValues, const BloomFilter &subtract, EvalMode mode)
+{
+	return evalRead(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
+		&hashValues, &subtract, mode);
+}
+
+inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
+		double threshold, double antiThreshold, unsigned hashNum,
+		vector<vector<size_t> > &hashValues, EvalMode mode)
+{
+	return evalRead(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
+		&hashValues, NULL, mode);
 }
 
 /*

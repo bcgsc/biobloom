@@ -117,7 +117,7 @@ size_t BloomFilterGenerator::generate(const string &filename) {
  */
 size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		double score, const string &file1, const string &file2, createMode mode,
-		const string &subtractFilter )
+		const SeqEval::EvalMode evalMode, const string &subtractFilter )
 {
 
 	//need the number of hash functions used to be greater than 0
@@ -213,10 +213,10 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				vector<vector<size_t> > hashValues2(size2);
 				switch (mode) {
 				case PROG_INC: {
-					if (SeqEval::evalSingle(rec1, m_kmerSize, filter,
+					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
 									score * double(size1),
 									(1.0 - score) * double(size1), m_hashNum,
-									hashValues1, filterSub)) {
+									hashValues1, filterSub, evalMode)) {
 						//load remaining sequences
 						for (unsigned i = 0; i < size1; ++i) {
 							if (hashValues1[i].empty()) {
@@ -233,9 +233,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									rec2.seq, i);
 							checkAndInsertKmer(currentSeq, filter);
 						}
-					} else if (SeqEval::evalSingle(rec2, m_kmerSize, filter,
+					} else if (SeqEval::evalRead(rec2, m_kmerSize, filter,
 									score * size2, (1.0 - score) * size2, m_hashNum,
-									hashValues2, filterSub)) {
+									hashValues2, filterSub, evalMode)) {
 						//load remaining sequences
 						for (unsigned i = 0; i < size1; ++i) {
 							if (hashValues1[i].empty()) {
@@ -260,13 +260,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 					break;
 				}
 				case PROG_STD: {
-					if (SeqEval::evalSingle(rec1, m_kmerSize, filter,
+					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
 							score * double(size1),
 							(1.0 - score) * double(size1), m_hashNum,
-							hashValues1, filterSub)
-							&& SeqEval::evalSingle(rec2, m_kmerSize, filter,
+							hashValues1, filterSub, evalMode)
+							&& SeqEval::evalRead(rec2, m_kmerSize, filter,
 									score * size2, (1.0 - score) * size2,
-									m_hashNum, hashValues2, filterSub)) {
+									m_hashNum, hashValues2, filterSub, evalMode)) {
 						//load remaining sequences
 						for (unsigned i = 0; i < size1; ++i) {
 							if (hashValues1[i].empty()) {
@@ -320,7 +320,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
  * Outputs to fileName path
  */
 size_t BloomFilterGenerator::generateProgressive(const string &filename,
-		double score, const string &file1, const string &file2, createMode mode)
+		double score, const string &file1, const string &file2, createMode mode,
+		const SeqEval::EvalMode evalMode)
 {
 
 	//need the number of hash functions used to be greater than 0
@@ -400,10 +401,10 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				vector<vector<size_t> > hashValues2(size2);
 				switch (mode) {
 				case PROG_INC: {
-					if (SeqEval::evalSingle(rec1, m_kmerSize, filter,
+					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
 									score * double(size1),
 									(1.0 - score) * double(size1), m_hashNum,
-									hashValues1)) {
+									hashValues1, evalMode)) {
 						//load remaining sequences
 						for (unsigned i = 0; i < size1; ++i) {
 							if (hashValues1[i].empty()) {
@@ -420,9 +421,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									rec2.seq, i);
 							checkAndInsertKmer(currentSeq, filter);
 						}
-					} else if (SeqEval::evalSingle(rec2, m_kmerSize, filter,
+					} else if (SeqEval::evalRead(rec2, m_kmerSize, filter,
 									score * size2, (1.0 - score) * size2, m_hashNum,
-									hashValues2)) {
+									hashValues2, evalMode)) {
 						//load remaining sequences
 						for (unsigned i = 0; i < size1; ++i) {
 							if (hashValues1[i].empty()) {
@@ -447,13 +448,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 					break;
 				}
 				case PROG_STD: {
-					if (SeqEval::evalSingle(rec1, m_kmerSize, filter,
+					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
 							score * double(size1),
 							(1.0 - score) * double(size1), m_hashNum,
-							hashValues1)
-							&& SeqEval::evalSingle(rec2, m_kmerSize, filter,
+							hashValues1, evalMode)
+							&& SeqEval::evalRead(rec2, m_kmerSize, filter,
 									score * size2, (1.0 - score) * size2,
-									m_hashNum, hashValues2)) {
+									m_hashNum, hashValues2, evalMode)) {
 						//load remaining sequences
 						for (unsigned i = 0; i < size1; ++i) {
 							if (hashValues1[i].empty()) {
