@@ -277,6 +277,19 @@ int main(int argc, char *argv[]) {
 			inputFiles.pop_back();
 			file2 = inputFiles.back();
 			inputFiles.pop_back();
+			cerr << "Building Bloom filter in progessive mode. ";
+			switch(evalMode) {
+				case SeqEval::EVAL_MIN_MATCH_LEN:
+					cerr << "Min match length = "
+						<< (unsigned)round(progressive)
+						<< " bp" << endl;
+					break;
+				case SeqEval::EVAL_STANDARD:
+				default:
+					cerr << "Score threshold = "
+						<< progressive << endl;
+					break;
+			}
 		} else {
 			cerr << "require a least 3 input when using progressive mode"
 					<< endl;
