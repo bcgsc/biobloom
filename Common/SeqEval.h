@@ -220,6 +220,13 @@ inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilte
 		&hashValues, NULL, mode);
 }
 
+inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
+		double threshold, double antiThreshold, EvalMode mode)
+{
+	return evalRead(rec, kmerSize, filter, threshold, antiThreshold,
+		filter.getHashNum(), NULL, NULL, mode);
+}
+
 /*
  * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
  * Returns score and does not have a stopping threshold

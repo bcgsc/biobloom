@@ -821,7 +821,8 @@ void BioBloomClassifier::evaluateReadCollab(const FastqRecord &rec,
 	{
 		string filterID = i->second;
 		BloomFilter &tempFilter = *m_filtersSingle.at(filterID);
-		if(SeqEval::evalSingle(rec, kmerSize, tempFilter, threshold, antiThreshold))
+		if(SeqEval::evalRead(rec, kmerSize, tempFilter, threshold,
+			antiThreshold, getEvalMode()))
 		{
 			hits[filterID] = true;
 			break;
@@ -935,7 +936,8 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 		}
 		if (pass) {
 			BloomFilter &tempFilter = *m_filtersSingle.at(*i);
-			hits[*i] = SeqEval::evalSingle(rec, kmerSize, tempFilter, threshold, antiThreshold);
+			hits[*i] = SeqEval::evalRead(rec, kmerSize, tempFilter, threshold,
+				antiThreshold, getEvalMode());
 		}
 	}
 }
