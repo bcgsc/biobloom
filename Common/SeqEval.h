@@ -19,6 +19,7 @@
 #include "DataLayer/FastaReader.h"
 #include "Common/Options.h"
 #include "Common/ReadsProcessor.h"
+#include "Common/BloomFilter.h"
 
 using namespace std;
 using namespace boost;

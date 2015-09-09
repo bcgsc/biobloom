@@ -3,7 +3,8 @@ bin_PROGRAMS = ReadProcessorTests \
 	BloomFilterCategorizerTests \
 	BloomFilterMakerTests \
 	WindowedParser \
-	BloomFilterInfoTests
+	BloomFilterInfoTests \
+	SeqEvalTests
 
 ReadProcessorTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a -lz
@@ -37,3 +38,7 @@ BloomFilterCategorizerTests_SOURCES = BloomFilterCategorizerTests.cpp
 BloomFilterCategorizerTests_CPPFLAGS = -I$(top_srcdir)/BioBloomCategorizer \
 	-I$(top_srcdir)/Common \
 	-I$(top_srcdir)/DataLayer
+
+SeqEvalTests_LDADD = $(top_builddir)/Common/libcommon.a
+SeqEvalTests_SOURCES = SeqEvalTests.cpp
+SeqEvalTests_CPPFLAGS = -I$(top_srcdir)/Common
