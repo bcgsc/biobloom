@@ -26,6 +26,17 @@ using namespace boost;
 
 namespace SeqEval {
 
+inline double denormalizeScore(double score, unsigned kmerSize, size_t seqLen)
+{
+	assert(score >= 0 && score <= 1);
+	return score * (seqLen - kmerSize + 1);
+}
+
+inline double normalizeScore(double score, unsigned kmerSize, size_t seqLen)
+{
+	return score / (seqLen - kmerSize + 1);
+}
+
 /*
  * Evaluation algorithm with hashValue storage (minimize redundant work)
  */
@@ -33,7 +44,11 @@ inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFil
 		double threshold, double antiThreshold, unsigned hashNum,
 		vector<vector<size_t> > *hashValues, const BloomFilter *subtract)
 {
+	threshold = denormalizeScore(threshold, kmerSize, rec.seq.length());
+	antiThreshold = floor(denormalizeScore(antiThreshold, kmerSize, rec.seq.length()));
+
 	ReadsProcessor proc(kmerSize);
+
 	size_t currentLoc = 0;
 	double score = 0;
 	unsigned antiScore = 0;
@@ -356,8 +371,14 @@ inline bool eval(const FastqRecord &rec, unsigned kmerSize,
 		vector<bool> &visited, vector<vector<size_t> > &hashValues,
 		unsigned &currentLoc, double &score, ReadsProcessor &proc)
 {
+	threshold = denormalizeScore(threshold, kmerSize, rec.seq.length());
+	antiThreshold = denormalizeScore(antiThreshold, kmerSize, rec.seq.length());
+	score = denormalizeScore(score, kmerSize, rec.seq.length());
+
 	unsigned antiScore = 0;
 	unsigned streak = 0;
+	bool hit = false;
+
 	while (rec.seq.length() >= currentLoc + kmerSize) {
 
 		//prepare hash values for filter
@@ -382,12 +403,14 @@ inline bool eval(const FastqRecord &rec, unsigned kmerSize,
 					++streak;
 					if (threshold <= score) {
 						++currentLoc;
-						return true;
+						hit = true;
+						break;
 					}
 				}
 				else if (antiThreshold <= ++antiScore) {
 					++currentLoc;
-					return false;
+					hit = false;
+					break;
 				}
 				++currentLoc;
 			} else {
@@ -399,7 +422,8 @@ inline bool eval(const FastqRecord &rec, unsigned kmerSize,
 					++currentLoc;
 				}
 				if (antiThreshold <= antiScore) {
-					return false;
+					hit = false;
+					break;
 				}
 			}
 		} else {
@@ -410,13 +434,15 @@ inline bool eval(const FastqRecord &rec, unsigned kmerSize,
 					++currentLoc;
 
 					if (threshold <= score) {
-						return true;
+						hit = true;
+						break;
 					}
 					continue;
 				}
 				else if (antiThreshold <= ++antiScore) {
 					++currentLoc;
-					return false;
+					hit = false;
+					break;
 				}
 			} else {
 				//if has non atcg character
@@ -430,12 +456,14 @@ inline bool eval(const FastqRecord &rec, unsigned kmerSize,
 				antiScore += kmerSize;
 			}
 			if (antiThreshold <= antiScore) {
-				return false;
+				hit = false;
+				break;
 			}
 			streak = 0;
 		}
 	}
-	return false;
+	score = normalizeScore(score, kmerSize, rec.seq.length());
+	return hit;
 }
 
 }

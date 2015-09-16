@@ -811,18 +811,14 @@ void BioBloomClassifier::evaluateReadCollab(const FastqRecord &rec,
 		firstPassHits.insert(pair<unsigned, string>(screeningHits, *i));
 	}
 
-	double normalizationValue = rec.seq.length() - kmerSize + 1;
-	double threshold = m_scoreThreshold * normalizationValue;
-	size_t antiThreshold = static_cast<size_t>((1.0 - m_scoreThreshold) * normalizationValue);
-
 	//evaluate promising group first
 	for (multimap<unsigned, string>::reverse_iterator i =
 			firstPassHits.rbegin(); i != firstPassHits.rend(); ++i)
 	{
 		string filterID = i->second;
 		BloomFilter &tempFilter = *m_filtersSingle.at(filterID);
-		if(SeqEval::evalRead(rec, kmerSize, tempFilter, threshold,
-			antiThreshold, getEvalMode()))
+		if(SeqEval::evalRead(rec, kmerSize, tempFilter, m_scoreThreshold,
+			1.0 - m_scoreThreshold, getEvalMode()))
 		{
 			hits[filterID] = true;
 			break;
@@ -904,10 +900,6 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 	//todo: read proc possibly unneeded, see evalSingle
 	ReadsProcessor proc(kmerSize);
 
-	double normalizationValue = rec.seq.length() - kmerSize + 1;
-	double threshold = m_scoreThreshold * normalizationValue;
-	size_t antiThreshold = static_cast<size_t>((1.0 - m_scoreThreshold) * normalizationValue);
-
 	for (vector<string>::const_iterator i = idsInFilter.begin();
 			i != idsInFilter.end(); ++i)
 	{
@@ -936,8 +928,8 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 		}
 		if (pass) {
 			BloomFilter &tempFilter = *m_filtersSingle.at(*i);
-			hits[*i] = SeqEval::evalRead(rec, kmerSize, tempFilter, threshold,
-				antiThreshold, getEvalMode());
+			hits[*i] = SeqEval::evalRead(rec, kmerSize, tempFilter,
+				m_scoreThreshold, 1.0 - m_scoreThreshold, getEvalMode());
 		}
 	}
 }
@@ -1003,7 +995,7 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
 			hits[bestFilters[i]] = true;
 		}
 	}
-	return maxScore / (rec.seq.length() - kmerSize + 1);
+	return SeqEval::normalizeScore(maxScore, kmerSize, rec.seq.length());
 }
 
 /*
@@ -1023,14 +1015,11 @@ void BioBloomClassifier::evaluateReadScore(const FastqRecord &rec,
 	//todo: read proc possibly unneeded, see evalSingle
 	ReadsProcessor proc(kmerSize);
 
-	size_t normalizationValue = rec.seq.length() - kmerSize + 1;
-	double threshold = m_scoreThreshold * normalizationValue;
-	double antiThreshold = normalizationValue - threshold;
-
+	size_t numKmers = rec.seq.length() - kmerSize + 1;
 	unsigned hitCount = 0;
 
-	vector<vector<size_t> > hashValues(normalizationValue);
-	vector<bool> visited(normalizationValue);
+	vector<vector<size_t> > hashValues(numKmers);
+	vector<bool> visited(numKmers);
 
 	//position of sequences
 	vector<unsigned> pos(idsInFilter.size(), 0);
@@ -1067,8 +1056,9 @@ void BioBloomClassifier::evaluateReadScore(const FastqRecord &rec,
 
 			//Evaluate sequences until threshold
 			//record end location
-			hits[idsInFilter[i]] = SeqEval::eval(rec, kmerSize, tempFilter, threshold,
-					antiThreshold, visited, hashValues, pos[i], scores[i], proc);
+			hits[idsInFilter[i]] = SeqEval::eval(rec, kmerSize, tempFilter,
+				m_scoreThreshold, 1.0 - m_scoreThreshold, visited, hashValues,
+				pos[i], scores[i], proc);
 			hitCount += hits[idsInFilter[i]];
 		}
 	}
@@ -1080,9 +1070,8 @@ void BioBloomClassifier::evaluateReadScore(const FastqRecord &rec,
 
 			//Evaluate sequences until threshold
 			//record end location
-			SeqEval::eval(rec, kmerSize, tempFilter, normalizationValue, 0, visited, hashValues,
+			SeqEval::eval(rec, kmerSize, tempFilter, 1, 0, visited, hashValues,
 					pos[i], scores[i], proc);
-			scores[i] /= normalizationValue;
 		}
 	}
 }

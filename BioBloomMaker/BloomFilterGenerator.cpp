@@ -207,18 +207,16 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 			string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 			if (tempStr1 == tempStr2) {
-				unsigned size1 = rec1.seq.length() - m_kmerSize + 1;
-				unsigned size2 = rec2.seq.length() - m_kmerSize + 1;
-				vector<vector<size_t> > hashValues1(size1);
-				vector<vector<size_t> > hashValues2(size2);
+				size_t numKmers = rec1.seq.length() - m_kmerSize + 1;
+				vector<vector<size_t> > hashValues1(numKmers);
+				vector<vector<size_t> > hashValues2(numKmers);
 				switch (mode) {
 				case PROG_INC: {
 					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
-									score * double(size1),
-									(1.0 - score) * double(size1), m_hashNum,
-									hashValues1, filterSub, evalMode)) {
+							score, 1.0 - score, m_hashNum,
+							hashValues1, filterSub, evalMode)) {
 						//load remaining sequences
-						for (unsigned i = 0; i < size1; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
@@ -228,16 +226,16 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							}
 						}
 						//load store second read
-						for (unsigned i = 0; i < size2; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							const unsigned char* currentSeq = proc.prepSeq(
 									rec2.seq, i);
 							checkAndInsertKmer(currentSeq, filter);
 						}
 					} else if (SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score * size2, (1.0 - score) * size2, m_hashNum,
-									hashValues2, filterSub, evalMode)) {
+							score, 1.0 - score, m_hashNum,
+							hashValues2, filterSub, evalMode)) {
 						//load remaining sequences
-						for (unsigned i = 0; i < size1; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
@@ -247,7 +245,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							}
 						}
 						//load store second read
-						for (unsigned i = 0; i < size2; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							if (hashValues2[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec2.seq, i);
@@ -261,14 +259,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				}
 				case PROG_STD: {
 					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
-							score * double(size1),
-							(1.0 - score) * double(size1), m_hashNum,
+							score, 1.0 - score, m_hashNum,
 							hashValues1, filterSub, evalMode)
 							&& SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score * size2, (1.0 - score) * size2,
-									m_hashNum, hashValues2, filterSub, evalMode)) {
+								score , 1.0 - score, m_hashNum, hashValues2,
+								filterSub, evalMode)) {
 						//load remaining sequences
-						for (unsigned i = 0; i < size1; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
@@ -278,7 +275,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							}
 						}
 						//load store second read
-						for (unsigned i = 0; i < size2; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							if (hashValues2[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec2.seq, i);
@@ -395,18 +392,16 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 			string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 			if (tempStr1 == tempStr2) {
-				unsigned size1 = rec1.seq.length() - m_kmerSize + 1;
-				unsigned size2 = rec2.seq.length() - m_kmerSize + 1;
-				vector<vector<size_t> > hashValues1(size1);
-				vector<vector<size_t> > hashValues2(size2);
+				size_t numKmers = rec1.seq.length() - m_kmerSize + 1;
+				vector<vector<size_t> > hashValues1(numKmers);
+				vector<vector<size_t> > hashValues2(numKmers);
 				switch (mode) {
 				case PROG_INC: {
 					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
-									score * double(size1),
-									(1.0 - score) * double(size1), m_hashNum,
-									hashValues1, evalMode)) {
+							score, 1.0 - score, m_hashNum,
+							hashValues1, evalMode)) {
 						//load remaining sequences
-						for (unsigned i = 0; i < size1; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
@@ -416,16 +411,15 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							}
 						}
 						//load store second read
-						for (unsigned i = 0; i < size2; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							const unsigned char* currentSeq = proc.prepSeq(
 									rec2.seq, i);
 							checkAndInsertKmer(currentSeq, filter);
 						}
 					} else if (SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score * size2, (1.0 - score) * size2, m_hashNum,
-									hashValues2, evalMode)) {
+							score, 1.0 - score, m_hashNum, hashValues2, evalMode)) {
 						//load remaining sequences
-						for (unsigned i = 0; i < size1; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
@@ -435,7 +429,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							}
 						}
 						//load store second read
-						for (unsigned i = 0; i < size2; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							if (hashValues2[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec2.seq, i);
@@ -449,14 +443,11 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				}
 				case PROG_STD: {
 					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
-							score * double(size1),
-							(1.0 - score) * double(size1), m_hashNum,
-							hashValues1, evalMode)
+							score, 1.0 - score, m_hashNum, hashValues1, evalMode)
 							&& SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score * size2, (1.0 - score) * size2,
-									m_hashNum, hashValues2, evalMode)) {
+								score, 1.0 - score, m_hashNum, hashValues2, evalMode)) {
 						//load remaining sequences
-						for (unsigned i = 0; i < size1; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
@@ -466,7 +457,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							}
 						}
 						//load store second read
-						for (unsigned i = 0; i < size2; ++i) {
+						for (unsigned i = 0; i < numKmers; ++i) {
 							if (hashValues2[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec2.seq, i);
