@@ -213,6 +213,8 @@ int main(int argc, char *argv[])
 			if ((convert >> matchLen) && matchLen > 1) {
 				score = (unsigned)matchLen;
 				evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
+				cerr << "Min match length threshold: " << matchLen
+					<<" bp" << endl;
 			} else {
 				// not a positive integer > 1, so interpret as floating
 				// point score between 0 and 1
@@ -229,6 +231,11 @@ int main(int argc, char *argv[])
 					exit(EXIT_FAILURE);
 				}
 				evalMode = SeqEval::EVAL_STANDARD;
+				if (score == 1)
+					cerr << "Running in 'best match' mode (no score threshold)"
+						<< endl;
+				else
+					cerr << "Min score threshold: " << score << endl;
 			}
 			break;
 		}
@@ -389,6 +396,9 @@ int main(int argc, char *argv[])
 	//load filters
 	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix,
 			minHit, minHitOnly, withScore);
+
+	//floating point score or min match length
+	BBC.setEvalMode(evalMode);
 
 	if (collab && minHit) {
 		cerr << "Error: -m -c outputs types cannot be both set" << endl;
