@@ -37,6 +37,7 @@ Table of Contents
   * What is inside the Bloom Filter Info File?
     * Obtaining the number of unique k-mers in the reference
     * Obtaining the number of redundant k-mers in the reference
+   * Specifications on memory, cpu and storage requirements
 6. [Advanced options and Best Practices](#6)
  
 <a name="1"></a>
@@ -167,29 +168,59 @@ Within the information txt file for each bloom filter there is a “num_entries�
 ######ii. Obtaining the number of redundant k-mers in the reference:
 Within the information txt file for each bloom filter there is a “redundant_sequences” entry that lets you know how many redundant k-mers have been added to the filter. It is an upper bound estimate due to possible false positives. The “redundant_fpr” represents the probability that any one random redundant k-mer is actually unique. Thus, to get the approximate number of unique k-mers take the “redundant_fpr” value and multiply it with the “redundant_sequences” sequences and add that to the “num_entries”.
 
+#####F. Specifications on memory, cpu and storage requirements
+
+Memory:
+Memory usage is determined by the size of the database given so there is no "optimal" memory requirements. There is a bit of overhead but the formula roughly matches this: m=(-ln(p)/((ln(2))^2)) * n where m is size of the filter in bits, p is the FPR and n is the number of elements (number of bases in reference fasta file).
+
+If used in an job based automated cluster environment either the user can specify memory of you can infer memory usage based on the input bloom filter sizes (e.g. size of the input bf files + 100mb overhead).
+
+Storage:
+When creating filters:
+Again, as alluded to above, storage is dependant of the input reference fasta file, following the same formula. Here is a nice sanity check: memory usage is roughly equal the sum of sizes of the raw bloom filter file used and vice versa.
+
+When filtering reads:
+The size of the output is proportional to the input since the results need to be stored. The contents of the output fastq files can be compressed directly as needed with the --gz option however (which is what zlib was needed in the installation).
+
+BBT does not create temporary files so scratch space is not needed.
+
+If used in an job based automated cluster environment where users have their own allocated storage they should make sure they have space for the output bloom filter. When categorizing reads they should make sure they have space for the output (if they want the reads --fa or --fq) which will be roughly the size of the input files since all they are doing is partitioning the reads the reads.
+
+CPU:
+There is no cpu minimum speed or number of cores, though it will run faster with more and faster cpus. In terms of a maximum, speed can become I/O bound quickly. When using only a few bloom filters(<5) in BBC the number of cores (>4) may not matter too much, but you will get better performance with multiple threads if more bloom filters are used at the same time. Also BBM does not yet fully support threads (though if critically needed I think I could implement this fully - contact me).
+
+Also, very likely since I use some intrinstic functions, a 64bit (AMD64) CPU may be required.
+
 <a name="6"></a>
 6. Advanced options and Best Practices
 ------
+#####A. How can distinguish between organisms that share lots of k-mer content?
 
-This section is out of date, updates to this section will be added
+Using the `--with_score` (`-w`) in biobloomcategorizer will output the score of each filter (in the order specified with `-f`) in the header of the multimatch filter. 
 
-#####A. How can I reduce my memory usage?
+Using this option will make the program run a bit slower but will allow users to see the scores assigned to each filter, so as to make a more informed decision about how the read should be binned.
 
-Memory usage is directly dependent on the filter size, which is in turn a function of the false positive rate. In biobloommaker reducing memory increases the false positive rate (-f) until the memory usage is acceptable. You may need to increase score threshold (-s) in biobloomcategorizer to keep the specificity high.
+#####B. How can I reduce my memory usage?
 
-#####B. How can I make my results more sensitive?
+Memory usage is directly dependent on the filter size, which is in turn a function of the false positive rate. In biobloommaker reducing memory increases the false positive rate (`-f`) until the memory usage is acceptable. You may need to increase score threshold (`-s`) in biobloomcategorizer to keep the specificity high.
 
-In biobloomcategorizer try to decrease the score threshold (-s). If that still does not work, in biobloommaker try reducing the k-mer (-k) size to allow more tiles, which can help with sensitivity.
+#####C. How can I make my results more sensitive?
 
-#####C. How can I make my results more specific?
+In biobloomcategorizer try to decrease the score threshold (`-s`). If that still does not work, in biobloommaker try reducing the k-mer (`-k`) size to allow more tiles, which can help with sensitivity.
 
-In biobloomcategorizer you can increase score threshold (-s).
+#####D. How can I make my results more specific?
 
-In biobloommaker decreasing the false positive rate (-f) and increasing the k-mer (-k) size to allow more tiles can help with specificity. Decreasing the filter false positive rate will increase memory usage.
+In biobloomcategorizer you can increase score threshold (`-s`).
 
-#####D. How can I make the program faster?
+In biobloommaker decreasing the false positive rate (`-f`) and increasing the k-mer (`-k`) size to allow more tiles can help with specificity. Decreasing the filter false positive rate will increase memory usage.
 
-In biobloomcategorizer use a min hit threshold (-m) of 1. This will use a faster rescreening categorization algorithm that uses jumping k-mer tiles to prescreen reads. This will decrease sensitivity but will increase speed. Large values will further decrease sensitivity.
+#####E. How can I make the program faster?
+There are multiple ways to speed up biobloomcategorizer. Here are a few options:
 
-Using the min hit threshold only (-o) option will use only this screening method and not use the standard sliding tiles algorithm at all. This will greatly increase speed at the expense of sensitivity and specificity. This may be appropriate if your reads are long (>150bp), paired and have minimal read errors. If this method is used, it is recommended that you use an -m of at least 2 or 3.
+The `--ordered` option, other than priotizing the first filters in the list (specified by `-f`), will have an added benefit of speeding up the program by avoiding some evaluations if a match is already found. Furthermore, because of this speed up, this option maybe appropriate even in situations where no hierarchy is desired (filters must be unrelated in this case).
+
+In biobloomcategorizer set a min hit threshold (`-m`) >0. This will use a faster rescreening categorization algorithm that uses jumping k-mer tiles to prescreen reads. This will decrease sensitivity but will increase speed. Large values will further decrease sensitivity.
+
+Finally if speed is still an issue, using the min hit threshold only (`-o`) option will use only this screening method and not use the standard sliding tiles algorithm at all. This will greatly increase speed at the expense of sensitivity and specificity. This may be appropriate if your reads are long (>150bp), paired and have minimal read errors. If this method is used, it is recommended that you use an -m of at least 2 or 3.
+
 
