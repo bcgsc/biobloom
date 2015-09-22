@@ -189,8 +189,6 @@ If used in an job based automated cluster environment where users have their own
 CPU:
 There is no cpu minimum speed or number of cores, though it will run faster with more and faster cpus. In terms of a maximum, speed can become I/O bound quickly. When using only a few bloom filters(<5) in BBC the number of cores (>4) may not matter too much, but you will get better performance with multiple threads if more bloom filters are used at the same time. Also BBM does not yet fully support threads (though if critically needed I think I could implement this fully - contact me).
 
-Also, very likely since I use some intrinstic functions, a 64bit (AMD64) CPU may be required.
-
 <a name="6"></a>
 6. Advanced options and Best Practices
 ------
