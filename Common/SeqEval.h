@@ -208,6 +208,14 @@ inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilte
 		double threshold, double antiThreshold, unsigned hashNum,
 		vector<vector<size_t> > *hashValues, const BloomFilter *subtract, EvalMode mode)
 {
+	// compute enough hash values to check both the main Bloom filter
+	// and the subtractive Bloom filter
+	if (subtract != NULL) {
+		if (subtract->getHashNum() > hashNum) {
+			hashNum = subtract->getHashNum();
+		}
+	}
+
 	switch(mode) {
 	case EVAL_MIN_MATCH_LEN:
 		return evalMinMatchLen(rec, kmerSize, filter, (unsigned)round(threshold),
