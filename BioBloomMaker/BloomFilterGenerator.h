@@ -10,6 +10,8 @@
 #include <boost/unordered/unordered_map.hpp>
 #include <vector>
 #include "Common/BloomFilter.h"
+#include "Common/SeqEval.h"
+
 using namespace std;
 
 enum createMode{PROG_STD, PROG_INC};
@@ -27,10 +29,11 @@ public:
 	size_t generate(const string &filename);
 	size_t generate(const string &filename, const string &subtractFilter);
 	size_t generateProgressive(const string &filename, double score,
-			const string &file1, const string &file2, createMode mode);
+			const string &file1, const string &file2, createMode mode,
+			const SeqEval::EvalMode evalMode);
 	size_t generateProgressive(const string &filename, double score,
 			const string &file1, const string &file2, createMode mode,
-			const string &subtractFilter);
+			const SeqEval::EvalMode evalMode, const string &subtractFilter);
 	void setFilterSize(size_t bits);
 
 	void setHashFuncs(unsigned numFunc);

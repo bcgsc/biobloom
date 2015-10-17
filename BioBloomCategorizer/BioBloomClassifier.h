@@ -65,6 +65,16 @@ public:
 		m_inclusive = true;
 	}
 
+	void setEvalMode(SeqEval::EvalMode mode)
+	{
+		m_evalMode = mode;
+	}
+
+	SeqEval::EvalMode getEvalMode()
+	{
+		return m_evalMode;
+	}
+
 	void setMainFilter(const string &filtername);
 
 	virtual ~BioBloomClassifier();
@@ -84,6 +94,10 @@ private:
 
 	// modes of filtering
 	mode m_mode;
+	// Match scoring method. Possible values:
+	// i) EVAL_STANDARD => score in range (0,1)
+	// ii) EVAL_MIN_MATCH_LEN => minimum match length (in bases)
+	SeqEval::EvalMode m_evalMode;
 
 	string m_mainFilter;
 	bool m_inclusive;
