@@ -105,6 +105,16 @@ size_t BloomFilterGenerator::generate(const string &filename) {
 	return m_redundancy;
 }
 
+void BloomFilterGenerator::printReadPair(const FastqRecord& rec1,
+		const FastqRecord& rec2)
+{
+#pragma omp critical(cout)
+	{
+		cout << rec1;
+		cout << rec2;
+	}
+}
+
 /*
  * Generates a bloom filter outputting it to a filename
  * Returns the m_redundancy rate of a Bloom Filter generated from a file.
@@ -117,7 +127,8 @@ size_t BloomFilterGenerator::generate(const string &filename) {
  */
 size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		double score, const string &file1, const string &file2, createMode mode,
-		const SeqEval::EvalMode evalMode, const string &subtractFilter )
+		const SeqEval::EvalMode evalMode, bool printReads,
+		const string &subtractFilter )
 {
 
 	//need the number of hash functions used to be greater than 0
@@ -232,6 +243,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									rec2.seq, i);
 							checkAndInsertKmer(currentSeq, filter);
 						}
+						if (printReads)
+							printReadPair(rec1, rec2);
 					} else if (SeqEval::evalRead(rec2, m_kmerSize, filter,
 							score, 1.0 - score, m_hashNum,
 							hashValues2, filterSub, evalMode)) {
@@ -255,6 +268,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 								insertKmer(hashValues2[i], filter);
 							}
 						}
+						if (printReads)
+							printReadPair(rec1, rec2);
 					}
 					break;
 				}
@@ -285,6 +300,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 								insertKmer(hashValues2[i], filter);
 							}
 						}
+						if (printReads)
+							printReadPair(rec1, rec2);
 					}
 					break;
 				}
@@ -319,7 +336,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
  */
 size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		double score, const string &file1, const string &file2, createMode mode,
-		const SeqEval::EvalMode evalMode)
+		const SeqEval::EvalMode evalMode, bool printReads)
 {
 
 	//need the number of hash functions used to be greater than 0
@@ -418,6 +435,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									rec2.seq, i);
 							checkAndInsertKmer(currentSeq, filter);
 						}
+						if (printReads)
+							printReadPair(rec1, rec2);
 					} else if (SeqEval::evalRead(rec2, m_kmerSize, filter,
 							score, 1.0 - score, m_hashNum, hashValues2, evalMode)) {
 						//load remaining sequences
@@ -440,6 +459,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 								insertKmer(hashValues2[i], filter);
 							}
 						}
+						if (printReads)
+							printReadPair(rec1, rec2);
 					}
 					break;
 				}
@@ -468,6 +489,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 								insertKmer(hashValues2[i], filter);
 							}
 						}
+						if (printReads)
+							printReadPair(rec1, rec2);
 					}
 					break;
 				}

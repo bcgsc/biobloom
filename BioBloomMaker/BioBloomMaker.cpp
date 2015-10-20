@@ -64,6 +64,8 @@ void printHelpDialog() {
 		"                         wish to create.\n"
 		"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 		"                         is determined from sequences sizes within files. [0]\n"
+		"  -P, --print_reads      During progressive filter creation, print recruited reads\n"
+		"                         to STDOUT in FASTQ format [disabled]\n"
 		"  -r, --progressive=N    Progressive filter creation. The score threshold is\n"
 		"                         specified by N, which may be either a floating point score\n"
 		"                         between 0 and 1 or a positive integer.  If N is a\n"
@@ -91,6 +93,7 @@ int main(int argc, char *argv[]) {
 	unsigned hashNum = 0;
 	string subtractFilter = "";
 	size_t entryNum = 0;
+	bool printReads = false;
 	double progressive = -1;
 	bool inclusive = false;
 	SeqEval::EvalMode evalMode = SeqEval::EVAL_STANDARD;
@@ -109,12 +112,13 @@ int main(int argc, char *argv[]) {
 					"subtract",	required_argument, NULL, 's' }, {
 					"num_ele", required_argument, NULL, 'n' }, {
 					"help", no_argument, NULL, 'h' }, {
+					"print_reads", no_argument, NULL, 'P' }, {
 					"progressive", required_argument, NULL, 'r' }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:r:i", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:i", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -197,6 +201,10 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		}
+		case 'P': {
+			printReads = true;
+			break;
+		}
 		case 'r': {
 			stringstream convert(optarg);
 			unsigned matchLen;
@@ -273,9 +281,9 @@ int main(int argc, char *argv[]) {
 
 	if (progressive != -1) {
 		if (inputFiles.size() > 2) {
-			file1 = inputFiles.back();
-			inputFiles.pop_back();
 			file2 = inputFiles.back();
+			inputFiles.pop_back();
+			file1 = inputFiles.back();
 			inputFiles.pop_back();
 			cerr << "Building Bloom filter in progessive mode. ";
 			switch(evalMode) {
@@ -322,7 +330,7 @@ int main(int argc, char *argv[]) {
 		}
 		redundNum = filterGen.generateProgressive(
 				outputDir + filterPrefix + ".bf", progressive, file1, file2,
-				mode, evalMode, subtractFilter);
+				mode, evalMode, printReads, subtractFilter);
 	} else if (!subtractFilter.empty()) {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
 				subtractFilter);
@@ -333,7 +341,7 @@ int main(int argc, char *argv[]) {
 		}
 		redundNum = filterGen.generateProgressive(
 				outputDir + filterPrefix + ".bf", progressive, file1, file2,
-				mode, evalMode);
+				mode, evalMode, printReads);
 	} else {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
 	}

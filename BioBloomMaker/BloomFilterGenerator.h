@@ -30,12 +30,14 @@ public:
 	size_t generate(const string &filename, const string &subtractFilter);
 	size_t generateProgressive(const string &filename, double score,
 			const string &file1, const string &file2, createMode mode,
-			const SeqEval::EvalMode evalMode);
+			const SeqEval::EvalMode evalMode, bool printReads);
 	size_t generateProgressive(const string &filename, double score,
 			const string &file1, const string &file2, createMode mode,
-			const SeqEval::EvalMode evalMode, const string &subtractFilter);
+			const SeqEval::EvalMode evalMode, bool printReads,
+			const string &subtractFilter);
 	void setFilterSize(size_t bits);
 
+	void printReadPair(const FastqRecord& rec1, const FastqRecord& rec2);
 	void setHashFuncs(unsigned numFunc);
 	size_t getTotalEntries() const;
 	size_t getExpectedEntries() const;
