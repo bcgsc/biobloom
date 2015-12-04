@@ -111,7 +111,7 @@ void printHelpDialog()
 	"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
 	"                         but low specificity, use only on long reads (>100bp).\n"
 	"  -c, --ordered          Use ordered filtering. Order of filters matters\n"
-	"                         (filters list first have higher priority). Only taken\n"
+	"                         (filters listed first have higher priority). Only taken\n"
 	"                         advantage of when k-mer sizes and number of hash\n"
 	"                         functions are the same.\n"
 	"  -d, --stdout_filter=N  Outputs all matching reads to stdout for the specified\n"
