@@ -151,7 +151,7 @@ void BloomFilter::storeFilter(string const &filterFilePath) const
 	FILE *out = fopen(filterFilePath.c_str(), "wb");
 	assert(out != NULL);
 
-	cerr << "Storing filter. Filter is " << m_sizeInBytes << "bytes." << endl;
+	cerr << "Storing filter. Filter is " << m_sizeInBytes << " bytes." << endl;
 
 	fwrite((const void*)m_filter, sizeof(char), m_sizeInBytes, out);
 	if (ferror(out))
