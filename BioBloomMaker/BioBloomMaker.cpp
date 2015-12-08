@@ -50,8 +50,7 @@ void printHelpDialog() {
 		"  -h, --help             Display this dialog.\n"
 		"  -v  --version          Display version information.\n"
 		"  -t, --threads=N        The number of threads to use. Experimental. [1]\n"
-		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
-		"                         in the filter. \n"
+		"                         Currently only active with the (-r) option.\n"
 		"\nAdvanced options:\n"
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]\n"
 		"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
@@ -72,6 +71,8 @@ void printHelpDialog() {
 		"                         positive integer, it is interpreted as the minimum\n"
 		"                         number of contiguous matching bases required for a\n"
 		"                         match.\n"
+		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
+		"                         in the filter. Only active with the (-r) option.\n"
 		"\n"
 		"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;

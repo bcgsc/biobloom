@@ -102,7 +102,7 @@ void printHelpDialog()
 	"      --fq               Output categorized reads in Fastq files.\n"
 	"      --chastity         Discard and do not evaluate unchaste reads.\n"
 	"      --no-chastity      Do not discard unchaste reads. [default]\n"
-	"  -l  --length_cutoff=N  Discard reads shorter that the cutoff.\n"
+	"  -l  --length_cutoff=N  Discard reads shorter that the cutoff N. [0]\n"
 	"  -v  --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
 	"Advanced options:\n"
@@ -115,13 +115,13 @@ void printHelpDialog()
 	"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
 	"                         but low specificity, use only on long reads (>100bp).\n"
 	"  -c, --ordered          Use ordered filtering. Order of filters matters\n"
-	"                         (filters list first have higher priority). Only taken\n"
+	"                         (filters listed first have higher priority). Only taken\n"
 	"                         advantage of when k-mer sizes and number of hash\n"
 	"                         functions are the same.\n"
 	"  -d, --stdout_filter=N  Outputs all matching reads to stdout for the specified\n"
-	"                         filter. N is the filter ID without file extension Reads\n"
-	"                         are outputed in fastq, and if paired will output will\n"
-	"                         be interlaced.\n"
+	"                         filter. N is the filter ID without file extension.\n"
+	"                         Reads are outputed in fastq, and if paired will output\n"
+	"                         will be interlaced.\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
 	cerr << dialog << endl;
