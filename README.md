@@ -110,7 +110,7 @@ one can use is the paired end mode `-e`:
 
 By default `-e` will only count a read if both reads match a filter. If you want only it to count situations where only one read matches the filter then the `-i` (`--inclusive`) option can also be used.
 
-These are general use cases you can use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. See section 5 for advanced options. You can also using the `-h` command for a listing on the options.
+These are general use cases you can use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. See [section 6](#6) for advanced options. You can also using the `-h` command for a listing on the options.
 
 <a name="4"></a>
 4. Program Output
@@ -132,7 +132,7 @@ to each filter. Give a good overview of your results
 
 ######ii. Categorized Sequence FastA/FastQ Files
 
-* In the output directory there will be files for every filter used in addition to “multiMatch” and “noMatch” files. The reads will be categorized in these locations based on the threshold (-m and -t) values used.
+* In the output directory there will be files for every filter used in addition to “multiMatch” and “noMatch” files. The reads will be categorized in these locations based on the threshold (`-m` and `-t`) values used.
 * Reads outputted will have a value (e.g. “/1”) appended to the end of each ID to denote pair information about the read.
 
 <a name="5"></a>
@@ -192,6 +192,100 @@ There is no cpu minimum speed or number of cores, though it will run faster with
 <a name="6"></a>
 6. Advanced options and Best Practices
 ------
+
+#####General
+Help dialog from the `--help` options has the most up to date information about all the options in this tool and consulting it should give you good infomation about the effects of some options.
+
+#####biobloomcategorizer
+```
+biobloomcategorizer --help
+Usage: biobloomcategorizer [OPTION]... -f "[FILTER1]..." [FILE]...
+biobloomcategorizer [OPTION]... -e -f "[FILTER1]..." [FILE1.fq] [FILE2.fq]
+Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or
+BAM format and compressed with gz, bz2 or xz and may be tarred.
+
+  -p, --prefix=N         Output prefix to use. Otherwise will output to current
+                         directory.
+  -f, --filter_files=N   List of filter files to use. Required option. 
+                         eg. "filter1.bf filter2.bf"
+  -e, --paired_mode      Uses paired-end information. For BAM or SAM files, if
+                         they are poorly ordered, the memory usage will be much
+                         larger than normal. Sorting by read name may be needed.
+  -i, --inclusive        If one paired read matches, both reads will be included
+                         in the filter. 
+  -s, --score=N          Score threshold for matching. Maximum threshold is 1
+                         (highest specificity), minimum is 0 (highest
+                         sensitivity). A lower score threshold will decrease run
+                         time. If set to 1, best hit is used rather than
+                         threshold and score will appended to the header of the
+                         output read.[0.15]
+  -w, --with_score       Output multimatches with scores in the order of filter.
+  -t, --threads=N        The number of threads to use. [1]
+  -g, --gz_output        Outputs all output files in compressed gzip.
+      --fa               Output categorized reads in Fasta files.
+      --fq               Output categorized reads in Fastq files.
+      --chastity         Discard and do not evaluate unchaste reads.
+      --no-chastity      Do not discard unchaste reads. [default]
+  -l  --length_cutoff=N  Discard reads shorter that the cutoff N. [0]
+  -v  --version          Display version information.
+  -h, --help             Display this dialog.
+Advanced options:
+  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number
+                         needed over initial tiling of read to continue. Higher
+                         values decrease runtime but lower sensitivity.[0]
+  -r, --streak=N         The number of hit tiling in second pass needed to jump
+                         Several tiles upon a miss. Small values decrease
+                         runtime but decrease sensitivity. [3]
+  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast
+                         but low specificity, use only on long reads (>100bp).
+  -c, --ordered          Use ordered filtering. Order of filters matters
+                         (filters list first have higher priority). Only taken
+                         advantage of when k-mer sizes and number of hash
+                         functions are the same.
+  -d, --stdout_filter=N  Outputs all matching reads to stdout for the specified
+                         filter. N is the filter ID without file extension.
+                         Reads are outputed in fastq, and if paired will output
+                         will be interlaced.
+Report bugs to <cjustin@bcgsc.ca>.
+```
+
+#####biobloommaker
+```
+biobloommaker --help
+Usage: biobloommaker -p [FILTERID] [OPTION]... [FILE]...
+Usage: biobloommaker -p [FILTERID] -r 0.2 [FILE]... [FASTQ1] [FASTQ2] 
+Creates a bf and txt file from a list of fasta files. The input sequences are
+cut into a k-mers with a sliding window and their hash signatures are inserted
+into a bloom filter.
+
+  -p, --file_prefix=N    Filter prefix and filter ID. Required option.
+  -o, --output_dir=N     Output location of the filter and filter info files.
+  -h, --help             Display this dialog.
+  -v  --version          Display version information.
+  -t, --threads=N        The number of threads to use. Experimental. [1]
+                         Currently only active with the (-r) option.
+
+Advanced options:
+  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]
+  -g, --hash_num=N       Set number of hash functions to use in filter instead
+                         of automatically using calculated optimal number of
+                         functions.
+  -k, --kmer_size=N      K-mer size to use to create filter. [25]
+  -s, --subtract=N       Path to filter that you want to uses to prevent the
+                         addition of k-mers contained into new filter. You may
+                         only use filters with k-mer sizes equal the one you
+                         wish to create.
+  -n, --num_ele=N        Set the number of expected elements. If set to 0 number
+                         is determined from sequences sizes within files. [0]
+  -r, --progressive=N    Progressive filter creation. After initial seeding,
+                         filter is created by greedly incorporating reads
+                         into filter according to score threshold of N.
+  -i, --inclusive        If one paired read matches, both reads will be included
+                         in the filter. Only active with the (-r) option.
+
+Report bugs to <cjustin@bcgsc.ca>.
+```
+
 #####A. How can distinguish between organisms that share lots of k-mer content?
 
 Using the `--with_score` (`-w`) in biobloomcategorizer will output the score of each filter (in the order specified with `-f`) in the header of the multimatch filter. 
