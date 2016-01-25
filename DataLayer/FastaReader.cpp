@@ -161,6 +161,11 @@ next_record:
 				&& comment.length() > 2 && comment[2] == ':')
 			goto next_record;
 
+		// Ignore @CO (One-line text comment) header in particular,
+		// https://samtools.github.io/hts-specs/SAMv1.pdf
+		if (id.length() == 2 && id[0] == 'C' && id[1] == 'O')
+			goto next_record;
+
 		// Casava FASTQ format
 		if (comment.size() > 3
 				&& comment[1] == ':' && comment[3] == ':') {
