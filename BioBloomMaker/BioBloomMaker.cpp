@@ -15,6 +15,7 @@
 #include <boost/unordered/unordered_map.hpp>
 #include <getopt.h>
 #include "config.h"
+#include "Common/Options.h"
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -22,11 +23,6 @@
 using namespace std;
 
 #define PROGRAM "biobloommaker"
-
-namespace opt {
-/** The number of parallel threads. */
-static unsigned threads = 1;
-}
 
 void printVersion() {
 	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"

@@ -24,11 +24,6 @@ using namespace std;
 
 #define PROGRAM "biobloomcategorizer"
 
-namespace opt {
-/** The number of parallel threads. */
-static unsigned threads = 1;
-}
-
 void printVersion()
 {
 	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"
