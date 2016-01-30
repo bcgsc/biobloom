@@ -47,6 +47,8 @@ void printHelpDialog() {
 		"  -v  --version          Display version information.\n"
 		"  -t, --threads=N        The number of threads to use. Experimental. [1]\n"
 		"                         Currently only active with the (-r) option.\n"
+		"  -R, --read_num_report  print number of reads process with number of k-mer\n"
+		"                         loaded [10000000]"
 		"\nAdvanced options:\n"
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]\n"
 		"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
@@ -110,12 +112,13 @@ int main(int argc, char *argv[]) {
 					"num_ele", required_argument, NULL, 'n' }, {
 					"help", no_argument, NULL, 'h' }, {
 					"print_reads", no_argument, NULL, 'P' }, {
+					"read_num_report", no_argument, NULL, 'R' }, {
 					"progressive", required_argument, NULL, 'r' }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:i", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:iR:", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -200,6 +203,15 @@ int main(int argc, char *argv[]) {
 		}
 		case 'P': {
 			printReads = true;
+			break;
+		}
+		case 'P': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::readNumReport)) {
+				cerr << "Error - Invalid set of parameters! R: " << optarg
+						<< endl;
+				return 0;
+			}
 			break;
 		}
 		case 'r': {

@@ -10,4 +10,6 @@ namespace opt {
 	unsigned streakThreshold = 3;
 
 	unsigned threads = 1;
+
+	unsigned readNumReport = 10000000;
 }

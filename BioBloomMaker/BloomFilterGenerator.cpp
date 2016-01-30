@@ -209,9 +209,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 #pragma omp critical(totalReads)
 			{
 				++totalReads;
-				if (totalReads % 10000000 == 0) {
+				if (totalReads % opt::readNumReport == 0) {
 					cerr << "Currently Reading Read Number: " << totalReads
-							<< endl;
+							<< "\t k-mers added: " << m_totalEntries << endl;
 				}
 			}
 			ReadsProcessor proc(m_kmerSize);
