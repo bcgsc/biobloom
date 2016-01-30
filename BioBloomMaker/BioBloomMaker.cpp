@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
 			printReads = true;
 			break;
 		}
-		case 'P': {
+		case 'R': {
 			stringstream convert(optarg);
 			if (!(convert >> opt::readNumReport)) {
 				cerr << "Error - Invalid set of parameters! R: " << optarg
