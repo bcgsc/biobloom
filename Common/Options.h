@@ -10,6 +10,7 @@ namespace opt {
 	extern int verbose;
 	extern unsigned streakThreshold;
 	extern unsigned threads;
+	extern int rank;
 	extern unsigned readNumReport;
 }
 
