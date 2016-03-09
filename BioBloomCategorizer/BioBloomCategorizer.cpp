@@ -15,6 +15,7 @@
 #include "DataLayer/Options.h"
 #include "config.h"
 #include "Common/Options.h"
+#include "Common/SeqEval.h"
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -22,11 +23,6 @@
 using namespace std;
 
 #define PROGRAM "biobloomcategorizer"
-
-namespace opt {
-/** The number of parallel threads. */
-static unsigned threads = 1;
-}
 
 void printVersion()
 {
@@ -85,12 +81,15 @@ void printHelpDialog()
 	"                         larger than normal. Sorting by read name may be needed.\n"
 	"  -i, --inclusive        If one paired read matches, both reads will be included\n"
 	"                         in the filter. \n"
-	"  -s, --score=N          Score threshold for matching. Maximum threshold is 1\n"
-	"                         (highest specificity), minimum is 0 (highest\n"
-	"                         sensitivity). A lower score threshold will decrease run\n"
-	"                         time. If set to 1, best hit is used rather than\n"
+	"  -s, --score=N          Score threshold for matching. N may be either a\n"
+	"                         floating point score between 0 and 1 or a positive\n"
+	"                         integer representing the minimum match length in bases.\n"
+	"                         If N is a floating point, the maximum threshold is 1\n"
+	"                         (highest specificity), and the minimum is 0 (highest\n"
+	"                         sensitivity). A lower score threshold will decrease\n"
+	"                         runtime. If set to 1, best hit is used rather than\n"
 	"                         threshold and score will appended to the header of the\n"
-	"                         output read.[0.15]\n"
+	"                         output read. [0.15]\n"
 	"  -w, --with_score       Output multimatches with scores in the order of filter.\n"
 	"  -t, --threads=N        The number of threads to use. [1]\n"
 	"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
@@ -153,6 +152,11 @@ int main(int argc, char *argv[])
 	unsigned minHit = 0;
 	bool minHitOnly = false;
 	bool collab = false;
+	// indicates whether we are using a floating
+	// point score (between 0 and 1) or a minimum
+	// match length (in bases) as our Bloom filter
+	// matching criteria
+	SeqEval::EvalMode evalMode = SeqEval::EVAL_STANDARD;
 
 	string mainFilter = "";
 
@@ -198,14 +202,35 @@ int main(int argc, char *argv[])
 		}
 		case 's': {
 			stringstream convert(optarg);
-			if (!(convert >> score)) {
-				cerr << "Error - Invalid parameter! s: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			if (score < 0 || score > 1) {
-				cerr << "Error - s must be between 0 and 1, input given:"
+			unsigned matchLen;
+			// if arg is a positive integer > 1, interpret as minimum match
+			// length in bases
+			if ((convert >> matchLen) && matchLen > 1) {
+				score = (unsigned)matchLen;
+				evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
+				cerr << "Min match length threshold: " << matchLen
+					<<" bp" << endl;
+			} else {
+				// not a positive integer > 1, so interpret as floating
+				// point score between 0 and 1
+				stringstream convert2(optarg);
+				if (!(convert2 >> score)) {
+					cerr << "Error - Invalid set of bloom filter parameters! s: "
 						<< optarg << endl;
-				exit(EXIT_FAILURE);
+					exit(EXIT_FAILURE);
+				}
+				if (score < 0 || score > 1) {
+					cerr << "Error - s must be a positive integer or a floating "
+						<< "point between 0 and 1. Input given:"
+						<< optarg << endl;
+					exit(EXIT_FAILURE);
+				}
+				evalMode = SeqEval::EVAL_STANDARD;
+				if (score == 1)
+					cerr << "Running in 'best match' mode (no score threshold)"
+						<< endl;
+				else
+					cerr << "Min score threshold: " << score << endl;
 			}
 			break;
 		}
@@ -355,9 +380,20 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	// -w option cannot be used with min match length arg to -s
+	if (withScore && evalMode == SeqEval::EVAL_MIN_MATCH_LEN) {
+		cerr << "Error: -w option is not supported when using "
+			<< "minimum match length (positive integer arg "
+			<< "to -s)" << endl;
+		exit(1);
+	}
+
 	//load filters
 	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix,
 			minHit, minHitOnly, withScore);
+
+	//floating point score or min match length
+	BBC.setEvalMode(evalMode);
 
 	if (collab && minHit) {
 		cerr << "Error: -m -c outputs types cannot be both set" << endl;

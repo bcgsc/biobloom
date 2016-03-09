@@ -11,9 +11,11 @@
 #include <iostream>
 #include "BloomFilterGenerator.h"
 #include "Common/BloomFilterInfo.h"
+#include "Common/SeqEval.h"
 #include <boost/unordered/unordered_map.hpp>
 #include <getopt.h>
 #include "config.h"
+#include "Common/Options.h"
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -21,11 +23,6 @@
 using namespace std;
 
 #define PROGRAM "biobloommaker"
-
-namespace opt {
-/** The number of parallel threads. */
-static unsigned threads = 1;
-}
 
 void printVersion() {
 	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"
@@ -62,9 +59,14 @@ void printHelpDialog() {
 		"                         wish to create.\n"
 		"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 		"                         is determined from sequences sizes within files. [0]\n"
-		"  -r, --progressive=N    Progressive filter creation. After initial seeding,\n"
-		"                         filter is created by greedly incorporating reads\n"
-		"                         into filter according to score threshold of N.\n"
+		"  -P, --print_reads      During progressive filter creation, print recruited reads\n"
+		"                         to STDOUT in FASTQ format [disabled]\n"
+		"  -r, --progressive=N    Progressive filter creation. The score threshold is\n"
+		"                         specified by N, which may be either a floating point score\n"
+		"                         between 0 and 1 or a positive integer.  If N is a\n"
+		"                         positive integer, it is interpreted as the minimum\n"
+		"                         number of contiguous matching bases required for a\n"
+		"                         match.\n"
 		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
 		"                         in the filter. Only active with the (-r) option.\n"
 		"\n"
@@ -88,8 +90,10 @@ int main(int argc, char *argv[]) {
 	unsigned hashNum = 0;
 	string subtractFilter = "";
 	size_t entryNum = 0;
+	bool printReads = false;
 	double progressive = -1;
 	bool inclusive = false;
+	SeqEval::EvalMode evalMode = SeqEval::EVAL_STANDARD;
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -105,12 +109,13 @@ int main(int argc, char *argv[]) {
 					"subtract",	required_argument, NULL, 's' }, {
 					"num_ele", required_argument, NULL, 'n' }, {
 					"help", no_argument, NULL, 'h' }, {
+					"print_reads", no_argument, NULL, 'P' }, {
 					"progressive", required_argument, NULL, 'r' }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:r:i", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:i", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -193,17 +198,34 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		}
+		case 'P': {
+			printReads = true;
+			break;
+		}
 		case 'r': {
 			stringstream convert(optarg);
-			if (!(convert >> progressive)) {
-				cerr << "Error - Invalid set of bloom filter parameters! r: "
+			unsigned matchLen;
+			// if arg is a positive integer > 1, interpret as minimum match
+			// length in bases
+			if ((convert >> matchLen) && matchLen > 1) {
+				progressive = matchLen;
+				evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
+			} else {
+				// not a positive integer > 1, so interpret as floating
+				// point score between 0 and 1
+				stringstream convert2(optarg);
+				if (!(convert2 >> progressive)) {
+					cerr << "Error - Invalid set of bloom filter parameters! r: "
 						<< optarg << endl;
-				return 0;
-			}
-			if (progressive < 0 || progressive > 1) {
-				cerr << "Error - s must be between 0 and 1, input given:"
+					return 0;
+				}
+				if (progressive < 0 || progressive > 1) {
+					cerr << "Error - s must be a positive integer or a floating "
+						<< "point between 0 and 1. Input given:"
 						<< optarg << endl;
-				exit(EXIT_FAILURE);
+					exit(EXIT_FAILURE);
+				}
+				evalMode = SeqEval::EVAL_STANDARD;
 			}
 			break;
 		}
@@ -256,10 +278,23 @@ int main(int argc, char *argv[]) {
 
 	if (progressive != -1) {
 		if (inputFiles.size() > 2) {
-			file1 = inputFiles.back();
-			inputFiles.pop_back();
 			file2 = inputFiles.back();
 			inputFiles.pop_back();
+			file1 = inputFiles.back();
+			inputFiles.pop_back();
+			cerr << "Building Bloom filter in progessive mode. ";
+			switch(evalMode) {
+				case SeqEval::EVAL_MIN_MATCH_LEN:
+					cerr << "Min match length = "
+						<< (unsigned)round(progressive)
+						<< " bp" << endl;
+					break;
+				case SeqEval::EVAL_STANDARD:
+				default:
+					cerr << "Score threshold = "
+						<< progressive << endl;
+					break;
+			}
 		} else {
 			cerr << "require a least 3 input when using progressive mode"
 					<< endl;
@@ -292,7 +327,7 @@ int main(int argc, char *argv[]) {
 		}
 		redundNum = filterGen.generateProgressive(
 				outputDir + filterPrefix + ".bf", progressive, file1, file2,
-				mode, subtractFilter);
+				mode, evalMode, printReads, subtractFilter);
 	} else if (!subtractFilter.empty()) {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
 				subtractFilter);
@@ -303,7 +338,7 @@ int main(int argc, char *argv[]) {
 		}
 		redundNum = filterGen.generateProgressive(
 				outputDir + filterPrefix + ".bf", progressive, file1, file2,
-				mode);
+				mode, evalMode, printReads);
 	} else {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
 	}

@@ -148,16 +148,16 @@ bool BloomFilter::contains(const unsigned char* kmer) const
  */
 void BloomFilter::storeFilter(string const &filterFilePath) const
 {
-	ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
+	FILE *out = fopen(filterFilePath.c_str(), "wb");
+	assert(out != NULL);
 
-	cerr << "Storing filter. Filter is " << m_sizeInBytes << "bytes." << endl;
+	cerr << "Storing filter. Filter is " << m_sizeInBytes << " bytes." << endl;
 
-	assert(myFile);
-	//write out each block
-	myFile.write(reinterpret_cast<char*>(m_filter), m_sizeInBytes);
+	fwrite((const void*)m_filter, sizeof(char), m_sizeInBytes, out);
+	if (ferror(out))
+		perror("Error writing file");
 
-	myFile.close();
-	assert(myFile);
+	fclose(out);
 }
 
 unsigned BloomFilter::getHashNum() const
