@@ -293,7 +293,7 @@ inline double evalSingleExhaust(const FastqRecord &rec, unsigned kmerSize,
 			streak = 0;
 		}
 	}
-	return false;
+	return score;
 }
 
 ///*
