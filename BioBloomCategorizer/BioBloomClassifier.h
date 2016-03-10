@@ -109,7 +109,7 @@ private:
 	void evaluateReadCollab(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
 	double evaluateReadBestHit(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, bool> &hits);
+			unordered_map<string, bool> &hits, vector<double> &scores);
 	void evaluateReadScore(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits, vector<double> &scores);
 
@@ -350,7 +350,7 @@ private:
 			break;
 		}
 		case BESTHIT: {
-			score = evaluateReadBestHit(rec, hashSig, hits);
+			score = evaluateReadBestHit(rec, hashSig, hits, scores);
 			break;
 		}
 		case SCORES: {

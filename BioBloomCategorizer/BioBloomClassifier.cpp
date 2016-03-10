@@ -940,7 +940,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
  * Reads are assigned to best hit
  */
 double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
-		const string &hashSig, unordered_map<string, bool> &hits)
+		const string &hashSig, unordered_map<string, bool> &hits, vector<double> &scores)
 {
 	//get filterIDs to iterate through has in a consistent order
 	const vector<string> &idsInFilter = (*m_filters[hashSig]).getFilterIds();
@@ -981,6 +981,7 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
 		if (pass) {
 			BloomFilter &tempFilter = *m_filtersSingle.at(idsInFilter[i]);
 			double score = SeqEval::evalSingleExhaust(rec, kmerSize, tempFilter);
+			scores[i] = SeqEval::normalizeScore(score, kmerSize, rec.seq.length());;
 			if (maxScore < score) {
 				maxScore = score;
 				bestFilters.clear();
