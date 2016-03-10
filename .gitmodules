@@ -1,0 +1,3 @@
+[submodule "bloomfilter"]
+	path = bloomfilter
+	url = https://github.com/bcgsc/bloomfilter
