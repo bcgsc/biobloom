@@ -339,10 +339,10 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 			new Dynamicofstream(
 					m_prefix + "_" + MULTI_MATCH + "_2." + outputType
 							+ m_postfix));
-	outputFiles[NO_MATCH + "1"] = noMatch1;
-	outputFiles[NO_MATCH + "2"] = noMatch2;
-	outputFiles[MULTI_MATCH + "1"] = multiMatch1;
-	outputFiles[MULTI_MATCH + "2"] = multiMatch2;
+	outputFiles[NO_MATCH + "_1"] = noMatch1;
+	outputFiles[NO_MATCH + "_2"] = noMatch2;
+	outputFiles[MULTI_MATCH + "_1"] = multiMatch1;
+	outputFiles[MULTI_MATCH + "_2"] = multiMatch2;
 
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = m_hashSigs.begin();
@@ -360,8 +360,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 					new Dynamicofstream(
 							m_prefix + "_" + *i + "_2." + outputType
 									+ m_postfix));
-			outputFiles[*i + "1"] = temp1;
-			outputFiles[*i + "2"] = temp2;
+			outputFiles[*i + "_1"] = temp1;
+			outputFiles[*i + "_2"] = temp2;
 		}
 	}
 
@@ -580,10 +580,10 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 			new Dynamicofstream(
 					m_prefix + "_" + MULTI_MATCH + "_2." + outputType
 							+ m_postfix));
-	outputFiles[NO_MATCH + "1"] = noMatch1;
-	outputFiles[NO_MATCH + "2"] = noMatch2;
-	outputFiles[MULTI_MATCH + "1"] = multiMatch1;
-	outputFiles[MULTI_MATCH + "2"] = multiMatch2;
+	outputFiles[NO_MATCH + "_1"] = noMatch1;
+	outputFiles[NO_MATCH + "_2"] = noMatch2;
+	outputFiles[MULTI_MATCH + "_1"] = multiMatch1;
+	outputFiles[MULTI_MATCH + "_2"] = multiMatch2;
 
 	//initialize variables and print filter ids
 	for (vector<string>::const_iterator j = m_hashSigs.begin();
@@ -601,8 +601,8 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 					new Dynamicofstream(
 							m_prefix + "_" + *i + "_2." + outputType
 									+ m_postfix));
-			outputFiles[*i + "1"] = temp1;
-			outputFiles[*i + "2"] = temp2;
+			outputFiles[*i + "_1"] = temp1;
+			outputFiles[*i + "_2"] = temp2;
 		}
 	}
 
