@@ -51,9 +51,6 @@ Sequence reverseComplement(const Sequence& s)
 {
 	Sequence rc(s);
 	reverse(rc.begin(), rc.end());
-	if (!opt::colourSpace)
-		transform(rc.begin(), rc.end(), rc.begin(),
-				complementBaseChar);
 	return rc;
 }
 
@@ -107,7 +104,7 @@ uint8_t baseToCode(char base)
 char codeToBase(uint8_t code)
 {
 	assert(code < 4);
-	return (opt::colourSpace ? "0123" : "ACGT")[code];
+	return "ACGT"[code];
 }
 
 char colourToNucleotideSpace(char anchor, char cs)
