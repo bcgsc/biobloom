@@ -44,7 +44,7 @@ void printHelpDialog() {
 		"  -p, --file_prefix=N    Filter prefix and filter ID. Required option.\n"
 		"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
 		"  -h, --help             Display this dialog.\n"
-		"  -v  --version          Display version information.\n"
+		"  -v, --version          Display version information.\n"
 		"  -t, --threads=N        The number of threads to use. Experimental. [1]\n"
 		"                         Currently only active with the (-r) option.\n"
 		"\nAdvanced options:\n"
