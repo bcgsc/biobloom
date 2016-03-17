@@ -47,6 +47,7 @@ void printHelpDialog() {
 		"  -v, --version          Display version information.\n"
 		"  -t, --threads=N        The number of threads to use. Experimental. [1]\n"
 		"                         Currently only active with the (-r) option.\n"
+		"  -m, --map              Generates a BloomFilter Map"
 		"\nAdvanced options:\n"
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]\n"
 		"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
@@ -97,25 +98,26 @@ int main(int argc, char *argv[]) {
 
 	//long form arguments
 	static struct option long_options[] = {
-			{
-					"fal_pos_rate", required_argument, NULL, 'f' }, {
-					"file_prefix", required_argument, NULL, 'p' }, {
-					"output_dir", required_argument, NULL, 'o' }, {
-					"threads", required_argument, NULL, 't' }, {
-					"inclusive", no_argument, NULL, 'i' }, {
-					"version", no_argument, NULL, 'v' }, {
-					"hash_num", required_argument, NULL, 'g' }, {
-					"kmer_size", required_argument, NULL, 'k' }, {
-					"subtract",	required_argument, NULL, 's' }, {
-					"num_ele", required_argument, NULL, 'n' }, {
-					"help", no_argument, NULL, 'h' }, {
-					"print_reads", no_argument, NULL, 'P' }, {
-					"progressive", required_argument, NULL, 'r' }, {
-					NULL, 0, NULL, 0 } };
+		{
+			"fal_pos_rate", required_argument, NULL, 'f' }, {
+			"file_prefix", required_argument, NULL, 'p' }, {
+			"output_dir", required_argument, NULL, 'o' }, {
+			"threads", required_argument, NULL, 't' }, {
+			"map", no_argument, NULL, 'm' }, {
+			"inclusive", no_argument, NULL, 'i' }, {
+			"version", no_argument, NULL, 'v' }, {
+			"hash_num", required_argument, NULL, 'g' }, {
+			"kmer_size", required_argument, NULL, 'k' }, {
+			"subtract",	required_argument, NULL, 's' }, {
+			"num_ele", required_argument, NULL, 'n' }, {
+			"help", no_argument, NULL, 'h' }, {
+			"print_reads", no_argument, NULL, 'P' }, {
+			"progressive", required_argument, NULL, 'r' }, {
+			NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:i", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:im", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -148,6 +150,10 @@ int main(int argc, char *argv[]) {
 				cerr << "Error - Invalid parameter! t: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
+			break;
+		}
+		case 't': {
+			opt::filterType = BLOOMMAP;
 			break;
 		}
 		case 'i': {
@@ -300,6 +306,10 @@ int main(int argc, char *argv[]) {
 					<< endl;
 			exit(1);
 		}
+	}
+
+	if(opt::filterType = BLOOMMAP){
+
 	}
 
 	//create filter
