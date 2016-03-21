@@ -15,10 +15,12 @@
  */
 BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 		unsigned kmerSize, unsigned hashNum, size_t numElements = 0) :
-		m_kmerSize(kmerSize), m_hashNum(hashNum), m_expectedEntries(
+		m_kmerSize(kmerSize), m_hashNum(hashNum), m_totalEntries(0), m_expectedEntries(
 				numElements), m_fileNames(filenames) {
+	//estimate number of k-mers
 	if (numElements == 0) {
 		//assume each file one line per file
+#pragma omp parallel
 		for (vector<string>::const_iterator it = m_fileNames.begin();
 				it != m_fileNames.end(); ++it) {
 			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
@@ -41,9 +43,11 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
  */
 size_t BloomMapGenerator::generate(const string &filename) {
 	//init bloom map
-
-
-
+	//for each file
+	//read file, k-merize with rolling hash insert into bloom map
+	//assign header to unique ID
+	//if collision add new entry
+	//save filter
 }
 
 BloomMapGenerator::~BloomMapGenerator() {
