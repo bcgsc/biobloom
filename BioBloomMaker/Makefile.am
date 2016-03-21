@@ -14,4 +14,5 @@ biobloommaker_LDFLAGS = $(OPENMP_CXXFLAGS)
 
 biobloommaker_SOURCES = BioBloomMaker.cpp \
 	BloomFilterGenerator.h BloomFilterGenerator.cpp \
-	WindowedFileParser.h WindowedFileParser.cpp
+	WindowedFileParser.h WindowedFileParser.cpp \
+	BloomMapGenerator.h BloomMapGenerator.cpp

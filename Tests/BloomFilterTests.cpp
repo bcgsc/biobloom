@@ -37,7 +37,7 @@ int memory_usage() {
 	return mem;
 }
 
-int main(int argc, char **argv) {
+int main() {
 	//memory usage from before
 	int memUsage = memory_usage();
 
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
 	//memory leak tests
 	BloomFilter* filter3 = new BloomFilter(filterSize, 5, 20);
 
-	size_t tempMem = memory_usage() - memUsage;
+	int tempMem = memory_usage() - memUsage;
 
 	cout << memory_usage() - memUsage << "kb" << endl;
 	delete(filter3);

@@ -152,10 +152,10 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		}
-		case 't': {
-			opt::filterType = BLOOMMAP;
-			break;
-		}
+		//case 'y': {
+		//	opt::filterType = BLOOMMAP;
+		//	break;
+		//}
 		case 'i': {
 			inclusive = true;
 			break;
@@ -308,9 +308,9 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	if(opt::filterType = BLOOMMAP){
+	//if(opt::filterType = BLOOMMAP){
 
-	}
+	//}
 
 	//create filter
 	BloomFilterGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);

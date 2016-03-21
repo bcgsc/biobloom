@@ -2,7 +2,8 @@ SUBDIRS = \
 	Common \
 	DataLayer \
 	BioBloomMaker \
-	BioBloomCategorizer
+	BioBloomCategorizer \
+	Tests
 
 dist_doc_DATA = \
 	README.md

@@ -15,7 +15,7 @@
 
 using namespace std;
 
-int main(int argc, char **argv) {
+int main() {
 
 	int16_t kmerSize = 4;
 

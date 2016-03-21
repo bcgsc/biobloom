@@ -1,4 +1,4 @@
-bin_PROGRAMS = ReadProcessorTests \
+check_PROGRAMS = ReadProcessorTests \
 	BloomFilterTests \
 	BloomFilterCategorizerTests \
 	BloomFilterMakerTests \

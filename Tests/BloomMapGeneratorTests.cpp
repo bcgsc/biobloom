@@ -7,6 +7,8 @@
 #include "BioBloomMaker/WindowedFileParser.cpp"
 #include "BioBloomMaker/BloomFilterGenerator.h"
 #include "BioBloomMaker/BloomFilterGenerator.cpp"
+#include "BioBloomMaker/BloomMapGenerator.h"
+#include "BioBloomMaker/BloomMapGenerator.cpp"
 #include "Common/BloomFilter.h"
 #include <string>
 #include <assert.h>
@@ -19,7 +21,7 @@
 
 using namespace std;
 
-int main() {
+int main(int argc, char **argv) {
 
 	//Load some testdata
 	string fileName = "ecoli.fasta";
@@ -32,22 +34,22 @@ int main() {
 	vector<string> filenames;
 	filenames.push_back(fileName);
 	//test count
-	BloomFilterGenerator filterGen(filenames, kmerSize, hashNum);
+	BloomMapGenerator filterGen(filenames, kmerSize, hashNum);
 
-	cout << filterGen.getExpectedEntries() << "bp" << endl;
+	//cout << filterGen.getExpectedEntries() << "bp" << endl;
 
 	//set filter parameters
 //	size_t filterSize = 34359738368;
-	size_t filterSize = filterGen.getExpectedEntries() * 8
-			+ (64 - ((filterGen.getExpectedEntries() * 8) % 64));
-	string filename = "test.bf";
+	//size_t filterSize = filterGen.getExpectedEntries() * 8
+	//		+ (64 - ((filterGen.getExpectedEntries() * 8) % 64));
+	//string filename = "test.bf";
 
 	//set filter size
-	filterGen.setFilterSize(filterSize);
+	//filterGen.setFilterSize(filterSize);
 
 	filterGen.generate(filename);
 	//Check storage can occur properly
-
+/*
 	ifstream ifile(filename.c_str());
 	assert(ifile.is_open());
 	ifile.seekg(0, ios::end); // move to end of file
@@ -81,6 +83,7 @@ int main() {
 
 	cout << "BloomFilterGenerator Tests Done. Cleaning up" << endl;
 	remove(filename.c_str());
+*/
 
 	return 0;
 }
