@@ -6,7 +6,8 @@
  */
 
 #include <BloomMapGenerator.h>
-#include <Datalayer/FastaReader.h>
+#include "DataLayer/FastaReader.h"
+#include "bloomfilter/BloomMap.hpp"
 
 /*
  * If size is set to 0 (or not set) a filter size will be estimated based
@@ -18,6 +19,20 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 				numElements), m_fileNames(filenames) {
 	if (numElements == 0) {
 		//assume each file one line per file
+		for (vector<string>::const_iterator it = m_fileNames.begin();
+				it != m_fileNames.end(); ++it) {
+			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
+			for (FastqRecord rec;;) {
+				bool good;
+#pragma omp critical(sequence)
+				{
+					good = sequence >> rec;
+				}
+				if (good) {
+					m_expectedEntries += rec.seq.length() - m_kmerSize;
+				}
+			}
+		}
 	}
 }
 
@@ -25,6 +40,9 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
  * Returns number of redundant entries
  */
 size_t BloomMapGenerator::generate(const string &filename) {
+	//init bloom map
+
+
 
 }
 
