@@ -8,9 +8,20 @@
 #ifndef BLOOMMAP_HPP_
 #define BLOOMMAP_HPP_
 
+#include <string>
 #include <vector>
 #include <stdint.h>
 #include <math.h>
+#include <fstream>
+#include <iostream>
+#include <sys/stat.h>
+#include <cstring>
+#include <cassert>
+#include <cstdlib>
+#include <stdio.h>
+#include "rolling.h"
+
+using namespace std;
 
 template<typename T>
 class BloomMap {
@@ -31,7 +42,7 @@ public:
 	BloomMap<T>(size_t filterSize, unsigned hashNum, unsigned kmerSize) :
 			m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize), m_dFPR(
 					0), m_nEntry(0), m_tEntry(0) {
-			m_array = new T[m_size]();
+		m_array = new T[m_size]();
 	}
 
 	/* De novo filter constructor.
@@ -70,10 +81,11 @@ public:
 		fseek(file, 0, 2);
 		size_t fileSize = ftell(file) - sizeof(struct FileHeader);
 		fseek(file, lCurPos, 0);
-		if (fileSize != m_size*sizeof(T)) {
+		if (fileSize != m_size * sizeof(T)) {
 			cerr << "Error: " << filterFilePath
 					<< " does not match size given by its information file. Size: "
-					<< fileSize << " vs " << m_size*sizeof(T) << " bytes." << endl;
+					<< fileSize << " vs " << m_size * sizeof(T) << " bytes."
+					<< endl;
 			exit(1);
 		}
 
@@ -116,13 +128,13 @@ public:
 	}
 
 	T& operator[](size_t i) {
-		assert (i < m_size);
-		return m_array[i];	
+		assert(i < m_size);
+		return m_array[i];
 	}
-	
+
 	const T& operator[](size_t i) const {
-		assert (i < m_size);
-		return m_array[i];	
+		assert(i < m_size);
+		return m_array[i];
 	}
 
 	void insert(std::vector<size_t> const &hashes, std::vector<T> &values) {
@@ -196,21 +208,18 @@ public:
 	void storeFilter(string const &filterFilePath) const {
 		ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
 
-		cerr << "Storing filter. Filter is " << m_size*sizeof(T) << "bytes."
+		cerr << "Storing filter. Filter is " << m_size * sizeof(T) << "bytes."
 				<< endl;
 
 		assert(myFile);
 		writeHeader(myFile);
 
 		//write out each block
-		myFile.write(reinterpret_cast<char*>(m_array), m_size*sizeof(T));
+		myFile.write(reinterpret_cast<char*>(m_array), m_size * sizeof(T));
 
 		myFile.close();
 		assert(myFile);
 	}
-
-
-
 
 private:
 
@@ -252,7 +261,6 @@ private:
 	double calcFPR_hashNum(unsigned hashFunctNum) const {
 		return pow(2, -hashFunctNum);
 	}
-
 
 	size_t m_size;
 	unsigned m_hashNum;
