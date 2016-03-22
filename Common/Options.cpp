@@ -6,4 +6,5 @@ namespace opt {
 
 	unsigned streakThreshold = 3;
 	unsigned threads = 1;
+	FilterType filterType = BLOOMFILTER;
 }
