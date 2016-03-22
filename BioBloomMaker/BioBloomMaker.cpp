@@ -20,6 +20,8 @@
 # include <omp.h>
 #endif
 
+#include "BloomMapGenerator.h"
+
 using namespace std;
 
 #define PROGRAM "biobloommaker"
@@ -152,10 +154,10 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		}
-		//case 'y': {
-		//	opt::filterType = BLOOMMAP;
-		//	break;
-		//}
+		case 'm': {
+			opt::filterType = BLOOMMAP;
+			break;
+		}
 		case 'i': {
 			inclusive = true;
 			break;
@@ -308,9 +310,12 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	//if(opt::filterType = BLOOMMAP){
-
-	//}
+	if(opt::filterType == BLOOMMAP){
+		BloomMapGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
+		filterGen.generate(outputDir + filterPrefix + ".bf", fpr);
+		cerr << "Bloom Map Creation Complete." << endl;
+		return 0;
+	}
 
 	//create filter
 	BloomFilterGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
@@ -372,7 +377,7 @@ int main(int argc, char *argv[]) {
 
 	//output info
 	info.printInfoFile(outputDir + filterPrefix + ".txt");
-	cerr << "Filter Creation Complete." << endl;
+	cerr << "Bloom Filter Creation Complete." << endl;
 
 	return 0;
 }

@@ -12,6 +12,8 @@
 #include <string>
 #include <stdint.h>
 //#include <google/dense_hash_map>
+#include "bloomfilter/BloomMap.hpp"
+#include "bloomfilter/RollingHashIterator.h"
 
 using namespace std;
 
@@ -20,10 +22,12 @@ public:
 	explicit BloomMapGenerator(vector<string> const &filenames,
 			unsigned kmerSize, unsigned hashNum, size_t numElements);
 
-	size_t generate(const string &filename);
+	void generate(const string &filename, double fpr);
 
 	virtual ~BloomMapGenerator();
 private:
+
+	typedef uint16_t ID;
 
 	unsigned m_kmerSize;
 	unsigned m_hashNum;
@@ -31,6 +35,19 @@ private:
 	size_t m_totalEntries;
 	vector<string> m_fileNames;
 	//google::dense_hash_map<string,ID> m_headerIDs;
+
+	//helper method
+	void loadSeq(BloomMap<ID> bloomMap, unsigned k, unsigned hashNum,
+			const string& seq, ID value) {
+		if (seq.size() < k)
+			return;
+		/* init rolling hash state and compute hash values for first k-mer */
+		RollingHashIterator itr(seq, hashNum, k);
+		while (itr != itr.end()) {
+			bloomMap.insert(*itr, value);
+			itr++;
+		}
+	}
 };
 
 #endif /* BLOOMMAPGENERATOR_H_ */
