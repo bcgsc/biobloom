@@ -11,7 +11,9 @@
 #include <vector>
 #include "Common/BloomFilter.h"
 #include "Common/SeqEval.h"
+#if _OPENMP
 # include <omp.h>
+#endif
 
 using namespace std;
 

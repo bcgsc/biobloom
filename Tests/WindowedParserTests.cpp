@@ -15,7 +15,7 @@
 
 using namespace std;
 
-int main(int argc, char **argv) {
+int main() {
 
 	//test windowed parser
 	int16_t windowSize = 50;

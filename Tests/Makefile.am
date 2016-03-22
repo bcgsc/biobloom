@@ -5,7 +5,7 @@ check_PROGRAMS = ReadProcessorTests \
 	WindowedParser \
 	BloomFilterInfoTests \
 	SeqEvalTests
-
+	
 ReadProcessorTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a -lz
 ReadProcessorTests_SOURCES = ReadProcessorTests.cpp
@@ -18,12 +18,16 @@ BloomFilterInfoTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a -lz
 BloomFilterInfoTests_SOURCES = BloomFilterInfoTests.cpp
 
+WindowedParser_CXXFLAGS = $(AM_CXXFLAGS) $(OPENMP_CXXFLAGS)
+
 WindowedParser_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a -lz
 WindowedParser_SOURCES = WindowedParserTests.cpp
 WindowedParser_CPPFLAGS = -I$(top_srcdir)/BioBloomMaker \
 	-I$(top_srcdir)/Common \
 	-I$(top_srcdir)/DataLayer
+	
+BloomFilterMakerTests_CXXFLAGS = $(AM_CXXFLAGS) $(OPENMP_CXXFLAGS)
 
 BloomFilterMakerTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a -lz
