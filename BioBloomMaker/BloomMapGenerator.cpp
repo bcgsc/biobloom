@@ -16,6 +16,9 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 		unsigned kmerSize, unsigned hashNum, size_t numElements = 0) :
 		m_kmerSize(kmerSize), m_hashNum(hashNum),  m_expectedEntries(
 				numElements), m_totalEntries(0), m_fileNames(filenames) {
+	//Instantiate dense hash map
+	m_headerIDs.set_empty_key(EMPTY);
+
 	//estimate number of k-mers
 	if (numElements == 0) {
 		//assume each file one line per file
@@ -44,33 +47,33 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
  */
 void BloomMapGenerator::generate(const string &filename, double fpr) {
 	//init bloom map
-	//for each file
-	//read file, k-merize with rolling hash insert into bloom map
-	//assign header to unique ID
-	//if collision add new entry
-	//save filter
-
 	BloomMap<ID> bloomMap(m_expectedEntries, fpr, m_hashNum, m_kmerSize);
 	ID value = 0;
 
+	//for each file
 	for (vector<string>::const_iterator it = m_fileNames.begin();
 			it != m_fileNames.end(); ++it) {
 //		if (opt::verbose)
 			std::cerr << "Reading `" << *it << "'...\n";
+		//read file
 		FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
 		for (FastqRecord rec;;) {
 			bool good;
 			{
 				good = sequence >> rec;
+				value++;
 			}
 			if (good) {
+				//k-merize with rolling hash insert into bloom map
 				loadSeq(bloomMap, rec.seq, value);
-				value++;
+				//assign header to unique ID
+				m_headerIDs[value] = rec.id;
 			} else
 				break;
 		}
 	}
 
+	//save filter
 	bloomMap.storeFilter(filename);
 }
 

@@ -11,7 +11,7 @@
 #include <vector>
 #include <string>
 #include <stdint.h>
-//#include <google/dense_hash_map>
+#include <google/dense_hash_map>
 #include "bloomfilter/BloomMap.hpp"
 #include "bloomfilter/RollingHashIterator.h"
 
@@ -28,15 +28,17 @@ public:
 private:
 
 	typedef uint16_t ID;
+	const ID EMPTY = 0;
 
 	unsigned m_kmerSize;
 	unsigned m_hashNum;
 	size_t m_expectedEntries;
 	size_t m_totalEntries;
 	vector<string> m_fileNames;
-	//google::dense_hash_map<string,ID> m_headerIDs;
+	google::dense_hash_map<ID,string> m_headerIDs;
 
 	//helper methods
+	//TODO: collision detection
 	void loadSeq(BloomMap<ID> &bloomMap, const string& seq, ID value) {
 		if (seq.size() < m_kmerSize)
 			return;
