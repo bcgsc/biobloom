@@ -75,6 +75,7 @@ void BloomMapGenerator::generate(const string &filename, double fpr) {
 
 	//save filter
 	bloomMap.storeFilter(filename);
+	writeIDs("out.txt", m_headerIDs);
 }
 
 

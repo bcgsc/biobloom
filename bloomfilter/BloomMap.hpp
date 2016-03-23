@@ -109,15 +109,15 @@ public:
 		strncpy(magic, header.magic, 8);
 		magic[8] = '\0';
 
-//        cerr << "Loading header... magic: " <<
-//            magic << " hlen: " <<
-//            header.hlen << " size: " <<
-//            header.size << " nhash: " <<
-//            header.nhash << " kmer: " <<
-//            header.kmer << " dFPR: " <<
-//            header.dFPR << " aFPR: " <<
-//            header.nEntry << " tEntry: " <<
-//            header.tEntry << endl;
+        cerr << "Loading header... magic: " <<
+            magic << " hlen: " <<
+            header.hlen << " size: " <<
+            header.size << " nhash: " <<
+            header.nhash << " kmer: " <<
+           header.kmer << " dFPR: " <<
+            header.dFPR << " aFPR: " <<
+            header.nEntry << " tEntry: " <<
+            header.tEntry << endl;
 
 		m_size = header.size;
 		m_array = new T[m_size]();
@@ -183,15 +183,15 @@ public:
 		header.nEntry = m_nEntry;
 		header.tEntry = m_tEntry;
 
-//        cerr << "Writing header... magic: "
-//            << magic << " hlen: "
-//            << header.hlen << " size: "
-//            << header.size << " nhash: "
-//            << header.nhash << " kmer: "
-//            << header.kmer << " dFPR: "
-//            << header.dFPR << " aFPR: "
-//            << header.nEntry << " tEntry: "
-//            << header.tEntry << endl;
+        cerr << "Writing header... magic: "
+            << magic << " hlen: "
+            << header.hlen << " size: "
+            << header.size << " nhash: "
+            << header.nhash << " kmer: "
+           << header.kmer << " dFPR: "
+            << header.dFPR << " aFPR: "
+           << header.nEntry << " tEntry: "
+            << header.tEntry << endl;
 
 		out.write(reinterpret_cast<char*>(&header), sizeof(struct FileHeader));
 	}

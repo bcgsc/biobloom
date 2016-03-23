@@ -17,11 +17,12 @@
 #include <boost/unordered/unordered_map.hpp>
 #include <vector>
 #include <fstream>
+#include <stdint.h>
 #include "Common/ReadsProcessor.h"
 
 using namespace std;
 
-int main(int argc, char **argv) {
+int main() {
 
 	//Load some testdata
 	string fileName = "ecoli.fasta";
@@ -47,8 +48,9 @@ int main(int argc, char **argv) {
 	//set filter size
 	//filterGen.setFilterSize(filterSize);
 
-	filterGen.generate(filename);
+	filterGen.generate("test.bf", 0.01);
 	//Check storage can occur properly
+	BloomMap<uint16_t> map2("test.bf");
 /*
 	ifstream ifile(filename.c_str());
 	assert(ifile.is_open());

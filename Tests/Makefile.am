@@ -4,7 +4,7 @@ check_PROGRAMS = ReadProcessorTests \
 	BloomFilterMakerTests \
 	WindowedParser \
 	BloomFilterInfoTests \
-	SeqEvalTests
+	SeqEvalTests BloomMapGeneratorTests
 	
 ReadProcessorTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a -lz
@@ -33,6 +33,14 @@ BloomFilterMakerTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a -lz
 BloomFilterMakerTests_SOURCES = BloomFilterMakerTests.cpp
 BloomFilterMakerTests_CPPFLAGS = -I$(top_srcdir)/BioBloomMaker \
+	-I$(top_srcdir)/Common \
+	-I$(top_srcdir)/DataLayer
+
+BloomMapGeneratorTests_CXXFLAGS = $(AM_CXXFLAGS) $(OPENMP_CXXFLAGS)
+BloomMapGeneratorTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
+	$(top_builddir)/Common/libcommon.a -lz
+BloomMapGeneratorTests_SOURCES = BloomMapGeneratorTests.cpp
+BloomMapGeneratorTests_CPPFLAGS = -I$(top_srcdir)/BioBloomMaker \
 	-I$(top_srcdir)/Common \
 	-I$(top_srcdir)/DataLayer
 

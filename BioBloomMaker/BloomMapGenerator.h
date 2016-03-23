@@ -9,6 +9,8 @@
 #define BLOOMMAPGENERATOR_H_
 
 #include <vector>
+#include <iostream>
+#include <fstream>
 #include <string>
 #include <stdint.h>
 #include <google/dense_hash_map>
@@ -47,6 +49,19 @@ private:
 			itr++;
 		}
 	}
+
+	void writeIDs(const string& filename, google::dense_hash_map<ID,string> headerIDs) {
+		std::ofstream file;
+		file.open(filename.c_str());
+		assert(file);
+		for (google::dense_hash_map<ID,string>::iterator itr = headerIDs.begin(); itr != headerIDs.end(); ++itr) {
+			file << (*itr).first << "\t" << (*itr).second << "\n";
+			assert(file);
+		}
+		file.close();
+	}
+
+		
 };
 
 #endif /* BLOOMMAPGENERATOR_H_ */
