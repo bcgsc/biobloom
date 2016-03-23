@@ -36,8 +36,8 @@ private:
 	vector<string> m_fileNames;
 	//google::dense_hash_map<string,ID> m_headerIDs;
 
-	//helper method
-	void loadSeq(BloomMap<ID> bloomMap, unsigned k, unsigned hashNum,
+	//helper methods
+	void loadSeq(BloomMap<ID> bloomMap, unsigned hashNum, unsigned k,
 			const string& seq, ID value) {
 		if (seq.size() < k)
 			return;

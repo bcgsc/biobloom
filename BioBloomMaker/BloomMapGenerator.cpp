@@ -22,6 +22,7 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 #pragma omp parallel
 		for (vector<string>::const_iterator it = m_fileNames.begin();
 				it != m_fileNames.end(); ++it) {
+			cerr << "Counting total k-mers in " << *it << endl;
 			FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
 			for (FastqRecord rec;;) {
 				bool good;
@@ -31,13 +32,15 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 				}
 				if (good) {
 					m_expectedEntries += rec.seq.length() - m_kmerSize;
-				}
+				} else
+					break;
 			}
 		}
 	}
+	cerr << "Expected number of elements: " << m_expectedEntries << endl;
 }
 
-/* Generate the bloom filter to the input filename
+/* Generate the bloom filter to the output filename
  */
 void BloomMapGenerator::generate(const string &filename, double fpr) {
 	//init bloom map
@@ -47,30 +50,29 @@ void BloomMapGenerator::generate(const string &filename, double fpr) {
 	//if collision add new entry
 	//save filter
 
-	bool verbose = true;
-	uint64_t count = 0;
 	BloomMap<ID> bloomMap(m_expectedEntries, fpr, m_hashNum, m_kmerSize);
 	ID value = 0;
 
-	assert(!filename.empty());
-	if (verbose)
-		std::cerr << "Reading `" << filename << "'...\n";
-	FastaReader in(filename.c_str(), FastaReader::NO_FOLD_CASE); //changed from FOLD_CASE
-	for (FastqRecord rec;;) {
-		bool good;
-		good = in >> rec;
-		if (good) {
-			loadSeq(bloomMap, m_kmerSize, m_hashNum, rec.seq, value);
-			value++;
-			count++;
+	for (vector<string>::const_iterator it = m_fileNames.begin();
+			it != m_fileNames.end(); ++it) {
+//		if (opt::verbose)
+			std::cerr << "Reading `" << *it << "'...\n";
+		FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
+		for (FastqRecord rec;;) {
+			bool good;
+			{
+				good = sequence >> rec;
+			}
+			if (good) {
+				cerr << rec.id << endl;
+				loadSeq(bloomMap, m_hashNum, m_kmerSize, rec.seq, value);
+				value++;
+			} else
+				break;
 		}
 	}
-	if (verbose) {
-		std::cerr << "Loaded " << count << " reads from `" << filename
-				<< "` into bloom filter\n";
-	}
 
-	bloomMap.storeFilter(filename + ".bm");
+	bloomMap.storeFilter(filename);
 }
 
 
