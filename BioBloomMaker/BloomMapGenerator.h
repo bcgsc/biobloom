@@ -28,7 +28,7 @@ public:
 private:
 
 	typedef uint16_t ID;
-	const ID EMPTY = 0;
+	static const ID EMPTY = 0;
 
 	unsigned m_kmerSize;
 	unsigned m_hashNum;
