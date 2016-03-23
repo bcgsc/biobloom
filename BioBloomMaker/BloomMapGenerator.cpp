@@ -65,7 +65,7 @@ void BloomMapGenerator::generate(const string &filename, double fpr) {
 			}
 			if (good) {
 				cerr << rec.id << endl;
-				loadSeq(bloomMap, m_hashNum, m_kmerSize, rec.seq, value);
+				loadSeq(bloomMap, rec.seq, value);
 				value++;
 			} else
 				break;
