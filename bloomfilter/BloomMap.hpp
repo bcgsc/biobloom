@@ -116,8 +116,6 @@ public:
 //            header.nhash << " kmer: " <<
 //            header.kmer << " dFPR: " <<
 //            header.dFPR << " aFPR: " <<
-//            header.aFPR << " rFPR: " <<
-//            header.rFPR << " nEntry: " <<
 //            header.nEntry << " tEntry: " <<
 //            header.tEntry << endl;
 
@@ -140,7 +138,7 @@ public:
 	void insert(std::vector<size_t> const &hashes, std::vector<T> &values) {
 		assert(hashes.size() == m_hashNum);
 		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < m_hashNum; ++i) {
+		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes.at(i) % m_size;
 			assert(pos < m_size);
 			m_array[pos] = values[i];
@@ -150,7 +148,7 @@ public:
 	void insert(std::vector<size_t> const &hashes, T value) {
 		assert(hashes.size() == m_hashNum);
 		//add same value to the filter
-		for (size_t i = 0; i < m_hashNum; ++i) {
+		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes.at(i) % m_size;
 			assert(pos < m_size);
 			m_array[pos] = value;
@@ -161,7 +159,7 @@ public:
 		assert(hashes.size() == m_hashNum);
 		std::vector<T> values;
 
-		for (size_t i = 0; i < m_hashNum; ++i) {
+		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes.at(i) % m_size;
 			assert(pos < m_size);
 			values.push_back(m_array[pos]);
@@ -192,8 +190,6 @@ public:
 //            << header.nhash << " kmer: "
 //            << header.kmer << " dFPR: "
 //            << header.dFPR << " aFPR: "
-//            << header.aFPR << " rFPR: "
-//            << header.rFPR << " nEntry: "
 //            << header.nEntry << " tEntry: "
 //            << header.tEntry << endl;
 
