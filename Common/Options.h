@@ -1,6 +1,8 @@
 #ifndef COMMON_OPTIONS_H
 #define COMMON_OPTIONS_H 1
 
+#include <stdint.h>
+
 enum FilterType {BLOOMFILTER, BLOOMMAP};
 
 typedef uint16_t ID;
