@@ -64,7 +64,6 @@ void BloomMapGenerator::generate(const string &filename, double fpr) {
 				good = sequence >> rec;
 			}
 			if (good) {
-				cerr << rec.id << endl;
 				loadSeq(bloomMap, rec.seq, value);
 				value++;
 			} else

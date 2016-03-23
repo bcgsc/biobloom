@@ -42,7 +42,6 @@ private:
 			return;
 		/* init rolling hash state and compute hash values for first k-mer */
 		RollingHashIterator itr(seq, m_hashNum, m_kmerSize);
-		cerr << value << endl;
 		while (itr != itr.end()) {
 			bloomMap.insert(*itr, 0);
 			itr++;
