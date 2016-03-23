@@ -14,6 +14,7 @@
 #include <google/dense_hash_map>
 #include "bloomfilter/BloomMap.hpp"
 #include "bloomfilter/RollingHashIterator.h"
+#include "Common/Options.h"
 
 using namespace std;
 
@@ -26,9 +27,6 @@ public:
 
 	virtual ~BloomMapGenerator();
 private:
-
-	typedef uint16_t ID;
-	static const ID EMPTY = 0;
 
 	unsigned m_kmerSize;
 	unsigned m_hashNum;

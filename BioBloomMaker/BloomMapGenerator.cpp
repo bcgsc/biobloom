@@ -17,7 +17,7 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 		m_kmerSize(kmerSize), m_hashNum(hashNum),  m_expectedEntries(
 				numElements), m_totalEntries(0), m_fileNames(filenames) {
 	//Instantiate dense hash map
-	m_headerIDs.set_empty_key(EMPTY);
+	m_headerIDs.set_empty_key(opt::EMPTY);
 
 	//estimate number of k-mers
 	if (numElements == 0) {
