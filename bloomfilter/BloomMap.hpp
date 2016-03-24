@@ -20,6 +20,8 @@
 #include <cstdlib>
 #include <stdio.h>
 #include "rolling.h"
+#include <limits>
+#include <google/dense_hash_map>
 
 using namespace std;
 
@@ -155,7 +157,7 @@ public:
 		}
 	}
 
-	std::vector<T> query(std::vector<size_t> const &hashes) {
+	std::vector<T> query(std::vector<size_t> const &hashes) const {
 		assert(hashes.size() == m_hashNum);
 		std::vector<T> values;
 
@@ -163,9 +165,66 @@ public:
 			size_t pos = hashes.at(i) % m_size;
 			assert(pos < m_size);
 			values.push_back(m_array[pos]);
-
 		}
 		return values;
+	}
+
+	/*
+	 * Returns unambiguous hit to object
+	 * Returns numeric_limits<T>::max() on ambiguous collision
+	 * Returns 0 on if missing element
+	 */
+	T at(std::vector<size_t> const &hashes) const {
+		assert(hashes.size() == m_hashNum);
+		T value = 0;
+
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes.at(i) % m_size;
+			assert(pos < m_size);
+			if(m_array[pos] == 0){
+				return 0;
+			}
+			if (value != 0 && value != m_array[pos]) {
+				value = numeric_limits<T>::max();
+			} else {
+				value = m_array[pos];
+			}
+		}
+		return value;
+	}
+
+	/*
+	 * Returns unambiguous hit to object
+	 * Returns best hit on ambiguous collision
+	 * Returns numeric_limits<T>::max() on completely ambiguous collision
+	 * Returns 0 on if missing element
+	 */
+	//TODO investigate more effient ways to do this
+	T atBest(std::vector<size_t> const &hashes) const {
+		assert(hashes.size() == m_hashNum);
+		google::dense_hash_map<T, unsigned> tmpHash;
+		tmpHash.set_empty_key(0);
+		unsigned maxCount = 0;
+		T value = 0;
+
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes.at(i) % m_size;
+			assert(pos < m_size);
+			if(m_array[pos] == 0){
+				return 0;
+			}
+			if(tmpHash.find(m_array[pos]) != tmpHash.end()){
+				++tmpHash[m_array[pos]];
+			}
+			if(maxCount == tmpHash[m_array[pos]]) {
+				value = numeric_limits<T>::max();
+			}
+			else if ( maxCount < tmpHash[m_array[pos]] ){
+				value = m_array[pos];
+				maxCount = tmpHash[m_array[pos]];
+			}
+		}
+		return value;
 	}
 
 	void writeHeader(ofstream &out) const {
@@ -183,15 +242,11 @@ public:
 		header.nEntry = m_nEntry;
 		header.tEntry = m_tEntry;
 
-        cerr << "Writing header... magic: "
-            << magic << " hlen: "
-            << header.hlen << " size: "
-            << header.size << " nhash: "
-            << header.nhash << " kmer: "
-           << header.kmer << " dFPR: "
-            << header.dFPR << " aFPR: "
-           << header.nEntry << " tEntry: "
-            << header.tEntry << endl;
+		cerr << "Writing header... magic: " << magic << " hlen: " << header.hlen
+				<< " size: " << header.size << " nhash: " << header.nhash
+				<< " kmer: " << header.kmer << " dFPR: " << header.dFPR
+				<< " nEntry: " << header.nEntry << " tEntry: " << header.tEntry
+				<< endl;
 
 		out.write(reinterpret_cast<char*>(&header), sizeof(struct FileHeader));
 	}
@@ -215,6 +270,14 @@ public:
 
 		myFile.close();
 		assert(myFile);
+	}
+
+	unsigned getHashNum(){
+		return m_hashNum;
+	}
+
+	unsigned getKmerSize(){
+		return m_kmerSize;
 	}
 
 private:
@@ -254,8 +317,8 @@ private:
 	/*
 	 * Calculates the optimal FPR to use based on hash functions
 	 */
-	double calcFPR_hashNum(unsigned hashFunctNum) const {
-		return pow(2, -hashFunctNum);
+	double calcFPR_hashNum(int hashFunctNum) const {
+		return pow(2.0, -hashFunctNum);
 	}
 
 	size_t m_size;
