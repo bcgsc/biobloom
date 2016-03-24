@@ -25,7 +25,7 @@ public:
 	explicit BloomMapGenerator(vector<string> const &filenames,
 			unsigned kmerSize, unsigned hashNum, size_t numElements);
 
-	void generate(const string &filename, double fpr);
+	void generate(const string &filePrefix, double fpr);
 
 	virtual ~BloomMapGenerator();
 private:
@@ -39,7 +39,7 @@ private:
 
 	//helper methods
 	//TODO: collision detection
-	void loadSeq(BloomMap<ID> &bloomMap, const string& seq, ID value) {
+	inline void loadSeq(BloomMap<ID> &bloomMap, const string& seq, ID value) {
 		if (seq.size() < m_kmerSize)
 			return;
 		/* init rolling hash state and compute hash values for first k-mer */
@@ -50,7 +50,7 @@ private:
 		}
 	}
 
-	void writeIDs(const string& filename, google::dense_hash_map<ID,string> headerIDs) {
+	inline void writeIDs(const string& filename, google::dense_hash_map<ID,string> headerIDs) {
 		std::ofstream file;
 		file.open(filename.c_str());
 		assert(file);

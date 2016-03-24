@@ -45,7 +45,7 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 
 /* Generate the bloom filter to the output filename
  */
-void BloomMapGenerator::generate(const string &filename, double fpr) {
+void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	//init bloom map
 	BloomMap<ID> bloomMap(m_expectedEntries, fpr, m_hashNum, m_kmerSize);
 	ID value = 0;
@@ -74,8 +74,8 @@ void BloomMapGenerator::generate(const string &filename, double fpr) {
 	}
 
 	//save filter
-	bloomMap.storeFilter(filename);
-	writeIDs("out.txt", m_headerIDs);
+	bloomMap.storeFilter(filePrefix + ".bf");
+	writeIDs(filePrefix + "_ids.txt", m_headerIDs);
 }
 
 

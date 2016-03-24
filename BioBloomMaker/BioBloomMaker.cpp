@@ -312,7 +312,7 @@ int main(int argc, char *argv[]) {
 
 	if(opt::filterType == BLOOMMAP){
 		BloomMapGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
-		filterGen.generate(outputDir + filterPrefix + ".bf", fpr);
+		filterGen.generate(outputDir + filterPrefix, fpr);
 		cerr << "Bloom Map Creation Complete." << endl;
 		return 0;
 	}
