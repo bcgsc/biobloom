@@ -16,4 +16,5 @@ biobloomcategorizer_SOURCES = BioBloomCategorizer.cpp \
 	MultiFilter.h MultiFilter.cpp \
 	ResultsManager.h ResultsManager.cpp \
 	BioBloomClassifier.h BioBloomClassifier.cpp \
-	BloomMapClassifier.h BloomMapClassifier.cpp
+	BloomMapClassifier.h BloomMapClassifier.cpp \
+	Options.h Options.cpp

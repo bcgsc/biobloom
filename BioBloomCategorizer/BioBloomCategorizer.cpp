@@ -12,9 +12,11 @@
 #include <vector>
 #include <sys/stat.h>
 #include "BioBloomClassifier.h"
+#include "BloomMapClassifier.h"
 #include "DataLayer/Options.h"
 #include "config.h"
 #include "Common/Options.h"
+#include "Options.h"
 #include "Common/SeqEval.h"
 #if _OPENMP
 # include <omp.h>
@@ -46,6 +48,15 @@ vector<string> convertInputString(const string &inputString)
 		currentInfoFile.push_back(temp);
 	}
 	return currentInfoFile;
+}
+
+/*
+ * checks if file exists
+ */
+bool fexists(const string &filename)
+{
+	ifstream ifile(filename.c_str());
+	return ifile;
 }
 
 void folderCheck(const string &path)
@@ -144,7 +155,6 @@ int main(int argc, char *argv[])
 	int fastq = 0;
 	int fasta = 0;
 	string filePostfix = "";
-	double score = 0.15;
 	bool withScore = false;
 
 	//advanced options
@@ -205,7 +215,7 @@ int main(int argc, char *argv[])
 			// if arg is a positive integer > 1, interpret as minimum match
 			// length in bases
 			if ((convert >> matchLen) && matchLen > 1) {
-				score = (unsigned)matchLen;
+				opt::score = (unsigned)matchLen;
 				evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
 				cerr << "Min match length threshold: " << matchLen
 					<<" bp" << endl;
@@ -213,23 +223,23 @@ int main(int argc, char *argv[])
 				// not a positive integer > 1, so interpret as floating
 				// point score between 0 and 1
 				stringstream convert2(optarg);
-				if (!(convert2 >> score)) {
+				if (!(convert2 >> opt::score)) {
 					cerr << "Error - Invalid set of bloom filter parameters! s: "
 						<< optarg << endl;
 					exit(EXIT_FAILURE);
 				}
-				if (score < 0 || score > 1) {
+				if (opt::score < 0 || opt::score > 1) {
 					cerr << "Error - s must be a positive integer or a floating "
 						<< "point between 0 and 1. Input given:"
 						<< optarg << endl;
 					exit(EXIT_FAILURE);
 				}
 				evalMode = SeqEval::EVAL_STANDARD;
-				if (score == 1)
+				if (opt::score == 1)
 					cerr << "Running in 'best match' mode (no score threshold)"
 						<< endl;
 				else
-					cerr << "Min score threshold: " << score << endl;
+					cerr << "Min score threshold: " << opt::score << endl;
 			}
 			break;
 		}
@@ -387,8 +397,33 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	//check filters
+	for (vector<string>::const_iterator it = filterFilePaths.begin();
+			it != filterFilePaths.end(); ++it)
+	{
+		//check if files exist
+		if (!fexists(*it)) {
+			cerr << "Error: " + (*it) + " File cannot be opened" << endl;
+			exit(1);
+		}
+		string infoFileName = (*it).substr(0, (*it).length() - 2) + "txt";
+		if (!fexists(infoFileName)) {
+			opt::filterType = BLOOMMAP;
+		}
+	}
+
+	//TODO: error if filter types are mixed
+
+	if(opt::filterType == BLOOMMAP){
+		cerr << "Bloom Map Mode" << endl;
+		BloomMapClassifier BMC(filterFilePaths[0]);
+		BMC.filter(inputFiles);
+		//load filters
+		return 0;
+	}
+
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix,
+	BioBloomClassifier BBC(filterFilePaths, opt::score, outputPrefix, filePostfix,
 			minHit, minHitOnly, withScore);
 
 	//floating point score or min match length
