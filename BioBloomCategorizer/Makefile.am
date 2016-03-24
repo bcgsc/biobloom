@@ -15,4 +15,5 @@ biobloomcategorizer_LDFLAGS = $(OPENMP_CXXFLAGS)
 biobloomcategorizer_SOURCES = BioBloomCategorizer.cpp \
 	MultiFilter.h MultiFilter.cpp \
 	ResultsManager.h ResultsManager.cpp \
-	BioBloomClassifier.h BioBloomClassifier.cpp
+	BioBloomClassifier.h BioBloomClassifier.cpp \
+	BloomMapClassifier.h BloomMapClassifier.cpp
