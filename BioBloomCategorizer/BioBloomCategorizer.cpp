@@ -50,15 +50,6 @@ vector<string> convertInputString(const string &inputString)
 	return currentInfoFile;
 }
 
-/*
- * checks if file exists
- */
-bool fexists(const string &filename)
-{
-	ifstream ifile(filename.c_str());
-	return ifile;
-}
-
 void folderCheck(const string &path)
 {
 	struct stat sb;
@@ -146,15 +137,12 @@ int main(int argc, char *argv[])
 
 	//command line variables
 	string rawInputFiles = "";
-	string outputPrefix = "";
 	string filtersFile = "";
-	string outputReadType = "";
 	bool paired = false;
 	bool inclusive = false;
 
 	int fastq = 0;
 	int fasta = 0;
-	string filePostfix = "";
 	bool withScore = false;
 
 	//advanced options
@@ -248,7 +236,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'p': {
-			outputPrefix = optarg;
+			opt::outputPrefix = optarg;
 			break;
 		}
 		case 'h': {
@@ -272,7 +260,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'g': {
-			filePostfix = ".gz";
+			opt::filePostfix = ".gz";
 			break;
 		}
 		case 'l': {
@@ -366,8 +354,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	//check if output folder exists
-	if (outputPrefix.find('/') != string::npos) {
-		string tempStr = outputPrefix.substr(0, outputPrefix.find_last_of("/"));
+	if (opt::outputPrefix.find('/') != string::npos) {
+		string tempStr = opt::outputPrefix.substr(0, opt::outputPrefix.find_last_of("/"));
 		folderCheck(tempStr);
 	}
 
@@ -378,13 +366,13 @@ int main(int argc, char *argv[])
 				<< endl;
 		exit(1);
 	} else if (fastq) {
-		outputReadType = "fq";
+		opt::outputType = "fq";
 	} else if (fasta) {
-		outputReadType = "fa";
+		opt::outputType = "fa";
 	}
 
 	//-w option cannot be used without output method
-	if (withScore && (outputReadType == "")) {
+	if (withScore && (opt::outputType == "")) {
 		cerr << "Error: -w option cannot be used without output method" << endl;
 		exit(1);
 	}
@@ -416,6 +404,9 @@ int main(int argc, char *argv[])
 
 	if(opt::filterType == BLOOMMAP){
 		cerr << "Bloom Map Mode" << endl;
+		if(opt::outputType == ""){
+			opt::outputType = "fa";
+		}
 		BloomMapClassifier BMC(filterFilePaths[0]);
 		BMC.filter(inputFiles);
 		//load filters
@@ -423,7 +414,7 @@ int main(int argc, char *argv[])
 	}
 
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths, opt::score, outputPrefix, filePostfix,
+	BioBloomClassifier BBC(filterFilePaths, opt::score, opt::outputPrefix, opt::filePostfix,
 			minHit, minHitOnly, withScore);
 
 	//floating point score or min match length
@@ -446,12 +437,12 @@ int main(int argc, char *argv[])
 		if (inclusive) {
 			BBC.setInclusive();
 		}
-		if (outputReadType != "") {
+		if (opt::outputType != "") {
 			if (pairedBAMSAM) {
-				BBC.filterPairBAMPrint(inputFiles[0], outputReadType);
+				BBC.filterPairBAMPrint(inputFiles[0], opt::outputType);
 			} else {
 				BBC.filterPairPrint(inputFiles[0], inputFiles[1],
-						outputReadType);
+						opt::outputType);
 			}
 		} else {
 			if (pairedBAMSAM) {
@@ -461,8 +452,8 @@ int main(int argc, char *argv[])
 			}
 		}
 	} else {
-		if (outputReadType != "") {
-			BBC.filterPrint(inputFiles, outputReadType);
+		if (opt::outputType != "") {
+			BBC.filterPrint(inputFiles, opt::outputType);
 		} else {
 			BBC.filter(inputFiles);
 		}

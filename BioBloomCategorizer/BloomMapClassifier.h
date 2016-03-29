@@ -13,6 +13,12 @@
 #include "bloomfilter/BloomMap.hpp"
 #include "boost/shared_ptr.hpp"
 #include "Common/Options.h"
+#include "Options.h"
+#include <google/dense_hash_map>
+#include "Common/Dynamicofstream.h"
+#include <vector>
+#include "DataLayer/FastaReader.h"
+#include "BioBloomClassifier.h"
 
 using namespace std;
 
@@ -24,6 +30,28 @@ public:
 	virtual ~BloomMapClassifier();
 private:
 	BloomMap<ID> m_filter;
+	vector<string> m_fullIDs;
+	google::dense_hash_map<ID, string> m_ids;
+
+	//TODO: REFACTOR WITH BioBloomClassifier
+	inline void printSingleToFile(const string &outputFileName,
+			const FastqRecord &rec,
+			google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles) {
+		if (opt::outputType == "fa") {
+#pragma omp critical(outputFiles)
+			{
+				(*outputFiles[outputFileName]) << ">" << rec.id << "\n"
+						<< rec.seq << "\n";
+			}
+		} else {
+#pragma omp critical(outputFiles)
+			{
+				(*outputFiles[outputFileName]) << "@" << rec.id << "\n"
+						<< rec.seq << "\n+\n" << rec.qual << "\n";
+			}
+		}
+	}
+
 //	void loadFilters(const vector<string> &filterFilePaths);
 };
 

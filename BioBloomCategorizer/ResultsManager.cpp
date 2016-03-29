@@ -15,16 +15,15 @@
 
 ResultsManager::ResultsManager(const vector<string> &filterOrderRef,
 		bool inclusive) :
-		m_filterOrder(filterOrderRef), m_multiMatch(
-				0), m_noMatch(0), m_inclusive(inclusive)
-{
-	//initialize variables and print filter ids
-	for (vector<string>::const_iterator i = m_filterOrder.begin();
-			i != m_filterOrder.end(); ++i)
-	{
-		m_aboveThreshold[*i] = 0;
-		m_unique[*i] = 0;
-	}
+		m_filterOrder(filterOrderRef), m_multiMatch(0), m_noMatch(0), m_inclusive(
+				inclusive), m_aboveThreshold(
+				vector<size_t>(filterOrderRef.size(), 0)), m_unique(
+				vector<size_t>(filterOrderRef.size(), 0)) {
+//	for (vector<string>::const_iterator i = m_filterOrder.begin();
+//			i != m_filterOrder.end(); ++i) {
+//		m_aboveThreshold[*i] = 0;
+//		m_unique[*i] = 0;
+//	}
 }
 
 /*
@@ -35,18 +34,18 @@ const string ResultsManager::updateSummaryData(
 		const unordered_map<string, bool> &hits)
 {
 	string filterID;
+	unsigned filterIdx = 0;
 	bool noMatchFlag = true;
 	bool multiMatchFlag = false;
 
-	for (vector<string>::const_iterator i = m_filterOrder.begin();
-			i != m_filterOrder.end(); ++i)
-	{
-		if (hits.at(*i)) {
+	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
+		if (hits.at(m_filterOrder.at(i))) {
 #pragma omp atomic
-			++m_aboveThreshold[*i];
+			++m_aboveThreshold[i];
 			if (noMatchFlag) {
 				noMatchFlag = false;
-				filterID = *i;
+				filterID = m_filterOrder.at(i);
+				filterIdx = i;
 			} else {
 				multiMatchFlag = true;
 			}
@@ -62,13 +61,54 @@ const string ResultsManager::updateSummaryData(
 #pragma omp atomic
 			++m_multiMatch;
 		} else {
-		//TODO : USE LOCKS, # of locks == # of filterIDs
 #pragma omp atomic
-			++m_unique[filterID];
+			++m_unique[filterIdx];
 		}
 	}
 	return filterID;
 }
+
+/*
+ * Records data for read summary based on thresholds
+ * Returns filter ID that this read equals
+ */
+const string ResultsManager::updateSummaryData(
+		const vector<ID> &hits)
+{
+	string filterID;
+	unsigned filterIdx = 0;
+	bool noMatchFlag = true;
+	bool multiMatchFlag = false;
+
+	for (vector<ID>::const_iterator i = hits.begin(); i != hits.end(); ++i) {
+		ID id = *i - 1;
+#pragma omp atomic
+		++m_aboveThreshold[id];
+		if (noMatchFlag) {
+			noMatchFlag = false;
+			filterID = m_filterOrder.at(id);
+			filterIdx = id;
+		} else {
+			multiMatchFlag = true;
+		}
+	}
+	if (noMatchFlag) {
+		filterID = NO_MATCH;
+#pragma omp atomic
+		++m_noMatch;
+	} else {
+		if (multiMatchFlag) {
+			filterID = MULTI_MATCH;
+#pragma omp atomic
+			++m_multiMatch;
+		} else {
+#pragma omp atomic
+			++m_unique[filterIdx];
+		}
+	}
+	return filterID;
+}
+
 
 /*
  * Records data for read summary based on thresholds
@@ -79,30 +119,31 @@ const string ResultsManager::updateSummaryData(
 		const unordered_map<string, bool> &hits2)
 {
 	string filterID;
+	unsigned filterIdx = 0;
 	bool noMatchFlag = true;
 	bool multiMatchFlag = false;
 
-	for (vector<string>::const_iterator i = m_filterOrder.begin();
-			i != m_filterOrder.end(); ++i)
-	{
+	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
 		if (m_inclusive) {
-			if (hits1.at(*i) || hits2.at(*i)) {
+			if (hits1.at(m_filterOrder.at(i)) || hits2.at(m_filterOrder.at(i))) {
 #pragma omp atomic
-				++m_aboveThreshold[*i];
+				++m_aboveThreshold[i];
 				if (noMatchFlag) {
 					noMatchFlag = false;
-					filterID = *i;
+					filterID = m_filterOrder.at(i);
+					filterIdx = i;
 				} else {
 					multiMatchFlag = true;
 				}
 			}
 		} else {
-			if (hits1.at(*i) && hits2.at(*i)) {
+			if (hits1.at(m_filterOrder.at(i)) && hits2.at(m_filterOrder.at(i))) {
 #pragma omp atomic
-				++m_aboveThreshold[*i];
+				++m_aboveThreshold[i];
 				if (noMatchFlag) {
 					noMatchFlag = false;
-					filterID = *i;
+					filterID = m_filterOrder.at(i);
+					filterIdx = i;
 				} else {
 					multiMatchFlag = true;
 				}
@@ -120,7 +161,7 @@ const string ResultsManager::updateSummaryData(
 			++m_multiMatch;
 		} else {
 #pragma omp atomic
-			++m_unique[filterID];
+			++m_unique[filterIdx];
 		}
 	}
 	return filterID;
@@ -135,20 +176,21 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	summaryOutput
 			<< "filter_id\thits\tmisses\tshared\trate_hit\trate_miss\trate_shared\n";
 
-	for (vector<string>::const_iterator i = m_filterOrder.begin();
-			i != m_filterOrder.end(); ++i)
-	{
-		summaryOutput << *i;
-		summaryOutput << "\t" << m_aboveThreshold.at(*i);
-		summaryOutput << "\t" << readCount - m_aboveThreshold.at(*i);
-		summaryOutput << "\t" << (m_aboveThreshold.at(*i) - m_unique.at(*i));
+	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
+		summaryOutput << m_filterOrder[i];
+		summaryOutput << "\t" << m_aboveThreshold.at(i);
+		summaryOutput << "\t" << readCount - m_aboveThreshold.at(i);
 		summaryOutput << "\t"
-				<< double(m_aboveThreshold.at(*i)) / double(readCount);
+				<< (m_aboveThreshold.at(i)
+						- m_unique.at(i));
 		summaryOutput << "\t"
-				<< double(readCount - m_aboveThreshold.at(*i))
+				<< double(m_aboveThreshold.at(i))
 						/ double(readCount);
 		summaryOutput << "\t"
-				<< double(m_aboveThreshold.at(*i) - m_unique.at(*i))
+				<< double(readCount - m_aboveThreshold.at(i))
+						/ double(readCount);
+		summaryOutput << "\t"
+				<< double(m_aboveThreshold.at(i) - m_unique.at(i))
 						/ double(readCount);
 		summaryOutput << "\n";
 	}

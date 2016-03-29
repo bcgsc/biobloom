@@ -85,7 +85,7 @@ public:
 		fseek(file, lCurPos, 0);
 		if (fileSize != m_size * sizeof(T)) {
 			cerr << "Error: " << filterFilePath
-					<< " does not match size given by its information file. Size: "
+					<< " does not match size given by its header. Size: "
 					<< fileSize << " vs " << m_size * sizeof(T) << " bytes."
 					<< endl;
 			exit(1);
@@ -111,7 +111,7 @@ public:
 		strncpy(magic, header.magic, 8);
 		magic[8] = '\0';
 
-        cerr << "Loading header... magic: " <<
+        cerr << "Loaded header... magic: " <<
             magic << " hlen: " <<
             header.hlen << " size: " <<
             header.size << " nhash: " <<

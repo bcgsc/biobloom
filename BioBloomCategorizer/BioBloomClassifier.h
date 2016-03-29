@@ -32,6 +32,15 @@ enum mode {
 	COLLAB, MINHITONLY, BESTHIT, STD, SCORES
 };
 
+/*
+ * checks if file exists
+ */
+inline bool fexists(const string &filename)
+{
+	ifstream ifile(filename.c_str());
+	return ifile;
+}
+
 ///** for modes of printing out files */
 //enum printMode {FASTA, FASTQ, BEST_FASTA, BEST_FASTQ};
 //enum printMode {NORMAL, WITH_SCORE};
@@ -101,7 +110,6 @@ private:
 	bool m_inclusive;
 
 	void loadFilters(const vector<string> &filterFilePaths);
-	bool fexists(const string &filename) const;
 	void evaluateReadStd(const FastqRecord &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
 	void evaluateReadMin(const FastqRecord &rec, const string &hashSig,

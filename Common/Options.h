@@ -2,6 +2,7 @@
 #define COMMON_OPTIONS_H 1
 
 #include <stdint.h>
+#include <limits>
 
 enum FilterType {BLOOMFILTER, BLOOMMAP};
 
@@ -17,5 +18,6 @@ namespace opt {
 	extern unsigned threads;
 	extern FilterType filterType;
 	static const ID EMPTY = 0;
+	static const ID COLLI = std::numeric_limits<ID>::max();
 }
 #endif

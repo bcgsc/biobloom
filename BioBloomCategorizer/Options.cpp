@@ -9,6 +9,9 @@
 
 namespace opt {
 double score = 0.15;
+std::string outputPrefix = "";
+std::string filePostfix = "";
+std::string outputType = "";
 }
 
 
