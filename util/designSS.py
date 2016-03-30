@@ -74,8 +74,12 @@ def main():
             seed[nseeds-j-1][seedlen-i-1]=seed[j][i]
     # output seeds
     for j in range(nseeds):
+        weight = 0;
         for i in range(seedlen):
             sys.stdout.write(str(seed[j][i]))
+            if seed[j][i] != 0:
+                weight += 1;
+        sys.stdout.write("\t" + str(weight))
         print
 
 
