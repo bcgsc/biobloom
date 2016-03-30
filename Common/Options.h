@@ -17,7 +17,7 @@ namespace opt {
 	extern unsigned streakThreshold;
 	extern unsigned threads;
 	extern FilterType filterType;
-	static const ID EMPTY = 0;
-	static const ID COLLI = std::numeric_limits<ID>::max();
+	extern const ID EMPTY;
+	extern const ID COLLI;
 }
 #endif

@@ -7,4 +7,6 @@ namespace opt {
 	unsigned streakThreshold = 3;
 	unsigned threads = 1;
 	FilterType filterType = BLOOMFILTER;
+	const ID EMPTY = 0;
+	const ID COLLI = std::numeric_limits<ID>::max();
 }
