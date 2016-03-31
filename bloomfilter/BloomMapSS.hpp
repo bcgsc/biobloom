@@ -36,16 +36,12 @@ public:
 		char magic[8];
 		uint32_t hlen;
 		uint64_t size;
+		uint32_t nhash;
+		uint32_t kmer;
 		double dFPR;
 		uint64_t nEntry;
 		uint64_t tEntry;
 	};
-
-	BloomMap<T>(size_t filterSize, vector<string> seeds) :
-			m_size(filterSize), m_dFPR(0), m_nEntry(0), m_tEntry(0) {
-		m_ssVal = parseSeedString(seeds);
-		m_array = new T[m_size]();
-	}
 
 	/* De novo filter constructor.
 	 * Allocates a filter size based on the number of expected elements and FPR
@@ -53,9 +49,8 @@ public:
 	 * If hashNum is set to 0, an optimal value is computed based on the FPR
 	 */
 	BloomMap<T>(size_t expectedElemNum, double fpr, vector<string> seeds) :
-			m_size(0), m_dFPR(fpr), m_nEntry(
-					0), m_tEntry(0) {
-		m_ssVal = parseSeedString(seeds);
+			m_size(0), m_dFPR(fpr), m_nEntry(0), m_tEntry(0), m_sseeds(seeds) {
+		m_ssVal = parseSeedString(m_sseeds);
 		if (m_size == 0) {
 			m_size = calcOptimalSize(expectedElemNum, m_dFPR);
 		}
@@ -75,6 +70,7 @@ public:
 		}
 
 		loadHeader(file);
+		m_ssVal = parseSeedString(m_sseeds);
 
 		long int lCurPos = ftell(file);
 		fseek(file, 0, 2);
@@ -108,15 +104,23 @@ public:
 		strncpy(magic, header.magic, 8);
 		magic[8] = '\0';
 
-        cerr << "Loaded header... magic: " <<
-            magic << " hlen: " <<
-            header.hlen << " size: " <<
-            header.size << " nhash: " <<
-            header.dFPR << " aFPR: " <<
-            header.nEntry << " tEntry: " <<
-            header.tEntry << endl;
+		cerr << "Loaded header... magic: " << magic << " hlen: " << header.hlen
+				<< " size: " << header.size << " nhash: " << header.nhash
+				<< " kmer: " << header.kmer << " dFPR: " << header.dFPR
+				<< " aFPR: " << header.nEntry << " tEntry: " << header.tEntry
+				<< endl;
 
         assert(MAGIC == magic);
+
+        //load seeds
+		for (unsigned i = 0; i < header.nhash; ++i) {
+			char* temp[header.kmer];
+
+			if (fread(temp, header.kmer, 1, file) != 1) {
+				cerr << "Failed to spaced seed string" << endl;
+			}
+			m_ssVal[i] = string(temp);
+		}
 
 		m_size = header.size;
 		m_array = new T[m_size]();
@@ -213,7 +217,16 @@ public:
 		magic[8] = '\0';
 
 		header.hlen = sizeof(struct FileHeader);
+		header.kmer = m_sseeds[0].size();
+		for (vector<string>::iterator itr = m_sseeds.begin();
+				itr != m_sseeds.end(); ++itr) {
+			header.hlen += itr->size();
+			//check if spaced seeds are all the same length
+			assert(header.kmer == itr->size());
+		}
+
 		header.size = m_size;
+		header.nhash = m_sseeds.size();
 		header.dFPR = m_dFPR;
 		header.nEntry = m_nEntry;
 		header.tEntry = m_tEntry;
@@ -224,6 +237,11 @@ public:
 				<< endl;
 
 		out.write(reinterpret_cast<char*>(&header), sizeof(struct FileHeader));
+
+		for (vector<string>::iterator itr = m_sseeds.begin();
+				itr != m_sseeds.end(); ++itr) {
+			out.write(itr->c_str(), itr->size());
+		}
 	}
 
 	/*
@@ -316,6 +334,7 @@ private:
 	typedef vector< vector<unsigned> > SeedVal;
 	SeedVal m_ssVal;
 
+	vector<string> m_sseeds;
 };
 
 #endif /* BLOOMMAP_HPP_ */
