@@ -14,18 +14,35 @@ private:
 	 * Determine the canonical hash value, given hash values for
 	 * forward and reverse-complement of the same k-mer.
 	 */
-	size_t canonicalHash(size_t hash, size_t rcHash) const
+	inline size_t canonicalHash(size_t hash, size_t rcHash) const
 	{
 		return (rcHash < hash) ? rcHash : hash;
 	}
 
-	/** compute multiple pseudo-independent hash values using
-	 * a single seed hash value */
-	std::vector<size_t> multiHash(size_t seedHash) const
+//	/** compute multiple pseudo-independent hash values using
+//	 * a single seed hash value */
+//	std::vector<size_t> multiHash(size_t seedHash) const
+//	{
+//		std::vector<size_t> hashes(m_numHashes);
+//		for (unsigned i = 0; i < m_numHashes; i++) {
+//			hashes.at(i) = rol(varSeed, i) ^ seedHash;
+//		}
+//		return hashes;
+//	}
+
+	/**
+	 * Compute multiple pseudo-independent hash values using spaced seed values
+	 * Also computes reverse which complement is found hashes as well
+	 * kmerItr is the location in the string you are currently at to use for masking
+	 * @return vector of hash values
+	 **/
+	//TODO: Is the construction of an array really needed? (pass by a reference?) what about thread safety?
+	std::vector<size_t> multiHash(uint64_t rHash, uint64_t fHash,
+			const std::string::const_iterator &kmerItr) const
 	{
-		std::vector<size_t> hashes(m_numHashes);
-		for (unsigned i = 0; i < m_numHashes; i++) {
-			hashes.at(i) = rol(varSeed, i) ^ seedHash;
+		std::vector<size_t> hashes(m_ssVals.size());
+		for (unsigned i = 0; i < m_ssVals.size(); ++i) {
+			hashes[i] = maskValues(rHash, fHash, m_k, m_ssVals.at(i), kmerItr);
 		}
 		return hashes;
 	}
@@ -35,7 +52,9 @@ public:
 	/**
 	 * Default constructor.
 	 */
-	RollingHash() : m_numHashes(0), m_k(0), m_hash1(0), m_rcHash1(0) {}
+	RollingHash() : m_k(0), m_hash1(0), m_rcHash1(0), m_ssVals(
+					vector < vector<unsigned> >()) {
+	}
 
 	/**
 	 * Constructor. Construct RollingHash object when initial k-mer
@@ -44,59 +63,57 @@ public:
 	 * for each k-mer
 	 * @param k k-mer length
 	 */
-	RollingHash(unsigned numHashes, unsigned k)
-	: m_numHashes(numHashes), m_k(k), m_hash1(0), m_rcHash1(0) {}
-
-	/**
-	 * Constructor. Construct RollingHash object while specifying
-	 * initial k-mer to be hashed.
-	 * @param kmer initial k-mer for initializing hash value(s)
-	 * @param numHashes number of pseudo-independent hash values to compute
-	 * for each k-mer
-	 * @param k k-mer length
-	 */
-	RollingHash(const std::string& kmer, unsigned numHashes, unsigned k)
-		: m_numHashes(numHashes), m_k(k), m_hash1(0), m_rcHash1(0)
-	{
-		reset(kmer);
+	RollingHash(unsigned k,	const vector<vector<unsigned> > &ssVals) :
+			m_k(k), m_hash1(0), m_rcHash1(0), m_ssVals(ssVals) {
 	}
 
-	/** initialize hash values from seq */
-	void reset(const std::string& kmer)
-	{
-		assert(kmer.length() == m_k);
+//	/**
+//	 * Constructor. Construct RollingHash object while specifying
+//	 * initial k-mer to be hashed.
+//	 * @param kmer initial k-mer for initializing hash value(s)
+//	 * @param numHashes number of pseudo-independent hash values to compute
+//	 * for each k-mer
+//	 * @param k k-mer length
+//	 */
+//	RollingHash(const std::string& kmer, unsigned numHashes, unsigned k)
+//		: m_numHashes(numHashes), m_k(k), m_hash1(0), m_rcHash1(0)
+//	{
+//		reset(kmer);
+//	}
 
+	/** initialize hash values from seq */
+	void reset(const std::string::const_iterator &kmerItr)
+	{
 		/* compute first hash function for k-mer */
-		m_hash1 = getFhval(kmer.c_str(), m_k);
+		m_hash1 = getFhval(kmerItr, m_k);
 
 		/* compute first hash function for reverse complement
 		 * of k-mer */
-		m_rcHash1 = getRhval(kmer.c_str(), m_k);
+		m_rcHash1 = getRhval(kmerItr, m_k);
 
 		/* compute hash values */
-		m_hashes = multiHash(canonicalHash(m_hash1, m_rcHash1));
+		m_hashes = multiHash(m_hash1, m_rcHash1, kmerItr);
 	}
 
 	/**
 	 * Compute hash values for a neighbour k-mer on the right,
 	 * without updating internal state.
-	 * @param charOut leftmost base of current k-mer
-	 * @param charIn rightmost base of k-mer to the right
+	 * @param std::string::const_iterator start position of what base is being removed
 	 * @return vector of hash values for next k-mer
 	 */
-	std::vector<size_t> peekRight(unsigned char charOut, unsigned char charIn) const
+	std::vector<size_t> peekRight(const std::string::const_iterator &kmerItr) const
 	{
 		size_t hash1 = m_hash1;
 		size_t rcHash1 = m_rcHash1;
 
 		/* update first hash function */
-		rollHashesRight(hash1, rcHash1, charOut, charIn, m_k);
+		rollHashesRight(hash1, rcHash1, *kmerItr, *(kmerItr+m_k+1), m_k);
 
-		/* get seed value for computing rest of the hash functions */
-		size_t seed = canonicalHash(hash1, rcHash1);
+//		/* get seed value for computing rest of the hash functions */
+//		size_t seed = canonicalHash(hash1, rcHash1);
 
 		/* compute hash values */
-		return multiHash(seed);
+		return multiHash(hash1, rcHash1, kmerItr);
 	}
 
 	/**
@@ -106,19 +123,19 @@ public:
 	 * @param charOut rightmost base of current k-mer
 	 * @return vector of hash values for next k-mer
 	 */
-	std::vector<size_t> peekLeft(unsigned char charIn, unsigned char charOut) const
+	std::vector<size_t> peekLeft(const std::string::const_iterator &kmerItr) const
 	{
 		size_t hash1 = m_hash1;
 		size_t rcHash1 = m_rcHash1;
 
 		/* update first hash function */
-		rollHashesLeft(hash1, rcHash1, charIn, charOut, m_k);
+		rollHashesLeft(hash1, rcHash1, *kmerItr, *(kmerItr+m_k+1), m_k);
 
-		/* get seed value for computing rest of the hash functions */
-		size_t seed = canonicalHash(hash1, rcHash1);
+//		/* get seed value for computing rest of the hash functions */
+//		size_t seed = canonicalHash(hash1, rcHash1);
 
 		/* compute hash values */
-		return multiHash(seed);
+		return multiHash(m_hash1, m_rcHash1, kmerItr);
 	}
 
 	/**
@@ -128,16 +145,15 @@ public:
 	 * @param charIn rightmost base of next k-mer
 	 * @return vector of hash values for next k-mer
 	 */
-	void rollRight(unsigned char charOut, unsigned char charIn)
+	void rollRight(const std::string::const_iterator &kmerItr)
 	{
 		/* update first hash function */
-		rollHashesRight(m_hash1, m_rcHash1, charOut, charIn, m_k);
-
-		/* get seed value for computing rest of the hash functions */
-		size_t seed = canonicalHash(m_hash1, m_rcHash1);
+		rollHashesRight(m_hash1, m_rcHash1, *kmerItr, *(kmerItr+m_k+1), m_k);
+//		/* get seed value for computing rest of the hash functions */
+//		size_t seed = canonicalHash(m_hash1, m_rcHash1);
 
 		/* compute hash values */
-		m_hashes = multiHash(seed);
+		m_hashes = multiHash(m_hash1, m_rcHash1, kmerItr);
 	}
 
 	/**
@@ -147,16 +163,16 @@ public:
 	 * @param charIn rightmost base of next k-mer
 	 * @return vector of hash values for next k-mer
 	 */
-	void rollLeft(unsigned char charIn, unsigned char charOut)
+	void rollLeft(const std::string::const_iterator &kmerItr)
 	{
 		/* update first hash function */
-		rollHashesLeft(m_hash1, m_rcHash1, charIn, charOut, m_k);
+		rollHashesLeft(m_hash1, m_rcHash1, *kmerItr, *(kmerItr+m_k+1), m_k);
 
-		/* get seed value for computing rest of the hash functions */
-		size_t seed = canonicalHash(m_hash1, m_rcHash1);
+//		/* get seed value for computing rest of the hash functions */
+//		size_t seed = canonicalHash(m_hash1, m_rcHash1);
 
 		/* compute hash values */
-		m_hashes = multiHash(seed);
+		m_hashes = multiHash(m_hash1, m_rcHash1, kmerItr);
 	}
 
 	/** Get hash values for current k-mer */
@@ -170,7 +186,7 @@ public:
 	bool operator==(const RollingHash& o) const
 	{
 		return
-			m_numHashes == o.m_numHashes &&
+			m_ssVals == o.m_ssVals &&
 			m_k == o.m_k &&
 			m_hashes == o.m_hashes &&
 			m_hash1 == o.m_hash1 &&
@@ -179,8 +195,8 @@ public:
 
 private:
 
-	/** number of hash functions to compute at each position */
-	unsigned m_numHashes;
+//	/** number of hash functions to compute at each position */
+//	unsigned m_numHashes;
 	/** k-mer length */
 	unsigned m_k;
 	/** current values for each hash function */
@@ -190,6 +206,8 @@ private:
 	/** value of first hash function for current k-mer, after
 	 * reverse-complementing */
 	size_t m_rcHash1;
+	//Spaced seed values to use
+	const vector< vector<unsigned> > &m_ssVals;
 };
 
 #endif

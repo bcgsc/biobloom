@@ -2,6 +2,7 @@
 #define ROLLING_HASH_H
 
 #include <stdint.h>
+#include <vector>
 
 // offset for the complement base in the random seeds table
 const int cpOff = -20;
@@ -56,46 +57,62 @@ inline uint64_t ror(const uint64_t v, const int s) {
 }
 
 // forward-strand hash value of the base kmer, i.e. fhval(kmer_0)
-inline uint64_t getFhval(const char * kmerSeq, const unsigned k) {
-    uint64_t hVal=0;
-    for(unsigned i=0; i<k; i++)
-        hVal ^= rol(seedTab[(unsigned char)kmerSeq[i]], k-1-i);
-    return hVal;
+inline uint64_t getFhval(const std::string::const_iterator &kmerItr,
+		const unsigned k) {
+	uint64_t hVal = 0;
+	for (unsigned i = 0; i < k; i++)
+		hVal ^= rol(seedTab[(unsigned char) *(kmerItr + i)], k - 1 - i);
+	return hVal;
 }
 
 // reverse-strand hash value of the base kmer, i.e. rhval(kmer_0)
-inline uint64_t getRhval(const char * kmerSeq, const unsigned k) {
-    uint64_t hVal=0;
-    for(unsigned i=0; i<k; i++)
-        hVal ^= rol(seedTab[(unsigned char)kmerSeq[i]+cpOff], i);
-    return hVal;
+inline uint64_t getRhval(const std::string::const_iterator &kmerItr,
+		const unsigned k) {
+	uint64_t hVal = 0;
+	for (unsigned i = 0; i < k; i++)
+		hVal ^= rol(seedTab[(unsigned char) *(kmerItr + i) + cpOff], i);
+	return hVal;
 }
 
 // cannonical hash value of the base kmer, i.e. rhval(kmer_0)
-inline uint64_t getChval(const char * kmerSeq, const unsigned k) {
-    uint64_t fhVal = getFhval(kmerSeq, k);
-    uint64_t rhVal = getRhval(kmerSeq, k);
+inline uint64_t getChval(const std::string::const_iterator &kmerItr, const unsigned k) {
+    uint64_t fhVal = getFhval(kmerItr, k);
+    uint64_t rhVal = getRhval(kmerItr, k);
     return (rhVal<fhVal)? rhVal : fhVal;
 }
 
 // initialize forward-strand hash value of the first kmer, i.e. fhval(kmer_0)
-inline uint64_t initHashes(const char * kmerSeq, const unsigned k) {
-    return getFhval(kmerSeq, k);
+inline uint64_t initHashes(const std::string::const_iterator &kmerItr, const unsigned k) {
+    return getFhval(kmerItr, k);
 }
 
 // initialize cannonical hash value of the first kmer, i.e. chval(kmer_0)
-inline uint64_t initHashes(const char * kmerSeq, const unsigned k, uint64_t& fhVal, uint64_t& rhVal) {
-    fhVal = getFhval(kmerSeq, k);
-    rhVal = getRhval(kmerSeq, k);
+inline uint64_t initHashes(const std::string::const_iterator &kmerItr, const unsigned k, uint64_t& fhVal, uint64_t& rhVal) {
+    fhVal = getFhval(kmerItr, k);
+    rhVal = getRhval(kmerItr, k);
     return (rhVal<fhVal)? rhVal : fhVal;
 }
+
+// mask out specific bases given the masking value positions
+// the string iterator is the unmasked k-mer (random access without copying)
+// returns cannonical value
+inline uint64_t maskValues(uint64_t fkVal, uint64_t rkVal, const unsigned k,
+		const std::vector<unsigned> &values, const std::string::const_iterator &kmerItr) {
+	for (std::vector<unsigned>::const_iterator itr = values.begin();
+			itr != values.end(); ++itr) {
+		fkVal ^= rol(seedTab[(unsigned char) *(kmerItr + *itr)], k - 1 - *itr);
+		rkVal ^= rol(seedTab[(unsigned char) *(kmerItr + *itr) + cpOff], *itr);
+	}
+	return (rkVal<fkVal)? rkVal : fkVal;
+}
+
 
 // recursive forward-strand hash value for next k-mer
 inline uint64_t rollHashesRight(const uint64_t fhVal, const unsigned char charOut, const unsigned char charIn, const unsigned k) {
     return(rol(fhVal, 1) ^ rol(seedTab[charOut], k) ^ seedTab[charIn]);
 }
 
-// recursive cannonical hash value for next k-mer
+// recursive canonical hash value for next k-mer
 inline uint64_t rollHashesRight(uint64_t& fhVal, uint64_t& rhVal, const unsigned char charOut, const unsigned char charIn, const unsigned k) {
     fhVal = rol(fhVal, 1) ^ rol(seedTab[charOut], k) ^ seedTab[charIn];
     rhVal = ror(rhVal, 1) ^ ror(seedTab[charOut+cpOff], 1) ^ rol(seedTab[charIn+cpOff], k-1);

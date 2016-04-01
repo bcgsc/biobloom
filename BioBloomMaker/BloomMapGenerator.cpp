@@ -13,9 +13,9 @@
  * on the number of k-mers in the file
  */
 BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
-		unsigned kmerSize, unsigned hashNum, size_t numElements = 0) :
-		m_kmerSize(kmerSize), m_hashNum(hashNum),  m_expectedEntries(
-				numElements), m_totalEntries(0), m_fileNames(filenames) {
+		unsigned kmerSize, size_t numElements = 0) :
+		m_kmerSize(kmerSize), m_expectedEntries(numElements), m_totalEntries(0), m_fileNames(
+				filenames) {
 	//Instantiate dense hash map
 	m_headerIDs.set_empty_key(opt::EMPTY);
 
@@ -47,7 +47,7 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
  */
 void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	//init bloom map
-	BloomMap<ID> bloomMap(m_expectedEntries, fpr, m_hashNum, m_kmerSize);
+	BloomMapSS<ID> bloomMap(m_expectedEntries, fpr, opt::sseeds);
 	ID value = 0;
 
 	//for each file

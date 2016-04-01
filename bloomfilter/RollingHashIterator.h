@@ -14,6 +14,8 @@
  */
 #define ACGT_CHARS "acgtACGT"
 
+//TODO: implement with string iterator rather than m_pos
+
 /**
  * Iterate over hash values for k-mers in a
  * given DNA sequence.
@@ -48,14 +50,13 @@ private:
 					/* we don't have hash values for the
 					 * preceding k-mer, so we must compute
 					 * the hash values from scratch */
-					m_rollingHash.reset(m_seq.substr(m_pos, m_k));
+					m_rollingHash.reset(m_seq.begin() + m_pos);
 					m_rollNextHash = true;
 				} else {
 					/* compute new hash values based on
 					 * hash values of preceding k-mer */
 					assert(m_pos > 0);
-					m_rollingHash.rollRight(m_seq.at(m_pos - 1),
-							m_seq.at(m_pos + m_k - 1));
+					m_rollingHash.rollRight(m_seq.begin() + m_pos - 1);
 				}
 				return;
 			}
@@ -70,9 +71,12 @@ public:
 	 * Default constructor. Creates an iterator pointing to
 	 * the end of the iterator range.
 	 */
-	RollingHashIterator() : m_k(0), m_numHashes(0),
-		m_rollingHash(m_numHashes, m_k), m_rollNextHash(false),m_start(true),
-		m_pos(std::numeric_limits<std::size_t>::max()), m_nextInvalidChar(0) {}
+	RollingHashIterator() :
+			m_k(0), m_rollingHash(m_k, vector<vector<unsigned> >()), m_rollNextHash(
+					false), m_start(true), m_pos(
+					std::numeric_limits<std::size_t>::max()), m_nextInvalidChar(
+					0) {
+	}
 
 	/**
 	 * Constructor.
@@ -81,11 +85,10 @@ public:
 	 * @param numHashes number of hash values to compute
 	 * for each k-mer
 	 */
-	RollingHashIterator(const std::string& seq, unsigned numHashes, unsigned k)
-		: m_seq(seq), m_k(k), m_numHashes(numHashes),
-		m_rollingHash(m_numHashes, m_k), m_rollNextHash(false), m_start(true),
-		m_pos(0)
-	{
+	RollingHashIterator(const std::string& seq, unsigned k,
+			const vector<vector<unsigned> > &ssVals) :
+			m_seq(seq), m_k(k), m_rollingHash(m_k, ssVals), m_rollNextHash(
+					false), m_start(true), m_pos(0) {
 		m_nextInvalidChar = strspn(m_seq.c_str(), ACGT_CHARS);
 		next();
 	}
@@ -128,7 +131,7 @@ public:
 	/** post-increment operator */
 	RollingHashIterator operator++(int)
 	{
-		RollingHashIterator it = *this;
+		RollingHashIterator &it = *this;
 		++*this;
 		return it;
 	}
@@ -175,7 +178,7 @@ private:
 	/** k-mer size */
 	unsigned m_k;
 	/** number of hash values to compute for each k-mer */
-	unsigned m_numHashes;
+//	unsigned m_numHashes;
 	/** internal state for rolling hash */
 	RollingHash m_rollingHash;
 	/** true whenever we can "roll" the hash values for
@@ -184,7 +187,7 @@ private:
 	bool m_rollNextHash;
 	/** completely new start of string used for getNext() **/
 	bool m_start;
-	/** position of current k-mer */
+//	/** position of current k-mer */
 	size_t m_pos;
 	/** position of next non-ACGT char */
 	size_t m_nextInvalidChar;

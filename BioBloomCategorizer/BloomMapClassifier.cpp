@@ -15,7 +15,7 @@
 #include "ResultsManager.h"
 
 BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
-		m_filter(BloomMap<ID>(filterFile)) {
+		m_filter(BloomMapSS<ID>(filterFile)) {
 	//load in ID file
 	string idFile = (filterFile).substr(0, (filterFile).length() - 3)
 			+ "_ids.txt";
@@ -26,6 +26,9 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 						+ " File cannot be opened. A corresponding id file is needed."
 				<< endl;
 		exit(1);
+	}
+	else{
+		cerr << "loading ID file: " << idFile << endl;
 	}
 
 	ifstream idFH(idFile.c_str(), ifstream::in);
@@ -97,10 +100,8 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< endl;
 					}
-
 					//for current read print out ids
-					RollingHashIterator itr(rec.seq, m_filter.getHashNum(),
-							m_filter.getKmerSize());
+					RollingHashIterator itr(rec.seq, m_filter.getKmerSize(), m_filter.getSeedValues());
 					google::dense_hash_map<ID, unsigned> tmpHash;
 					tmpHash.set_empty_key(0);
 					unsigned maxCount = 0;

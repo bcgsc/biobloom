@@ -10,7 +10,7 @@
 
 //#include <vector>
 #include <string>
-#include "bloomfilter/BloomMap.hpp"
+#include "bloomfilter/BloomMapSS.hpp"
 #include "boost/shared_ptr.hpp"
 #include "Common/Options.h"
 #include "Options.h"
@@ -29,7 +29,7 @@ public:
 
 	virtual ~BloomMapClassifier();
 private:
-	BloomMap<ID> m_filter;
+	BloomMapSS<ID> m_filter;
 	vector<string> m_fullIDs;
 	google::dense_hash_map<ID, string> m_ids;
 

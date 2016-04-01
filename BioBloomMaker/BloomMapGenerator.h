@@ -14,7 +14,7 @@
 #include <string>
 #include <stdint.h>
 #include <google/dense_hash_map>
-#include "bloomfilter/BloomMap.hpp"
+#include "bloomfilter/BloomMapSS.hpp"
 #include "bloomfilter/RollingHashIterator.h"
 #include "Common/Options.h"
 
@@ -23,7 +23,7 @@ using namespace std;
 class BloomMapGenerator {
 public:
 	explicit BloomMapGenerator(vector<string> const &filenames,
-			unsigned kmerSize, unsigned hashNum, size_t numElements);
+			unsigned kmerSize, size_t numElements);
 
 	void generate(const string &filePrefix, double fpr);
 
@@ -31,7 +31,7 @@ public:
 private:
 
 	unsigned m_kmerSize;
-	unsigned m_hashNum;
+//	unsigned m_hashNum;
 	size_t m_expectedEntries;
 	size_t m_totalEntries;
 	vector<string> m_fileNames;
@@ -39,14 +39,14 @@ private:
 
 	//helper methods
 	//TODO: collision detection
-	inline void loadSeq(BloomMap<ID> &bloomMap, const string& seq, ID value) {
+	inline void loadSeq(BloomMapSS<ID> &bloomMap, const string& seq, ID value) {
 		if (seq.size() < m_kmerSize)
 			return;
 		/* init rolling hash state and compute hash values for first k-mer */
-		RollingHashIterator itr(seq, m_hashNum, m_kmerSize);
+		RollingHashIterator itr(seq, m_kmerSize, bloomMap.getSeedValues());
 		while (itr != itr.end()) {
 			bloomMap.insert(*itr, value);
-			itr++;
+			++itr;
 		}
 	}
 

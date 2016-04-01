@@ -28,7 +28,7 @@ using namespace std;
 static const char* MAGIC = "BlOOMMSS";
 
 template<typename T>
-class BloomMap {
+class BloomMapSS {
 
 public:
 
@@ -48,20 +48,25 @@ public:
 	 *
 	 * If hashNum is set to 0, an optimal value is computed based on the FPR
 	 */
-	BloomMap<T>(size_t expectedElemNum, double fpr, vector<string> seeds) :
-			m_size(0), m_dFPR(fpr), m_nEntry(0), m_tEntry(0), m_sseeds(seeds) {
-		m_ssVal = parseSeedString(m_sseeds);
+	BloomMapSS<T>(size_t expectedElemNum, double fpr, vector<string> seeds) :
+			m_size(0), m_dFPR(fpr), m_nEntry(0), m_tEntry(0), m_sseeds(seeds), m_kmerSize(
+					m_sseeds[0].size()), m_ssVal(parseSeedString(m_sseeds)) {
+		for (vector<string>::const_iterator itr = m_sseeds.begin();
+				itr != m_sseeds.end(); ++itr) {
+			//check if spaced seeds are all the same length
+			assert(m_kmerSize == itr->size());
+		}
 		if (m_size == 0) {
 			m_size = calcOptimalSize(expectedElemNum, m_dFPR);
 		}
 		m_array = new T[m_size]();
 	}
 
-	~BloomMap() {
+	~BloomMapSS() {
 		delete[] m_array;
 	}
 
-	BloomMap<T>(const string &filterFilePath) {
+	BloomMapSS<T>(const string &filterFilePath) {
 		FILE *file = fopen(filterFilePath.c_str(), "rb");
 		if (file == NULL) {
 			cerr << "file \"" << filterFilePath << "\" could not be read."
@@ -69,12 +74,51 @@ public:
 			exit(1);
 		}
 
-		loadHeader(file);
+		FileHeader header;
+		if (fread(&header, sizeof(struct FileHeader), 1, file) == 1) {
+			cerr << "Loading header..." << endl;
+		} else {
+			cerr << "Failed to header" << endl;
+			exit(1);
+		}
+		char magic[9];
+		strncpy(magic, header.magic, 8);
+		assert(string(MAGIC) == string(header.magic));
+		magic[8] = '\0';
+
+		cerr << "Loaded header... magic: " << magic << " hlen: " << header.hlen
+				<< " size: " << header.size << " nhash: " << header.nhash
+				<< " kmer: " << header.kmer << " dFPR: " << header.dFPR
+				<< " aFPR: " << header.nEntry << " tEntry: " << header.tEntry
+				<< endl;
+
+		m_sseeds = vector<string>(header.size);
+
+		//load seeds
+		for (unsigned i = 0; i < header.nhash; ++i) {
+			char temp[header.kmer];
+
+			if (fread(temp, header.kmer, 1, file) != 1) {
+				cerr << "Failed to load spaced seed string" << endl;
+				exit(1);
+			} else {
+				cerr << "Spaced Seed " << i << ": " << string(temp, header.kmer)
+						<< endl;
+			}
+			m_sseeds[i] = string(temp, header.kmer);
+		}
+		m_dFPR = header.dFPR;
+		m_nEntry = header.nEntry;
+		m_tEntry = header.tEntry;
+		m_kmerSize = header.kmer;
+		m_size = header.size;
+		m_array = new T[m_size]();
+
 		m_ssVal = parseSeedString(m_sseeds);
 
 		long int lCurPos = ftell(file);
 		fseek(file, 0, 2);
-		size_t fileSize = ftell(file) - sizeof(struct FileHeader);
+		size_t fileSize = ftell(file) - header.hlen;
 		fseek(file, lCurPos, 0);
 		if (fileSize != m_size * sizeof(T)) {
 			cerr << "Error: " << filterFilePath
@@ -92,39 +136,48 @@ public:
 		}
 	}
 
-	void loadHeader(FILE *file) {
-
-		FileHeader header;
-		if (fread(&header, sizeof(struct FileHeader), 1, file) == 1) {
-			cerr << "Loading header..." << endl;
-		} else {
-			cerr << "Failed to header" << endl;
-		}
-		char magic[9];
-		strncpy(magic, header.magic, 8);
-		magic[8] = '\0';
-
-		cerr << "Loaded header... magic: " << magic << " hlen: " << header.hlen
-				<< " size: " << header.size << " nhash: " << header.nhash
-				<< " kmer: " << header.kmer << " dFPR: " << header.dFPR
-				<< " aFPR: " << header.nEntry << " tEntry: " << header.tEntry
-				<< endl;
-
-        assert(MAGIC == magic);
-
-        //load seeds
-		for (unsigned i = 0; i < header.nhash; ++i) {
-			char* temp[header.kmer];
-
-			if (fread(temp, header.kmer, 1, file) != 1) {
-				cerr << "Failed to spaced seed string" << endl;
-			}
-			m_ssVal[i] = string(temp);
-		}
-
-		m_size = header.size;
-		m_array = new T[m_size]();
-	}
+//	void loadHeader(FILE *file) {
+//
+//		FileHeader header;
+//		if (fread(&header, sizeof(struct FileHeader), 1, file) == 1) {
+//			cerr << "Loading header..." << endl;
+//		} else {
+//			cerr << "Failed to header" << endl;
+//			exit(1);
+//		}
+//		char magic[9];
+//		strncpy(magic, header.magic, 8);
+//		assert(string(MAGIC) == string(header.magic));
+//		magic[8] = '\0';
+//
+//		cerr << "Loaded header... magic: " << magic << " hlen: " << header.hlen
+//				<< " size: " << header.size << " nhash: " << header.nhash
+//				<< " kmer: " << header.kmer << " dFPR: " << header.dFPR
+//				<< " aFPR: " << header.nEntry << " tEntry: " << header.tEntry
+//				<< endl;
+//
+//		m_sseeds = vector<string>(header.size);
+//
+//        //load seeds
+//		for (unsigned i = 0; i < header.nhash; ++i) {
+//			char temp[header.kmer];
+//
+//			if (fread(temp, header.kmer, 1, file) != 1) {
+//				cerr << "Failed to load spaced seed string" << endl;
+//				exit(1);
+//			}
+//			else{
+//				cerr << "Spaced Seed " << i <<": " << string(temp, header.kmer) << endl;
+//			}
+//			m_sseeds[i] = string(temp, header.kmer);
+//		}
+//		m_dFPR = header.dFPR;
+//		m_nEntry = header.nEntry;
+//		m_tEntry = header.tEntry;
+//		m_kmerSize = header.kmer;
+//		m_size = header.size;
+//		m_array = new T[m_size]();
+//	}
 
 	void insert(std::vector<size_t> const &hashes, std::vector<T> &values) {
 		//iterates through hashed values adding it to the filter
@@ -216,15 +269,8 @@ public:
 		strncpy(magic, header.magic, 8);
 		magic[8] = '\0';
 
-		header.hlen = sizeof(struct FileHeader);
-		header.kmer = m_sseeds[0].size();
-		for (vector<string>::iterator itr = m_sseeds.begin();
-				itr != m_sseeds.end(); ++itr) {
-			header.hlen += itr->size();
-			//check if spaced seeds are all the same length
-			assert(header.kmer == itr->size());
-		}
-
+		header.hlen = sizeof(struct FileHeader) + m_kmerSize * m_sseeds.size();
+		header.kmer = m_kmerSize;
 		header.size = m_size;
 		header.nhash = m_sseeds.size();
 		header.dFPR = m_dFPR;
@@ -238,9 +284,9 @@ public:
 
 		out.write(reinterpret_cast<char*>(&header), sizeof(struct FileHeader));
 
-		for (vector<string>::iterator itr = m_sseeds.begin();
+		for (vector<string>::const_iterator itr = m_sseeds.begin();
 				itr != m_sseeds.end(); ++itr) {
-			out.write(itr->c_str(), itr->size());
+			out.write(itr->c_str(), m_kmerSize);
 		}
 	}
 
@@ -265,8 +311,12 @@ public:
 		assert(myFile);
 	}
 
-	const vector< vector <unsigned > > getSeedValues() const {
+	const vector< vector <unsigned > > &getSeedValues() const {
 		return m_ssVal;
+	}
+
+	unsigned getKmerSize(){
+		return m_kmerSize;
 	}
 
 private:
@@ -330,11 +380,11 @@ private:
 	double m_dFPR;
 	uint64_t m_nEntry;
 	uint64_t m_tEntry;
+	vector<string> m_sseeds;
+	unsigned m_kmerSize;
 
 	typedef vector< vector<unsigned> > SeedVal;
 	SeedVal m_ssVal;
-
-	vector<string> m_sseeds;
 };
 
 #endif /* BLOOMMAP_HPP_ */

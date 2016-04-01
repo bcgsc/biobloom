@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include <limits>
+#include <string>
+#include <vector>
 
 enum FilterType {BLOOMFILTER, BLOOMMAP};
 
@@ -19,5 +21,6 @@ namespace opt {
 	extern FilterType filterType;
 	extern const ID EMPTY;
 	extern const ID COLLI;
+	extern std::vector<std::string> sseeds;
 }
 #endif
