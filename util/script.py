@@ -1,31 +1,36 @@
 import csv
+import sys
 
-# taxid : [[sequid, .., ...], count]
+# taxid : [count, [seqid, ..., ...]]
 count = {}
 
-with open('SRR172903.kraken', 'rb') as f:
+infile = sys.argv[1]
+outfile = sys.argv[2]
+
+with open(infile, 'r') as f:
 	reader = csv.reader(f, delimiter='\t')
 	for row in reader:
 		taxid = int(row[2]);
-		seqid = row[1];
 		if taxid in count:
-			count[taxid][0].append(seqid)
-			count[taxid][1] += 1
+			count[taxid][0] += 1
 		else:
-			count[taxid] = [[seqid], 1]
+			count[taxid] = [1, []]
+
+with open('seqid2taxid.map', 'r') as d:
+	reader = csv.reader(d, delimiter='\t')
+	for taxid in count:
+		for row in reader:
+			if taxid == int(row[1]):
+				count[taxid][1].append(row[0])
 
 keylist = count.keys()
 keylist.sort()
 
-with open('counts.txt', 'wb') as g:
+# print out: taxid	count	[seqid, ..., ...]
+with open(outfile, 'w') as g:
 	writer = csv.writer(g, delimiter='\t')
 	for key in keylist:
-		writer.writerow([key, count[key][1]])
-
-with open('sequences.txt', 'wb') as g:
-	writer = csv.writer(g, delimiter='\t')
-	for key in keylist:
-		writer.writerow([key, count[key][0]])
+		writer.writerow([key, count[key][0], count[key][1]])
 
 
 
