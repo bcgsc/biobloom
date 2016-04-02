@@ -65,6 +65,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 				value++;
 			}
 			if (good) {
+//				cerr << value << endl;;
 				//k-merize with rolling hash insert into bloom map
 				uniqueCount += loadSeq(bloomMap, rec.seq, value);
 				//assign header to unique ID

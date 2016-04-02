@@ -46,6 +46,24 @@ private:
 		/* init rolling hash state and compute hash values for first k-mer */
 		RollingHashIterator itr(seq, m_kmerSize, bloomMap.getSeedValues());
 		while (itr != itr.end()) {
+			vector<ID> temp = bloomMap.at(*itr);
+//			bool collision = false;
+//			for (unsigned i = 0; i < temp.size(); ++i) {
+//				if (temp[i] != 0 && temp[i] != value) {
+//					collision = true;
+//				}
+//			}
+//			if (collision) {
+//				cerr << value;
+//				for (unsigned i = 0; i < temp.size(); ++i) {
+//					if (temp[i] != 0) {
+//						cerr << "\t" << temp[i];
+//					} else {
+//						cerr << "\t-";
+//					}
+//				}
+//				cerr << endl;
+//			}
 			count += !bloomMap.insertAndCheck(*itr, value);
 			++itr;
 		}

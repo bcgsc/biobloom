@@ -112,7 +112,6 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 					vector<ID> hits;
 
 					while (itr != itr.end()) {
-						//TODO make this miss threshold an options
 						ID id = m_filter.atBest(*itr, opt::allowSubMisses);
 
 						if (id != 0) {
