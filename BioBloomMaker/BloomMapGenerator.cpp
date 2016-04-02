@@ -49,6 +49,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	//init bloom map
 	BloomMapSS<ID> bloomMap(m_expectedEntries, fpr, opt::sseeds);
 	ID value = 0;
+	size_t uniqueCount = 0;
 
 	//for each file
 	for (vector<string>::const_iterator it = m_fileNames.begin();
@@ -65,13 +66,14 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			}
 			if (good) {
 				//k-merize with rolling hash insert into bloom map
-				loadSeq(bloomMap, rec.seq, value);
+				uniqueCount += loadSeq(bloomMap, rec.seq, value);
 				//assign header to unique ID
 				m_headerIDs[value] = rec.id;
 			} else
 				break;
 		}
 	}
+	bloomMap.setUnique(uniqueCount);
 
 	//save filter
 	bloomMap.storeFilter(filePrefix + ".bf");

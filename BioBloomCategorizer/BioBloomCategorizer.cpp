@@ -83,6 +83,8 @@ void printHelpDialog()
 	"                         larger than normal. Sorting by read name may be needed.\n"
 	"  -i, --inclusive        If one paired read matches, both reads will be included\n"
 	"                         in the filter. \n"
+	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
+	"                         Bloom Maps.[0]\n"
 	"  -s, --score=N          Score threshold for matching. N may be either a\n"
 	"                         floating point score between 0 and 1 or a positive\n"
 	"                         integer representing the minimum match length in bases.\n"
@@ -166,6 +168,7 @@ int main(int argc, char *argv[])
 		"score", no_argument, NULL, 's' }, {
 		"help", no_argument, NULL, 'h' }, {
 		"threads", required_argument, NULL, 't' }, {
+		"allowed_miss", required_argument, NULL, 'a' }, {
 		"gz_output", no_argument, NULL, 'g' }, {
 		"chastity", no_argument, &opt::chastityFilter, 1 }, {
 		"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
@@ -184,7 +187,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:or:t:cd:iw", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:or:t:cd:iwa:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -249,6 +252,14 @@ int main(int argc, char *argv[])
 		}
 		case 'i': {
 			inclusive = true;
+			break;
+		}
+		case 'a': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::allowSubMisses)) {
+				cerr << "Error - Invalid parameter! a: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
 			break;
 		}
 		case 't': {

@@ -105,35 +105,39 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 					google::dense_hash_map<ID, unsigned> tmpHash;
 					tmpHash.set_empty_key(0);
 					unsigned maxCount = 0;
-					ID value = 0;
+//					ID value = 0;
 					unsigned nonZeroCount = 0;
 					unsigned totalCount = 0;
 
 					vector<ID> hits;
 
 					while (itr != itr.end()) {
-						ID id = m_filter.atBest(*itr);
+						//TODO make this miss threshold an options
+						ID id = m_filter.atBest(*itr, opt::allowSubMisses);
 
 						if (id != 0) {
 							if (tmpHash.find(id) != tmpHash.end()) {
 								++tmpHash[id];
+							} else {
+								tmpHash[id] = 1;
 							}
-							if (maxCount == tmpHash[id]) {
-								value = numeric_limits<ID>::max();
-							} else if (maxCount < tmpHash[id]) {
-								value = id;
+							if (maxCount < tmpHash[id]) {
 								maxCount = tmpHash[id];
 							}
 							++nonZeroCount;
 						}
 						++totalCount;
-						itr++;
+						++itr;
 					}
 					double score = double(nonZeroCount) / double(totalCount);
 
-					if (opt::score < score && value != opt::COLLI) {
-						//currently only one hit (no multimatches)
-						hits.push_back(value);
+					if (opt::score < score) {
+						for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+								tmpHash.begin(); i != tmpHash.end(); ++i) {
+							if (i->second == maxCount) {
+								hits.push_back(i->first);
+							}
+						}
 					}
 
 					const string &outputFileName = resSummary.updateSummaryData(hits);

@@ -39,15 +39,17 @@ private:
 
 	//helper methods
 	//TODO: collision detection
-	inline void loadSeq(BloomMapSS<ID> &bloomMap, const string& seq, ID value) {
+	inline size_t loadSeq(BloomMapSS<ID> &bloomMap, const string& seq, ID value) {
 		if (seq.size() < m_kmerSize)
-			return;
+			return 0;
+		size_t count = 0;
 		/* init rolling hash state and compute hash values for first k-mer */
 		RollingHashIterator itr(seq, m_kmerSize, bloomMap.getSeedValues());
 		while (itr != itr.end()) {
-			bloomMap.insert(*itr, value);
+			count += !bloomMap.insertAndCheck(*itr, value);
 			++itr;
 		}
+		return count;
 	}
 
 	inline void writeIDs(const string& filename, google::dense_hash_map<ID,string> headerIDs) {

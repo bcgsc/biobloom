@@ -20,5 +20,6 @@ extern double score;
 extern std::string outputPrefix;
 extern std::string filePostfix;
 extern std::string outputType;
+extern unsigned allowSubMisses;
 }
 #endif

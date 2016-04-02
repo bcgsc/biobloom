@@ -25,7 +25,7 @@
 
 using namespace std;
 
-static const char* MAGIC = "BlOOMMSS";
+static const char* MAGIC = "BLOOMMSS";
 
 template<typename T>
 class BloomMapSS {
@@ -49,7 +49,7 @@ public:
 	 * If hashNum is set to 0, an optimal value is computed based on the FPR
 	 */
 	BloomMapSS<T>(size_t expectedElemNum, double fpr, vector<string> seeds) :
-			m_size(0), m_dFPR(fpr), m_nEntry(0), m_tEntry(0), m_sseeds(seeds), m_kmerSize(
+			m_size(0), m_dFPR(fpr), m_nEntry(0), m_tEntry(expectedElemNum), m_sseeds(seeds), m_kmerSize(
 					m_sseeds[0].size()), m_ssVal(parseSeedString(m_sseeds)) {
 		for (vector<string>::const_iterator itr = m_sseeds.begin();
 				itr != m_sseeds.end(); ++itr) {
@@ -83,16 +83,17 @@ public:
 		}
 		char magic[9];
 		strncpy(magic, header.magic, 8);
-		assert(string(MAGIC) == string(header.magic));
 		magic[8] = '\0';
 
 		cerr << "Loaded header... magic: " << magic << " hlen: " << header.hlen
 				<< " size: " << header.size << " nhash: " << header.nhash
 				<< " kmer: " << header.kmer << " dFPR: " << header.dFPR
-				<< " aFPR: " << header.nEntry << " tEntry: " << header.tEntry
+				<< " nEntry: " << header.nEntry << " tEntry: " << header.tEntry
 				<< endl;
 
-		m_sseeds = vector<string>(header.size);
+		assert(strcmp(MAGIC, magic) == 0);
+
+		m_sseeds = vector<string>(header.nhash);
 
 		//load seeds
 		for (unsigned i = 0; i < header.nhash; ++i) {
@@ -134,6 +135,8 @@ public:
 					<< endl;
 			exit(1);
 		}
+		cerr << "FPR based on PopCount: " << getFPR() << endl;
+		cerr << "FPR based on Unique Elements: " << getFPR_numEle() << endl;
 	}
 
 //	void loadHeader(FILE *file) {
@@ -197,6 +200,23 @@ public:
 		}
 	}
 
+	/*
+	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
+	 * Returns if already inserted
+	 */
+	bool insertAndCheck(std::vector<size_t> const &hashes, T value) {
+		//iterates through hashed values adding it to the filter
+		bool found = true;
+		for (size_t i = 0; i < hashes.size(); ++i) {
+			size_t pos = hashes.at(i) % m_size;
+			if(m_array[pos] == 0){
+				found = false;
+			}
+			m_array[pos] = value;
+		}
+		return found;
+	}
+
 	std::vector<T> query(std::vector<size_t> const &hashes) const {
 		std::vector<T> values;
 		for (unsigned i = 0; i < values.size(); ++i) {
@@ -216,7 +236,6 @@ public:
 		T value = 0;
 		for (unsigned i = 0; i < hashes.size(); ++i) {
 			size_t pos = hashes.at(i) % m_size;
-			assert(pos < m_size);
 			if(m_array[pos] == 0){
 				return 0;
 			}
@@ -244,12 +263,13 @@ public:
 
 		for (unsigned i = 0; i < hashes.size(); ++i) {
 			size_t pos = hashes.at(i) % m_size;
-			assert(pos < m_size);
 			if(m_array[pos] == 0){
 				return 0;
 			}
-			if(tmpHash.find(m_array[pos]) != tmpHash.end()){
+			if (tmpHash.find(m_array[pos]) != tmpHash.end()) {
 				++tmpHash[m_array[pos]];
+			} else {
+				tmpHash[m_array[pos]] = 1;
 			}
 			if(maxCount == tmpHash[m_array[pos]]) {
 				value = numeric_limits<T>::max();
@@ -260,6 +280,45 @@ public:
 			}
 		}
 		return value;
+	}
+
+	/*
+	 * Returns unambiguous hit to object
+	 * Returns best hit on ambiguous collision
+	 * Returns numeric_limits<T>::max() on completely ambiguous collision
+	 * Returns 0 on if missing element
+	 */
+	T atBest(std::vector<size_t> const &hashes, unsigned missMin) const {
+		google::dense_hash_map<T, unsigned> tmpHash;
+		tmpHash.set_empty_key(0);
+		unsigned maxCount = 0;
+		unsigned miss = 0;
+		T value = 0;
+
+		for (unsigned i = 0; i < hashes.size(); ++i) {
+			size_t pos = hashes.at(i) % m_size;
+			if(m_array[pos] == 0){
+				++miss;
+				continue;
+			}
+			if (tmpHash.find(m_array[pos]) != tmpHash.end()) {
+				++tmpHash[m_array[pos]];
+			} else {
+				tmpHash[m_array[pos]] = 1;
+			}
+			if(maxCount == tmpHash[m_array[pos]]) {
+				value = numeric_limits<T>::max();
+			}
+			else if ( maxCount < tmpHash[m_array[pos]] ){
+				value = m_array[pos];
+				maxCount = tmpHash[m_array[pos]];
+			}
+		}
+		if (missMin < miss) {
+			return 0;
+		} else {
+			return value;
+		}
 	}
 
 	void writeHeader(ofstream &out) const {
@@ -319,17 +378,44 @@ public:
 		return m_kmerSize;
 	}
 
+	/*
+	 * Return FPR based on popcount
+	 */
+	double getFPR() const {
+		return pow(double(getPop())/double(m_size), double(m_ssVal.size()));
+	}
+
+	/*
+	 * Return FPR based on number of inserted elements
+	 */
+	double getFPR_numEle() const {
+		assert(m_nEntry > 0);
+		return calcFPR_numInserted(m_nEntry);
+	}
+
+	size_t getPop() const {
+		size_t i, popBF = 0;
+//#pragma omp parallel for reduction(+:popBF)
+		for (i = 0; i < m_size; i++)
+			popBF = popBF + (m_array[i] != 0);
+		return popBF;
+	}
+
+	void setUnique(size_t count){
+		m_nEntry = count;
+	}
+
 private:
 
 	/*
 	 * Parses spaced seed string (string consisting of 1s and 0s) to vector
 	 */
-	inline vector< vector<unsigned> > parseSeedString(const vector<string> spacedSeeds) {
+	inline vector< vector<unsigned> > parseSeedString(const vector<string> &spacedSeeds) {
 		SeedVal seeds(spacedSeeds.size());
 		for(unsigned i = 0; i < spacedSeeds.size(); ++i){
 			const string ss = spacedSeeds.at(i);
 			for(unsigned j = 0; j < ss.size(); ++j){
-				if(ss.at(i) != 0){
+				if(ss.at(i) == '0'){
 					seeds[i].push_back(j);
 				}
 			}
@@ -364,7 +450,7 @@ private:
 	 */
 	double calcFPR_numInserted(size_t numEntr) const {
 		return pow( 1.0 - pow(1.0 - 1.0 / double(m_size),
-					double(numEntr) * m_ssVal.size()), double(m_ssVal.size()));
+					double(numEntr) * double(m_ssVal.size())), double(m_ssVal.size()));
 	}
 
 	/*

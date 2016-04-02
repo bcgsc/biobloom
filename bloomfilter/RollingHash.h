@@ -37,14 +37,12 @@ private:
 	 * @return vector of hash values
 	 **/
 	//TODO: Is the construction of an array really needed? (pass by a reference?) what about thread safety?
-	std::vector<size_t> multiHash(uint64_t rHash, uint64_t fHash,
-			const std::string::const_iterator &kmerItr) const
+	void multiHash(uint64_t rHash, uint64_t fHash,
+			const std::string::const_iterator &kmerItr, std::vector<size_t> &hashes)
 	{
-		std::vector<size_t> hashes(m_ssVals.size());
 		for (unsigned i = 0; i < m_ssVals.size(); ++i) {
 			hashes[i] = maskValues(rHash, fHash, m_k, m_ssVals.at(i), kmerItr);
 		}
-		return hashes;
 	}
 
 public:
@@ -53,7 +51,7 @@ public:
 	 * Default constructor.
 	 */
 	RollingHash() : m_k(0), m_hash1(0), m_rcHash1(0), m_ssVals(
-					vector < vector<unsigned> >()) {
+					vector < vector<unsigned> >()), m_hashes(m_ssVals.size()) {
 	}
 
 	/**
@@ -64,7 +62,7 @@ public:
 	 * @param k k-mer length
 	 */
 	RollingHash(unsigned k,	const vector<vector<unsigned> > &ssVals) :
-			m_k(k), m_hash1(0), m_rcHash1(0), m_ssVals(ssVals) {
+			m_k(k), m_hash1(0), m_rcHash1(0), m_ssVals(ssVals), m_hashes(m_ssVals.size()) {
 	}
 
 //	/**
@@ -92,51 +90,51 @@ public:
 		m_rcHash1 = getRhval(kmerItr, m_k);
 
 		/* compute hash values */
-		m_hashes = multiHash(m_hash1, m_rcHash1, kmerItr);
+		multiHash(m_hash1, m_rcHash1, kmerItr, m_hashes);
 	}
 
-	/**
-	 * Compute hash values for a neighbour k-mer on the right,
-	 * without updating internal state.
-	 * @param std::string::const_iterator start position of what base is being removed
-	 * @return vector of hash values for next k-mer
-	 */
-	std::vector<size_t> peekRight(const std::string::const_iterator &kmerItr) const
-	{
-		size_t hash1 = m_hash1;
-		size_t rcHash1 = m_rcHash1;
+//	/**
+//	 * Compute hash values for a neighbour k-mer on the right,
+//	 * without updating internal state.
+//	 * @param std::string::const_iterator start position of what base is being removed
+//	 * @return vector of hash values for next k-mer
+//	 */
+//	std::vector<size_t> peekRight(const std::string::const_iterator &kmerItr) const
+//	{
+//		size_t hash1 = m_hash1;
+//		size_t rcHash1 = m_rcHash1;
+//
+//		/* update first hash function */
+//		rollHashesRight(hash1, rcHash1, *kmerItr, *(kmerItr+m_k), m_k);
+//
+////		/* get seed value for computing rest of the hash functions */
+////		size_t seed = canonicalHash(hash1, rcHash1);
+//
+//		/* compute hash values */
+//		return multiHash(hash1, rcHash1, kmerItr);
+//	}
 
-		/* update first hash function */
-		rollHashesRight(hash1, rcHash1, *kmerItr, *(kmerItr+m_k+1), m_k);
-
-//		/* get seed value for computing rest of the hash functions */
-//		size_t seed = canonicalHash(hash1, rcHash1);
-
-		/* compute hash values */
-		return multiHash(hash1, rcHash1, kmerItr);
-	}
-
-	/**
-	 * Compute hash values for a neighbour k-mer on the left,
-	 * without updating internal state.
-	 * @param charIn leftmost base of k-mer to the left
-	 * @param charOut rightmost base of current k-mer
-	 * @return vector of hash values for next k-mer
-	 */
-	std::vector<size_t> peekLeft(const std::string::const_iterator &kmerItr) const
-	{
-		size_t hash1 = m_hash1;
-		size_t rcHash1 = m_rcHash1;
-
-		/* update first hash function */
-		rollHashesLeft(hash1, rcHash1, *kmerItr, *(kmerItr+m_k+1), m_k);
-
-//		/* get seed value for computing rest of the hash functions */
-//		size_t seed = canonicalHash(hash1, rcHash1);
-
-		/* compute hash values */
-		return multiHash(m_hash1, m_rcHash1, kmerItr);
-	}
+//	/**
+//	 * Compute hash values for a neighbour k-mer on the left,
+//	 * without updating internal state.
+//	 * @param charIn leftmost base of k-mer to the left
+//	 * @param charOut rightmost base of current k-mer
+//	 * @return vector of hash values for next k-mer
+//	 */
+//	std::vector<size_t> peekLeft(const std::string::const_iterator &kmerItr) const
+//	{
+//		size_t hash1 = m_hash1;
+//		size_t rcHash1 = m_rcHash1;
+//
+//		/* update first hash function */
+//		rollHashesLeft(hash1, rcHash1, *kmerItr, *(kmerItr+m_k), m_k);
+//
+////		/* get seed value for computing rest of the hash functions */
+////		size_t seed = canonicalHash(hash1, rcHash1);
+//
+//		/* compute hash values */
+//		return multiHash(m_hash1, m_rcHash1, kmerItr);
+//	}
 
 	/**
 	 * Compute hash values for next k-mer to the right and
@@ -148,12 +146,12 @@ public:
 	void rollRight(const std::string::const_iterator &kmerItr)
 	{
 		/* update first hash function */
-		rollHashesRight(m_hash1, m_rcHash1, *kmerItr, *(kmerItr+m_k+1), m_k);
+		rollHashesRight(m_hash1, m_rcHash1, *kmerItr, *(kmerItr + m_k), m_k);
 //		/* get seed value for computing rest of the hash functions */
 //		size_t seed = canonicalHash(m_hash1, m_rcHash1);
 
 		/* compute hash values */
-		m_hashes = multiHash(m_hash1, m_rcHash1, kmerItr);
+		multiHash(m_hash1, m_rcHash1, kmerItr, m_hashes);
 	}
 
 	/**
@@ -166,13 +164,13 @@ public:
 	void rollLeft(const std::string::const_iterator &kmerItr)
 	{
 		/* update first hash function */
-		rollHashesLeft(m_hash1, m_rcHash1, *kmerItr, *(kmerItr+m_k+1), m_k);
+		rollHashesLeft(m_hash1, m_rcHash1, *kmerItr, *(kmerItr + m_k), m_k);
 
 //		/* get seed value for computing rest of the hash functions */
 //		size_t seed = canonicalHash(m_hash1, m_rcHash1);
 
 		/* compute hash values */
-		m_hashes = multiHash(m_hash1, m_rcHash1, kmerItr);
+		multiHash(m_hash1, m_rcHash1, kmerItr, m_hashes);
 	}
 
 	/** Get hash values for current k-mer */
@@ -199,8 +197,6 @@ private:
 //	unsigned m_numHashes;
 	/** k-mer length */
 	unsigned m_k;
-	/** current values for each hash function */
-	std::vector<size_t> m_hashes;
 	/** value of first hash function for current k-mer */
 	size_t m_hash1;
 	/** value of first hash function for current k-mer, after
@@ -208,6 +204,8 @@ private:
 	size_t m_rcHash1;
 	//Spaced seed values to use
 	const vector< vector<unsigned> > &m_ssVals;
+	/** current values for each hash function */
+	std::vector<size_t> m_hashes;
 };
 
 #endif
