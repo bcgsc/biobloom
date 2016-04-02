@@ -79,14 +79,14 @@ def main():
             sys.stdout.write(str(seed[j][i]))
             if seed[j][i] != 0:
                 weight += 1
-        sys.stdout.write("\t" + str(weight))
+        sys.stdout.write("\t" + str(weight) + "\t" + str(seedlen-weight))
         print
         
     for j in range(nseeds):
         for i in range(seedlen):
             sys.stdout.write(str(seed[j][i]))
         sys.stdout.write(" ")
-
+    print
 
 if __name__ == "__main__":
     main()
