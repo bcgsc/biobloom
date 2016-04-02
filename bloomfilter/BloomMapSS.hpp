@@ -232,20 +232,13 @@ public:
 	 * Returns numeric_limits<T>::max() on ambiguous collision
 	 * Returns 0 on if missing element
 	 */
-	T at(std::vector<size_t> const &hashes) const {
-		T value = 0;
+	vector<T> at(std::vector<size_t> const &hashes) const {
+		vector<T> values(hashes.size());
 		for (unsigned i = 0; i < hashes.size(); ++i) {
 			size_t pos = hashes.at(i) % m_size;
-			if(m_array[pos] == 0){
-				return 0;
-			}
-			if (value != 0 && value != m_array[pos]) {
-				value = numeric_limits<T>::max();
-			} else {
-				value = m_array[pos];
-			}
+			values[i] = m_array[pos];
 		}
-		return value;
+		return values;
 	}
 
 	/*
@@ -415,7 +408,7 @@ private:
 		for(unsigned i = 0; i < spacedSeeds.size(); ++i){
 			const string ss = spacedSeeds.at(i);
 			for(unsigned j = 0; j < ss.size(); ++j){
-				if(ss.at(i) == '0'){
+				if(ss.at(j) == '0'){
 					seeds[i].push_back(j);
 				}
 			}
