@@ -116,13 +116,15 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 						ID id = m_filter.atBest(*itr, opt::allowSubMisses);
 
 						if (id != 0) {
-							if (tmpHash.find(id) != tmpHash.end()) {
-								++tmpHash[id];
-							} else {
-								tmpHash[id] = 1;
-							}
-							if (maxCount < tmpHash[id]) {
-								maxCount = tmpHash[id];
+							if (id != opt::COLLI) {
+								if (tmpHash.find(id) != tmpHash.end()) {
+									++tmpHash[id];
+								} else {
+									tmpHash[id] = 1;
+								}
+								if (maxCount < tmpHash[id]) {
+									maxCount = tmpHash[id];
+								}
 							}
 							++nonZeroCount;
 						}
@@ -132,9 +134,11 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 					double score = double(nonZeroCount) / double(totalCount);
 
 					if (opt::score < score) {
+						assert(tmpHash.size() > 0); //likely to be violated
 						for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 								tmpHash.begin(); i != tmpHash.end(); ++i) {
 							if (i->second == maxCount) {
+								assert(i->first != 0);
 								hits.push_back(i->first);
 							}
 						}
