@@ -5,8 +5,8 @@
  *      Author: gjahesh
  */
 
-#ifndef BLOOMMAP_HPP_
-#define BLOOMMAP_HPP_
+#ifndef BLOOMMAPSS_HPP_
+#define BLOOMMAPSS_HPP_
 
 #include <string>
 #include <vector>
@@ -19,7 +19,6 @@
 #include <cassert>
 #include <cstdlib>
 #include <stdio.h>
-//#include "rolling.h"
 #include <limits>
 #include <google/dense_hash_map>
 
@@ -60,10 +59,6 @@ public:
 			m_size = calcOptimalSize(expectedElemNum, m_dFPR);
 		}
 		m_array = new T[m_size]();
-	}
-
-	~BloomMapSS() {
-		delete[] m_array;
 	}
 
 	BloomMapSS<T>(const string &filterFilePath) {
@@ -138,49 +133,6 @@ public:
 		cerr << "FPR based on PopCount: " << getFPR() << endl;
 		cerr << "FPR based on Unique Elements: " << getFPR_numEle() << endl;
 	}
-
-//	void loadHeader(FILE *file) {
-//
-//		FileHeader header;
-//		if (fread(&header, sizeof(struct FileHeader), 1, file) == 1) {
-//			cerr << "Loading header..." << endl;
-//		} else {
-//			cerr << "Failed to header" << endl;
-//			exit(1);
-//		}
-//		char magic[9];
-//		strncpy(magic, header.magic, 8);
-//		assert(string(MAGIC) == string(header.magic));
-//		magic[8] = '\0';
-//
-//		cerr << "Loaded header... magic: " << magic << " hlen: " << header.hlen
-//				<< " size: " << header.size << " nhash: " << header.nhash
-//				<< " kmer: " << header.kmer << " dFPR: " << header.dFPR
-//				<< " aFPR: " << header.nEntry << " tEntry: " << header.tEntry
-//				<< endl;
-//
-//		m_sseeds = vector<string>(header.size);
-//
-//        //load seeds
-//		for (unsigned i = 0; i < header.nhash; ++i) {
-//			char temp[header.kmer];
-//
-//			if (fread(temp, header.kmer, 1, file) != 1) {
-//				cerr << "Failed to load spaced seed string" << endl;
-//				exit(1);
-//			}
-//			else{
-//				cerr << "Spaced Seed " << i <<": " << string(temp, header.kmer) << endl;
-//			}
-//			m_sseeds[i] = string(temp, header.kmer);
-//		}
-//		m_dFPR = header.dFPR;
-//		m_nEntry = header.nEntry;
-//		m_tEntry = header.tEntry;
-//		m_kmerSize = header.kmer;
-//		m_size = header.size;
-//		m_array = new T[m_size]();
-//	}
 
 	void insert(std::vector<size_t> const &hashes, std::vector<T> &values) {
 		//iterates through hashed values adding it to the filter
@@ -319,6 +271,106 @@ public:
 		}
 	}
 
+	const vector< vector <unsigned > > &getSeedValues() const {
+		return m_ssVal;
+	}
+
+	unsigned getKmerSize(){
+		return m_kmerSize;
+	}
+
+	/*
+	 * Return FPR based on popcount
+	 */
+	double getFPR() const {
+		return pow(double(getPop())/double(m_size), double(m_ssVal.size()));
+	}
+
+	/*
+	 * Return FPR based on number of inserted elements
+	 */
+	double getFPR_numEle() const {
+		assert(m_nEntry > 0);
+		return calcFPR_numInserted(m_nEntry);
+	}
+
+	size_t getPop() const {
+		size_t i, popBF = 0;
+#pragma omp parallel for reduction(+:popBF)
+		for (i = 0; i < m_size; i++)
+			popBF = popBF + (m_array[i] != 0);
+		return popBF;
+	}
+
+	size_t getSize() const {
+		return m_size;
+	}
+
+	void setUnique(size_t count){
+		m_nEntry = count;
+	}
+
+	~BloomMapSS() {
+		delete[] m_array;
+	}
+
+protected:
+	size_t m_size;
+	T* m_array;
+
+	double m_dFPR;
+	uint64_t m_nEntry;
+	uint64_t m_tEntry;
+	vector<string> m_sseeds;
+	unsigned m_kmerSize;
+
+	typedef vector< vector<unsigned> > SeedVal;
+	SeedVal m_ssVal;
+
+private:
+//	void loadHeader(FILE *file) {
+//
+//		FileHeader header;
+//		if (fread(&header, sizeof(struct FileHeader), 1, file) == 1) {
+//			cerr << "Loading header..." << endl;
+//		} else {
+//			cerr << "Failed to header" << endl;
+//			exit(1);
+//		}
+//		char magic[9];
+//		strncpy(magic, header.magic, 8);
+//		assert(string(MAGIC) == string(header.magic));
+//		magic[8] = '\0';
+//
+//		cerr << "Loaded header... magic: " << magic << " hlen: " << header.hlen
+//				<< " size: " << header.size << " nhash: " << header.nhash
+//				<< " kmer: " << header.kmer << " dFPR: " << header.dFPR
+//				<< " aFPR: " << header.nEntry << " tEntry: " << header.tEntry
+//				<< endl;
+//
+//		m_sseeds = vector<string>(header.size);
+//
+//        //load seeds
+//		for (unsigned i = 0; i < header.nhash; ++i) {
+//			char temp[header.kmer];
+//
+//			if (fread(temp, header.kmer, 1, file) != 1) {
+//				cerr << "Failed to load spaced seed string" << endl;
+//				exit(1);
+//			}
+//			else{
+//				cerr << "Spaced Seed " << i <<": " << string(temp, header.kmer) << endl;
+//			}
+//			m_sseeds[i] = string(temp, header.kmer);
+//		}
+//		m_dFPR = header.dFPR;
+//		m_nEntry = header.nEntry;
+//		m_tEntry = header.tEntry;
+//		m_kmerSize = header.kmer;
+//		m_size = header.size;
+//		m_array = new T[m_size]();
+//	}
+
 	void writeHeader(ofstream &out) const {
 		FileHeader header;
 		strncpy(header.magic, MAGIC, 8);
@@ -367,47 +419,6 @@ public:
 		myFile.close();
 		assert(myFile);
 	}
-
-	const vector< vector <unsigned > > &getSeedValues() const {
-		return m_ssVal;
-	}
-
-	unsigned getKmerSize(){
-		return m_kmerSize;
-	}
-
-	/*
-	 * Return FPR based on popcount
-	 */
-	double getFPR() const {
-		return pow(double(getPop())/double(m_size), double(m_ssVal.size()));
-	}
-
-	/*
-	 * Return FPR based on number of inserted elements
-	 */
-	double getFPR_numEle() const {
-		assert(m_nEntry > 0);
-		return calcFPR_numInserted(m_nEntry);
-	}
-
-	size_t getPop() const {
-		size_t i, popBF = 0;
-#pragma omp parallel for reduction(+:popBF)
-		for (i = 0; i < m_size; i++)
-			popBF = popBF + (m_array[i] != 0);
-		return popBF;
-	}
-
-	size_t getSize() const {
-		return m_size;
-	}
-
-	void setUnique(size_t count){
-		m_nEntry = count;
-	}
-
-private:
 
 	/*
 	 * Parses spaced seed string (string consisting of 1s and 0s) to vector
@@ -461,18 +472,6 @@ private:
 	double calcFPR_hashNum(int hashFunctNum) const {
 		return pow(2.0, -hashFunctNum);
 	}
-
-	size_t m_size;
-	T* m_array;
-
-	double m_dFPR;
-	uint64_t m_nEntry;
-	uint64_t m_tEntry;
-	vector<string> m_sseeds;
-	unsigned m_kmerSize;
-
-	typedef vector< vector<unsigned> > SeedVal;
-	SeedVal m_ssVal;
 };
 
-#endif /* BLOOMMAP_HPP_ */
+#endif /* BLOOMMAPSS_HPP_ */
