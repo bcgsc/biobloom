@@ -9,6 +9,8 @@
 enum FilterType {BLOOMFILTER, BLOOMMAP};
 
 typedef uint16_t ID;
+typedef uint32_t PairID;
+static const unsigned ID_BITS = 16;
 
 /**
  * Global variables that are mostly constant for the duration of the

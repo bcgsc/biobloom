@@ -203,14 +203,19 @@ public:
 	/*
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
 	 * Returns if already inserted
+	 * Inserts ambiguous ID when collision occurs
 	 */
-	bool insertAndCheck(std::vector<size_t> const &hashes, T value) {
+	bool insertAndCheck(std::vector<size_t> const &hashes, T value, size_t &collisionCount) {
 		//iterates through hashed values adding it to the filter
 		bool found = true;
 		for (size_t i = 0; i < hashes.size(); ++i) {
 			size_t pos = hashes.at(i) % m_size;
 			if(m_array[pos] == 0){
 				found = false;
+			}
+			else if( m_array[pos] != value){
+//				m_array[pos] = numeric_limits<T>::max();
+				++collisionCount;
 			}
 			m_array[pos] = value;
 		}
@@ -388,10 +393,14 @@ public:
 
 	size_t getPop() const {
 		size_t i, popBF = 0;
-//#pragma omp parallel for reduction(+:popBF)
+#pragma omp parallel for reduction(+:popBF)
 		for (i = 0; i < m_size; i++)
 			popBF = popBF + (m_array[i] != 0);
 		return popBF;
+	}
+
+	size_t getSize() const {
+		return m_size;
 	}
 
 	void setUnique(size_t count){
