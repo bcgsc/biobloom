@@ -134,6 +134,28 @@ public:
 		cerr << "FPR based on Unique Elements: " << getFPR_numEle() << endl;
 	}
 
+	/*
+	 * Stores the filter as a binary file to the path specified
+	 * Stores uncompressed because the random data tends to
+	 * compress poorly anyway
+	 */
+	void storeFilter(string const &filterFilePath) const {
+		ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
+
+		cerr << "Storing filter. Filter is " << m_size * sizeof(T) << "bytes."
+				<< endl;
+
+		assert(myFile);
+		writeHeader(myFile);
+
+		//write out each block
+		myFile.write(reinterpret_cast<char*>(m_array), m_size * sizeof(T));
+
+		myFile.close();
+		assert(myFile);
+	}
+
+
 	void insert(std::vector<size_t> const &hashes, std::vector<T> &values) {
 		//iterates through hashed values adding it to the filter
 		for (unsigned i = 0; i < values.size(); ++i) {
@@ -397,27 +419,6 @@ private:
 				itr != m_sseeds.end(); ++itr) {
 			out.write(itr->c_str(), m_kmerSize);
 		}
-	}
-
-	/*
-	 * Stores the filter as a binary file to the path specified
-	 * Stores uncompressed because the random data tends to
-	 * compress poorly anyway
-	 */
-	void storeFilter(string const &filterFilePath) const {
-		ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
-
-		cerr << "Storing filter. Filter is " << m_size * sizeof(T) << "bytes."
-				<< endl;
-
-		assert(myFile);
-		writeHeader(myFile);
-
-		//write out each block
-		myFile.write(reinterpret_cast<char*>(m_array), m_size * sizeof(T));
-
-		myFile.close();
-		assert(myFile);
 	}
 
 	/*
