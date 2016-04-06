@@ -16,15 +16,15 @@ with open(infile, 'r') as f:
 		else:
 			count[taxid] = [1, []]
 
-with open('seqid2taxid.map', 'r') as d:
-	reader = csv.reader(d, delimiter='\t')
-	for taxid in count:
+keylist = count.keys()
+keylist.sort()
+
+for taxid in keylist:
+	with open('seqid2taxid.map', 'r') as d:
+		reader = csv.reader(d, delimiter='\t')
 		for row in reader:
 			if taxid == int(row[1]):
 				count[taxid][1].append(row[0])
-
-keylist = count.keys()
-keylist.sort()
 
 # print out: taxid	count	[seqid, ..., ...]
 with open(outfile, 'w') as g:
