@@ -25,13 +25,13 @@ public:
 			bool inclusive);
 
 	//TODO: replace usage with vector<ID> version
-	const string updateSummaryData(const unordered_map<string, bool> &hits);
+	const string updateSummaryData(const boost::unordered_map<string, bool> &hits);
 
 	const string updateSummaryData(const vector<ID> &hits);
 
 	//TODO: replace usage with vector<ID> version
-	const string updateSummaryData(const unordered_map<string, bool> &hits1,
-			const unordered_map<string, bool> &hits2);
+	const string updateSummaryData(const boost::unordered_map<string, bool> &hits1,
+			const boost::unordered_map<string, bool> &hits2);
 
 	const string getResultsSummary(size_t readCount) const;
 	virtual ~ResultsManager();

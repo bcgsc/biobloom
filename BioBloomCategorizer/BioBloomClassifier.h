@@ -38,7 +38,7 @@ enum mode {
 inline bool fexists(const string &filename)
 {
 	ifstream ifile(filename.c_str());
-	return ifile;
+	return ifile.good();
 }
 
 ///** for modes of printing out files */
@@ -88,9 +88,9 @@ public:
 
 private:
 	//group filters with same hash number
-	unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > m_infoFiles;
-	unordered_map<string, boost::shared_ptr<MultiFilter> > m_filters;
-	unordered_map<string, boost::shared_ptr<BloomFilter> > m_filtersSingle;
+	boost::unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > m_infoFiles;
+	boost::unordered_map<string, boost::shared_ptr<MultiFilter> > m_filters;
+	boost::unordered_map<string, boost::shared_ptr<BloomFilter> > m_filtersSingle;
 	vector<string> m_filterOrder;
 	vector<string> m_hashSigs;
 	double m_scoreThreshold;
@@ -111,15 +111,15 @@ private:
 
 	void loadFilters(const vector<string> &filterFilePaths);
 	void evaluateReadStd(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, bool> &hits);
+			boost::unordered_map<string, bool> &hits);
 	void evaluateReadMin(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, bool> &hits);
+			boost::unordered_map<string, bool> &hits);
 	void evaluateReadCollab(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, bool> &hits);
+			boost::unordered_map<string, bool> &hits);
 	double evaluateReadBestHit(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, bool> &hits, vector<double> &scores);
+			boost::unordered_map<string, bool> &hits, vector<double> &scores);
 	void evaluateReadScore(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, bool> &hits, vector<double> &scores);
+			boost::unordered_map<string, bool> &hits, vector<double> &scores);
 
 	inline void printSingle(const FastqRecord &rec, double score,
 			const string &filterID) {
@@ -141,7 +141,7 @@ private:
 
 	inline void printSingleToFile(const string &outputFileName,
 			const FastqRecord &rec,
-			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
+			boost::unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
 			string const &outputType, double score, vector<double> &scores) {
 		if (outputType == "fa") {
 			if (m_mode == SCORES && outputFileName == MULTI_MATCH) {
@@ -229,7 +229,7 @@ private:
 
 	inline void printPairToFile(const string &outputFileName,
 			const FastqRecord &rec1, const FastqRecord &rec2,
-			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
+			boost::unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
 			string const &outputType, double score1, double score2,
 			vector<double> &scores1, vector<double> &scores2) {
 		if (outputType == "fa") {
@@ -346,7 +346,7 @@ private:
 	}
 
 	inline void evaluateRead(const FastqRecord &rec, const string &hashSig,
-			unordered_map<string, bool> &hits, double &score,
+			boost::unordered_map<string, bool> &hits, double &score,
 			vector<double> &scores) {
 		switch (m_mode) {
 		case COLLAB: {
