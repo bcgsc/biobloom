@@ -15,11 +15,11 @@
 BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 		unsigned kmerSize, size_t numElements = 0) :
 		m_kmerSize(kmerSize), m_expectedEntries(numElements), m_totalEntries(0), m_fileNames(
-				filenames), m_collisionCount(0), m_currentID(1){
+				filenames), m_collisionCount(0){
 	//Instantiate dense hash map
 	m_headerIDs.set_empty_key(opt::EMPTY);
-	m_collisionIn.set_empty_key(opt::EMPTY);
-	m_collisionOut.set_empty_key(opt::EMPTY << ID_BITS | opt::EMPTY);
+//	m_collisionIn.set_empty_key(opt::EMPTY);
+//	m_collisionOut.set_empty_key(opt::EMPTY << ID_BITS | opt::EMPTY);
 
 	//estimate number of k-mers
 	if (numElements == 0) {
@@ -36,7 +36,7 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 					good = sequence >> rec;
 				}
 				if (good) {
-					++m_currentID;
+//					++m_currentID;
 					m_expectedEntries += rec.seq.length() - m_kmerSize;
 				} else
 					break;
@@ -73,18 +73,21 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 				uniqueCount += loadSeq(bloomMap, rec.seq, value);
 				//assign header to unique ID
 				m_headerIDs[value] = rec.id;
-				PairID pairID = value << 16 | value;
-				m_collisionIn[value] = pairID;
-				m_collisionOut[pairID] = value;
+//				PairID pairID = value << 16 | value;
+//				m_collisionIn[value] = pairID;
+//				m_collisionOut[pairID] = value;
 			} else
 				break;
 		}
 	}
-	cerr << double(m_collisionCount)/double(m_expectedEntries*opt::sseeds.size()) << endl;
+	cerr << "Collision Rate: " << double(m_collisionCount)/double(m_expectedEntries*opt::sseeds.size()) << endl;
 	bloomMap.setUnique(uniqueCount);
+	cerr << "Compressing Bloom Map" << endl;
+	BloomMapSSBitVec<ID> bloomMapBV(bloomMap);
 
 	//save filter
-	bloomMap.storeFilter(filePrefix + ".bf");
+	bloomMap.storeFilter(filePrefix + "_uncompressed.bf");
+	bloomMapBV.store(filePrefix + ".bf");
 	writeIDs(filePrefix + "_ids.txt", m_headerIDs);
 }
 
