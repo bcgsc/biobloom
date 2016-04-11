@@ -15,7 +15,7 @@
 #include "ResultsManager.h"
 
 BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
-		m_filter(BloomMapSS<ID>(filterFile)) {
+		m_filter(BloomMapSSBitVec<ID>(filterFile)) {
 	//load in ID file
 	string idFile = (filterFile).substr(0, (filterFile).length() - 3)
 			+ "_ids.txt";
@@ -133,12 +133,13 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 					double score = double(nonZeroCount) / double(totalCount);
 
 					if (opt::score < score) {
-						assert(tmpHash.size() > 0); //likely to be violated
-						for (google::dense_hash_map<ID, unsigned>::const_iterator i =
-								tmpHash.begin(); i != tmpHash.end(); ++i) {
-							if (i->second == maxCount) {
-								assert(i->first != 0);
-								hits.push_back(i->first);
+						if (tmpHash.size() > 0) {
+							for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+									tmpHash.begin(); i != tmpHash.end(); ++i) {
+								if (i->second == maxCount) {
+									assert(i->first != 0);
+									hits.push_back(i->first);
+								}
 							}
 						}
 					}
