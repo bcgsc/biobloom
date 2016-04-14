@@ -12,7 +12,6 @@ double score = 0.15;
 std::string outputPrefix = "";
 std::string filePostfix = "";
 std::string outputType = "";
-unsigned allowSubMisses = 0;
 }
 
 

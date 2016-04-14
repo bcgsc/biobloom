@@ -24,5 +24,6 @@ namespace opt {
 	extern const ID EMPTY;
 	extern const ID COLLI;
 	extern std::vector<std::string> sseeds;
+	extern unsigned allowMisses;
 }
 #endif
