@@ -53,6 +53,8 @@ AC_CHECK_HEADERS([boost/property_tree/ini_parser.hpp])
 AC_CHECK_HEADERS([boost/tuple/tuple.hpp])
 AC_CHECK_HEADERS([zlib.h])
 
+# TODO: CHECK FOR SDSL Headers
+
 # Check for OpenMP.
 AC_OPENMP
 if test -z $OPENMP_CXXFLAGS; then
