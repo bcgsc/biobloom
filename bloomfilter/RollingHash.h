@@ -47,12 +47,12 @@ private:
 
 public:
 
-	/**
-	 * Default constructor.
-	 */
-	RollingHash() : m_k(0), m_hash1(0), m_rcHash1(0), m_ssVals(
-					vector < vector<unsigned> >()), m_hashes(m_ssVals.size()) {
-	}
+//	/**
+//	 * Default constructor.
+//	 */
+//	RollingHash() : m_k(0), m_hash1(0), m_rcHash1(0), m_ssVals(
+//					vector < vector<unsigned> >()), m_hashes(m_ssVals.size()) {
+//	}
 
 	/**
 	 * Constructor. Construct RollingHash object when initial k-mer

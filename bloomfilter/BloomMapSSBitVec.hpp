@@ -22,17 +22,18 @@
 #include <limits>
 #include <google/dense_hash_map>
 #include <sdsl/bit_vector_il.hpp>
+#include <sdsl/int_vector.hpp>
 #include <sdsl/rank_support.hpp>
-#include <BloomMapSS.hpp>
+#include "BloomMapSS.hpp"
 
 using namespace std;
+template<typename T>
+class BloomMapSS;
 
-static const char* MAGIC = "BLOOMMSS";
+static const unsigned BLOCKSIZE = 512;
 
 template<typename T>
 class BloomMapSSBitVec {
-friend class BloomMapSS;
-
 public:
 
 	struct FileHeader {
@@ -47,19 +48,22 @@ public:
 	};
 
 	BloomMapSSBitVec<T>(BloomMapSS<T> &bloomMap) :
-			m_size(bloomMap.m_size), m_bv(sdsl::bit_vector_il(m_size)), m_data(), m_dFPR(
-					bloomMap.m_dFPR), m_nEntry(bloomMap.m_nEntry), m_tEntry(
-					bloomMap.m_tEntry), m_sseeds(bloomMap.m_seeds), m_kmerSize(
-					bloomMap.m_kmerSize), m_ssVal(bloomMap.m_sseeds) {
-		m_data = new T[bloomMap.getPop()]();
+			m_dSize(bloomMap.getPop()), m_dFPR(bloomMap.getDesiredFPR()), m_nEntry(
+					bloomMap.getUniqueEntries()), m_tEntry(
+					bloomMap.getTotalEntries()), m_sseeds(
+					bloomMap.getSeedStrings()), m_kmerSize(
+					bloomMap.getKmerSize()), m_ssVal(bloomMap.getSeedValues()) {
+		m_data = new T[m_dSize]();
+		sdsl::bit_vector tmpBV(bloomMap.size());
 		size_t idx = 0;
-		for(size_t i = 0; i< m_size; ++i){
-			if(bloomMap.m_array[i] != 0){
-				m_bv[i] = true;
-				bloomMap[idx++] = bloomMap.m_array[i];
+		for (size_t i = 0; i < tmpBV.size(); ++i) {
+			if (bloomMap.m_array[i] != 0) {
+				tmpBV[i] = true;
+				m_data[idx++] = bloomMap.m_array[i];
 			}
 		}
-		m_rankSupport(&m_bv);
+		m_bv = sdsl::bit_vector_il<BLOCKSIZE>(tmpBV);
+		m_rankSupport = sdsl::rank_support_il<1>(&m_bv);
 	}
 
 	BloomMapSSBitVec<T>(const string &filterFilePath) {
@@ -108,19 +112,21 @@ public:
 		m_nEntry = header.nEntry;
 		m_tEntry = header.tEntry;
 		m_kmerSize = header.kmer;
-		m_size = header.size;
-		m_data = new T[m_size]();
+		m_dSize = header.size;
+		m_data = new T[m_dSize]();
 
 		m_ssVal = parseSeedString(m_sseeds);
+
+		cerr << "Loading data vector" << endl;
 
 		long int lCurPos = ftell(file);
 		fseek(file, 0, 2);
 		size_t fileSize = ftell(file) - header.hlen;
 		fseek(file, lCurPos, 0);
-		if (fileSize != m_size * sizeof(T)) {
+		if (fileSize != m_dSize * sizeof(T)) {
 			cerr << "Error: " << filterFilePath
 					<< " does not match size given by its header. Size: "
-					<< fileSize << " vs " << m_size * sizeof(T) << " bytes."
+					<< fileSize << " vs " << m_dSize * sizeof(T) << " bytes."
 					<< endl;
 			exit(1);
 		}
@@ -135,6 +141,7 @@ public:
 		string bvFilename = filterFilePath + ".sdsl";
 		cerr << "Loading sdsl interleaved bit vector from: " << bvFilename << endl;
 		load_from_file(m_bv, bvFilename);
+		m_rankSupport = sdsl::rank_support_il<1>(&m_bv);
 
 		cerr << "FPR based on PopCount: " << getFPR() << endl;
 		cerr << "FPR based on Unique Elements: " << getFPR_numEle() << endl;
@@ -148,14 +155,13 @@ public:
 	void store(string const &filterFilePath) const {
 		ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
 
-		cerr << "Storing filter. Filter is " << m_size * sizeof(T) << "bytes."
-				<< endl;
-
 		assert(myFile);
 		writeHeader(myFile);
 
+		cerr << "Storing filter. Filter is " << m_dSize * sizeof(T) << "bytes."
+				<< endl;
 		//write out each block
-		myFile.write(reinterpret_cast<char*>(m_data), m_size * sizeof(T));
+		myFile.write(reinterpret_cast<char*>(m_data), m_dSize * sizeof(T));
 
 		myFile.close();
 		assert(myFile);
@@ -164,6 +170,8 @@ public:
 
 		cerr << "Storing sdsl interleaved bit vector to: " << bvFilename << endl;
 		store_to_file(m_bv, bvFilename);
+		cerr << "Number of bit vector buckets is " << m_bv.size() << endl;
+		cerr << "Uncompressed bit vector size is " << (m_bv.size() + m_bv.size()*64/BLOCKSIZE)/8 << "bytes" << endl;
 	}
 
 	/*
@@ -172,44 +180,44 @@ public:
 	 */
 	void query(std::vector<size_t> const &hashes, vector<T> &values) const {
 		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_size;
+			size_t pos = hashes.at(i) % m_bv.size();
 			values[i] = m_data[m_rankSupport(pos)];
 		}
 	}
 
-	/*
-	 * Returns unambiguous hit to object
-	 * Returns best hit on ambiguous collision
-	 * Returns numeric_limits<T>::max() on completely ambiguous collision
-	 * Returns 0 on if missing element
-	 */
-	//TODO investigate more efficient ways to do this
-	T atBest(std::vector<size_t> const &hashes) const {
-		google::dense_hash_map<T, unsigned> tmpHash;
-		tmpHash.set_empty_key(0);
-		unsigned maxCount = 0;
-		T value = 0;
-
-		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_size;
-			if(m_data[m_rankSupport(pos)] == 0){
-				return 0;
-			}
-			if (tmpHash.find(m_data[m_rankSupport(pos)]) != tmpHash.end()) {
-				++tmpHash[m_data[m_rankSupport(pos)]];
-			} else {
-				tmpHash[m_data[m_rankSupport(pos)]] = 1;
-			}
-			if(maxCount == tmpHash[m_data[m_rankSupport(pos)]]) {
-				value = numeric_limits<T>::max();
-			}
-			else if ( maxCount < tmpHash[m_data[m_rankSupport(pos)]] ){
-				value = m_data[m_rankSupport(pos)];
-				maxCount = tmpHash[m_data[m_rankSupport(pos)]];
-			}
-		}
-		return value;
-	}
+//	/*
+//	 * Returns unambiguous hit to object
+//	 * Returns best hit on ambiguous collision
+//	 * Returns numeric_limits<T>::max() on completely ambiguous collision
+//	 * Returns 0 on if missing element
+//	 */
+//	//TODO investigate more efficient ways to do this
+//	T atBest(std::vector<size_t> const &hashes) const {
+//		google::dense_hash_map<T, unsigned> tmpHash;
+//		tmpHash.set_empty_key(0);
+//		unsigned maxCount = 0;
+//		T value = 0;
+//
+//		for (unsigned i = 0; i < hashes.size(); ++i) {
+//			size_t pos = hashes.at(i) % m_dSize;
+//			if(m_data[m_rankSupport(pos)] == 0){
+//				return 0;
+//			}
+//			if (tmpHash.find(m_data[m_rankSupport(pos)]) != tmpHash.end()) {
+//				++tmpHash[m_data[m_rankSupport(pos)]];
+//			} else {
+//				tmpHash[m_data[m_rankSupport(pos)]] = 1;
+//			}
+//			if(maxCount == tmpHash[m_data[m_rankSupport(pos)]]) {
+//				value = numeric_limits<T>::max();
+//			}
+//			else if ( maxCount < tmpHash[m_data[m_rankSupport(pos)]] ){
+//				value = m_data[m_rankSupport(pos)];
+//				maxCount = tmpHash[m_data[m_rankSupport(pos)]];
+//			}
+//		}
+//		return value;
+//	}
 
 	/*
 	 * Returns unambiguous hit to object
@@ -225,22 +233,23 @@ public:
 		T value = 0;
 
 		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_size;
-			if(m_data[m_rankSupport(pos)] == 0){
+			size_t pos = hashes.at(i) % m_bv.size();
+			if(m_bv[pos] == 0){
 				++miss;
 				continue;
 			}
-			if (tmpHash.find(m_data[m_rankSupport(pos)]) != tmpHash.end()) {
-				++tmpHash[m_data[m_rankSupport(pos)]];
+			size_t rankPos = m_rankSupport(pos);
+			if (tmpHash.find(m_data[rankPos]) != tmpHash.end()) {
+				++tmpHash[m_data[rankPos]];
 			} else {
-				tmpHash[m_data[m_rankSupport(pos)]] = 1;
+				tmpHash[m_data[rankPos]] = 1;
 			}
-			if(maxCount == tmpHash[m_data[m_rankSupport(pos)]]) {
-				value = numeric_limits<T>::max();
+			if(maxCount == tmpHash[m_data[rankPos]]) {
+				value = m_data[rankPos] < value ? m_data[rankPos] : value;
 			}
-			else if ( maxCount < tmpHash[m_data[m_rankSupport(pos)]] ){
-				value = m_data[m_rankSupport(pos)];
-				maxCount = tmpHash[m_data[m_rankSupport(pos)]];
+			else if ( maxCount < tmpHash[m_data[rankPos]] ){
+				value = m_data[rankPos];
+				maxCount = tmpHash[m_data[rankPos]];
 			}
 		}
 		if (missMin < miss) {
@@ -262,7 +271,36 @@ public:
 	 * Return FPR based on popcount
 	 */
 	double getFPR() const {
-		return pow(double(getPop())/double(m_size), double(m_ssVal.size()));
+		return pow(double(getPop())/double(m_bv.size()), double(m_ssVal.size()));
+	}
+
+	/*
+	 * Return FPR based on popcount and minimum number of matches for a hit
+	 */
+	double getFPR(unsigned minNum) const {
+		assert(minNum <= m_ssVal.size());
+		double cumulativeProb= 0;
+		double popCount = getPop();
+		double p = popCount/double(m_bv.size());
+		for (unsigned i = 0; i < m_ssVal.size() - minNum; ++i) {
+			cumulativeProb += double(nChoosek(m_ssVal.size(), i)) * pow(p, i)
+					* pow(1.0 - p, (m_ssVal.size() - i));
+		}
+		return pow(double(getPop())/double(m_bv.size()), double(minNum));
+	}
+
+	unsigned nChoosek( unsigned n, unsigned k ) const
+	{
+	    if (k > n) return 0;
+	    if (k * 2 > n) k = n-k;
+	    if (k == 0) return 1;
+
+	    int result = n;
+	    for( unsigned i = 2; i <= k; ++i ) {
+	        result *= (n-i+1);
+	        result /= i;
+	    }
+	    return result;
 	}
 
 	/*
@@ -275,15 +313,11 @@ public:
 
 	size_t getPop() const {
 		size_t count = 0;
-		size_t index = m_size;
+		size_t index = m_bv.size();
 		while(count == 0){
 			count = m_rankSupport(--index);
 		}
 		return count;
-	}
-
-	size_t getSize() const {
-		return m_size;
 	}
 
 	void setUnique(size_t count){
@@ -309,7 +343,7 @@ private:
 
 		header.hlen = sizeof(struct FileHeader) + m_kmerSize * m_sseeds.size();
 		header.kmer = m_kmerSize;
-		header.size = m_size;
+		header.size = m_dSize;
 		header.nhash = m_sseeds.size();
 		header.dFPR = m_dFPR;
 		header.nEntry = m_nEntry;
@@ -345,19 +379,6 @@ private:
 	}
 
 	/*
-	 * Only returns multiples of 64 for filter building purposes
-	 * Is an estimated size using approximations of FPR formula
-	 * given the number of hash functions
-	 */
-	size_t calcOptimalSize(size_t entries, double fpr) const {
-		size_t non64ApproxVal = size_t(
-				-double(entries) * double(m_ssVal.size())
-						/ log(1.0 - pow(fpr, double(1 / double(m_ssVal.size())))));
-
-		return non64ApproxVal + (64 - non64ApproxVal % 64);
-	}
-
-	/*
 	 * Calculates the optimal number of hash function to use
 	 * Calculation assumes optimal ratio of bytes per entry given a fpr
 	 */
@@ -370,7 +391,7 @@ private:
 	 * see http://en.wikipedia.org/wiki/Bloom_filter
 	 */
 	double calcFPR_numInserted(size_t numEntr) const {
-		return pow( 1.0 - pow(1.0 - 1.0 / double(m_size),
+		return pow( 1.0 - pow(1.0 - 1.0 / double(m_bv.size()),
 					double(numEntr) * double(m_ssVal.size())), double(m_ssVal.size()));
 	}
 
@@ -381,8 +402,10 @@ private:
 		return pow(2.0, -hashFunctNum);
 	}
 
-	size_t m_size;
-	sdsl::bit_vector_il m_bv;
+	//size of bitvector
+	size_t m_dSize;
+
+	sdsl::bit_vector_il<BLOCKSIZE> m_bv;
 	T* m_data;
 	sdsl::rank_support_il<1> m_rankSupport;
 
@@ -394,6 +417,7 @@ private:
 
 	typedef vector< vector<unsigned> > SeedVal;
 	SeedVal m_ssVal;
+	const char* MAGIC = "BLOOMMBV";
 };
 
 #endif /* BLOOMMAPSSBITVECT_HPP_ */

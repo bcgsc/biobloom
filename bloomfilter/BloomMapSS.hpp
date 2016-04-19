@@ -21,13 +21,16 @@
 #include <stdio.h>
 #include <limits>
 #include <google/dense_hash_map>
+#include "BloomMapSSBitVec.hpp"
 
 using namespace std;
-
-static const char* MAGIC = "BLOOMMSS";
+template<typename T>
+class BloomMapSSBitVec;
 
 template<typename T>
 class BloomMapSS {
+	const char* MAGIC = "BLOOMMSS";
+	friend class BloomMapSSBitVec<T>;
 
 public:
 
@@ -142,11 +145,11 @@ public:
 	void storeFilter(string const &filterFilePath) const {
 		ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
 
-		cerr << "Storing filter. Filter is " << m_size * sizeof(T) << "bytes."
-				<< endl;
-
 		assert(myFile);
 		writeHeader(myFile);
+
+		cerr << "Storing filter. Filter is " << m_size * sizeof(T) << "bytes."
+				<< endl;
 
 		//write out each block
 		myFile.write(reinterpret_cast<char*>(m_array), m_size * sizeof(T));
@@ -297,6 +300,10 @@ public:
 		return m_ssVal;
 	}
 
+	const vector< string > &getSeedStrings() const {
+		return m_sseeds;
+	}
+
 	unsigned getKmerSize(){
 		return m_kmerSize;
 	}
@@ -309,6 +316,13 @@ public:
 	}
 
 	/*
+	 * Return FPR based on popcount and minimum number of matches for a hit
+	 */
+	double getFPR(unsigned minNum) const {
+		return pow(double(getPop())/double(m_size), double(minNum));
+	}
+
+	/*
 	 * Return FPR based on number of inserted elements
 	 */
 	double getFPR_numEle() const {
@@ -318,14 +332,26 @@ public:
 
 	size_t getPop() const {
 		size_t i, popBF = 0;
-#pragma omp parallel for reduction(+:popBF)
+//#pragma omp parallel for reduction(+:popBF)
 		for (i = 0; i < m_size; i++)
 			popBF = popBF + (m_array[i] != 0);
 		return popBF;
 	}
 
-	size_t getSize() const {
+	size_t size() const {
 		return m_size;
+	}
+
+	double getDesiredFPR() const {
+		return m_dFPR;
+	}
+
+	size_t getUniqueEntries() const {
+		return m_nEntry;
+	}
+
+	size_t getTotalEntries() const {
+		return m_tEntry;
 	}
 
 	void setUnique(size_t count){
@@ -336,7 +362,8 @@ public:
 		delete[] m_array;
 	}
 
-protected:
+private:
+
 	size_t m_size;
 	T* m_array;
 
@@ -346,10 +373,9 @@ protected:
 	vector<string> m_sseeds;
 	unsigned m_kmerSize;
 
-	typedef vector< vector<unsigned> > SeedVal;
+	typedef vector<vector<unsigned> > SeedVal;
 	SeedVal m_ssVal;
 
-private:
 //	void loadHeader(FILE *file) {
 //
 //		FileHeader header;
@@ -444,8 +470,7 @@ private:
 	 */
 	size_t calcOptimalSize(size_t entries, double fpr) const {
 		size_t non64ApproxVal = size_t(
-				-double(entries) * double(m_ssVal.size())
-						/ log(1.0 - pow(fpr, double(1 / double(m_ssVal.size())))));
+				-double(entries) * double(m_ssVal.size()) / log(1.0 - fpr));
 
 		return non64ApproxVal + (64 - non64ApproxVal % 64);
 	}
