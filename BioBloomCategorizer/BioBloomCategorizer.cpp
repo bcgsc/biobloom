@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 		}
 		case 'a': {
 			stringstream convert(optarg);
-			if (!(convert >> opt::allowSubMisses)) {
+			if (!(convert >> opt::allowMisses)) {
 				cerr << "Error - Invalid parameter! a: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
@@ -419,7 +419,11 @@ int main(int argc, char *argv[])
 			opt::outputType = "fa";
 		}
 		BloomMapClassifier BMC(filterFilePaths[0]);
-		BMC.filter(inputFiles);
+		if (paired) {
+			BMC.filterPair(inputFiles[0], inputFiles[1]);
+		} else {
+			BMC.filter(inputFiles);
+		}
 		//load filters
 		return 0;
 	}

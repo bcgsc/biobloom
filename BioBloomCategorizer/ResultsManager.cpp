@@ -109,7 +109,6 @@ const string ResultsManager::updateSummaryData(
 	return filterID;
 }
 
-
 /*
  * Records data for read summary based on thresholds
  * Returns filter ID that this read pair equals

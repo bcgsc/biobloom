@@ -69,6 +69,8 @@ void printHelpDialog() {
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. "
 		"                         For Bloom Maps this value reference to the occupancy rate"
 		"                         of the filter rather than the FPR [0.0075]\n"
+		"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
+		"                         Bloom Maps. (currently does nothing) [0]\n"
 		"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
 		"                         of automatically using calculated optimal number of\n"
 		"                         functions.\n"
@@ -119,6 +121,7 @@ int main(int argc, char *argv[]) {
 	static struct option long_options[] = {
 		{
 			"fal_pos_rate", required_argument, NULL, 'f' }, {
+			"allowed_miss", required_argument, NULL, 'a' }, {
 			"file_prefix", required_argument, NULL, 'p' }, {
 			"output_dir", required_argument, NULL, 'o' }, {
 			"threads", required_argument, NULL, 't' }, {
@@ -136,7 +139,7 @@ int main(int argc, char *argv[]) {
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:im:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:im:a:", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -180,6 +183,14 @@ int main(int argc, char *argv[]) {
 		}
 		case 'i': {
 			inclusive = true;
+			break;
+		}
+		case 'a': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::allowMisses)) {
+				cerr << "Error - Invalid parameter! a: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
 			break;
 		}
 		case 'k': {
