@@ -37,7 +37,7 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 				}
 				if (good) {
 //					++m_currentID;
-					m_expectedEntries += rec.seq.length() - m_kmerSize;
+					m_expectedEntries += rec.seq.length() - m_kmerSize + 1;
 				} else
 					break;
 			}
