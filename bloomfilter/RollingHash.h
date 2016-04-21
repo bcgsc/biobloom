@@ -151,7 +151,8 @@ public:
 //		size_t seed = canonicalHash(m_hash1, m_rcHash1);
 
 		/* compute hash values */
-		multiHash(m_hash1, m_rcHash1, kmerItr, m_hashes);
+		//need to shift right the current position on the string by 1
+		multiHash(m_hash1, m_rcHash1, kmerItr + 1, m_hashes);
 	}
 
 	/**
@@ -170,7 +171,8 @@ public:
 //		size_t seed = canonicalHash(m_hash1, m_rcHash1);
 
 		/* compute hash values */
-		multiHash(m_hash1, m_rcHash1, kmerItr, m_hashes);
+		//need to shift left the current position on the string by 1
+		multiHash(m_hash1, m_rcHash1, kmerItr - 1, m_hashes);
 	}
 
 	/** Get hash values for current k-mer */
