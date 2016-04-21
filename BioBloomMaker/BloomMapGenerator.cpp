@@ -86,7 +86,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	BloomMapSSBitVec<ID> bloomMapBV(bloomMap);
 
 	//save filter
-	bloomMap.storeFilter(filePrefix + "_uncompressed.bf");
+//	bloomMap.storeFilter(filePrefix + "_uncompressed.bf");
 	bloomMapBV.store(filePrefix + ".bf");
 	writeIDs(filePrefix + "_ids.txt", m_headerIDs);
 }
