@@ -9,6 +9,7 @@
 #include "BioBloomMaker/BloomFilterGenerator.cpp"
 #include "BioBloomMaker/BloomMapGenerator.h"
 #include "BioBloomMaker/BloomMapGenerator.cpp"
+#include "bloomfilter/BloomMap.hpp"
 #include "Common/BloomFilter.h"
 #include <string>
 #include <assert.h>

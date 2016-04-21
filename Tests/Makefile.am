@@ -38,7 +38,7 @@ BloomFilterMakerTests_CPPFLAGS = -I$(top_srcdir)/BioBloomMaker \
 
 BloomMapGeneratorTests_CXXFLAGS = $(AM_CXXFLAGS) $(OPENMP_CXXFLAGS)
 BloomMapGeneratorTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
-	$(top_builddir)/Common/libcommon.a -lz
+	$(top_builddir)/Common/libcommon.a -lz -lsdsl
 BloomMapGeneratorTests_SOURCES = BloomMapGeneratorTests.cpp
 BloomMapGeneratorTests_CPPFLAGS = -I$(top_srcdir)/BioBloomMaker \
 	-I$(top_srcdir)/Common \
