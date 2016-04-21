@@ -213,7 +213,7 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 			hitCounts1.set_empty_key(opt::EMPTY);
 			hitCounts2.set_empty_key(opt::EMPTY);
 			unsigned score1 = evaluateRead(rec1, hitCounts1);
-			unsigned score2 = evaluateRead(rec1, hitCounts1);
+			unsigned score2 = evaluateRead(rec2, hitCounts2);
 			unsigned threshold1 = opt::score
 					* (rec1.seq.size() - m_filter.getKmerSize() + 1);
 			//TODO currently assuming both reads are the same length - May need change

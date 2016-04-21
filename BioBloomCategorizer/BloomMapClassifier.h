@@ -140,15 +140,17 @@ private:
 			const google::dense_hash_map<ID, unsigned>::const_iterator &j =
 					hitCounts2.find(i->first);
 			if (j != hitCounts2.end() && bestHit <= (i->second + j->second)) {
-				if (bestHit == i->second + j->second && best < i->first) {
+				if (bestHit == (i->second + j->second) && best < i->first) {
 					continue;
 				}
-
 				bestHit = i->second + j->second;
 				best = i->first;
 			}
 		}
-		hits.push_back(best);
+		//if ensure pair makes any sense
+		if (best != 0) {
+			hits.push_back(best);
+		}
 	}
 };
 
