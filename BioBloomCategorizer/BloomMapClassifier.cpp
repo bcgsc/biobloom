@@ -144,6 +144,7 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	assert(opt::outputType != "");
 
 	google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> > outputFiles;
+	outputFiles.set_empty_key("");
 	boost::shared_ptr<Dynamicofstream> noMatch1(
 			new Dynamicofstream(
 					opt::outputPrefix + "_" + NO_MATCH + "_1." + opt::outputType
