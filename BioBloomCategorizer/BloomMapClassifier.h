@@ -139,9 +139,7 @@ private:
 				hitCounts1.begin(); i != hitCounts1.end(); ++i) {
 			const google::dense_hash_map<ID, unsigned>::const_iterator &j =
 					hitCounts2.find(i->first);
-			if (j != hitCounts2.end() && bestHit <= i->second + j->second) {
-				hits.push_back(i->first);
-
+			if (j != hitCounts2.end() && bestHit <= (i->second + j->second)) {
 				if (bestHit == i->second + j->second && best < i->first) {
 					continue;
 				}
