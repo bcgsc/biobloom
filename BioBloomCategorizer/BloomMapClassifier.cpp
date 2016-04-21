@@ -103,18 +103,18 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< endl;
 					}
-					google::dense_hash_map<ID, unsigned> hitCounts;
-					hitCounts.set_empty_key(opt::EMPTY);
-//					unsigned score = evaluateRead(rec, hitCounts);
-					//TODO do something with score
-					evaluateRead(rec, hitCounts);
-					unsigned threshold = opt::score
-							* (rec.seq.size() - m_filter.getKmerSize() + 1);
-
-					const string &outputFileName = resSummary.updateSummaryData(
-							convertToHits(hitCounts, threshold));
-					printSingleToFile(outputFileName, rec, outputFiles);
 				}
+				google::dense_hash_map<ID, unsigned> hitCounts;
+				hitCounts.set_empty_key(opt::EMPTY);
+				unsigned score = evaluateRead(rec, hitCounts);
+				unsigned threshold = opt::score
+						* (rec.seq.size() - m_filter.getKmerSize() + 1);
+				vector<ID> hits;
+				if(score > threshold){
+					convertToHits(hitCounts, hits);
+				}
+				const string &outputFileName = resSummary.updateSummaryData(hits);
+				printSingleToFile(outputFileName, rec, outputFiles);
 			} else
 				break;
 		}
@@ -144,7 +144,6 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	assert(opt::outputType != "");
 
 	google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> > outputFiles;
-	outputFiles.set_empty_key("");
 	boost::shared_ptr<Dynamicofstream> noMatch1(
 			new Dynamicofstream(
 					opt::outputPrefix + "_" + NO_MATCH + "_1." + opt::outputType
@@ -207,25 +206,26 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 					cerr << "Currently Reading Read Number: " << totalReads
 							<< endl;
 				}
-
-				google::dense_hash_map<ID, unsigned> hitCounts1;
-				google::dense_hash_map<ID, unsigned> hitCounts2;
-				hitCounts1.set_empty_key(opt::EMPTY);
-				hitCounts2.set_empty_key(opt::EMPTY);
-//					unsigned score = evaluateRead(rec, hitCounts);
-				//TODO do something with score
-				evaluateRead(rec1, hitCounts1);
-				evaluateRead(rec2, hitCounts2);
-				unsigned threshold1 = opt::score
-						* (rec1.seq.size() - m_filter.getKmerSize() + 1);
-				//TODO currently assuming both reads are the same length - May need change
+			}
+			google::dense_hash_map<ID, unsigned> hitCounts1;
+			google::dense_hash_map<ID, unsigned> hitCounts2;
+			hitCounts1.set_empty_key(opt::EMPTY);
+			hitCounts2.set_empty_key(opt::EMPTY);
+			unsigned score1 = evaluateRead(rec1, hitCounts1);
+			unsigned score2 = evaluateRead(rec1, hitCounts1);
+			unsigned threshold1 = opt::score
+					* (rec1.seq.size() - m_filter.getKmerSize() + 1);
+			//TODO currently assuming both reads are the same length - May need change
 //				unsigned threshold2 = opt::score
 //						* (rec2.seq.size() - m_filter.getKmerSize() + 1);
 
-				const string &outputFileName = resSummary.updateSummaryData(
-						convertToHitsBoth(hitCounts1, hitCounts2, threshold1));
-				printPairToFile(outputFileName, rec1, rec2, outputFiles);
+			vector<ID> hits;
+			//TODO default is currently inclusive mode(BOTH)
+			if (score1 > threshold1 && score2 > threshold1) {
+				convertToHitsBoth(hitCounts1, hitCounts2, hits);
 			}
+			const string &outputFileName = resSummary.updateSummaryData(hits);
+			printPairToFile(outputFileName, rec1, rec2, outputFiles);
 		} else
 			break;
 	}

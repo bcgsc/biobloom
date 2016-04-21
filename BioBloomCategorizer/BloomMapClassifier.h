@@ -105,40 +105,52 @@ private:
 	}
 
 	/*
-	 * Returns a vector of hits to a specific read
+	 * Returns a vector of hits to a specific ID, favoring smaller IDs
 	 */
-	vector<ID> convertToHits(
-			const google::dense_hash_map<ID, unsigned> &hitCounts,
-			unsigned threshold) {
-		vector<ID> hits;
+	//TODO Currently only returns a single ID
+	void convertToHits(const google::dense_hash_map<ID, unsigned> &hitCounts,
+			vector<ID> &hits) {
+		unsigned bestHit = 0;
+		ID best = opt::EMPTY;
 		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 				hitCounts.begin(); i != hitCounts.end(); ++i) {
-			if (i->second >= threshold) {
-				hits.push_back(i->first);
+			if (bestHit <= i->second) {
+				if(bestHit == i->second && best < i->first){
+					continue;
+				}
+				bestHit = i->second;
+				best = i->first;
 			}
 		}
-		return hits;
+		hits.push_back(best);
 	}
 
 	/*
 	 * Returns a vector of hits to a specific read
 	 * Both reads much match
 	 */
-	vector<ID> convertToHitsBoth(
+	void convertToHitsBoth(
 			const google::dense_hash_map<ID, unsigned> &hitCounts1,
 			const google::dense_hash_map<ID, unsigned> &hitCounts2,
-			unsigned threshold) {
-		vector<ID> hits;
+			vector<ID> &hits) {
+		unsigned bestHit = 0;
+		ID best = opt::EMPTY;
 		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 				hitCounts1.begin(); i != hitCounts1.end(); ++i) {
 			const google::dense_hash_map<ID, unsigned>::const_iterator &j =
 					hitCounts2.find(i->first);
-			if (j != hitCounts2.end() && i->second >= threshold
-					&& j->second >= threshold) {
+			if (j != hitCounts2.end() && bestHit <= i->second + j->second) {
 				hits.push_back(i->first);
+
+				if (bestHit == i->second + j->second && best < i->first) {
+					continue;
+				}
+
+				bestHit = i->second + j->second;
+				best = i->first;
 			}
 		}
-		return hits;
+		hits.push_back(best);
 	}
 };
 
