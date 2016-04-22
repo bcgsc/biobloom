@@ -49,6 +49,7 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 /* Generate the bloom filter to the output filename
  */
 void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
+	assert(fpr > 0 && fpr < 1.0);
 	//init bloom map
 	BloomMapSS<ID> bloomMap(m_expectedEntries, fpr, opt::sseeds);
 	ID value = 0;
@@ -65,10 +66,9 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			bool good;
 			{
 				good = sequence >> rec;
-				value++;
 			}
 			if (good) {
-//				cerr << value << endl;;
+				value++;
 				//k-merize with rolling hash insert into bloom map
 				uniqueCount += loadSeq(bloomMap, rec.seq, value);
 				//assign header to unique ID
