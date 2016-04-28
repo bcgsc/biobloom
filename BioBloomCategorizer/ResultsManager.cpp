@@ -72,38 +72,40 @@ const string ResultsManager::updateSummaryData(
  * Records data for read summary based on thresholds
  * Returns filter ID that this read equals
  */
-const string ResultsManager::updateSummaryData(
-		const vector<ID> &hits)
+ID ResultsManager::updateSummaryData(const vector<ID> &hits)
 {
-	string filterID;
-	unsigned filterIdx = 0;
+	ID filterID = 0;
 	bool noMatchFlag = true;
 	bool multiMatchFlag = false;
 
 	for (vector<ID>::const_iterator i = hits.begin(); i != hits.end(); ++i) {
-		ID id = *i - 1;
+		ID index = *i -1;
+//		if (m_aboveThreshold.size() <= index) {
+//			cerr << index << " " << m_aboveThreshold.size() << endl;
+//			exit(1);
+//		}
+
 #pragma omp atomic
-		++m_aboveThreshold[id];
+		++m_aboveThreshold[index];
 		if (noMatchFlag) {
 			noMatchFlag = false;
-			filterID = m_filterOrder.at(id);
-			filterIdx = id;
+			filterID = *i;
 		} else {
 			multiMatchFlag = true;
 		}
 	}
 	if (noMatchFlag) {
-		filterID = NO_MATCH;
 #pragma omp atomic
 		++m_noMatch;
+		return opt::EMPTY;
 	} else {
 		if (multiMatchFlag) {
-			filterID = MULTI_MATCH;
 #pragma omp atomic
 			++m_multiMatch;
+			return opt::COLLI;
 		} else {
 #pragma omp atomic
-			++m_unique[filterIdx];
+			++m_unique[filterID - 1];
 		}
 	}
 	return filterID;
@@ -213,7 +215,6 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	summaryOutput << "\t" << 0.0;
 	summaryOutput << "\n";
 
-	cerr << summaryOutput.str() << endl;
 	return summaryOutput.str();
 }
 

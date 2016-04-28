@@ -27,7 +27,7 @@ public:
 	//TODO: replace usage with vector<ID> version
 	const string updateSummaryData(const boost::unordered_map<string, bool> &hits);
 
-	const string updateSummaryData(const vector<ID> &hits);
+	ID updateSummaryData(const vector<ID> &hits);
 
 	//TODO: replace usage with vector<ID> version
 	const string updateSummaryData(const boost::unordered_map<string, bool> &hits1,
@@ -43,7 +43,6 @@ private:
 	size_t m_noMatch;
 	bool m_inclusive;
 
-	//TODO: change to IDs vector type (for speed)
 	vector<size_t> m_aboveThreshold;
 	vector<size_t> m_unique;
 };

@@ -17,6 +17,7 @@
 #include "config.h"
 #include "Common/Options.h"
 #include "Options.h"
+#include "DataLayer/Options.h"
 #include "Common/SeqEval.h"
 #if _OPENMP
 # include <omp.h>

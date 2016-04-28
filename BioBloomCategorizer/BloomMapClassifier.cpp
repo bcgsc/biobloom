@@ -10,8 +10,11 @@
 #include "Common/Options.h"
 #include "Options.h"
 #include <iostream>
-#include "Common/Dynamicofstream.h"
+//#include "Common/Dynamicofstream.h"
 #include "ResultsManager.h"
+#include <zlib.h>
+#include "DataLayer/kseq.h"
+KSEQ_INIT(gzFile, gzread)
 
 BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		m_filter(BloomMapSSBitVec<ID>(filterFile)) {
@@ -31,7 +34,7 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		exit(1);
 	}
 	else{
-		cerr << "loading ID file: " << idFile << endl;
+		cerr << "Loading ID file: " << idFile << endl;
 	}
 
 	ifstream idFH(idFile.c_str(), ifstream::in);
@@ -44,91 +47,107 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		converter >> id;
 		converter >> fullID;
 		m_ids[id] = fullID;
-		m_fullIDs.push_back(fullID);
 		getline(idFH, line);
 	}
+	m_fullIDs = vector<string>(m_ids.size());
+	for (google::dense_hash_map<ID, string>::const_iterator itr = m_ids.begin();
+			itr != m_ids.end(); ++itr) {
+		m_fullIDs[itr->first - 1] = itr->second;
+	}
+
 	idFH.close();
 }
 
 void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 	size_t totalReads = 0;
 
-	assert(opt::outputType != "");
-
-	google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> > outputFiles;
-	outputFiles.set_empty_key("");
-
-	boost::shared_ptr<Dynamicofstream> no_match(
-			new Dynamicofstream(
-					opt::outputPrefix + "_" + NO_MATCH + "." + opt::outputType
-							+ opt::filePostfix));
-	boost::shared_ptr<Dynamicofstream> multi_match(
-			new Dynamicofstream(
-					opt::outputPrefix + "_" + MULTI_MATCH + "."
-							+ opt::outputType + opt::filePostfix));
-	outputFiles[NO_MATCH] = no_match;
-	outputFiles[MULTI_MATCH] = multi_match;
+//	assert(opt::outputType != "");
+//
+//	google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> > outputFiles;
+//	outputFiles.set_empty_key("");
+//
+//	boost::shared_ptr<Dynamicofstream> no_match(
+//			new Dynamicofstream(
+//					opt::outputPrefix + "_" + NO_MATCH + "." + opt::outputType
+//							+ opt::filePostfix));
+//	boost::shared_ptr<Dynamicofstream> multi_match(
+//			new Dynamicofstream(
+//					opt::outputPrefix + "_" + MULTI_MATCH + "."
+//							+ opt::outputType + opt::filePostfix));
+//	outputFiles[NO_MATCH] = no_match;
+//	outputFiles[MULTI_MATCH] = multi_match;
+	Dynamicofstream readsOutput(opt::outputPrefix + "_reads.tsv");
 
 	//print out header info and initialize variables
 	ResultsManager resSummary(m_fullIDs, false);
 
-	//initialize variables
-	for (vector<string>::const_iterator i = m_fullIDs.begin();
-			i != m_fullIDs.end(); ++i) {
-		boost::shared_ptr<Dynamicofstream> temp(
-				new Dynamicofstream(
-						opt::outputPrefix + "_" + *i + "." + opt::outputType
-								+ opt::filePostfix));
-		outputFiles[*i] = temp;
-	}
+//	//initialize variables
+//	for (vector<string>::const_iterator i = m_fullIDs.begin();
+//			i != m_fullIDs.end(); ++i) {
+//		boost::shared_ptr<Dynamicofstream> temp(
+//				new Dynamicofstream(
+//						opt::outputPrefix + "_" + *i + "." + opt::outputType
+//								+ opt::filePostfix));
+//		outputFiles[*i] = temp;
+//	}
 
 	cerr << "Filtering Start" << endl;
 
 	for (vector<string>::const_iterator it = inputFiles.begin();
 			it != inputFiles.end(); ++it) {
-		FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
-#pragma omp parallel
-		for (FastqRecord rec;;) {
-			bool good;
+		gzFile fp;
+		fp = gzopen(it->c_str(), "r");
+		kseq_t *seq = kseq_init(fp);
+		int l;
+#pragma omp parallel private(l)
+		for (string sequence;;) {
+			string name;
 #pragma omp critical(sequence)
 			{
-				good = sequence >> rec;
-				//track read progress
+				l = kseq_read(seq);
+				sequence = string(seq->seq.s);
+				name = string(seq->name.s);
 			}
-			if (good) {
+			if (l >= 0) {
+#pragma omp atomic
+				++totalReads;
 #pragma omp critical(totalReads)
-				{
-					++totalReads;
-					if (totalReads % 10000000 == 0) {
-						cerr << "Currently Reading Read Number: " << totalReads
-								<< endl;
-					}
+				if (totalReads % 1000000 == 0) {
+					cerr << "Currently Reading Read Number: " << totalReads
+							<< endl;
 				}
+
 				google::dense_hash_map<ID, unsigned> hitCounts;
 				hitCounts.set_empty_key(opt::EMPTY);
-				unsigned score = evaluateRead(rec, hitCounts);
+				unsigned score = evaluateRead(name, hitCounts);
+				assert(score);
 				unsigned threshold = opt::score
-						* (rec.seq.size() - m_filter.getKmerSize() + 1);
+						* (l - m_filter.getKmerSize() + 1);
 				vector<ID> hits;
-				if(score > threshold){
+				if (score > threshold) {
 					convertToHits(hitCounts, hits);
 				}
-				const string &outputFileName = resSummary.updateSummaryData(hits);
-				printSingleToFile(outputFileName, rec, outputFiles);
-			} else
+				//TODO allow printing of full IDs?
+				printToTSV(resSummary.updateSummaryData(hits), name,
+						readsOutput);
+//				printSingleToFile(outputFileName, rec, outputFiles);
+			} else {
+				kseq_destroy(seq);
 				break;
+			}
 		}
+		gzclose(fp);
 	}
 
 	//close sorting files
-	for (google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> >::iterator j =
-			outputFiles.begin(); j != outputFiles.end(); ++j)
-	{
-		j->second->close();
-		cerr << "File written to: "
-				<< opt::outputPrefix + "_" + j->first + "." + opt::outputType + opt::filePostfix
-				<< endl;
-	}
+//	for (google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> >::iterator j =
+//			outputFiles.begin(); j != outputFiles.end(); ++j)
+//	{
+//		j->second->close();
+//		cerr << "File written to: "
+//				<< opt::outputPrefix + "_" + j->first + "." + opt::outputType + opt::filePostfix
+//				<< endl;
+//	}
 	cerr << "Total Reads:" << totalReads << endl;
 	cerr << "Writing file: " << opt::outputPrefix + "_summary.tsv" << endl;
 
@@ -141,81 +160,51 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	size_t totalReads = 0;
 
-	assert(opt::outputType != "");
-
-	google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> > outputFiles;
-	outputFiles.set_empty_key("");
-	boost::shared_ptr<Dynamicofstream> noMatch1(
-			new Dynamicofstream(
-					opt::outputPrefix + "_" + NO_MATCH + "_1." + opt::outputType
-							+ opt::filePostfix));
-	boost::shared_ptr<Dynamicofstream> noMatch2(
-			new Dynamicofstream(
-					opt::outputPrefix + "_" + NO_MATCH + "_2." + opt::outputType
-							+ opt::filePostfix));
-	boost::shared_ptr<Dynamicofstream> multiMatch1(
-			new Dynamicofstream(
-					opt::outputPrefix + "_" + MULTI_MATCH + "_1." + opt::outputType
-							+ opt::filePostfix));
-	boost::shared_ptr<Dynamicofstream> multiMatch2(
-			new Dynamicofstream(
-					opt::outputPrefix + "_" + MULTI_MATCH + "_2." + opt::outputType
-							+ opt::filePostfix));
-	outputFiles[NO_MATCH + "_1"] = noMatch1;
-	outputFiles[NO_MATCH + "_2"] = noMatch2;
-	outputFiles[MULTI_MATCH + "_1"] = multiMatch1;
-	outputFiles[MULTI_MATCH + "_2"] = multiMatch2;
+	Dynamicofstream readsOutput(opt::outputPrefix + "_reads.tsv");
 
 	//print out header info and initialize variables
 	ResultsManager resSummary(m_fullIDs, false);
 
-	//initialize variables
-	for (vector<string>::const_iterator i = m_fullIDs.begin();
-			i != m_fullIDs.end(); ++i) {
-		boost::shared_ptr<Dynamicofstream> temp1(
-				new Dynamicofstream(
-						opt::outputPrefix + "_" + *i + "_1." + opt::outputType
-								+ opt::filePostfix));
-		boost::shared_ptr<Dynamicofstream> temp2(
-				new Dynamicofstream(
-						opt::outputPrefix + "_" + *i + "_2." + opt::outputType
-								+ opt::filePostfix));
-		outputFiles[*i + "_1"] = temp1;
-		outputFiles[*i + "_2"] = temp2;
-	}
-
 	cerr << "Filtering Start" << endl;
 
-	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
-	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
-#pragma omp parallel
-	for (FastqRecord rec1;;) {
-		FastqRecord rec2;
-		bool good1;
-		bool good2;
-
-#pragma omp critical(sequence1)
+	gzFile fp1;
+	gzFile fp2;
+	fp1 = gzopen(file1.c_str(), "r");
+	fp2 = gzopen(file2.c_str(), "r");
+	kseq_t *seq1 = kseq_init(fp1);
+	kseq_t *seq2 = kseq_init(fp2);
+	int l1;
+	int l2;
+#pragma omp parallel private(l1, l2)
+	for (string sequence1;;) {
+		string sequence2;
+		//TODO sanity check if names to make sure both names are the same
+		string name;
+#pragma omp critical(sequence)
 		{
-			good1 = sequence1 >> rec1;
-			good2 = sequence2 >> rec2;
+			l1 = kseq_read(seq1);
+			sequence1 = string(seq1->seq.s);
+			name = string(seq1->name.s);
+
+			l2 = kseq_read(seq2);
+			sequence2 = string(seq2->seq.s);
 		}
-		if (good1 && good2) {
+		if (l1 >= 0 && l2 >= 0) {
+#pragma omp atomic
+			++totalReads;
 #pragma omp critical(totalReads)
-			{
-				++totalReads;
-				if (totalReads % 10000000 == 0) {
-					cerr << "Currently Reading Read Number: " << totalReads
-							<< endl;
-				}
+			if (totalReads % 1000000 == 0) {
+				cerr << "Currently Reading Read Number: " << totalReads << endl;
 			}
+
 			google::dense_hash_map<ID, unsigned> hitCounts1;
 			google::dense_hash_map<ID, unsigned> hitCounts2;
 			hitCounts1.set_empty_key(opt::EMPTY);
 			hitCounts2.set_empty_key(opt::EMPTY);
-			unsigned score1 = evaluateRead(rec1, hitCounts1);
-			unsigned score2 = evaluateRead(rec2, hitCounts2);
+			unsigned score1 = evaluateRead(sequence1, hitCounts1);
+			unsigned score2 = evaluateRead(sequence2, hitCounts2);
 			unsigned threshold1 = opt::score
-					* (rec1.seq.size() - m_filter.getKmerSize() + 1);
+					* (l1 - m_filter.getKmerSize() + 1);
 			//TODO currently assuming both reads are the same length - May need change
 //				unsigned threshold2 = opt::score
 //						* (rec2.seq.size() - m_filter.getKmerSize() + 1);
@@ -225,27 +214,21 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 			if (score1 > threshold1 && score2 > threshold1) {
 				convertToHitsBoth(hitCounts1, hitCounts2, hits);
 			}
-			const string &outputFileName = resSummary.updateSummaryData(hits);
-			printPairToFile(outputFileName, rec1, rec2, outputFiles);
-		} else
+			printToTSV(resSummary.updateSummaryData(hits), name, readsOutput);
+		} else {
+			if (l1 != -1 || l2 != -1) {
+				cerr << "Terminated without getting to eof at read "
+						<< totalReads << endl;
+				exit(1);
+			}
 			break;
+		}
 	}
-	if (!sequence1.eof() || !sequence2.eof()) {
-		cerr
-				<< "error: eof bit not flipped. Input files may be different lengths"
-				<< endl;
-	}
+	kseq_destroy(seq1);
+	kseq_destroy(seq2);
+	gzclose(fp1);
+	gzclose(fp2);
 
-
-	//close sorting files
-	for (google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> >::iterator j =
-			outputFiles.begin(); j != outputFiles.end(); ++j)
-	{
-		j->second->close();
-		cerr << "File written to: "
-				<< opt::outputPrefix + "_" + j->first + "." + opt::outputType + opt::filePostfix
-				<< endl;
-	}
 	cerr << "Total Reads:" << totalReads << endl;
 	cerr << "Writing file: " << opt::outputPrefix + "_summary.tsv" << endl;
 
