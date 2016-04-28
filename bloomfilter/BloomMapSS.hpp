@@ -27,6 +27,30 @@ using namespace std;
 template<typename T>
 class BloomMapSSBitVec;
 
+/*
+ * Returns an a filter size large enough to maintain an occupancy specified
+ */
+inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double occupancy) {
+	assert(hashNum > 0);
+	return size_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
+}
+
+/*
+ * Parses spaced seed string (string consisting of 1s and 0s) to vector
+ */
+inline vector<vector<unsigned> > parseSeedString(const vector<string> &spacedSeeds) {
+	vector<vector<unsigned> > seeds(spacedSeeds.size());
+	for(unsigned i = 0; i < spacedSeeds.size(); ++i){
+		const string ss = spacedSeeds.at(i);
+		for(unsigned j = 0; j < ss.size(); ++j){
+			if(ss.at(j) == '0'){
+				seeds[i].push_back(j);
+			}
+		}
+	}
+	return seeds;
+}
+
 template<typename T>
 class BloomMapSS {
 	const char* MAGIC = "BLOOMMSS";
@@ -59,7 +83,7 @@ public:
 			assert(m_kmerSize == itr->size());
 		}
 		if (m_size == 0) {
-			m_size = calcOptimalSize(expectedElemNum, m_dFPR);
+			m_size = calcOptimalSize(expectedElemNum, m_dFPR, m_sseeds.size());
 		}
 		m_array = new T[m_size]();
 	}
@@ -445,34 +469,6 @@ private:
 				itr != m_sseeds.end(); ++itr) {
 			out.write(itr->c_str(), m_kmerSize);
 		}
-	}
-
-	/*
-	 * Parses spaced seed string (string consisting of 1s and 0s) to vector
-	 */
-	inline vector< vector<unsigned> > parseSeedString(const vector<string> &spacedSeeds) {
-		SeedVal seeds(spacedSeeds.size());
-		for(unsigned i = 0; i < spacedSeeds.size(); ++i){
-			const string ss = spacedSeeds.at(i);
-			for(unsigned j = 0; j < ss.size(); ++j){
-				if(ss.at(j) == '0'){
-					seeds[i].push_back(j);
-				}
-			}
-		}
-		return seeds;
-	}
-
-	/*
-	 * Only returns multiples of 64 for filter building purposes
-	 * Is an estimated size using approximations of FPR formula
-	 * given the number of hash functions
-	 */
-	size_t calcOptimalSize(size_t entries, double fpr) const {
-		size_t non64ApproxVal = size_t(
-				-double(entries) * double(m_ssVal.size()) / log(1.0 - fpr));
-
-		return non64ApproxVal + (64 - non64ApproxVal % 64);
 	}
 
 	/*
