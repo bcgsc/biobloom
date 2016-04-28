@@ -46,6 +46,7 @@ vector<string> convertInputString(const string &inputString)
 	while (converter >> temp) {
 		currentString.push_back(temp);
 	}
+	assert(currentString.size() > 0);
 	return currentString;
 }
 
@@ -66,8 +67,8 @@ void printHelpDialog() {
 		"  -m, --map=N            Generates a Bloom Filter Map, expects list of seeds\n"
 		"                         1s & 0s separated by spaces. -k is ignored.\n"
 		"\nAdvanced options:\n"
-		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. "
-		"                         For Bloom Maps this value reference to the occupancy rate"
+		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter.\n"
+		"                         For Bloom Maps this value reference to the occupancy rate\n"
 		"                         of the filter rather than the FPR [0.0075]\n"
 		"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
 		"                         Bloom Maps. (currently does nothing) [0]\n"
@@ -341,7 +342,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	if(opt::filterType == BLOOMMAP){
+	if (opt::filterType == BLOOMMAP) {
 		BloomMapGenerator filterGen(inputFiles, kmerSize, entryNum);
 		filterGen.generate(outputDir + filterPrefix, fpr);
 		cerr << "Bloom Map Creation Complete." << endl;
