@@ -36,20 +36,22 @@ template<typename T>
 class BloomMapSSBitVec {
 public:
 
+#pragma pack(1) //to maintain consistent values across platforms
 	struct FileHeader {
 		char magic[8];
 		uint32_t hlen;	//header length (including spaced seeds)
 		uint64_t size;
+		uint64_t tEntry;
+		double dFPR;
 		uint32_t nhash;
 		uint32_t kmer;
-		double dFPR;
-		uint64_t nEntry;
-		uint64_t tEntry;
 	};
 
+	/*
+	 * Constructor using an existing bloomMap
+	 */
 	BloomMapSSBitVec<T>(BloomMapSS<T> &bloomMap) :
-			m_dSize(bloomMap.getPop()), m_dFPR(bloomMap.getDesiredFPR()), m_nEntry(
-					bloomMap.getUniqueEntries()), m_tEntry(
+			m_dSize(bloomMap.getPop()), m_dFPR(bloomMap.getDesiredFPR()), m_tEntry(
 					bloomMap.getTotalEntries()), m_sseeds(
 					bloomMap.getSeedStrings()), m_kmerSize(
 					bloomMap.getKmerSize()), m_ssVal(bloomMap.getSeedValues()) {
@@ -66,85 +68,108 @@ public:
 		m_rankSupport = sdsl::rank_support_il<1>(&m_bv);
 	}
 
-	BloomMapSSBitVec<T>(const string &filterFilePath) {
-		FILE *file = fopen(filterFilePath.c_str(), "rb");
-		if (file == NULL) {
-			cerr << "file \"" << filterFilePath << "\" could not be read."
-					<< endl;
-			exit(1);
+	/*
+	 * Constructor using a prebuilt bitvector
+	 */
+	BloomMapSSBitVec<T>(size_t expectedElemNum, double fpr,
+			vector<string> seeds, const sdsl::bit_vector &bv) :
+			m_dSize(0), m_dFPR(fpr), m_tEntry(expectedElemNum), m_sseeds(
+					seeds), m_kmerSize(m_sseeds[0].size()), m_ssVal(
+					parseSeedString(m_sseeds)) {
+		for (vector<string>::const_iterator itr = m_sseeds.begin();
+				itr != m_sseeds.end(); ++itr) {
+			//check if spaced seeds are all the same length
+			assert(m_kmerSize == itr->size());
 		}
-
-		FileHeader header;
-		if (fread(&header, sizeof(struct FileHeader), 1, file) == 1) {
-			cerr << "Loading header..." << endl;
-		} else {
-			cerr << "Failed to header" << endl;
-			exit(1);
-		}
-		char magic[9];
-		strncpy(magic, header.magic, 8);
-		magic[8] = '\0';
-
-		cerr << "Loaded header... magic: " << magic << " hlen: " << header.hlen
-				<< " size: " << header.size << " nhash: " << header.nhash
-				<< " kmer: " << header.kmer << " dFPR: " << header.dFPR
-				<< " nEntry: " << header.nEntry << " tEntry: " << header.tEntry
-				<< endl;
-
-		assert(strcmp(MAGIC, magic) == 0);
-
-		m_sseeds = vector<string>(header.nhash);
-
-		//load seeds
-		for (unsigned i = 0; i < header.nhash; ++i) {
-			char temp[header.kmer];
-
-			if (fread(temp, header.kmer, 1, file) != 1) {
-				cerr << "Failed to load spaced seed string" << endl;
-				exit(1);
-			} else {
-				cerr << "Spaced Seed " << i << ": " << string(temp, header.kmer)
-						<< endl;
-			}
-			m_sseeds[i] = string(temp, header.kmer);
-		}
-		m_dFPR = header.dFPR;
-		m_nEntry = header.nEntry;
-		m_tEntry = header.tEntry;
-		m_kmerSize = header.kmer;
-		m_dSize = header.size;
-		m_data = new T[m_dSize]();
-
-		m_ssVal = parseSeedString(m_sseeds);
-
-		cerr << "Loading data vector" << endl;
-
-		long int lCurPos = ftell(file);
-		fseek(file, 0, 2);
-		size_t fileSize = ftell(file) - header.hlen;
-		fseek(file, lCurPos, 0);
-		if (fileSize != m_dSize * sizeof(T)) {
-			cerr << "Error: " << filterFilePath
-					<< " does not match size given by its header. Size: "
-					<< fileSize << " vs " << m_dSize * sizeof(T) << " bytes."
-					<< endl;
-			exit(1);
-		}
-
-		size_t countRead = fread(m_data, fileSize, 1, file);
-		if (countRead != 1 && fclose(file) != 0) {
-			cerr << "file \"" << filterFilePath << "\" could not be read."
-					<< endl;
-			exit(1);
-		}
-
-		string bvFilename = filterFilePath + ".sdsl";
-		cerr << "Loading sdsl interleaved bit vector from: " << bvFilename << endl;
-		load_from_file(m_bv, bvFilename);
+		m_bv = sdsl::bit_vector_il<BLOCKSIZE>(bv);
 		m_rankSupport = sdsl::rank_support_il<1>(&m_bv);
+		m_dSize = getPop();
+		m_data = new T[m_dSize]();
+	}
+
+	BloomMapSSBitVec<T>(const string &filterFilePath) {
+#pragma omp parallel for
+		for (unsigned i = 0; i < 2; ++i) {
+			if (i == 0) {
+				FILE *file = fopen(filterFilePath.c_str(), "rb");
+				if (file == NULL) {
+					cerr << "file \"" << filterFilePath << "\" could not be read."
+							<< endl;
+					exit(1);
+				}
+
+				FileHeader header;
+				if (fread(&header, sizeof(struct FileHeader), 1, file) == 1) {
+					cerr << "Loading header..." << endl;
+				} else {
+					cerr << "Failed to Load header" << endl;
+					exit(1);
+				}
+				char magic[9];
+				strncpy(magic, header.magic, 8);
+				magic[8] = '\0';
+
+				cerr << "Reading header... magic: " << magic << " hlen: "
+						<< header.hlen << " size: " << header.size << " nhash: "
+						<< header.nhash << " dFPR: " << header.dFPR
+						<< " tEntry: " << header.tEntry << endl;
+
+				assert(strcmp(MAGIC, magic) == 0);
+
+				m_sseeds = vector<string>(header.nhash);
+
+				//load seeds
+				for (unsigned i = 0; i < header.nhash; ++i) {
+					char temp[header.kmer];
+
+					if (fread(temp, header.kmer, 1, file) != 1) {
+						cerr << "Failed to load spaced seed string" << endl;
+						exit(1);
+					} else {
+						cerr << "Spaced Seed " << i << ": "
+								<< string(temp, header.kmer) << endl;
+					}
+					m_sseeds[i] = string(temp, header.kmer);
+				}
+				m_dFPR = header.dFPR;
+				m_tEntry = header.tEntry;
+				m_kmerSize = header.kmer;
+				m_dSize = header.size;
+				m_data = new T[m_dSize]();
+
+				m_ssVal = parseSeedString(m_sseeds);
+
+				cerr << "Loading data vector" << endl;
+
+				long int lCurPos = ftell(file);
+				fseek(file, 0, 2);
+				size_t fileSize = ftell(file) - header.hlen;
+				fseek(file, lCurPos, 0);
+				if (fileSize != m_dSize * sizeof(T)) {
+					cerr << "Error: " << filterFilePath
+							<< " does not match size given by its header. Size: "
+							<< fileSize << " vs " << m_dSize * sizeof(T)
+							<< " bytes." << endl;
+					exit(1);
+				}
+
+				size_t countRead = fread(m_data, fileSize, 1, file);
+				if (countRead != 1 && fclose(file) != 0) {
+					cerr << "file \"" << filterFilePath
+							<< "\" could not be read." << endl;
+					exit(1);
+				}
+			}
+			else{
+				string bvFilename = filterFilePath + ".sdsl";
+				cerr << "Loading sdsl interleaved bit vector from: "
+						<< bvFilename << endl;
+				load_from_file(m_bv, bvFilename);
+				m_rankSupport = sdsl::rank_support_il<1>(&m_bv);
+			}
+		}
 
 		cerr << "FPR based on PopCount: " << getFPR() << endl;
-		cerr << "FPR based on Unique Elements: " << getFPR_numEle() << endl;
 	}
 
 	/*
@@ -153,25 +178,56 @@ public:
 	 * compress poorly anyway
 	 */
 	void store(string const &filterFilePath) const {
-		ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
 
-		assert(myFile);
-		writeHeader(myFile);
+#pragma omp parallel for
+		for (unsigned i = 0; i < 2; ++i) {
+			if (i == 0) {
+				ofstream myFile(filterFilePath.c_str(), ios::out | ios::binary);
 
-		cerr << "Storing filter. Filter is " << m_dSize * sizeof(T) << "bytes."
-				<< endl;
-		//write out each block
-		myFile.write(reinterpret_cast<char*>(m_data), m_dSize * sizeof(T));
+				assert(myFile);
+				writeHeader(myFile);
 
-		myFile.close();
-		assert(myFile);
+				cerr << "Storing filter. Filter is " << m_dSize * sizeof(T)
+						<< "bytes." << endl;
 
-		string bvFilename = filterFilePath + ".sdsl";
+				//write out each block
+				myFile.write(reinterpret_cast<char*>(m_data),
+						m_dSize * sizeof(T));
 
-		cerr << "Storing sdsl interleaved bit vector to: " << bvFilename << endl;
-		store_to_file(m_bv, bvFilename);
-		cerr << "Number of bit vector buckets is " << m_bv.size() << endl;
-		cerr << "Uncompressed bit vector size is " << (m_bv.size() + m_bv.size()*64/BLOCKSIZE)/8 << "bytes" << endl;
+				myFile.close();
+				assert(myFile);
+
+				FILE *file = fopen(filterFilePath.c_str(), "rb");
+				if (file == NULL) {
+					cerr << "file \"" << filterFilePath
+							<< "\" could not be read." << endl;
+					exit(1);
+				}
+			} else {
+				string bvFilename = filterFilePath + ".sdsl";
+
+				cerr << "Storing sdsl interleaved bit vector to: " << bvFilename
+						<< endl;
+				store_to_file(m_bv, bvFilename);
+				cerr << "Number of bit vector buckets is " << m_bv.size()
+						<< endl;
+				cerr << "Uncompressed bit vector size is "
+						<< (m_bv.size() + m_bv.size() * 64 / BLOCKSIZE) / 8
+						<< "bytes" << endl;
+			}
+		}
+	}
+
+	/*
+	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
+	 * ONLY REPLACE VALUE if it is larger than current value (for thread safety)
+	 */
+	void insert(std::vector<size_t> const &hashes, T value) {
+		//iterates through hashed values adding it to the filter
+		for (size_t i = 0; i < hashes.size(); ++i) {
+			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
+			setIfGreater(&m_data[pos], value);
+		}
 	}
 
 	/*
@@ -181,43 +237,13 @@ public:
 	void query(std::vector<size_t> const &hashes, vector<T> &values) const {
 		for (unsigned i = 0; i < hashes.size(); ++i) {
 			size_t pos = hashes.at(i) % m_bv.size();
+			if (m_bv[pos] == 0) {
+				values[i] = 0;
+				continue;
+			}
 			values[i] = m_data[m_rankSupport(pos)];
 		}
 	}
-
-//	/*
-//	 * Returns unambiguous hit to object
-//	 * Returns best hit on ambiguous collision
-//	 * Returns numeric_limits<T>::max() on completely ambiguous collision
-//	 * Returns 0 on if missing element
-//	 */
-//	//TODO investigate more efficient ways to do this
-//	T atBest(std::vector<size_t> const &hashes) const {
-//		google::dense_hash_map<T, unsigned> tmpHash;
-//		tmpHash.set_empty_key(0);
-//		unsigned maxCount = 0;
-//		T value = 0;
-//
-//		for (unsigned i = 0; i < hashes.size(); ++i) {
-//			size_t pos = hashes.at(i) % m_dSize;
-//			if(m_data[m_rankSupport(pos)] == 0){
-//				return 0;
-//			}
-//			if (tmpHash.find(m_data[m_rankSupport(pos)]) != tmpHash.end()) {
-//				++tmpHash[m_data[m_rankSupport(pos)]];
-//			} else {
-//				tmpHash[m_data[m_rankSupport(pos)]] = 1;
-//			}
-//			if(maxCount == tmpHash[m_data[m_rankSupport(pos)]]) {
-//				value = numeric_limits<T>::max();
-//			}
-//			else if ( maxCount < tmpHash[m_data[m_rankSupport(pos)]] ){
-//				value = m_data[m_rankSupport(pos)];
-//				maxCount = tmpHash[m_data[m_rankSupport(pos)]];
-//			}
-//		}
-//		return value;
-//	}
 
 	/*
 	 * Returns unambiguous hit to object
@@ -303,14 +329,6 @@ public:
 	    return result;
 	}
 
-	/*
-	 * Return FPR based on number of inserted elements
-	 */
-	double getFPR_numEle() const {
-		assert(m_nEntry > 0);
-		return calcFPR_numInserted(m_nEntry);
-	}
-
 	size_t getPop() const {
 		size_t count = 0;
 		size_t index = m_bv.size();
@@ -320,10 +338,6 @@ public:
 		return count;
 	}
 
-	void setUnique(size_t count){
-		m_nEntry = count;
-	}
-
 	~BloomMapSSBitVec() {
 		delete[] m_data;
 	}
@@ -331,9 +345,8 @@ public:
 private:
 
 	/*
-	 * Helper functions for filter storage
+	 * Helper function for header storage
 	 */
-
 	void writeHeader(ofstream &out) const {
 		FileHeader header;
 		strncpy(header.magic, MAGIC, 8);
@@ -346,12 +359,11 @@ private:
 		header.size = m_dSize;
 		header.nhash = m_sseeds.size();
 		header.dFPR = m_dFPR;
-		header.nEntry = m_nEntry;
 		header.tEntry = m_tEntry;
 
 		cerr << "Writing header... magic: " << magic << " hlen: " << header.hlen
-				<< " size: " << header.size << " dFPR: " << header.dFPR
-				<< " nEntry: " << header.nEntry << " tEntry: " << header.tEntry
+				<< " size: " << header.size << " nhash: " << header.nhash
+				<< " dFPR: " << header.dFPR << " tEntry: " << header.tEntry
 				<< endl;
 
 		out.write(reinterpret_cast<char*>(&header), sizeof(struct FileHeader));
@@ -402,6 +414,20 @@ private:
 		return pow(2.0, -hashFunctNum);
 	}
 
+	/*
+	 * Lock free cas value setting for larger element
+	 */
+	void setIfGreater(T *val, T newVal) {
+//		assert(newVal);
+//		__sync_or_and_fetch(val, 1);
+		T oldValue;
+		do {
+			oldValue = *val;
+			if (oldValue >= newVal)
+				break;
+		} while (!__sync_bool_compare_and_swap(val, oldValue, newVal));
+	}
+
 	//size of bitvector
 	size_t m_dSize;
 
@@ -410,7 +436,6 @@ private:
 	sdsl::rank_support_il<1> m_rankSupport;
 
 	double m_dFPR;
-	uint64_t m_nEntry;
 	uint64_t m_tEntry;
 	vector<string> m_sseeds;
 	unsigned m_kmerSize;
