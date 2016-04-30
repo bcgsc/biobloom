@@ -30,7 +30,7 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 			gzFile fp;
 			fp = gzopen(m_fileNames[i].c_str(), "r");
 			kseq_t *seq = kseq_init(fp);
-			m_headerIDs[m_fileNames[i]] = ++value;
+			m_headerIDs[m_fileNames[i].substr(m_fileNames[i].find_last_of("/")+1)] = ++value;
 			int l;
 			for (;;) {
 				l = kseq_read(seq);
@@ -130,7 +130,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 				if (l >= 0) {
 					//k-merize with rolling hash insert into bloom map
 					loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
-							m_headerIDs[m_fileNames[i]]);
+							m_headerIDs[m_fileNames[i].substr(m_fileNames[i].find_last_of("/")+1)]);
 				} else {
 					kseq_destroy(seq);
 					break;
