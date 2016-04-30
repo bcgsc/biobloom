@@ -25,7 +25,8 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 	//load in ID file
 	string idFile = (filterFile).substr(0, (filterFile).length() - 3)
 			+ "_ids.txt";
-	m_ids.set_empty_key(opt::EMPTY);
+	google::dense_hash_map<ID, string> ids;
+	ids.set_empty_key(opt::EMPTY);
 	if (!fexists(idFile)) {
 		cerr
 				<< "Error: " + (idFile)
@@ -46,12 +47,12 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		stringstream converter(line);
 		converter >> id;
 		converter >> fullID;
-		m_ids[id] = fullID;
+		ids[id] = fullID;
 		getline(idFH, line);
 	}
-	m_fullIDs = vector<string>(m_ids.size());
-	for (google::dense_hash_map<ID, string>::const_iterator itr = m_ids.begin();
-			itr != m_ids.end(); ++itr) {
+	m_fullIDs = vector<string>(ids.size());
+	for (google::dense_hash_map<ID, string>::const_iterator itr = ids.begin();
+			itr != ids.end(); ++itr) {
 		m_fullIDs[itr->first - 1] = itr->second;
 	}
 
@@ -128,6 +129,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 					convertToHits(hitCounts, hits);
 				}
 				//TODO allow printing of full IDs?
+				//TODO print fasta/fastqs?
 				printToTSV(resSummary.updateSummaryData(hits), name,
 						readsOutput);
 //				printSingleToFile(outputFileName, rec, outputFiles);
@@ -159,8 +161,14 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 
 void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	size_t totalReads = 0;
+	string outputName = opt::outputPrefix + "_reads.tsv";
 
-	Dynamicofstream readsOutput(opt::outputPrefix + "_reads.tsv");
+	//TODO output fasta?
+	if(opt::outputType == "fq"){
+		outputName = opt::outputPrefix + "_reads.fq";
+	}
+
+	Dynamicofstream readsOutput(outputName);
 
 	//print out header info and initialize variables
 	ResultsManager resSummary(m_fullIDs, false);
@@ -180,15 +188,21 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 		for (string sequence1;;) {
 			string sequence2;
 			//TODO sanity check if names to make sure both names are the same
-			string name;
+			string name1;
+			string name2;
+			string qual1;
+			string qual2;
 #pragma omp critical(sequence)
 			{
 				l1 = kseq_read(seq1);
 				sequence1 = string(seq1->seq.s, seq1->seq.l);
-				name = string(seq1->name.s, seq1->name.l);
+				name1 = string(seq1->name.s, seq1->name.l);
+				qual1 = string(seq1->qual.s, seq1->qual.l);
 
 				l2 = kseq_read(seq2);
 				sequence2 = string(seq2->seq.s, seq2->seq.l);
+				name2 = string(seq2->name.s, seq2->name.l);
+				qual2 = string(seq2->qual.s, seq2->qual.l);
 			}
 			if (l1 >= 0 && l2 >= 0) {
 #pragma omp atomic
@@ -215,8 +229,23 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 				if (score1 > threshold1 || score2 > threshold1) {
 					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
 				}
-				printToTSV(resSummary.updateSummaryData(hits), name,
+				if (opt::outputType == "fq") {
+#pragma omp critical(outputFiles)
+					{
+						readsOutput << "@" << name1 << " "
+								<< m_fullIDs[resSummary.updateSummaryData(hits)]
+								<< "\n" << sequence1 << "\n+\n" << qual1
+								<< "\n";
+						readsOutput << "@" << name1 << " "
+								<< m_fullIDs[resSummary.updateSummaryData(hits)]
+								<< "\n" << sequence1 << "\n+\n" << qual2
+								<< "\n";
+					}
+				}
+				else{
+					printToTSV(resSummary.updateSummaryData(hits), name1,
 						readsOutput);
+				}
 			} else {
 				if (l1 != -1 || l2 != -1) {
 					cerr << "Terminated without getting to eof at read "
@@ -231,15 +260,21 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 		for (string sequence1;;) {
 			string sequence2;
 			//TODO sanity check if names to make sure both names are the same
-			string name;
+			string name1;
+			string name2;
+			string qual1;
+			string qual2;
 #pragma omp critical(sequence)
 			{
 				l1 = kseq_read(seq1);
 				sequence1 = string(seq1->seq.s, seq1->seq.l);
-				name = string(seq1->name.s, seq1->name.l);
+				name1 = string(seq1->name.s, seq1->name.l);
+				qual1 = string(seq1->qual.s, seq1->qual.l);
 
 				l2 = kseq_read(seq2);
 				sequence2 = string(seq2->seq.s, seq2->seq.l);
+				name2 = string(seq2->name.s, seq2->name.l);
+				qual2 = string(seq2->qual.s, seq2->qual.l);
 			}
 			if (l1 >= 0 && l2 >= 0) {
 #pragma omp atomic
@@ -266,8 +301,24 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 				if (score1 > threshold1 && score2 > threshold1) {
 					convertToHitsBoth(hitCounts1, hitCounts2, hits);
 				}
-				printToTSV(resSummary.updateSummaryData(hits), name,
+				if (opt::outputType == "fq") {
+					ID id = resSummary.updateSummaryData(hits);
+#pragma omp critical(outputFiles)
+					{
+						readsOutput << "@" << name1 << " "
+								<< m_fullIDs[id]
+								<< "\n" << sequence1 << "\n+\n" << qual1
+								<< "\n";
+						readsOutput << "@" << name2 << " "
+								<< m_fullIDs[id]
+								<< "\n" << sequence2 << "\n+\n" << qual2
+								<< "\n";
+					}
+				}
+				else{
+					printToTSV(resSummary.updateSummaryData(hits), name1,
 						readsOutput);
+				}
 			} else {
 				if (l1 != -1 || l2 != -1) {
 					cerr << "Terminated without getting to eof at read "

@@ -33,7 +33,6 @@ public:
 private:
 	BloomMapSSBitVec<ID> m_filter;
 	vector<string> m_fullIDs;
-	google::dense_hash_map<ID, string> m_ids;
 
 //	//TODO: REFACTOR WITH BioBloomClassifier
 //	inline void printSingleToFile(const string &outputFileName,
@@ -58,7 +57,7 @@ private:
 			Dynamicofstream &outputFile) {
 #pragma omp critical(outputFiles)
 		{
-			outputFile << outputID << "\t" << name << "\n";
+			outputFile << m_fullIDs[outputID] << "\t" << name << "\n";
 		}
 	}
 
