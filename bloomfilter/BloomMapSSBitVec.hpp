@@ -41,6 +41,7 @@ public:
 		char magic[8];
 		uint32_t hlen;	//header length (including spaced seeds)
 		uint64_t size;
+		uint64_t nEntry;
 		uint64_t tEntry;
 		double dFPR;
 		uint32_t nhash;
@@ -109,9 +110,10 @@ public:
 				strncpy(magic, header.magic, 8);
 				magic[8] = '\0';
 
-				cerr << "Reading header... magic: " << magic << " hlen: "
+				cerr << "Loaded header... magic: " << magic << " hlen: "
 						<< header.hlen << " size: " << header.size << " nhash: "
-						<< header.nhash << " dFPR: " << header.dFPR
+						<< header.nhash << " kmer: " << header.kmer << " dFPR: "
+						<< header.dFPR << " nEntry: " << header.nEntry
 						<< " tEntry: " << header.tEntry << endl;
 
 				assert(strcmp(MAGIC, magic) == 0);
@@ -132,6 +134,7 @@ public:
 					m_sseeds[i] = string(temp, header.kmer);
 				}
 				m_dFPR = header.dFPR;
+				m_nEntry = header.nEntry;
 				m_tEntry = header.tEntry;
 				m_kmerSize = header.kmer;
 				m_dSize = header.size;
@@ -315,18 +318,12 @@ public:
 		return pow(double(getPop())/double(m_bv.size()), double(minNum));
 	}
 
-	unsigned nChoosek( unsigned n, unsigned k ) const
-	{
-	    if (k > n) return 0;
-	    if (k * 2 > n) k = n-k;
-	    if (k == 0) return 1;
-
-	    int result = n;
-	    for( unsigned i = 2; i <= k; ++i ) {
-	        result *= (n-i+1);
-	        result /= i;
-	    }
-	    return result;
+	/*
+	 * Return FPR based on number of inserted elements
+	 */
+	double getFPR_numEle() const {
+		assert(m_nEntry > 0);
+		return calcFPR_numInserted(m_nEntry);
 	}
 
 	size_t getPop() const {
@@ -336,6 +333,14 @@ public:
 			count = m_rankSupport(--index);
 		}
 		return count;
+	}
+
+	size_t getUniqueEntries() const {
+		return m_nEntry;
+	}
+
+	void setUnique(size_t count){
+		m_nEntry = count;
 	}
 
 	~BloomMapSSBitVec() {
@@ -359,11 +364,12 @@ private:
 		header.size = m_dSize;
 		header.nhash = m_sseeds.size();
 		header.dFPR = m_dFPR;
+		header.nEntry = m_nEntry;
 		header.tEntry = m_tEntry;
 
 		cerr << "Writing header... magic: " << magic << " hlen: " << header.hlen
-				<< " size: " << header.size << " nhash: " << header.nhash
-				<< " dFPR: " << header.dFPR << " tEntry: " << header.tEntry
+				<< " size: " << header.size << " dFPR: " << header.dFPR
+				<< " nEntry: " << header.nEntry << " tEntry: " << header.tEntry
 				<< endl;
 
 		out.write(reinterpret_cast<char*>(&header), sizeof(struct FileHeader));
@@ -428,6 +434,20 @@ private:
 		} while (!__sync_bool_compare_and_swap(val, oldValue, newVal));
 	}
 
+	unsigned nChoosek( unsigned n, unsigned k ) const
+	{
+	    if (k > n) return 0;
+	    if (k * 2 > n) k = n-k;
+	    if (k == 0) return 1;
+
+	    int result = n;
+	    for( unsigned i = 2; i <= k; ++i ) {
+	        result *= (n-i+1);
+	        result /= i;
+	    }
+	    return result;
+	}
+
 	//size of bitvector
 	size_t m_dSize;
 
@@ -436,11 +456,12 @@ private:
 	sdsl::rank_support_il<1> m_rankSupport;
 
 	double m_dFPR;
+	uint64_t m_nEntry;
 	uint64_t m_tEntry;
 	vector<string> m_sseeds;
 	unsigned m_kmerSize;
 
-	typedef vector< vector<unsigned> > SeedVal;
+	typedef vector<vector<unsigned> > SeedVal;
 	SeedVal m_ssVal;
 	const char* MAGIC = "BLOOMMBV";
 };
