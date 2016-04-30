@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(BIOBLOOMTOOLS, 2.0.13b, cjustin@bcgsc.ca)
+AC_INIT(BIOBLOOMTOOLS, 3.0.0b, cjustin@bcgsc.ca)
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([BioBloomMaker/BioBloomMaker.cpp])
 AC_CONFIG_HEADER([config.h])
@@ -33,6 +33,12 @@ srcdir=$(cd $srcdir; pwd)
 boost_ver=1.58.0
 boost_ver_dir=1_58_0
 AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $CPPFLAGS -isystem$srcdir/$boost_ver_dir")
+
+# make sure -std=c++0x is used for sdsl
+AC_SUBST(CPPFLAGS,"-std=c++0x $CPPFLAGS")
+
+# make sure -O3 by default for speed
+AC_SUBST(CPPFLAGS,"-O3 $CPPFLAGS")
 
 # Check for Boost.
 if test $ac_cv_header_boost_unordered_unordered_map_hpp != yes; then
