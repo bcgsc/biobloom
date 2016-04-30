@@ -18,6 +18,7 @@
 #include "bloomfilter/BloomMapSSBitVec.hpp"
 #include "bloomfilter/RollingHashIterator.h"
 #include "Common/Options.h"
+#include <sdsl/int_vector.hpp>
 
 using namespace std;
 
@@ -37,93 +38,59 @@ private:
 	size_t m_totalEntries;
 	vector<string> m_fileNames;
 	//TODO: replace with vectors?
-	google::dense_hash_map<ID, string> m_headerIDs;
+	google::dense_hash_map<string, ID> m_headerIDs;
 //	google::dense_hash_map<ID, PairID> m_collisionIn;
 //	google::dense_hash_map<PairID, ID> m_collisionOut;
+//	google::dense_hash_map<PairID, &std::vector<size_t>> collisionTrack;
+//
+//	//TODO MAKE INTO OPTION
+//	unsigned m_collisionTheshold = 10000;
+//	unsigned m_countTheshold = 1000;
 
-	size_t m_collisionCount;
+//	size_t m_collisionCount;
 //	ID m_currentID;
 
 	//helper methods
-	//TODO: collision detection
-	inline size_t loadSeq(BloomMapSS<ID> &bloomMap, const string& seq, ID value) {
-		if (seq.size() < m_kmerSize)
-			return 0;
-		size_t count = 0;
-		//TODO: make into option
-//		unsigned colliThresh = 0;
-
+	inline void loadSeq(BloomMapSSBitVec<ID> &bloomMap, const string& seq, ID value) {
 		/* init rolling hash state and compute hash values for first k-mer */
-		RollingHashIterator itr(seq, m_kmerSize, bloomMap.getSeedValues());
-		while (itr != itr.end()) {
-//			vector<ID> temp = bloomMap.at(*itr);
-//			google::dense_hash_map<ID, unsigned> tempVect;
-//			tempVect.set_empty_key(0);
-//			unsigned maxCount = 0;
-//			unsigned maxID = 0;
-//
-//			for (unsigned i = 0; i < temp.size(); ++i) {
-//				if (temp[i] != 0 && temp[i] != value) {
-//					google::dense_hash_map<ID, unsigned>::iterator tempItr =
-//							tempVect.find(temp[i]);
-//					if (tempItr == tempVect.end()) {
-//						tempVect[temp[i]] = 1;
-//					}
-//					else{
-//						++tempItr->second;
-//						if (maxCount < tempVect[temp[i]]) {
-//							maxCount = tempVect[temp[i]];
-//							maxID = temp[i];
-//						}
-//					}
-//				}
-//			}
-//			//full collision
-//			if (maxCount >= bloomMap.getSeedValues().size() - colliThresh) {
-//				//check for if collision ID already exists
-//				PairID pairID = maxID << ID_BITS | value;
-//				if(m_collisionOut.find(pairID) == m_collisionOut.end()){
-//					ID newID =  ++m_currentID;
-//					assert(newID < opt::COLLI);
-//					cerr << newID << endl;
-//					m_collisionIn[newID] = pairID;
-//					m_collisionOut[pairID] = newID;
-//					count += !bloomMap.insertAndCheck(*itr, newID, m_collisionCount);
-//				}
-//				else {
-//					count += !bloomMap.insertAndCheck(*itr,
-//							m_collisionOut[pairID], m_collisionCount);
-//				}
-//				cout << value;
-//				for (unsigned i = 0; i < temp.size(); ++i) {
-//					if (temp[i] != 0) {
-//						cout << "\t" << temp[i];
-//					} else {
-//						cout << "\t-";
-//					}
-//				}
-//				cout << endl;
-//			}
-//			else{
-				count += !bloomMap.insertAndCheck(*itr, value, m_collisionCount);
-//			}
-			++itr;
+		for (RollingHashIterator itr(seq, m_kmerSize, bloomMap.getSeedValues());
+				itr != itr.end(); ++itr) {
+			bloomMap.insert(*itr, value);
+		}
+	}
+
+	/*
+	 * Returns count of collisions (counts unique k-mers)
+	 */
+	inline size_t loadSeq(sdsl::bit_vector &bv, const string& seq,
+			const vector<vector<unsigned>> &seedVal) {
+		size_t count = 0;
+		if (seq.size() < m_kmerSize)
+			return count;
+		/* init rolling hash state and compute hash values for first k-mer */
+		for (RollingHashIterator itr(seq, m_kmerSize, seedVal);
+				itr != itr.end(); ++itr) {
+			for (size_t i = 0; i < itr->size(); ++i) {
+				size_t pos = itr->at(i) % bv.size();
+				uint64_t *dataIndex = bv.data() + (pos >> 6);
+				uint64_t bitMaskValue = (uint64_t) 1 << (pos & 0x3F);
+				count = __sync_fetch_and_or(dataIndex, bitMaskValue) >> (pos & 0x3F) &1;
+			}
 		}
 		return count;
 	}
 
-	inline void writeIDs(const string& filename, google::dense_hash_map<ID,string> headerIDs) {
+	inline void writeIDs(const string& filename, google::dense_hash_map<string,ID> headerIDs) {
 		std::ofstream file;
 		file.open(filename.c_str());
 		assert(file);
-		for (google::dense_hash_map<ID,string>::iterator itr = headerIDs.begin(); itr != headerIDs.end(); ++itr) {
-			file << (*itr).first << "\t" << (*itr).second << "\n";
+		for (google::dense_hash_map<string, ID>::iterator itr =
+				headerIDs.begin(); itr != headerIDs.end(); ++itr) {
+			file << itr->second << "\t" << itr->first << "\n";
 			assert(file);
 		}
 		file.close();
 	}
-
-		
 };
 
 #endif /* BLOOMMAPGENERATOR_H_ */

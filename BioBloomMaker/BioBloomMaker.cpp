@@ -66,6 +66,8 @@ void printHelpDialog() {
 		"                         Currently only active with the (-r) option.\n"
 		"  -m, --map=N            Generates a Bloom Filter Map, expects list of seeds\n"
 		"                         1s & 0s separated by spaces. -k is ignored.\n"
+		"  -I, --id_by_file       For Bloom maps, assign IDs by file rather than by\n"
+		"                         fasta header.\n"
 		"\nAdvanced options:\n"
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter.\n"
 		"                         For Bloom Maps this value reference to the occupancy rate\n"
@@ -127,6 +129,7 @@ int main(int argc, char *argv[]) {
 			"output_dir", required_argument, NULL, 'o' }, {
 			"threads", required_argument, NULL, 't' }, {
 			"map", required_argument, NULL, 'm' }, {
+			"id_by_file", no_argument, NULL, 'I' }, {
 			"inclusive", no_argument, NULL, 'i' }, {
 			"version", no_argument, NULL, 'v' }, {
 			"hash_num", required_argument, NULL, 'g' }, {
@@ -140,7 +143,7 @@ int main(int argc, char *argv[]) {
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:im:a:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:im:a:I", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -180,6 +183,10 @@ int main(int argc, char *argv[]) {
 			//TODO:CHECK IF all seed are the same length here
 			kmerSize = opt::sseeds[0].size();
 			opt::filterType = BLOOMMAP;
+			break;
+		}
+		case 'I': {
+			opt::idByFile = true;
 			break;
 		}
 		case 'i': {

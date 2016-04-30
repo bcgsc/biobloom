@@ -25,5 +25,6 @@ namespace opt {
 	extern const ID COLLI;
 	extern std::vector<std::string> sseeds;
 	extern unsigned allowMisses;
+	extern bool idByFile;
 }
 #endif
