@@ -8,6 +8,7 @@
 #include <Options.h>
 
 namespace opt {
+bool inclusive = false;
 double score = 0.15;
 std::string outputPrefix = "";
 std::string filePostfix = "";

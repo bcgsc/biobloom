@@ -142,7 +142,6 @@ int main(int argc, char *argv[])
 	string rawInputFiles = "";
 	string filtersFile = "";
 	bool paired = false;
-	bool inclusive = false;
 
 	int fastq = 0;
 	int fasta = 0;
@@ -252,7 +251,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'i': {
-			inclusive = true;
+			opt::inclusive = true;
 			break;
 		}
 		case 'a': {
@@ -450,7 +449,7 @@ int main(int argc, char *argv[])
 	//filtering step
 	//create directory structure if it does not exist
 	if (paired) {
-		if (inclusive) {
+		if (opt::inclusive) {
 			BBC.setInclusive();
 		}
 		if (opt::outputType != "") {

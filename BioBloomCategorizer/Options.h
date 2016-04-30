@@ -16,6 +16,7 @@
  * execution of the program.
  */
 namespace opt {
+extern bool inclusive;
 extern double score;
 extern std::string outputPrefix;
 extern std::string filePostfix;

@@ -105,8 +105,8 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 #pragma omp critical(sequence)
 			{
 				l = kseq_read(seq);
-				sequence = string(seq->seq.s);
-				name = string(seq->name.s);
+				sequence = string(seq->seq.s, seq->seq.l);
+				name = string(seq->name.s, seq->name.l);
 			}
 			if (l >= 0) {
 #pragma omp atomic
@@ -175,53 +175,107 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	kseq_t *seq2 = kseq_init(fp2);
 	int l1;
 	int l2;
+	if (opt::inclusive) {
 #pragma omp parallel private(l1, l2)
-	for (string sequence1;;) {
-		string sequence2;
-		//TODO sanity check if names to make sure both names are the same
-		string name;
+		for (string sequence1;;) {
+			string sequence2;
+			//TODO sanity check if names to make sure both names are the same
+			string name;
 #pragma omp critical(sequence)
-		{
-			l1 = kseq_read(seq1);
-			sequence1 = string(seq1->seq.s);
-			name = string(seq1->name.s);
+			{
+				l1 = kseq_read(seq1);
+				sequence1 = string(seq1->seq.s, seq1->seq.l);
+				name = string(seq1->name.s, seq1->name.l);
 
-			l2 = kseq_read(seq2);
-			sequence2 = string(seq2->seq.s);
-		}
-		if (l1 >= 0 && l2 >= 0) {
-#pragma omp atomic
-			++totalReads;
-#pragma omp critical(totalReads)
-			if (totalReads % 1000000 == 0) {
-				cerr << "Currently Reading Read Number: " << totalReads << endl;
+				l2 = kseq_read(seq2);
+				sequence2 = string(seq2->seq.s, seq2->seq.l);
 			}
+			if (l1 >= 0 && l2 >= 0) {
+#pragma omp atomic
+				++totalReads;
+#pragma omp critical(totalReads)
+				if (totalReads % 1000000 == 0) {
+					cerr << "Currently Reading Read Number: " << totalReads
+							<< endl;
+				}
 
-			google::dense_hash_map<ID, unsigned> hitCounts1;
-			google::dense_hash_map<ID, unsigned> hitCounts2;
-			hitCounts1.set_empty_key(opt::EMPTY);
-			hitCounts2.set_empty_key(opt::EMPTY);
-			unsigned score1 = evaluateRead(sequence1, hitCounts1);
-			unsigned score2 = evaluateRead(sequence2, hitCounts2);
-			unsigned threshold1 = opt::score
-					* (l1 - m_filter.getKmerSize() + 1);
-			//TODO currently assuming both reads are the same length - May need change
+				google::dense_hash_map<ID, unsigned> hitCounts1;
+				google::dense_hash_map<ID, unsigned> hitCounts2;
+				hitCounts1.set_empty_key(opt::EMPTY);
+				hitCounts2.set_empty_key(opt::EMPTY);
+				unsigned score1 = evaluateRead(sequence1, hitCounts1);
+				unsigned score2 = evaluateRead(sequence2, hitCounts2);
+				unsigned threshold1 = opt::score
+						* (l1 - m_filter.getKmerSize() + 1);
+				//TODO currently assuming both reads are the same length - May need change
 //				unsigned threshold2 = opt::score
 //						* (rec2.seq.size() - m_filter.getKmerSize() + 1);
 
-			vector<ID> hits;
-			//TODO default is currently inclusive mode(BOTH)
-			if (score1 > threshold1 && score2 > threshold1) {
-				convertToHitsBoth(hitCounts1, hitCounts2, hits);
+				vector<ID> hits;
+				if (score1 > threshold1 || score2 > threshold1) {
+					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
+				}
+				printToTSV(resSummary.updateSummaryData(hits), name,
+						readsOutput);
+			} else {
+				if (l1 != -1 || l2 != -1) {
+					cerr << "Terminated without getting to eof at read "
+							<< totalReads << endl;
+					exit(1);
+				}
+				break;
 			}
-			printToTSV(resSummary.updateSummaryData(hits), name, readsOutput);
-		} else {
-			if (l1 != -1 || l2 != -1) {
-				cerr << "Terminated without getting to eof at read "
-						<< totalReads << endl;
-				exit(1);
+		}
+	} else {
+#pragma omp parallel private(l1, l2)
+		for (string sequence1;;) {
+			string sequence2;
+			//TODO sanity check if names to make sure both names are the same
+			string name;
+#pragma omp critical(sequence)
+			{
+				l1 = kseq_read(seq1);
+				sequence1 = string(seq1->seq.s, seq1->seq.l);
+				name = string(seq1->name.s, seq1->name.l);
+
+				l2 = kseq_read(seq2);
+				sequence2 = string(seq2->seq.s, seq2->seq.l);
 			}
-			break;
+			if (l1 >= 0 && l2 >= 0) {
+#pragma omp atomic
+				++totalReads;
+#pragma omp critical(totalReads)
+				if (totalReads % 1000000 == 0) {
+					cerr << "Currently Reading Read Number: " << totalReads
+							<< endl;
+				}
+
+				google::dense_hash_map<ID, unsigned> hitCounts1;
+				google::dense_hash_map<ID, unsigned> hitCounts2;
+				hitCounts1.set_empty_key(opt::EMPTY);
+				hitCounts2.set_empty_key(opt::EMPTY);
+				unsigned score1 = evaluateRead(sequence1, hitCounts1);
+				unsigned score2 = evaluateRead(sequence2, hitCounts2);
+				unsigned threshold1 = opt::score
+						* (l1 - m_filter.getKmerSize() + 1);
+				//TODO currently assuming both reads are the same length - May need change
+//				unsigned threshold2 = opt::score
+//						* (rec2.seq.size() - m_filter.getKmerSize() + 1);
+
+				vector<ID> hits;
+				if (score1 > threshold1 && score2 > threshold1) {
+					convertToHitsBoth(hitCounts1, hitCounts2, hits);
+				}
+				printToTSV(resSummary.updateSummaryData(hits), name,
+						readsOutput);
+			} else {
+				if (l1 != -1 || l2 != -1) {
+					cerr << "Terminated without getting to eof at read "
+							<< totalReads << endl;
+					exit(1);
+				}
+				break;
+			}
 		}
 	}
 	kseq_destroy(seq1);

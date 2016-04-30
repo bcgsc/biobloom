@@ -159,6 +159,52 @@ private:
 			hits.push_back(best);
 		}
 	}
+
+	/*
+	 * Returns a vector of hits to a specific read
+	 * Only one read needs to match
+	 */
+	void convertToHitsOnlyOne(
+			const google::dense_hash_map<ID, unsigned> &hitCounts1,
+			const google::dense_hash_map<ID, unsigned> &hitCounts2,
+			vector<ID> &hits) {
+		unsigned bestHit = 0;
+		ID best = opt::EMPTY;
+		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+				hitCounts2.begin(); i != hitCounts2.end(); ++i) {
+			if (bestHit <= i->second) {
+				if(bestHit == i->second && best < i->first){
+					continue;
+				}
+				bestHit = i->second;
+				best = i->first;
+			}
+		}
+		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+				hitCounts1.begin(); i != hitCounts1.end(); ++i) {
+			const google::dense_hash_map<ID, unsigned>::const_iterator &j =
+					hitCounts2.find(i->first);
+			if (j != hitCounts2.end()) {
+				if (bestHit <= (i->second + j->second)) {
+					if (bestHit == (i->second + j->second) && best < i->first) {
+						continue;
+					}
+					bestHit = i->second + j->second;
+					best = i->first;
+				}
+			}
+			else{
+				if (bestHit <= i->second) {
+					if (bestHit == i->second && best < i->first) {
+						continue;
+					}
+					bestHit = i->second;
+					best = i->first;
+				}
+			}
+		}
+		hits.push_back(best);
+	}
 };
 
 #endif /* BLOOMMAPCLASSIFIER_H_ */
