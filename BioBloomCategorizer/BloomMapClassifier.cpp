@@ -62,35 +62,10 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 	size_t totalReads = 0;
 
-//	assert(opt::outputType != "");
-//
-//	google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> > outputFiles;
-//	outputFiles.set_empty_key("");
-//
-//	boost::shared_ptr<Dynamicofstream> no_match(
-//			new Dynamicofstream(
-//					opt::outputPrefix + "_" + NO_MATCH + "." + opt::outputType
-//							+ opt::filePostfix));
-//	boost::shared_ptr<Dynamicofstream> multi_match(
-//			new Dynamicofstream(
-//					opt::outputPrefix + "_" + MULTI_MATCH + "."
-//							+ opt::outputType + opt::filePostfix));
-//	outputFiles[NO_MATCH] = no_match;
-//	outputFiles[MULTI_MATCH] = multi_match;
 	Dynamicofstream readsOutput(opt::outputPrefix + "_reads.tsv");
 
 	//print out header info and initialize variables
 	ResultsManager resSummary(m_fullIDs, false);
-
-//	//initialize variables
-//	for (vector<string>::const_iterator i = m_fullIDs.begin();
-//			i != m_fullIDs.end(); ++i) {
-//		boost::shared_ptr<Dynamicofstream> temp(
-//				new Dynamicofstream(
-//						opt::outputPrefix + "_" + *i + "." + opt::outputType
-//								+ opt::filePostfix));
-//		outputFiles[*i] = temp;
-//	}
 
 	cerr << "Filtering Start" << endl;
 
@@ -132,7 +107,6 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 				//TODO print fasta/fastqs?
 				printToTSV(resSummary.updateSummaryData(hits), name,
 						readsOutput);
-//				printSingleToFile(outputFileName, rec, outputFiles);
 			} else {
 				kseq_destroy(seq);
 				break;
@@ -141,15 +115,6 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 		gzclose(fp);
 	}
 
-	//close sorting files
-//	for (google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> >::iterator j =
-//			outputFiles.begin(); j != outputFiles.end(); ++j)
-//	{
-//		j->second->close();
-//		cerr << "File written to: "
-//				<< opt::outputPrefix + "_" + j->first + "." + opt::outputType + opt::filePostfix
-//				<< endl;
-//	}
 	cerr << "Total Reads:" << totalReads << endl;
 	cerr << "Writing file: " << opt::outputPrefix + "_summary.tsv" << endl;
 
