@@ -70,7 +70,7 @@ const string ResultsManager::updateSummaryData(
 
 /*
  * Records data for read summary based on thresholds
- * Returns filter ID that this read equals
+ * Returns filter ID index (index -1) that this read equals
  */
 ID ResultsManager::updateSummaryData(const vector<ID> &hits)
 {
@@ -79,14 +79,9 @@ ID ResultsManager::updateSummaryData(const vector<ID> &hits)
 	bool multiMatchFlag = false;
 
 	for (vector<ID>::const_iterator i = hits.begin(); i != hits.end(); ++i) {
-		ID index = *i -1;
-//		if (m_aboveThreshold.size() <= index) {
-//			cerr << index << " " << m_aboveThreshold.size() << endl;
-//			exit(1);
-//		}
 
 #pragma omp atomic
-		++m_aboveThreshold[index];
+		++m_aboveThreshold[*i];
 		if (noMatchFlag) {
 			noMatchFlag = false;
 			filterID = *i;
@@ -105,7 +100,7 @@ ID ResultsManager::updateSummaryData(const vector<ID> &hits)
 			return opt::COLLI;
 		} else {
 #pragma omp atomic
-			++m_unique[filterID - 1];
+			++m_unique[filterID];
 		}
 	}
 	return filterID;

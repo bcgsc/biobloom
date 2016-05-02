@@ -50,10 +50,10 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		ids[id] = fullID;
 		getline(idFH, line);
 	}
-	m_fullIDs = vector<string>(ids.size());
+	m_fullIDs = vector<string>(ids.size() + 1); //first element will be empty
 	for (google::dense_hash_map<ID, string>::const_iterator itr = ids.begin();
 			itr != ids.end(); ++itr) {
-		m_fullIDs[itr->first - 1] = itr->second;
+		m_fullIDs[itr->first] = itr->second;
 	}
 
 	idFH.close();
@@ -195,15 +195,15 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
 				}
 				if (opt::outputType == "fq") {
-					ID id = resSummary.updateSummaryData(hits);
+					ID idIndex = resSummary.updateSummaryData(hits);
 #pragma omp critical(outputFiles)
 					{
 						readsOutput << "@" << name1 << " "
-								<< m_fullIDs[id]
+								<< m_fullIDs[idIndex]
 								<< "\n" << sequence1 << "\n+\n" << qual1
 								<< "\n";
 						readsOutput << "@" << name2 << " "
-								<< m_fullIDs[id]
+								<< m_fullIDs[idIndex]
 								<< "\n" << sequence2 << "\n+\n" << qual2
 								<< "\n";
 					}
