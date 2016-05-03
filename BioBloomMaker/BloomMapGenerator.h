@@ -50,6 +50,12 @@ private:
 //	size_t m_collisionCount;
 //	ID m_currentID;
 
+	inline BloomMapSSBitVec<ID> generateBV(const string &filePrefix, double fpr,
+			const vector<vector<unsigned> > &ssVal);
+
+//	inline vector<google::dense_hash_map<ID, ID> > generateGroups(
+//			const string &filePrefix);
+
 	//helper methods
 	inline void loadSeq(BloomMapSSBitVec<ID> &bloomMap, const string& seq, ID value) {
 		/* init rolling hash state and compute hash values for first k-mer */

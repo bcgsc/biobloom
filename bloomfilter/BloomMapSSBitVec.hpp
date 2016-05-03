@@ -72,8 +72,9 @@ public:
 	/*
 	 * Constructor using a prebuilt bitvector
 	 */
+	//TODO Perform more memory efficiently by somehow destroying old bv before allocating m_data
 	BloomMapSSBitVec<T>(size_t expectedElemNum, double fpr,
-			vector<string> seeds, const sdsl::bit_vector &bv) :
+			vector<string> seeds, sdsl::bit_vector bv) :
 			m_dSize(0), m_dFPR(fpr), m_tEntry(expectedElemNum), m_sseeds(
 					seeds), m_kmerSize(m_sseeds[0].size()), m_ssVal(
 					parseSeedString(m_sseeds)) {

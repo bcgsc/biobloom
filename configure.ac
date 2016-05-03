@@ -10,6 +10,10 @@ AC_CONFIG_HEADER([config.h])
 AC_PROG_RANLIB
 
 # Checks for programs.
+# make sure -O3 by default for speed
+if test -z $CXXFLAGS; then
+    CXXFLAGS='-O3'
+fi
 AC_PROG_CXX
 
 # Checks for libraries.
@@ -36,9 +40,6 @@ AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $CPPFLAGS -isystem$srcdir/$boost_ve
 
 # make sure -std=c++0x is used for sdsl
 AC_SUBST(CPPFLAGS,"-std=c++0x $CPPFLAGS")
-
-# make sure -O3 by default for speed
-AC_SUBST(CPPFLAGS,"-O3 $CPPFLAGS")
 
 # Check for Boost.
 if test $ac_cv_header_boost_unordered_unordered_map_hpp != yes; then
