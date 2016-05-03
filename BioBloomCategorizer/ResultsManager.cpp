@@ -172,7 +172,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	summaryOutput
 			<< "filter_id\thits\tmisses\tshared\trate_hit\trate_miss\trate_shared\n";
 
-	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
+	for (unsigned i = 1; i < m_filterOrder.size(); ++i) {
 		summaryOutput << m_filterOrder[i];
 		summaryOutput << "\t" << m_aboveThreshold.at(i);
 		summaryOutput << "\t" << readCount - m_aboveThreshold.at(i);
