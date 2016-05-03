@@ -55,9 +55,11 @@ private:
 
 	inline void printToTSV(const ID outputID, const string &name,
 			Dynamicofstream &outputFile) {
+		if (outputID != opt::EMPTY) {
 #pragma omp critical(outputFiles)
-		{
-			outputFile << m_fullIDs[outputID] << "\t" << name << "\n";
+			{
+				outputFile << m_fullIDs[outputID] << "\t" << name << "\n";
+			}
 		}
 	}
 

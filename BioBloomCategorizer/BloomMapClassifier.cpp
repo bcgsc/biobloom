@@ -196,16 +196,17 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 				}
 				if (opt::outputType == "fq") {
 					ID idIndex = resSummary.updateSummaryData(hits);
-#pragma omp critical(outputFiles)
+					if(idIndex != opt::EMPTY)
 					{
-						readsOutput << "@" << name1 << " "
-								<< m_fullIDs[idIndex]
-								<< "\n" << sequence1 << "\n+\n" << qual1
-								<< "\n";
-						readsOutput << "@" << name2 << " "
-								<< m_fullIDs[idIndex]
-								<< "\n" << sequence2 << "\n+\n" << qual2
-								<< "\n";
+#pragma omp critical(outputFiles)
+						{
+							readsOutput << "@" << name1 << " "
+									<< m_fullIDs[idIndex] << "\n" << sequence1
+									<< "\n+\n" << qual1 << "\n";
+							readsOutput << "@" << name2 << " "
+									<< m_fullIDs[idIndex] << "\n" << sequence2
+									<< "\n+\n" << qual2 << "\n";
+						}
 					}
 				}
 				else{
