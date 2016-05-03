@@ -50,7 +50,7 @@ private:
 //	size_t m_collisionCount;
 //	ID m_currentID;
 
-	inline BloomMapSSBitVec<ID> generateBV(const string &filePrefix, double fpr,
+	inline BloomMapSSBitVec<ID> generateBV(double fpr,
 			const vector<vector<unsigned> > &ssVal);
 
 //	inline vector<google::dense_hash_map<ID, ID> > generateGroups(

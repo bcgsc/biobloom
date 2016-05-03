@@ -77,7 +77,7 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
  */
 void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	vector<vector<unsigned> > ssVal = parseSeedString(opt::sseeds);
-	BloomMapSSBitVec<ID> bloomMapBV = generateBV(filePrefix, fpr, ssVal);
+	BloomMapSSBitVec<ID> bloomMapBV = generateBV(fpr, ssVal);
 	//free memory of old bv
 
 	cerr << "Populating values of bloom map" << endl;
@@ -135,15 +135,14 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 /*
  * Populates bit vector and returns a compressed bloom map without values set
  */
-inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(
-		const string &filePrefix, double fpr,
+inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
 		const vector<vector<unsigned> > &ssVal) {
 	size_t filterSize = calcOptimalSize(m_expectedEntries, opt::sseeds.size(),
 			fpr);
 
 	cerr << "bitVector Size: " << filterSize << endl;
 
-	sdsl::bit_vector bv = new sdsl::bit_vector(filterSize);
+	sdsl::bit_vector bv(filterSize);
 
 	cerr << "Populating initial bit vector" << endl;
 
@@ -169,8 +168,6 @@ inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(
 				break;
 			}
 		}
-		free(focc);
-		free(rocc);
 		gzclose(fp);
 	}
 
