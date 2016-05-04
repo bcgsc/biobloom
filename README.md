@@ -89,7 +89,7 @@ Two files will be generated binary Bloom filter file (.bf) and an information fi
 <a name="3"></a>
 3. Classifying and Analyzing Sequences with Biobloomcategorizer
 ------
-Once you have filters created, you can use them with Biobloomcategorizer to categorize sequences. The file formats that can be used are the following: SAM, BAM, FastQ, FastA and qseq. Gzip and Bz2 compression is also handled if your system has gzip and bunzip2 installed.
+Once you have filters created, you can use them with Biobloomcategorizer to categorize sequences. The file formats that can be used are the following: SAM, BAM, FastQ, FastA and qseq. To read BAM files samtools must be in your path. Gzip and Bz2 compression is also handled if your system has gzip and bunzip2 installed.
 
 Before starting make sure the listed .bf file is in the same directory as its corresponding information .txt file.
 
