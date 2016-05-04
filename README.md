@@ -166,7 +166,9 @@ We use a sliding window across each read of size k to categorize sequences. Sing
 Within the information txt file for each bloom filter there is a “num_entries” entry that lets you know how many unique k-mers have been added to the filter. It is a lower bound estimate due to possible false positives.
 
 ######ii. Obtaining the number of redundant k-mers in the reference:
-Within the information txt file for each bloom filter there is a “redundant_sequences” entry that lets you know how many redundant k-mers have been added to the filter. It is an upper bound estimate due to possible false positives. The “redundant_fpr” represents the probability that any one random redundant k-mer is actually unique. Thus, to get the approximate number of unique k-mers take the “redundant_fpr” value and multiply it with the “redundant_sequences” sequences and add that to the “num_entries”.
+Within the information txt file for each bloom filter there is a “redundant_sequences” entry that lets you know how many redundant k-mers have been added to the filter. It is an upper bound estimate due to possible false positives. The “redundant_fpr” represents the probability a unique entry could be mis-classified as redundant. Thus, to get the approximate number of unique k-mers take the “redundant_fpr” value and multiply it with the “redundant_sequences + num_entries” and add that to the “num_entries”.
+
+Expected total number of k-mers = (redundant_sequences + num_entries)*redundant_fpr + num_entries
 
 #####F. Specifications on memory, cpu and storage requirements
 
