@@ -3,6 +3,7 @@ SUBDIRS = \
 	DataLayer \
 	BioBloomMaker \
 	BioBloomCategorizer \
+	bloomfilter \
 	Tests
 
 dist_doc_DATA = \

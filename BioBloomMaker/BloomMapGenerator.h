@@ -14,11 +14,12 @@
 #include <string>
 #include <stdint.h>
 #include <google/dense_hash_map>
-#include "bloomfilter/BloomMapSS.hpp"
 #include "bloomfilter/BloomMapSSBitVec.hpp"
 #include "bloomfilter/RollingHashIterator.h"
 #include "Common/Options.h"
 #include <sdsl/int_vector.hpp>
+#include <boost/shared_ptr.hpp>
+#include "bloomfilter/BloomFilter.hpp"
 
 using namespace std;
 
@@ -39,29 +40,34 @@ private:
 	vector<string> m_fileNames;
 	//TODO: replace with vectors?
 	google::dense_hash_map<string, ID> m_headerIDs;
-//	google::dense_hash_map<ID, PairID> m_collisionIn;
-//	google::dense_hash_map<PairID, ID> m_collisionOut;
-//	google::dense_hash_map<PairID, &std::vector<size_t>> collisionTrack;
+	vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > m_colliIDs;
+
 //
 //	//TODO MAKE INTO OPTION
-//	unsigned m_collisionTheshold = 10000;
-//	unsigned m_countTheshold = 1000;
-
-//	size_t m_collisionCount;
-//	ID m_currentID;
+	double m_colliThresh = 0.1;
 
 	inline BloomMapSSBitVec<ID> generateBV(double fpr,
 			const vector<vector<unsigned> > &ssVal);
 
-//	inline vector<google::dense_hash_map<ID, ID> > generateGroups(
-//			const string &filePrefix);
+	inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > generateGroups(
+			std::ofstream &file);
 
 	//helper methods
 	inline void loadSeq(BloomMapSSBitVec<ID> &bloomMap, const string& seq, ID value) {
 		/* init rolling hash state and compute hash values for first k-mer */
+		//TODO FIX -> IS NOT THREAD SAFE (SORTA)
 		for (RollingHashIterator itr(seq, m_kmerSize, bloomMap.getSeedValues());
 				itr != itr.end(); ++itr) {
-			bloomMap.insert(*itr, value);
+			ID id = bloomMap.atBestNotInserted(*itr, opt::allowMisses);
+			if (id == opt::EMPTY || id == opt::COLLI) {
+				bloomMap.insert(*itr, value);
+			}
+			else{
+				google::dense_hash_map<ID, ID>::iterator colliPtr = m_colliIDs[value]->find(id);
+				if (colliPtr != m_colliIDs[value]->end()) {
+					bloomMap.insert(*itr,colliPtr->second);
+				}
+			}
 		}
 	}
 
@@ -76,26 +82,28 @@ private:
 		/* init rolling hash state and compute hash values for first k-mer */
 		for (RollingHashIterator itr(seq, m_kmerSize, seedVal);
 				itr != itr.end(); ++itr) {
-			for (size_t i = 0; i < itr->size(); ++i) {
+			unsigned colliCount = 0;
+			for (size_t i = 0; i < seedVal.size(); ++i) {
 				size_t pos = itr->at(i) % bv.size();
 				uint64_t *dataIndex = bv.data() + (pos >> 6);
 				uint64_t bitMaskValue = (uint64_t) 1 << (pos & 0x3F);
-				count = __sync_fetch_and_or(dataIndex, bitMaskValue) >> (pos & 0x3F) &1;
+				colliCount += __sync_fetch_and_or(dataIndex, bitMaskValue)
+						>> (pos & 0x3F) & 1;
+			}
+			if (colliCount == seedVal.size()) {
+				++count;
 			}
 		}
 		return count;
 	}
 
-	inline void writeIDs(const string& filename, google::dense_hash_map<string,ID> headerIDs) {
-		std::ofstream file;
-		file.open(filename.c_str());
+	inline void writeIDs(std::ofstream &file, google::dense_hash_map<string,ID> headerIDs) {
 		assert(file);
 		for (google::dense_hash_map<string, ID>::iterator itr =
 				headerIDs.begin(); itr != headerIDs.end(); ++itr) {
 			file << itr->second << "\t" << itr->first << "\n";
 			assert(file);
 		}
-		file.close();
 	}
 };
 

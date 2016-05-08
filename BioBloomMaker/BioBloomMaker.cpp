@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include "BloomFilterGenerator.h"
 #include "Common/BloomFilterInfo.h"
 #include "Common/SeqEval.h"
 #include <boost/unordered/unordered_map.hpp>
@@ -19,8 +18,8 @@
 #if _OPENMP
 # include <omp.h>
 #endif
-
 #include "BloomMapGenerator.h"
+#include "BloomFilterGenerator.h"
 
 using namespace std;
 

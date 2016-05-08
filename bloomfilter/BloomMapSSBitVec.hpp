@@ -251,7 +251,7 @@ public:
 
 	/*
 	 * Returns unambiguous hit to object
-	 * Returns best hit on ambiguous collision
+	 * Returns best hit on ambiguous collisions
 	 * Returns numeric_limits<T>::max() on completely ambiguous collision
 	 * Returns 0 on if missing element
 	 */
@@ -269,6 +269,46 @@ public:
 				continue;
 			}
 			size_t rankPos = m_rankSupport(pos);
+			if (tmpHash.find(m_data[rankPos]) != tmpHash.end()) {
+				++tmpHash[m_data[rankPos]];
+			} else {
+				tmpHash[m_data[rankPos]] = 1;
+			}
+			if(maxCount == tmpHash[m_data[rankPos]]) {
+				value = m_data[rankPos] < value ? m_data[rankPos] : value;
+			}
+			else if ( maxCount < tmpHash[m_data[rankPos]] ){
+				value = m_data[rankPos];
+				maxCount = tmpHash[m_data[rankPos]];
+			}
+		}
+		if (missMin < miss) {
+			return 0;
+		} else {
+			return value;
+		}
+	}
+
+	/*
+	 * Returns unambiguous hit to object
+	 * Returns best hit on ambiguous collisions
+	 * Returns numeric_limits<T>::max() on completely ambiguous collision
+	 * Returns 0 on if missing element
+	 */
+	T atBestNotInserted(std::vector<size_t> const &hashes, unsigned missMin) const {
+		google::dense_hash_map<T, unsigned> tmpHash;
+		tmpHash.set_empty_key(0);
+		unsigned maxCount = 0;
+		unsigned miss = 0;
+		T value = 0;
+
+		for (unsigned i = 0; i < hashes.size(); ++i) {
+			size_t pos = hashes.at(i) % m_bv.size();
+			size_t rankPos = m_rankSupport(pos);
+			if(m_data[rankPos] == 0){
+				++miss;
+				continue;
+			}
 			if (tmpHash.find(m_data[rankPos]) != tmpHash.end()) {
 				++tmpHash[m_data[rankPos]];
 			} else {

@@ -77,6 +77,15 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
  */
 void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	vector<vector<unsigned> > ssVal = parseSeedString(opt::sseeds);
+
+	std::ofstream idFile;
+	idFile.open((filePrefix + "_ids.txt").c_str());
+	cerr << "Outputting IDs file: " << filePrefix + "_ids.txt" << endl;
+	writeIDs(idFile, m_headerIDs);
+	cerr << "Computing Similarity" << endl;
+	m_colliIDs = generateGroups(idFile);
+	idFile.close();
+
 	BloomMapSSBitVec<ID> bloomMapBV = generateBV(fpr, ssVal);
 	//free memory of old bv
 
@@ -129,7 +138,6 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 
 	//save filter
 	bloomMapBV.store(filePrefix + ".bf");
-	writeIDs(filePrefix + "_ids.txt", m_headerIDs);
 }
 
 /*
@@ -149,26 +157,53 @@ inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
 	size_t uniqueCounts = 0;
 
 	//populate sdsl bitvector (bloomFilter)
+	if (opt::idByFile) {
 #pragma omp parallel for
-	for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-		gzFile fp;
-		fp = gzopen(m_fileNames[i].c_str(), "r");
-		kseq_t *seq = kseq_init(fp);
-		int l;
-		for (;;) {
-			l = kseq_read(seq);
-			if (l >= 0) {
-				const string &seqStr = string(seq->seq.s, seq->seq.l);
-				//k-merize with rolling hash insert into bloom map
-#pragma omp atomic
-				uniqueCounts += seq->seq.l - m_kmerSize + 1
-						- loadSeq(bv, seqStr, ssVal);
-			} else {
-				kseq_destroy(seq);
-				break;
+		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+			gzFile fp;
+			fp = gzopen(m_fileNames[i].c_str(), "r");
+			kseq_t *seq = kseq_init(fp);
+			int l;
+			size_t colliCounts = 0;
+			size_t totalCount = 0;
+			for (;;) {
+				l = kseq_read(seq);
+				if (l >= 0) {
+					const string &seqStr = string(seq->seq.s, seq->seq.l);
+					//k-merize with rolling hash insert into bloom map
+					colliCounts += loadSeq(bv, seqStr, ssVal);
+					totalCount += seq->seq.l - m_kmerSize + 1;
+				} else {
+					kseq_destroy(seq);
+					break;
+				}
 			}
+#pragma omp atomic
+			uniqueCounts += totalCount - colliCounts;
+			gzclose(fp);
 		}
-		gzclose(fp);
+	} else {
+#pragma omp parallel for
+		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+			gzFile fp;
+			fp = gzopen(m_fileNames[i].c_str(), "r");
+			kseq_t *seq = kseq_init(fp);
+			int l;
+			for (;;) {
+				l = kseq_read(seq);
+				if (l >= 0) {
+					const string &seqStr = string(seq->seq.s, seq->seq.l);
+					//k-merize with rolling hash insert into bloom map
+					size_t colliCounts = loadSeq(bv, seqStr, ssVal);
+#pragma omp atomic
+					uniqueCounts += seq->seq.l - m_kmerSize + 1 - colliCounts;
+				} else {
+					kseq_destroy(seq);
+					break;
+				}
+			}
+			gzclose(fp);
+		}
 	}
 
 	cerr << "Approximate number of unique entries in filter: " << uniqueCounts
@@ -184,50 +219,53 @@ inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
 	return bloomMapBV; //TODO: Hopefully return value optimized (do not want copy)
 }
 
-//inline vector<google::dense_hash_map<ID, ID> > BloomMapGenerator::generateGroups(const string &filePrefix){
-//	cerr << "Populating initial bit vector" << endl;
-//
-//	//compute binary tree based off of reference sequences
-//	//TODO make mini-spaced seed value not hard-coded
-//	SpacedSeedIndex<ID> * ssIdx = new SpacedSeedIndex<ID>("111111111111", m_headerIDs.size());
-//
-//#pragma omp parallel for
-//	for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-//		//table for flagging occupancy of each readID/thread being inserted for each spaced seed
-//		//faster than using table directly
-//		uint64_t *focc = (uint64_t *) malloc(
-//				((ssIdx->size() + 63) / 64) * sizeof(uint64_t));
-//		uint64_t *rocc = (uint64_t *) malloc(
-//				((ssIdx->size() + 63) / 64) * sizeof(uint64_t));
-//		gzFile fp;
-//		fp = gzopen(m_fileNames[i].c_str(), "r");
-//		kseq_t *seq = kseq_init(fp);
-//		int l;
-//		for (;;) {
-//			l = kseq_read(seq);
-//			if (l >= 0) {
-//				const string &seqStr = string(seq->seq.s, seq->seq.l);
-//				if (opt::idByFile) {
-//					ssIdx->insert(
-//							m_headerIDs[m_fileNames[i].substr(
-//									m_fileNames[i].find_last_of("/") + 1)],
-//							seqStr, focc, rocc);
-//				} else {
-//					ssIdx->insert(m_headerIDs[seq->name.s], seqStr, focc, rocc);
-//				}
-//			} else {
-//				kseq_destroy(seq);
-//				break;
-//			}
-//		}
-//		free(focc);
-//		free(rocc);
-//		gzclose(fp);
-//	}
-//	//construct similarity matrix
-//	//TODO make into better metric? Distance instead?
-//	SimMat<uint16_t,ID> calcSim(ssIdx);
-//}
+inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > BloomMapGenerator::generateGroups(
+		std::ofstream &file) {
+	//compute binary tree based off of reference sequences
+	//TODO make mini-spaced seed value not hard-coded
+	string miniSeed = "111100010010101010010001111";
+	SpacedSeedIndex<ID> ssIdx(miniSeed, m_headerIDs.size());
+
+#pragma omp parallel for
+	for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+		//table for flagging occupancy of each readID/thread being inserted for each spaced seed
+		//faster than using table directly
+		uint64_t *occ = (uint64_t *) malloc(
+				((ssIdx.size() + 63) / 64) * sizeof(uint64_t));
+		for (unsigned i=0; i < (ssIdx.size() + 63)/64; ++i) occ[i]=0;
+		gzFile fp;
+		fp = gzopen(m_fileNames[i].c_str(), "r");
+		kseq_t *seq = kseq_init(fp);
+		int l;
+		for (;;) {
+			l = kseq_read(seq);
+			if (l >= 0) {
+				const string &seqStr = string(seq->seq.s, seq->seq.l);
+				if (opt::idByFile) {
+					ssIdx.insert(
+							m_headerIDs[m_fileNames[i].substr(
+									m_fileNames[i].find_last_of("/") + 1)] - 1,
+							seqStr, occ);
+				} else {
+					for (unsigned i = 0; i < (ssIdx.size() + 63) / 64; ++i)
+						occ[i] = 0;
+					ssIdx.insert(m_headerIDs[seq->name.s] - 1, seqStr, occ);
+				}
+			} else {
+				kseq_destroy(seq);
+				break;
+			}
+		}
+		free(occ);
+		gzclose(fp);
+	}
+	cerr << "Total seeds added: " << ssIdx.getCounts() << endl;
+	cerr << "Index finished. Beginning similarity comparison." << endl;
+	//construct similarity matrix
+	//TODO make into better metric? Distance instead?
+	SimMat<uint32_t,ID> calcSim(ssIdx, m_headerIDs.size());
+	return(calcSim.getGroupings(m_colliThresh, file));
+}
 
 BloomMapGenerator::~BloomMapGenerator() {
 }
