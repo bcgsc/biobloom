@@ -194,10 +194,9 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 				if (score1 > threshold1 || score2 > threshold1) {
 					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
 				}
-				if (opt::outputType == "fq") {
-					ID idIndex = resSummary.updateSummaryData(hits);
-					if(idIndex != opt::EMPTY)
-					{
+				ID idIndex = resSummary.updateSummaryData(hits);
+				if (idIndex != opt::EMPTY) {
+					if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
 						{
 							readsOutput << "@" << name1 << " "
@@ -207,11 +206,10 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 									<< m_fullIDs[idIndex] << "\n" << sequence2
 									<< "\n+\n" << qual2 << "\n";
 						}
+					} else {
+						printToTSV(resSummary.updateSummaryData(hits), name1,
+								readsOutput);
 					}
-				}
-				else{
-					printToTSV(resSummary.updateSummaryData(hits), name1,
-						readsOutput);
 				}
 			} else {
 				if (l1 != -1 || l2 != -1) {
@@ -268,23 +266,26 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 				if (score1 > threshold1 && score2 > threshold1) {
 					convertToHitsBoth(hitCounts1, hitCounts2, hits);
 				}
-				if (opt::outputType == "fq") {
-					ID id = resSummary.updateSummaryData(hits);
+				ID idIndex = resSummary.updateSummaryData(hits);
+				if (idIndex != opt::EMPTY) {
+					if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
-					{
-						readsOutput << "@" << name1 << " "
-								<< m_fullIDs[id]
-								<< "\n" << sequence1 << "\n+\n" << qual1
-								<< "\n";
-						readsOutput << "@" << name2 << " "
-								<< m_fullIDs[id]
-								<< "\n" << sequence2 << "\n+\n" << qual2
-								<< "\n";
+						{
+							readsOutput << "@" << name1 << " "
+									<< m_fullIDs[idIndex] << "\n" << sequence1
+									<< "\n+\n" << qual1 << "\n";
+							readsOutput << "@" << name2 << " "
+									<< m_fullIDs[idIndex] << "\n" << sequence2
+									<< "\n+\n" << qual2 << "\n";
+						}
+					} else {
+#pragma omp critical(outputFiles)
+						{
+							readsOutput << m_fullIDs[idIndex] << "\t" << name1
+									<< "\t" << hitCounts1[idIndex] << "\t"
+									<< hitCounts2[idIndex] << "\n";
+						}
 					}
-				}
-				else{
-					printToTSV(resSummary.updateSummaryData(hits), name1,
-						readsOutput);
 				}
 			} else {
 				if (l1 != -1 || l2 != -1) {
