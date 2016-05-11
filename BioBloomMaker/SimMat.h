@@ -32,6 +32,7 @@ template<typename T, typename ID>
 class SimMat {
 public:
 	typedef typename google::dense_hash_map<ID, ID> IDMap;
+	typedef typename google::dense_hash_set<ID> IDSet;
 
 	SimMat(const SpacedSeedIndex<ID> &index, unsigned numRead) :
 			m_indexTbl(index), m_numRead(numRead) {
@@ -54,7 +55,6 @@ public:
 			double threshold, std::ofstream &file) {
 		assert(threshold);
 		//ID mapping to its associated collision ID
-		typedef typename google::dense_hash_set<ID> IDSet;
 		google::dense_hash_map<ID, boost::shared_ptr<IDSet> > colliIDs;
 		colliIDs.set_empty_key(opt::EMPTY);
 		vector<boost::shared_ptr<IDMap> > groupIndex(m_numRead + 1);
@@ -71,12 +71,12 @@ public:
 						m_indexTbl.getReadLength(readID1)
 								* m_indexTbl.getReadLength(readID2));
 				double simVal =	m_simMat[simInd];
+//				cout << simVal / ikMean << "\t" << simVal << "\t"
+//						<< m_indexTbl.getReadLength(readID1) << "\t"
+//						<< m_indexTbl.getReadLength(readID2) << "\t"
+//						<< readID1 + 1 << "\t" << readID2 + 1 << endl;
 				//if element has sufficient similarity
 				if (simVal / ikMean > threshold) {
-					cerr << simVal / ikMean << "\t" << simVal << "\t"
-							<< m_indexTbl.getReadLength(readID1) << "\t"
-							<< m_indexTbl.getReadLength(readID2) << "\t"
-							<< readID1 + 1 << "\t" << readID2 + 1 << endl;
 					boost::shared_ptr<IDMap> &currMap1 = groupIndex[readID1 + 1];
 					boost::shared_ptr<IDMap> &currMap2 = groupIndex[readID2 + 1];
 					if(currMap1->size() > 0){
@@ -109,6 +109,36 @@ public:
 							colliIDs[candiateID]->insert(readID2 + 1);
 						}
 					}
+					if(currMap2->size() > 0){
+						ID candiateID = 0;
+						double maxScore = 0;
+						//check against all current matching IDs
+						for (typename IDMap::const_iterator itr = currMap2->begin();
+								itr != currMap2->end(); ++itr) {
+							ID maxID = readID1;
+							ID minID = itr->first - 1;
+							if (maxID < minID) {
+								swap(maxID, minID);
+							}
+							double mean = sqrt(
+									m_indexTbl.getReadLength(maxID)
+											* m_indexTbl.getReadLength(minID));
+							double score = m_simMat[getSimIdx(maxID, minID)]/mean;
+							if (score > threshold && maxScore < score) {
+								maxScore = score;
+								candiateID = itr->second;
+							}
+						}
+						if(maxScore == 0){
+							continue;
+						}
+						else{
+							//assign new ID to hash map
+							(*currMap1)[readID2 + 1] = candiateID;
+							(*currMap2)[readID1 + 1] = candiateID;
+							colliIDs[candiateID]->insert(readID1 + 1);
+						}
+					}
 					//new collision ID
 					if(currMap1->find(readID2 + 1) == currMap1->end()){
 						(*currMap1)[readID2 + 1] = lastID;
@@ -127,6 +157,7 @@ public:
 			}
 		}
 		assert(file);
+//		groupIndex.resize(groupIndex.size()+colliIDs.size());
 		for (typename google::dense_hash_map<ID, boost::shared_ptr<IDSet> >::iterator itr =
 				colliIDs.begin(); itr != colliIDs.end(); ++itr) {
 			IDSet idSet = *(itr->second);
@@ -136,7 +167,17 @@ public:
 				file << "\t" << *idItr;
 			}
 			file << endl;
+//			//insert self (prevent uninitialized values)
+//			groupIndex[itr->first] = boost::shared_ptr<IDSet>(new IDSet());
 		}
+
+
+//		for (size_t i = 0; i < groupIndex.size(); ++i) {
+//			for (typename IDMap::iterator j = groupIndex[i]->begin();
+//					j != groupIndex[i]->end(); ++j) {
+//				cerr << i << "\t" << j->first << "\t" << j->second << endl;
+//			}
+//		}
 		return (groupIndex);
 	}
 
@@ -180,6 +221,138 @@ public:
 		sort(counts, readIDs, l, i - 1);
 		sort(counts, readIDs, i + 1, r);
 	}
+
+//	/*
+//	 * Assumes thresholds are sorted from high to low
+//	 */
+//	inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > getGroupings(
+//			const vector<double> &thresholds, std::ofstream &file) {
+//		//ID mapping to its associated collision ID
+//		google::dense_hash_map<ID, boost::shared_ptr<IDSet> > colliIDs;
+//		colliIDs.set_empty_key(opt::EMPTY);
+//		vector<boost::shared_ptr<IDMap> > groupIndex(m_numRead + 1);
+//		for (size_t readID = 0; readID < m_numRead + 1; ++readID) {
+//			groupIndex[readID] = boost::shared_ptr<IDMap>(new IDMap());
+//			groupIndex[readID]->set_empty_key(opt::EMPTY);
+//		}
+//		ID lastID = m_numRead + 1;
+//		ID start = lastID;
+//		//for each element compute similarity
+//		for (unsigned i = 0; i < thresholds.size(); ++i) {
+//			cerr << "computing grouping for similarity threshold: "
+//					<< thresholds[i] << endl;
+//			ID start = lastID;
+//			double currentThreshold = thresholds[i];
+//			//subgroup index
+//			vector<boost::shared_ptr<IDMap> > subGroupIndex(m_numRead + 1);
+//			for (size_t readID1 = 0; readID1 < m_numRead; ++readID1) {
+//				for (unsigned readID2 = 0; readID2 < readID1; ++readID2) {
+//					size_t simInd = getSimIdx(readID1, readID2);
+//					double ikMean = sqrt(
+//							m_indexTbl.getReadLength(readID1)
+//									* m_indexTbl.getReadLength(readID2));
+//					double simVal = m_simMat[simInd] / ikMean;
+//					//if element has sufficient similarity
+//					if (simVal > threshold) {
+//						boost::shared_ptr<IDMap> &currMap1 = groupIndex[readID1
+//								+ 1];
+//						boost::shared_ptr<IDMap> &currMap2 = groupIndex[readID2
+//								+ 1];
+//						if (currMap1->size() > 0) {
+//							ID candiateID = 0;
+//							double maxScore = 0;
+//							//check against all current matching IDs
+//							for (typename IDMap::const_iterator itr =
+//									currMap1->begin(); itr != currMap1->end();
+//									++itr) {
+//								ID maxID = readID2;
+//								ID minID = itr->first - 1;
+//								if (maxID < minID) {
+//									swap(maxID, minID);
+//								}
+//								double mean = sqrt(
+//										m_indexTbl.getReadLength(maxID)
+//												* m_indexTbl.getReadLength(
+//														minID));
+//								double score = m_simMat[getSimIdx(maxID, minID)]
+//										/ mean;
+//								if (score > threshold && maxScore < score) {
+//									maxScore = score;
+//									candiateID = itr->second;
+//								}
+//							}
+//							if (maxScore == 0) {
+//								continue;
+//							} else {
+//								//assign new ID to hash map
+//								(*currMap1)[readID2 + 1] = candiateID;
+//								(*currMap2)[readID1 + 1] = candiateID;
+//								colliIDs[candiateID]->insert(readID2 + 1);
+//							}
+//						}
+//						if (currMap2->size() > 0) {
+//							ID candiateID = 0;
+//							double maxScore = 0;
+//							//check against all current matching IDs
+//							for (typename IDMap::const_iterator itr =
+//									currMap2->begin(); itr != currMap2->end();
+//									++itr) {
+//								ID maxID = readID1;
+//								ID minID = itr->first - 1;
+//								if (maxID < minID) {
+//									swap(maxID, minID);
+//								}
+//								double mean = sqrt(
+//										m_indexTbl.getReadLength(maxID)
+//												* m_indexTbl.getReadLength(
+//														minID));
+//								double score = m_simMat[getSimIdx(maxID, minID)]
+//										/ mean;
+//								if (score > threshold && maxScore < score) {
+//									maxScore = score;
+//									candiateID = itr->second;
+//								}
+//							}
+//							if (maxScore == 0) {
+//								continue;
+//							} else {
+//								//assign new ID to hash map
+//								(*currMap1)[readID2 + 1] = candiateID;
+//								(*currMap2)[readID1 + 1] = candiateID;
+//								colliIDs[candiateID]->insert(readID1 + 1);
+//							}
+//						}
+//						//new collision ID
+//						if (currMap1->find(readID2 + 1) == currMap1->end()) {
+//							(*currMap1)[readID2 + 1] = lastID;
+//							(*currMap2)[readID1 + 1] = lastID;
+//							if (colliIDs.find(lastID) == colliIDs.end()) {
+//								colliIDs[lastID] = boost::shared_ptr<IDSet>(
+//										new IDSet());
+//								colliIDs[lastID]->set_empty_key(opt::EMPTY);
+//							}
+//							colliIDs[lastID]->insert(readID1 + 1);
+//							colliIDs[lastID]->insert(readID2 + 1);
+//							++lastID;
+//							assert(lastID != opt::COLLI);
+//						}
+//					}
+//				}
+//			}
+//		}
+//		assert(file);
+//		for (typename google::dense_hash_map<ID, boost::shared_ptr<IDSet> >::iterator itr =
+//				colliIDs.begin(); itr != colliIDs.end(); ++itr) {
+//			IDSet idSet = *(itr->second);
+//			file << itr->first;
+//			for (typename IDSet::iterator idItr = idSet.begin();
+//					idItr != idSet.end(); ++idItr) {
+//				file << "\t" << *idItr;
+//			}
+//			file << endl;
+//		}
+//		return (groupIndex);
+//	}
 
 //	inline void getCandidates(
 //			vector<boost::shared_ptr<vector<Link> > > &candidates) {

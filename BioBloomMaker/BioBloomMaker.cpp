@@ -67,6 +67,7 @@ void printHelpDialog() {
 		"                         1s & 0s separated by spaces. -k is ignored.\n"
 		"  -I, --id_by_file       For Bloom maps, assign IDs by file rather than by\n"
 		"                         fasta header.\n"
+		"  -c, --colli_id         Compute collision ID for Bloom Map [false].\n"
 		"\nAdvanced options:\n"
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter.\n"
 		"                         For Bloom Maps this value reference to the occupancy rate\n"
@@ -129,6 +130,7 @@ int main(int argc, char *argv[]) {
 			"threads", required_argument, NULL, 't' }, {
 			"map", required_argument, NULL, 'm' }, {
 			"id_by_file", no_argument, NULL, 'I' }, {
+			"colli_id", no_argument, NULL, 'c' }, {
 			"inclusive", no_argument, NULL, 'i' }, {
 			"version", no_argument, NULL, 'v' }, {
 			"hash_num", required_argument, NULL, 'g' }, {
@@ -142,7 +144,7 @@ int main(int argc, char *argv[]) {
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:im:a:I", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:im:a:Ic", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -186,6 +188,10 @@ int main(int argc, char *argv[]) {
 		}
 		case 'I': {
 			opt::idByFile = true;
+			break;
+		}
+		case 'c': {
+			opt::colliIDs = true;
 			break;
 		}
 		case 'i': {

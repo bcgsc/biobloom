@@ -82,8 +82,10 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	idFile.open((filePrefix + "_ids.txt").c_str());
 	cerr << "Outputting IDs file: " << filePrefix + "_ids.txt" << endl;
 	writeIDs(idFile, m_headerIDs);
-	cerr << "Computing Similarity" << endl;
-	m_colliIDs = generateGroups(idFile);
+	if(opt::colliIDs){
+		cerr << "Computing Similarity" << endl;
+		m_colliIDs = generateGroups(idFile);
+	}
 	idFile.close();
 
 	BloomMapSSBitVec<ID> bloomMapBV = generateBV(fpr, ssVal);

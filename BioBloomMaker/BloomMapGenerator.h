@@ -44,7 +44,7 @@ private:
 
 //
 //	//TODO MAKE INTO OPTION
-	double m_colliThresh = 0.1;
+	double m_colliThresh = 0.2;
 
 	inline BloomMapSSBitVec<ID> generateBV(double fpr,
 			const vector<vector<unsigned> > &ssVal);
@@ -53,20 +53,19 @@ private:
 			std::ofstream &file);
 
 	//helper methods
-	inline void loadSeq(BloomMapSSBitVec<ID> &bloomMap, const string& seq, ID value) {
+	inline void loadSeq(BloomMapSSBitVec<ID> &bloomMap, const string& seq,
+			ID value) {
 		/* init rolling hash state and compute hash values for first k-mer */
-		//TODO FIX -> IS NOT THREAD SAFE (SORTA)
-		for (RollingHashIterator itr(seq, m_kmerSize, bloomMap.getSeedValues());
-				itr != itr.end(); ++itr) {
-			ID id = bloomMap.atBestNotInserted(*itr, opt::allowMisses);
-			if (id == opt::EMPTY || id == opt::COLLI) {
-				bloomMap.insert(*itr, value);
+		//TODO FIX -> NEED TO VALIDATE THREAD SAFETY!
+		if (opt::colliIDs) {
+			for (RollingHashIterator itr(seq, m_kmerSize,
+					bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
+				bloomMap.insert(*itr, value, m_colliIDs);
 			}
-			else{
-				google::dense_hash_map<ID, ID>::iterator colliPtr = m_colliIDs[value]->find(id);
-				if (colliPtr != m_colliIDs[value]->end()) {
-					bloomMap.insert(*itr,colliPtr->second);
-				}
+		} else {
+			for (RollingHashIterator itr(seq, m_kmerSize,
+					bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
+				bloomMap.insert(*itr, value);
 			}
 		}
 	}
