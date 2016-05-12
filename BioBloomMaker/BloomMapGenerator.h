@@ -44,7 +44,7 @@ private:
 
 //
 //	//TODO MAKE INTO OPTION
-	double m_colliThresh = 0.2;
+	double m_colliThresh = 0.15;
 
 	inline BloomMapSSBitVec<ID> generateBV(double fpr,
 			const vector<vector<unsigned> > &ssVal);
