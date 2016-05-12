@@ -157,7 +157,7 @@ public:
 			}
 		}
 		assert(file);
-//		groupIndex.resize(groupIndex.size()+colliIDs.size());
+		groupIndex.resize(groupIndex.size()+colliIDs.size());
 		for (typename google::dense_hash_map<ID, boost::shared_ptr<IDSet> >::iterator itr =
 				colliIDs.begin(); itr != colliIDs.end(); ++itr) {
 			IDSet idSet = *(itr->second);
@@ -167,17 +167,14 @@ public:
 				file << "\t" << *idItr;
 			}
 			file << endl;
-//			//insert self (prevent uninitialized values)
-//			groupIndex[itr->first] = boost::shared_ptr<IDSet>(new IDSet());
+			//insert self (prevent uninitialized values)
+			groupIndex[itr->first] = boost::shared_ptr<IDMap>(new IDMap());
+			//collision with collision ID yield the collision if ID is part of collision ID
+			for (typename IDSet::iterator idItr = idSet.begin();
+					idItr != idSet.end(); ++idItr) {
+				(*groupIndex[itr->first])[*idItr] = itr->first;
+			}
 		}
-
-
-//		for (size_t i = 0; i < groupIndex.size(); ++i) {
-//			for (typename IDMap::iterator j = groupIndex[i]->begin();
-//					j != groupIndex[i]->end(); ++j) {
-//				cerr << i << "\t" << j->first << "\t" << j->second << endl;
-//			}
-//		}
 		return (groupIndex);
 	}
 
