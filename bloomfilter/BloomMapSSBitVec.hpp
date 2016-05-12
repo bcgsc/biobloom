@@ -24,6 +24,7 @@
 #include <sdsl/bit_vector_il.hpp>
 #include <sdsl/int_vector.hpp>
 #include <sdsl/rank_support.hpp>
+#include <boost/shared_ptr.hpp>
 #include "BloomMapSS.hpp"
 
 using namespace std;
@@ -52,8 +53,8 @@ public:
 	 * Constructor using an existing bloomMap
 	 */
 	BloomMapSSBitVec<T>(BloomMapSS<T> &bloomMap) :
-			m_dSize(bloomMap.getPop()), m_dFPR(bloomMap.getDesiredFPR()), m_tEntry(
-					bloomMap.getTotalEntries()), m_sseeds(
+			m_dSize(bloomMap.getPop()), m_dFPR(bloomMap.getDesiredFPR()), m_nEntry(
+					0), m_tEntry(bloomMap.getTotalEntries()), m_sseeds(
 					bloomMap.getSeedStrings()), m_kmerSize(
 					bloomMap.getKmerSize()), m_ssVal(bloomMap.getSeedValues()) {
 		m_data = new T[m_dSize]();
@@ -75,7 +76,7 @@ public:
 	//TODO Perform more memory efficiently by somehow destroying old bv before allocating m_data
 	BloomMapSSBitVec<T>(size_t expectedElemNum, double fpr,
 			vector<string> seeds, sdsl::bit_vector bv) :
-			m_dSize(0), m_dFPR(fpr), m_tEntry(expectedElemNum), m_sseeds(
+			m_dSize(0), m_dFPR(fpr), m_nEntry(0), m_tEntry(expectedElemNum), m_sseeds(
 					seeds), m_kmerSize(m_sseeds[0].size()), m_ssVal(
 					parseSeedString(m_sseeds)) {
 		for (vector<string>::const_iterator itr = m_sseeds.begin();
@@ -172,8 +173,17 @@ public:
 				m_rankSupport = sdsl::rank_support_il<1>(&m_bv);
 			}
 		}
+		size_t colliCount = 0;
+		//debug
+		for(size_t i = 0; i < m_dSize; ++i){
+			if(m_data[i] == std::numeric_limits<T>::max()){
+				++colliCount;
+			}
+		}
+		cerr << "colliCount: " << colliCount << endl;
 
-		cerr << "FPR based on PopCount: " << getFPR() << endl;
+		cerr << "Bit Vector Size: " << m_bv.size() << endl;
+		cerr << "Popcount: " << getPop() << endl;
 	}
 
 	/*
@@ -235,6 +245,19 @@ public:
 	}
 
 	/*
+	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
+	 * ONLY REPLACE VALUE if it is larger than current value (for thread safety)
+	 */
+	void insert(std::vector<size_t> const &hashes, T value,
+			const vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
+		//iterates through hashed values adding it to the filter
+		for (size_t i = 0; i < hashes.size(); ++i) {
+			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
+			setIfGreater(&m_data[pos], value, colliIDs);
+		}
+	}
+
+	/*
 	 * Mutates value vector to contain values in bloom map
 	 * Assumes vector is the size of hashes
 	 */
@@ -255,12 +278,13 @@ public:
 	 * Returns numeric_limits<T>::max() on completely ambiguous collision
 	 * Returns 0 on if missing element
 	 */
+	//TODO Optimize me!
 	T atBest(std::vector<size_t> const &hashes, unsigned missMin) const {
 		google::dense_hash_map<T, unsigned> tmpHash;
 		tmpHash.set_empty_key(0);
 		unsigned maxCount = 0;
 		unsigned miss = 0;
-		T value = 0;
+		T value = std::numeric_limits<T>::max();
 
 		for (unsigned i = 0; i < hashes.size(); ++i) {
 			size_t pos = hashes.at(i) % m_bv.size();
@@ -269,17 +293,22 @@ public:
 				continue;
 			}
 			size_t rankPos = m_rankSupport(pos);
-			if (tmpHash.find(m_data[rankPos]) != tmpHash.end()) {
-				++tmpHash[m_data[rankPos]];
+			T currID = m_data[rankPos];
+			if (tmpHash.find(currID) != tmpHash.end()) {
+				++tmpHash[currID];
 			} else {
-				tmpHash[m_data[rankPos]] = 1;
+				tmpHash[currID] = 1;
 			}
-			if(maxCount == tmpHash[m_data[rankPos]]) {
-				value = m_data[rankPos] < value ? m_data[rankPos] : value;
+			if(maxCount == tmpHash[currID]) {
+//				if (currID != std::numeric_limits<T>::max()) {
+					value = m_data[rankPos] < value ? m_data[rankPos] : value;
+//				}
 			}
-			else if ( maxCount < tmpHash[m_data[rankPos]] ){
-				value = m_data[rankPos];
-				maxCount = tmpHash[m_data[rankPos]];
+			else if ( maxCount < tmpHash[currID] ){
+//				if (currID != std::numeric_limits<T>::max()) {
+					value = m_data[rankPos];
+//				}
+				maxCount = tmpHash[currID];
 			}
 		}
 		if (missMin < miss) {
@@ -289,45 +318,45 @@ public:
 		}
 	}
 
-	/*
-	 * Returns unambiguous hit to object
-	 * Returns best hit on ambiguous collisions
-	 * Returns numeric_limits<T>::max() on completely ambiguous collision
-	 * Returns 0 on if missing element
-	 */
-	T atBestNotInserted(std::vector<size_t> const &hashes, unsigned missMin) const {
-		google::dense_hash_map<T, unsigned> tmpHash;
-		tmpHash.set_empty_key(0);
-		unsigned maxCount = 0;
-		unsigned miss = 0;
-		T value = 0;
-
-		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
-			size_t rankPos = m_rankSupport(pos);
-			if(m_data[rankPos] == 0){
-				++miss;
-				continue;
-			}
-			if (tmpHash.find(m_data[rankPos]) != tmpHash.end()) {
-				++tmpHash[m_data[rankPos]];
-			} else {
-				tmpHash[m_data[rankPos]] = 1;
-			}
-			if(maxCount == tmpHash[m_data[rankPos]]) {
-				value = m_data[rankPos] < value ? m_data[rankPos] : value;
-			}
-			else if ( maxCount < tmpHash[m_data[rankPos]] ){
-				value = m_data[rankPos];
-				maxCount = tmpHash[m_data[rankPos]];
-			}
-		}
-		if (missMin < miss) {
-			return 0;
-		} else {
-			return value;
-		}
-	}
+//	/*
+//	 * Returns unambiguous hit to object
+//	 * Returns best hit on ambiguous collisions
+//	 * Returns numeric_limits<T>::max() on completely ambiguous collision
+//	 * Returns 0 on if missing element
+//	 */
+//	T atBestNotInserted(std::vector<size_t> const &hashes, unsigned missMin) const {
+//		google::dense_hash_map<T, unsigned> tmpHash;
+//		tmpHash.set_empty_key(0);
+//		unsigned maxCount = 0;
+//		unsigned miss = 0;
+//		T value = 0;
+//
+//		for (unsigned i = 0; i < hashes.size(); ++i) {
+//			size_t pos = hashes.at(i) % m_bv.size();
+//			size_t rankPos = m_rankSupport(pos);
+//			if(m_data[rankPos] == 0){
+//				++miss;
+//				continue;
+//			}
+//			if (tmpHash.find(m_data[rankPos]) != tmpHash.end()) {
+//				++tmpHash[m_data[rankPos]];
+//			} else {
+//				tmpHash[m_data[rankPos]] = 1;
+//			}
+//			if(maxCount == tmpHash[m_data[rankPos]]) {
+//				value = m_data[rankPos] < value ? m_data[rankPos] : value;
+//			}
+//			else if ( maxCount < tmpHash[m_data[rankPos]] ){
+//				value = m_data[rankPos];
+//				maxCount = tmpHash[m_data[rankPos]];
+//			}
+//		}
+//		if (missMin < miss) {
+//			return 0;
+//		} else {
+//			return value;
+//		}
+//	}
 
 	const vector< vector <unsigned > > &getSeedValues() const {
 		return m_ssVal;
@@ -347,16 +376,16 @@ public:
 	/*
 	 * Return FPR based on popcount and minimum number of matches for a hit
 	 */
-	double getFPR(unsigned minNum) const {
-		assert(minNum <= m_ssVal.size());
+	double getFPR(unsigned allowedMiss) const {
+		assert(allowedMiss <= m_ssVal.size());
 		double cumulativeProb= 0;
 		double popCount = getPop();
 		double p = popCount/double(m_bv.size());
-		for (unsigned i = 0; i < m_ssVal.size() - minNum; ++i) {
+		for (unsigned i = m_ssVal.size() - allowedMiss; i <= m_ssVal.size() ; ++i) {
 			cumulativeProb += double(nChoosek(m_ssVal.size(), i)) * pow(p, i)
 					* pow(1.0 - p, (m_ssVal.size() - i));
 		}
-		return pow(double(getPop())/double(m_bv.size()), double(minNum));
+		return(cumulativeProb);
 	}
 
 	/*
@@ -464,7 +493,7 @@ private:
 	/*
 	 * Lock free cas value setting for larger element
 	 */
-	void setIfGreater(T *val, T newVal) {
+	inline void setIfGreater(T *val, T newVal) {
 //		assert(newVal);
 //		__sync_or_and_fetch(val, 1);
 		T oldValue;
@@ -473,6 +502,40 @@ private:
 			if (oldValue >= newVal)
 				break;
 		} while (!__sync_bool_compare_and_swap(val, oldValue, newVal));
+	}
+
+	/*
+	 * Lock free cas value setting for larger element
+	 * check if it is a collision, setting it accordingly
+	 */
+	inline void setIfGreater(T *val, T newVal,
+			const vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
+		T oldValue;
+		T insertValue;
+		do {
+			oldValue = *val;
+			insertValue = newVal;
+			if (oldValue != 0) {
+				//NO NET CHANGE
+				if(oldValue == insertValue){
+					break;
+				}
+				//check if oldValue and new value have a collision ID together
+				typename google::dense_hash_map<T, T>::iterator colliPtr =
+						colliIDs[oldValue]->find(insertValue);
+				if (colliPtr != colliIDs[oldValue]->end()) {
+					insertValue = colliPtr->second;
+					//NO NET CHANGE
+					if (oldValue == insertValue) {
+						break;
+					}
+				}
+				//IF UNRESOLVED COLLISION
+				else {
+					insertValue = numeric_limits<T>::max();
+				}
+			}
+		} while (!__sync_bool_compare_and_swap(val, oldValue, insertValue));
 	}
 
 	unsigned nChoosek( unsigned n, unsigned k ) const
