@@ -21,5 +21,7 @@ extern double score;
 extern std::string outputPrefix;
 extern std::string filePostfix;
 extern std::string outputType;
+extern bool minHitOnly;
+extern unsigned minHit;
 }
 #endif

@@ -148,8 +148,6 @@ int main(int argc, char *argv[])
 	bool withScore = false;
 
 	//advanced options
-	unsigned minHit = 0;
-	bool minHitOnly = false;
 	bool collab = false;
 	// indicates whether we are using a floating
 	// point score (between 0 and 1) or a minimum
@@ -194,7 +192,7 @@ int main(int argc, char *argv[])
 		switch (c) {
 		case 'm': {
 			stringstream convert(optarg);
-			if (!(convert >> minHit)) {
+			if (!(convert >> opt::minHit)) {
 				cerr << "Error - Invalid parameter! m: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
@@ -287,7 +285,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'o': {
-			minHitOnly = true;
+			opt::minHitOnly = true;
 			break;
 		}
 		case 'r': {
@@ -430,12 +428,12 @@ int main(int argc, char *argv[])
 
 	//load filters
 	BioBloomClassifier BBC(filterFilePaths, opt::score, opt::outputPrefix, opt::filePostfix,
-			minHit, minHitOnly, withScore);
+			opt::minHit, opt::minHitOnly, withScore);
 
 	//floating point score or min match length
 	BBC.setEvalMode(evalMode);
 
-	if (collab && minHit) {
+	if (collab && opt::minHit) {
 		cerr << "Error: -m -c outputs types cannot be both set" << endl;
 		exit(1);
 	} else if (collab) {

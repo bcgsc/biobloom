@@ -13,6 +13,8 @@ double score = 0.15;
 std::string outputPrefix = "";
 std::string filePostfix = "";
 std::string outputType = "";
+bool minHitOnly = false;
+unsigned minHit = 0;
 }
 
 
