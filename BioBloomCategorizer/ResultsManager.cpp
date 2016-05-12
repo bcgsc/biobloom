@@ -75,26 +75,18 @@ const string ResultsManager::updateSummaryData(
 ID ResultsManager::updateSummaryData(const vector<ID> &hits)
 {
 	ID filterID = 0;
-	bool noMatchFlag = true;
-	bool multiMatchFlag = false;
 
 	for (vector<ID>::const_iterator i = hits.begin(); i != hits.end(); ++i) {
-
 #pragma omp atomic
 		++m_aboveThreshold[*i];
-		if (noMatchFlag) {
-			noMatchFlag = false;
-			filterID = *i;
-		} else {
-			multiMatchFlag = true;
-		}
+		filterID = *i;
 	}
-	if (noMatchFlag) {
+	if (hits.size() == 0) {
 #pragma omp atomic
 		++m_noMatch;
 		return opt::EMPTY;
 	} else {
-		if (multiMatchFlag) {
+		if (hits.size() > 1) {
 #pragma omp atomic
 			++m_multiMatch;
 			return opt::COLLI;
