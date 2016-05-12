@@ -169,6 +169,7 @@ public:
 			file << endl;
 			//insert self (prevent uninitialized values)
 			groupIndex[itr->first] = boost::shared_ptr<IDMap>(new IDMap());
+			groupIndex[itr->first]->set_empty_key(opt::EMPTY);
 			//collision with collision ID yield the collision if ID is part of collision ID
 			for (typename IDSet::iterator idItr = idSet.begin();
 					idItr != idSet.end(); ++idItr) {
