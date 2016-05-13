@@ -22,7 +22,6 @@
 #include <limits>
 #include <google/dense_hash_map>
 #include <sdsl/bit_vector_il.hpp>
-#include <sdsl/int_vector.hpp>
 #include <sdsl/rank_support.hpp>
 #include <boost/shared_ptr.hpp>
 #include "BloomMapSS.hpp"
@@ -54,7 +53,7 @@ public:
 	 */
 	BloomMapSSBitVec<T>(BloomMapSS<T> &bloomMap) :
 			m_dSize(bloomMap.getPop()), m_dFPR(bloomMap.getDesiredFPR()), m_nEntry(
-					0), m_tEntry(bloomMap.getTotalEntries()), m_sseeds(
+					bloomMap.getUniqueEntries()), m_tEntry(bloomMap.getTotalEntries()), m_sseeds(
 					bloomMap.getSeedStrings()), m_kmerSize(
 					bloomMap.getKmerSize()), m_ssVal(bloomMap.getSeedValues()) {
 		m_data = new T[m_dSize]();
@@ -73,18 +72,17 @@ public:
 	/*
 	 * Constructor using a prebuilt bitvector
 	 */
-	//TODO Perform more memory efficiently by somehow destroying old bv before allocating m_data
 	BloomMapSSBitVec<T>(size_t expectedElemNum, double fpr,
-			vector<string> seeds, sdsl::bit_vector bv) :
-			m_dSize(0), m_dFPR(fpr), m_nEntry(0), m_tEntry(expectedElemNum), m_sseeds(
-					seeds), m_kmerSize(m_sseeds[0].size()), m_ssVal(
-					parseSeedString(m_sseeds)) {
+			const vector<string> seeds,
+			const sdsl::bit_vector_il<BLOCKSIZE> &bv, size_t unique) :
+			m_dSize(0), m_bv(bv), m_dFPR(fpr), m_nEntry(unique), m_tEntry(
+					expectedElemNum), m_sseeds(seeds), m_kmerSize(
+					m_sseeds[0].size()), m_ssVal(parseSeedString(m_sseeds)) {
 		for (vector<string>::const_iterator itr = m_sseeds.begin();
 				itr != m_sseeds.end(); ++itr) {
 			//check if spaced seeds are all the same length
 			assert(m_kmerSize == itr->size());
 		}
-		m_bv = sdsl::bit_vector_il<BLOCKSIZE>(bv);
 		m_rankSupport = sdsl::rank_support_il<1>(&m_bv);
 		m_dSize = getPop();
 		m_data = new T[m_dSize]();
@@ -409,9 +407,9 @@ public:
 		return m_nEntry;
 	}
 
-	void setUnique(size_t count){
-		m_nEntry = count;
-	}
+//	void setUnique(size_t count){
+//		m_nEntry = count;
+//	}
 
 	~BloomMapSSBitVec() {
 		delete[] m_data;
@@ -517,7 +515,8 @@ private:
 			insertValue = newVal;
 			if (oldValue != 0) {
 				//NO NET CHANGE
-				if(oldValue == insertValue){
+				if (oldValue == insertValue
+						|| oldValue == numeric_limits<T>::max()) {
 					break;
 				}
 				//check if oldValue and new value have a collision ID together

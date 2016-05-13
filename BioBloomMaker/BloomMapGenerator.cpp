@@ -11,6 +11,7 @@
 #include "DataLayer/kseq.h"
 #include "SpacedSeedIndex.h"
 #include "SimMat.h"
+#include <sdsl/bit_vector_il.hpp>
 KSEQ_INIT(gzFile, gzread)
 
 /*
@@ -151,74 +152,73 @@ inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
 			fpr);
 
 	cerr << "bitVector Size: " << filterSize << endl;
-
-	sdsl::bit_vector bv(filterSize);
-
-	cerr << "Populating initial bit vector" << endl;
-
 	size_t uniqueCounts = 0;
 
-	//populate sdsl bitvector (bloomFilter)
-	if (opt::idByFile) {
+	sdsl::bit_vector_il<BLOCKSIZE> ibv;
+	{
+		sdsl::bit_vector bv(filterSize);
+
+		cerr << "Populating initial bit vector" << endl;
+
+		//populate sdsl bitvector (bloomFilter)
+		if (opt::idByFile) {
 #pragma omp parallel for
-		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-			gzFile fp;
-			fp = gzopen(m_fileNames[i].c_str(), "r");
-			kseq_t *seq = kseq_init(fp);
-			int l;
-			size_t colliCounts = 0;
-			size_t totalCount = 0;
-			for (;;) {
-				l = kseq_read(seq);
-				if (l >= 0) {
-					const string &seqStr = string(seq->seq.s, seq->seq.l);
-					//k-merize with rolling hash insert into bloom map
-					colliCounts += loadSeq(bv, seqStr, ssVal);
-					totalCount += seq->seq.l - m_kmerSize + 1;
-				} else {
-					kseq_destroy(seq);
-					break;
+			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+				gzFile fp;
+				fp = gzopen(m_fileNames[i].c_str(), "r");
+				kseq_t *seq = kseq_init(fp);
+				int l;
+				size_t colliCounts = 0;
+				size_t totalCount = 0;
+				for (;;) {
+					l = kseq_read(seq);
+					if (l >= 0) {
+						const string &seqStr = string(seq->seq.s, seq->seq.l);
+						//k-merize with rolling hash insert into bloom map
+						colliCounts += loadSeq(bv, seqStr, ssVal);
+						totalCount += seq->seq.l - m_kmerSize + 1;
+					} else {
+						kseq_destroy(seq);
+						break;
+					}
 				}
-			}
 #pragma omp atomic
-			uniqueCounts += totalCount - colliCounts;
-			gzclose(fp);
-		}
-	} else {
+				uniqueCounts += totalCount - colliCounts;
+				gzclose(fp);
+			}
+		} else {
 #pragma omp parallel for
-		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-			gzFile fp;
-			fp = gzopen(m_fileNames[i].c_str(), "r");
-			kseq_t *seq = kseq_init(fp);
-			int l;
-			for (;;) {
-				l = kseq_read(seq);
-				if (l >= 0) {
-					const string &seqStr = string(seq->seq.s, seq->seq.l);
-					//k-merize with rolling hash insert into bloom map
-					size_t colliCounts = loadSeq(bv, seqStr, ssVal);
+			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+				gzFile fp;
+				fp = gzopen(m_fileNames[i].c_str(), "r");
+				kseq_t *seq = kseq_init(fp);
+				int l;
+				for (;;) {
+					l = kseq_read(seq);
+					if (l >= 0) {
+						const string &seqStr = string(seq->seq.s, seq->seq.l);
+						//k-merize with rolling hash insert into bloom map
+						size_t colliCounts = loadSeq(bv, seqStr, ssVal);
 #pragma omp atomic
-					uniqueCounts += seq->seq.l - m_kmerSize + 1 - colliCounts;
-				} else {
-					kseq_destroy(seq);
-					break;
+						uniqueCounts += seq->seq.l - m_kmerSize + 1
+								- colliCounts;
+					} else {
+						kseq_destroy(seq);
+						break;
+					}
 				}
+				gzclose(fp);
 			}
-			gzclose(fp);
 		}
+		cerr << "Approximate number of unique entries in filter: "
+				<< uniqueCounts << endl;
+
+		cerr << "Converting bit vector to rank interleaved form" << endl;
+		//init bloom map
+		ibv = sdsl::bit_vector_il<BLOCKSIZE>(bv);
+		cerr << "Converted bit vector to rank interleaved form" << endl;
 	}
-
-	cerr << "Approximate number of unique entries in filter: " << uniqueCounts
-			<< endl;
-
-	cerr << "Converting bit vector to rank interleaved form" << endl;
-
-	//init bloom map
-
-	BloomMapSSBitVec<ID> bloomMapBV(m_expectedEntries, fpr, opt::sseeds, bv);
-	bloomMapBV.setUnique(uniqueCounts);
-	cerr << "Converted bit vector to rank interleaved form" << endl;
-	return bloomMapBV; //TODO: Hopefully return value optimized (do not want copy)
+	return BloomMapSSBitVec<ID>(m_expectedEntries, fpr, opt::sseeds, ibv, uniqueCounts);
 }
 
 inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > BloomMapGenerator::generateGroups(
