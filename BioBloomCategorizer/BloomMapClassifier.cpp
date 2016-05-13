@@ -19,13 +19,14 @@ KSEQ_INIT(gzFile, gzread)
 BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		m_filter(BloomMapSSBitVec<ID>(filterFile)) {
 	cerr << "FPR given allowed misses: "
-			<< m_filter.getFPR(
-					m_filter.getSeedValues().size() - opt::allowMisses)
+			<< m_filter.getFPR(opt::allowMisses)
 			<< endl;
 	//load in ID file
 	string idFile = (filterFile).substr(0, (filterFile).length() - 3)
 			+ "_ids.txt";
 	google::dense_hash_map<ID, string> ids;
+	google::dense_hash_map<ID, boost::shared_ptr< vector<ID> > > colliIDs;
+	colliIDs.set_empty_key(opt::EMPTY);
 	ids.set_empty_key(opt::EMPTY);
 	if (!fexists(idFile)) {
 		cerr
@@ -43,11 +44,21 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 	getline(idFH, line);
 	while (idFH.good()) {
 		ID id;
-		string fullID;
 		stringstream converter(line);
 		converter >> id;
-		converter >> fullID;
-		ids[id] = fullID;
+
+		colliIDs[id] = boost::shared_ptr<vector<ID> >(new vector<ID>());
+		string fullID;
+		unsigned idCount = 0;
+		for (;converter >> fullID; ++idCount) {
+			ID tempID = atoi(fullID.c_str());
+			colliIDs[id]->push_back(tempID);
+		}
+		if (idCount == 1) {
+			colliIDs[id]->clear();
+			colliIDs[id]->push_back(id);
+			ids[id] = fullID;
+		}
 		getline(idFH, line);
 	}
 	m_fullIDs = vector<string>(ids.size() + 1); //first element will be empty
@@ -55,7 +66,11 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 			itr != ids.end(); ++itr) {
 		m_fullIDs[itr->first] = itr->second;
 	}
-
+	m_colliIDs = vector< boost::shared_ptr<vector<ID> > >(colliIDs.size() + 1);
+	for (google::dense_hash_map<ID, boost::shared_ptr< vector<ID> > >::const_iterator itr =
+			colliIDs.begin(); itr != colliIDs.end(); ++itr) {
+		m_colliIDs[itr->first] = itr->second;
+	}
 	idFH.close();
 }
 
@@ -78,11 +93,13 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 #pragma omp parallel private(l)
 		for (string sequence;;) {
 			string name;
+			string qual;
 #pragma omp critical(sequence)
 			{
 				l = kseq_read(seq);
 				sequence = string(seq->seq.s, seq->seq.l);
 				name = string(seq->name.s, seq->name.l);
+				qual = string(seq->qual.s, seq->qual.l);
 			}
 			if (l >= 0) {
 #pragma omp atomic
@@ -103,10 +120,24 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 				if (score > threshold) {
 					convertToHits(hitCounts, hits);
 				}
-				//TODO allow printing of full IDs?
-				//TODO print fasta/fastqs?
-				printToTSV(resSummary.updateSummaryData(hits), name,
-						readsOutput);
+				ID idIndex = resSummary.updateSummaryData(hits);
+				if (idIndex != opt::EMPTY) {
+					const string &fullID =
+							idIndex == opt::COLLI ?
+									m_unknownID : m_fullIDs.at(idIndex);
+					if (opt::outputType == "fq") {
+#pragma omp critical(outputFiles)
+						{
+							readsOutput << "@" << name << " " << fullID << "\n"
+									<< sequence << "\n+\n" << qual << "\n";
+						}
+					} else {
+#pragma omp critical(outputFiles)
+						{
+							readsOutput << fullID << "\t" << name << "\n";
+						}
+					}
+				}
 			} else {
 				kseq_destroy(seq);
 				break;
@@ -186,29 +217,33 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 				unsigned score2 = evaluateRead(sequence2, hitCounts2);
 				unsigned threshold1 = opt::score
 						* (l1 - m_filter.getKmerSize() + 1);
-				//TODO currently assuming both reads are the same length - May need change
-//				unsigned threshold2 = opt::score
-//						* (rec2.seq.size() - m_filter.getKmerSize() + 1);
+				unsigned threshold2 = opt::score
+						* (l2 - m_filter.getKmerSize() + 1);
 
 				vector<ID> hits;
-				if (score1 > threshold1 || score2 > threshold1) {
+				if (score1 > threshold1 || score2 > threshold2) {
 					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
 				}
 				ID idIndex = resSummary.updateSummaryData(hits);
 				if (idIndex != opt::EMPTY) {
+					const string &fullID =
+							idIndex == opt::COLLI ?
+									m_unknownID : m_fullIDs.at(idIndex);
 					if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
 						{
 							readsOutput << "@" << name1 << " "
-									<< m_fullIDs[idIndex] << "\n" << sequence1
+									<< fullID << "\n" << sequence1
 									<< "\n+\n" << qual1 << "\n";
 							readsOutput << "@" << name2 << " "
-									<< m_fullIDs[idIndex] << "\n" << sequence2
+									<< fullID << "\n" << sequence2
 									<< "\n+\n" << qual2 << "\n";
 						}
 					} else {
-						printToTSV(resSummary.updateSummaryData(hits), name1,
-								readsOutput);
+#pragma omp critical(outputFiles)
+						{
+							readsOutput << fullID << "\t" << name1 << "\n";
+						}
 					}
 				}
 			} else {
@@ -256,34 +291,34 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 				hitCounts2.set_empty_key(opt::EMPTY);
 				unsigned score1 = evaluateRead(sequence1, hitCounts1);
 				unsigned score2 = evaluateRead(sequence2, hitCounts2);
-				unsigned threshold1 = opt::score
+				unsigned threshold1 = opt::minHitOnly ? opt::minHit - 1 : opt::score
 						* (l1 - m_filter.getKmerSize() + 1);
-				//TODO currently assuming both reads are the same length - May need change
-//				unsigned threshold2 = opt::score
-//						* (rec2.seq.size() - m_filter.getKmerSize() + 1);
+				unsigned threshold2 = opt::score
+						* (l2 - m_filter.getKmerSize() + 1);
 
 				vector<ID> hits;
-				if (score1 > threshold1 && score2 > threshold1) {
+				if (score1 > threshold1 && score2 > threshold2) {
 					convertToHitsBoth(hitCounts1, hitCounts2, hits);
 				}
 				ID idIndex = resSummary.updateSummaryData(hits);
 				if (idIndex != opt::EMPTY) {
+					const string &fullID =
+							idIndex == opt::COLLI ?
+									m_unknownID : m_fullIDs.at(idIndex);
 					if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
 						{
 							readsOutput << "@" << name1 << " "
-									<< m_fullIDs[idIndex] << "\n" << sequence1
+									<< fullID << "\n" << sequence1
 									<< "\n+\n" << qual1 << "\n";
 							readsOutput << "@" << name2 << " "
-									<< m_fullIDs[idIndex] << "\n" << sequence2
+									<< fullID << "\n" << sequence2
 									<< "\n+\n" << qual2 << "\n";
 						}
 					} else {
 #pragma omp critical(outputFiles)
 						{
-							readsOutput << m_fullIDs[idIndex] << "\t" << name1
-									<< "\t" << hitCounts1[idIndex] << "\t"
-									<< hitCounts2[idIndex] << "\n";
+							readsOutput << fullID << "\t" << name1 << "\n";
 						}
 					}
 				}

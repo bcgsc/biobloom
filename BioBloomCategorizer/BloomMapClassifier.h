@@ -33,6 +33,9 @@ public:
 private:
 	BloomMapSSBitVec<ID> m_filter;
 	vector<string> m_fullIDs;
+	vector< boost::shared_ptr<vector<ID> > > m_colliIDs;
+
+	const string m_unknownID = "unknown";
 
 //	//TODO: REFACTOR WITH BioBloomClassifier
 //	inline void printSingleToFile(const string &outputFileName,
@@ -52,17 +55,6 @@ private:
 //			}
 //		}
 //	}
-
-	inline void printToTSV(const ID outputID, const string &name,
-			Dynamicofstream &outputFile) {
-		if (outputID != opt::EMPTY) {
-#pragma omp critical(outputFiles)
-			{
-				outputFile << m_fullIDs[outputID] << "\t" << name << "\n";
-			}
-		}
-	}
-
 //	//TODO: REFACTOR WITH BioBloomClassifier
 //	inline void printPairToFile(const string &outputFileName,
 //			const kseq_t *rec1, const kseq_t *rec2,
@@ -95,19 +87,49 @@ private:
 				m_filter.getSeedValues());
 		unsigned nonZeroCount = 0;
 
-		while (itr != itr.end()) {
-			ID id = m_filter.atBest(*itr, opt::allowMisses);
-			if (id != 0) {
-				if (id != opt::COLLI) {
-					if (hitCounts.find(id) != hitCounts.end()) {
-						++hitCounts[id];
-					} else {
-						hitCounts[id] = 1;
+		if(opt::minHitOnly)
+		{
+			unsigned count = 0;
+			while (itr != itr.end()) {
+				if (count % (m_filter.getKmerSize()/2) == 0) {
+					ID id = m_filter.atBest(*itr, opt::allowMisses);
+					if (id != 0) {
+						if (id != opt::COLLI) {
+							for (unsigned i = 0; i < m_colliIDs[id]->size(); ++i) {
+								if (hitCounts.find(m_colliIDs[id]->at(i))
+										!= hitCounts.end()) {
+									++hitCounts[m_colliIDs[id]->at(i)];
+								} else {
+									hitCounts[m_colliIDs[id]->at(i)] = 1;
+								}
+							}
+							++nonZeroCount;
+						}
 					}
 				}
-				++nonZeroCount;
+				++count;
+				++itr;
 			}
-			++itr;
+		}
+		else {
+			while (itr != itr.end()) {
+				//TODO: handle cases with partial collision ID?
+				ID id = m_filter.atBest(*itr, opt::allowMisses);
+				if (id != 0) {
+					if (id != opt::COLLI) {
+						for (unsigned i = 0; i < m_colliIDs[id]->size(); ++i) {
+							if (hitCounts.find(m_colliIDs[id]->at(i))
+									!= hitCounts.end()) {
+								++hitCounts[m_colliIDs[id]->at(i)];
+							} else {
+								hitCounts[m_colliIDs[id]->at(i)] = 1;
+							}
+						}
+						++nonZeroCount;
+					}
+				}
+				++itr;
+			}
 		}
 		return nonZeroCount;
 	}
@@ -119,22 +141,22 @@ private:
 	void convertToHits(const google::dense_hash_map<ID, unsigned> &hitCounts,
 			vector<ID> &hits) {
 		unsigned bestHit = 0;
-		ID best = opt::EMPTY;
 		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 				hitCounts.begin(); i != hitCounts.end(); ++i) {
-			if (bestHit <= i->second) {
-				if(bestHit == i->second && best < i->first){
-					continue;
-				}
+			if (bestHit < i->second) {
 				bestHit = i->second;
-				best = i->first;
 			}
 		}
-		hits.push_back(best);
+		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+				hitCounts.begin(); i != hitCounts.end(); ++i) {
+			if (bestHit == i->second) {
+				hits.push_back(i->first);
+			}
+		}
 	}
 
 	/*
-	 * Returns a vector of hits to a specific read
+	 * Returns a vector of best hits to a specific read
 	 * Both reads much match
 	 */
 	void convertToHitsBoth(
@@ -142,69 +164,77 @@ private:
 			const google::dense_hash_map<ID, unsigned> &hitCounts2,
 			vector<ID> &hits) {
 		unsigned bestHit = 0;
-		ID best = opt::EMPTY;
 		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 				hitCounts1.begin(); i != hitCounts1.end(); ++i) {
-			const google::dense_hash_map<ID, unsigned>::const_iterator &j =
+			unsigned hitCount = i->second;
+			google::dense_hash_map<ID, unsigned>::const_iterator itr =
 					hitCounts2.find(i->first);
-			if (j != hitCounts2.end() && bestHit <= (i->second + j->second)) {
-				if (bestHit == (i->second + j->second) && best < i->first) {
-					continue;
-				}
-				bestHit = i->second + j->second;
-				best = i->first;
+			if (itr != hitCounts2.end()) {
+				hitCount += itr->second;
+			}
+			if (bestHit < hitCount) {
+				bestHit = hitCount;
 			}
 		}
-		//if ensure pair makes any sense
-		if (best != 0) {
-			hits.push_back(best);
+		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+				hitCounts1.begin(); i != hitCounts1.end(); ++i) {
+			unsigned hitCount = i->second;
+			google::dense_hash_map<ID, unsigned>::const_iterator itr =
+					hitCounts2.find(i->first);
+			if (itr != hitCounts2.end()) {
+				hitCount += itr->second;
+			}
+			if (bestHit == hitCount) {
+				hits.push_back(i->first);
+			}
 		}
 	}
 
 	/*
-	 * Returns a vector of hits to a specific read
-	 * Only one read needs to match
+	 * Returns a vector of best hits to a specific read
+	 * Only one read needs to math
 	 */
 	void convertToHitsOnlyOne(
 			const google::dense_hash_map<ID, unsigned> &hitCounts1,
 			const google::dense_hash_map<ID, unsigned> &hitCounts2,
 			vector<ID> &hits) {
 		unsigned bestHit = 0;
-		ID best = opt::EMPTY;
+		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+				hitCounts1.begin(); i != hitCounts1.end(); ++i) {
+			unsigned hitCount = i->second;
+			google::dense_hash_map<ID, unsigned>::const_iterator itr =
+					hitCounts2.find(i->first);
+			if (itr != hitCounts2.end()) {
+				hitCount += itr->second;
+			}
+			if (bestHit < hitCount) {
+				bestHit = hitCount;
+			}
+		}
 		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 				hitCounts2.begin(); i != hitCounts2.end(); ++i) {
-			if (bestHit <= i->second) {
-				if(bestHit == i->second && best < i->first){
-					continue;
-				}
+			if (bestHit < i->second) {
 				bestHit = i->second;
-				best = i->first;
 			}
 		}
 		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 				hitCounts1.begin(); i != hitCounts1.end(); ++i) {
-			const google::dense_hash_map<ID, unsigned>::const_iterator &j =
+			unsigned hitCount = i->second;
+			google::dense_hash_map<ID, unsigned>::const_iterator itr =
 					hitCounts2.find(i->first);
-			if (j != hitCounts2.end()) {
-				if (bestHit <= (i->second + j->second)) {
-					if (bestHit == (i->second + j->second) && best < i->first) {
-						continue;
-					}
-					bestHit = i->second + j->second;
-					best = i->first;
-				}
+			if (itr != hitCounts2.end()) {
+				hitCount += itr->second;
 			}
-			else{
-				if (bestHit <= i->second) {
-					if (bestHit == i->second && best < i->first) {
-						continue;
-					}
-					bestHit = i->second;
-					best = i->first;
-				}
+			if (bestHit == hitCount) {
+				hits.push_back(i->first);
 			}
 		}
-		hits.push_back(best);
+		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+				hitCounts2.begin(); i != hitCounts2.end(); ++i) {
+			if (bestHit == i->second) {
+				hits.push_back(i->first);
+			}
+		}
 	}
 };
 
