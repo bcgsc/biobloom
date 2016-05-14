@@ -127,7 +127,7 @@ These are general use cases you can use to run the program, but it is possible t
 #####B. Biobloomcategorizer
 ######i. Summary File (summary.tsv)
 
-* Tab separated file. Contains proportion information about reads mapping to each filter. Gives a overview of your results. the `Hits` column is the number of hits to this filter, regardless if unique. The `shared` column a subset of hits that also hit other filter. The `multiMatch` entry refers to any hits are shared at least 2 genomes. The `noMatch` is a subset of reads that do not match any of the filters used.
+* Tab separated file. Contains proportion information about reads mapping to each filter. Gives a overview of your results. the `hits` column is the number of hits to this filter, regardless if unique. The `shared` column a subset of hits that also hit other filter. The `multiMatch` entry refers to any hits are shared at least 2 genomes. The `noMatch` is a subset of reads that do not match any of the filters used.
 
 ######ii. Categorized Sequence FastA/FastQ Files
 
