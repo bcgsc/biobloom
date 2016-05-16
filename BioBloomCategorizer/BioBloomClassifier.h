@@ -24,9 +24,6 @@
 using namespace std;
 using namespace boost;
 
-static const string NO_MATCH = "noMatch";
-static const string MULTI_MATCH = "multiMatch";
-
 /** for modes of filtering */
 enum mode {
 	COLLAB, MINHITONLY, BESTHIT, STD, SCORES

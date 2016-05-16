@@ -19,18 +19,24 @@
 using namespace std;
 using namespace boost;
 
+static const string NO_MATCH = "noMatch";
+static const string MULTI_MATCH = "multiMatch";
+static const string UNKNOWN = "unknown";
+
 class ResultsManager {
 public:
 	explicit ResultsManager(const vector<string> &m_filterOrder,
 			bool inclusive);
 
 	//TODO: replace usage with vector<ID> version
-	const string updateSummaryData(const boost::unordered_map<string, bool> &hits);
+	const string updateSummaryData(
+			const boost::unordered_map<string, bool> &hits);
 
-	ID updateSummaryData(const vector<ID> &hits);
+	ID updateSummaryData(const vector<ID> &hits, bool aboveThreshold);
 
 	//TODO: replace usage with vector<ID> version
-	const string updateSummaryData(const boost::unordered_map<string, bool> &hits1,
+	const string updateSummaryData(
+			const boost::unordered_map<string, bool> &hits1,
 			const boost::unordered_map<string, bool> &hits2);
 
 	const string getResultsSummary(size_t readCount) const;
@@ -41,6 +47,7 @@ private:
 
 	size_t m_multiMatch;
 	size_t m_noMatch;
+	size_t m_unknown;
 	bool m_inclusive;
 
 	vector<size_t> m_aboveThreshold;

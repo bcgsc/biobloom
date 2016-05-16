@@ -15,15 +15,10 @@
 
 ResultsManager::ResultsManager(const vector<string> &filterOrderRef,
 		bool inclusive) :
-		m_filterOrder(filterOrderRef), m_multiMatch(0), m_noMatch(0), m_inclusive(
-				inclusive), m_aboveThreshold(
+		m_filterOrder(filterOrderRef), m_multiMatch(0), m_noMatch(0), m_unknown(
+				0), m_inclusive(inclusive), m_aboveThreshold(
 				vector<size_t>(filterOrderRef.size(), 0)), m_unique(
 				vector<size_t>(filterOrderRef.size(), 0)) {
-//	for (vector<string>::const_iterator i = m_filterOrder.begin();
-//			i != m_filterOrder.end(); ++i) {
-//		m_aboveThreshold[*i] = 0;
-//		m_unique[*i] = 0;
-//	}
 }
 
 /*
@@ -72,8 +67,8 @@ const string ResultsManager::updateSummaryData(
  * Records data for read summary based on thresholds
  * Returns filter ID index (index -1) that this read equals
  */
-ID ResultsManager::updateSummaryData(const vector<ID> &hits)
-{
+ID ResultsManager::updateSummaryData(const vector<ID> &hits,
+		bool aboveThreshold) {
 	ID filterID = 0;
 
 	for (vector<ID>::const_iterator i = hits.begin(); i != hits.end(); ++i) {
@@ -82,13 +77,19 @@ ID ResultsManager::updateSummaryData(const vector<ID> &hits)
 		filterID = *i;
 	}
 	if (hits.size() == 0) {
+		if (aboveThreshold) {
+			++m_unknown;
+			return opt::COLLI;
+		} else {
 #pragma omp atomic
-		++m_noMatch;
-		return opt::EMPTY;
+			++m_noMatch;
+			return opt::EMPTY;
+		}
 	} else {
 		if (hits.size() > 1) {
 #pragma omp atomic
 			++m_multiMatch;
+			//TODO return collisionID?
 			return opt::COLLI;
 		} else {
 #pragma omp atomic
@@ -190,6 +191,16 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	summaryOutput << "\t" << double(m_multiMatch) / double(readCount);
 	summaryOutput << "\t"
 			<< double(readCount - m_multiMatch) / double(readCount);
+	summaryOutput << "\t" << 0.0;
+	summaryOutput << "\n";
+
+	summaryOutput << UNKNOWN;
+	summaryOutput << "\t" << m_unknown;
+	summaryOutput << "\t" << readCount - m_unknown;
+	summaryOutput << "\t" << 0;
+	summaryOutput << "\t" << double(m_unknown) / double(readCount);
+	summaryOutput << "\t"
+			<< double(readCount - m_unknown) / double(readCount);
 	summaryOutput << "\t" << 0.0;
 	summaryOutput << "\n";
 
