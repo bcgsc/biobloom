@@ -54,6 +54,7 @@ public:
 	inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > getGroupings(
 			double threshold, std::ofstream &file) {
 		assert(threshold);
+
 		//ID mapping to its associated collision ID
 		google::dense_hash_map<ID, boost::shared_ptr<IDSet> > colliIDs;
 		colliIDs.set_empty_key(opt::EMPTY);
@@ -67,16 +68,11 @@ public:
 		for (size_t readID1 = 0; readID1 < m_numRead; ++readID1) {
 			for (unsigned readID2 = 0; readID2 < readID1; ++readID2) {
 				size_t simInd = getSimIdx(readID1, readID2);
-				double ikMean = sqrt(
-						m_indexTbl.getReadLength(readID1)
-								* m_indexTbl.getReadLength(readID2));
-				double simVal =	m_simMat[simInd];
-//				cout << simVal / ikMean << "\t" << simVal << "\t"
-//						<< m_indexTbl.getReadLength(readID1) << "\t"
-//						<< m_indexTbl.getReadLength(readID2) << "\t"
-//						<< readID1 + 1 << "\t" << readID2 + 1 << endl;
+				double minSize = min(m_indexTbl.getReadLength(readID1),
+						m_indexTbl.getReadLength(readID2));
+				double simVal = m_simMat[simInd];
 				//if element has sufficient similarity
-				if (simVal / ikMean > threshold) {
+				if (simVal / minSize > threshold) {
 					boost::shared_ptr<IDMap> &currMap1 = groupIndex[readID1 + 1];
 					boost::shared_ptr<IDMap> &currMap2 = groupIndex[readID2 + 1];
 					if(currMap1->size() > 0){
@@ -90,10 +86,10 @@ public:
 							if (maxID < minID) {
 								swap(maxID, minID);
 							}
-							double mean = sqrt(
-									m_indexTbl.getReadLength(maxID)
-											* m_indexTbl.getReadLength(minID));
-							double score = m_simMat[getSimIdx(maxID, minID)]/mean;
+							double min = min(m_indexTbl.getReadLength(maxID),
+									m_indexTbl.getReadLength(minID));
+							double score = m_simMat[getSimIdx(maxID, minID)]
+									/ min;
 							if (score > threshold && maxScore < score) {
 								maxScore = score;
 								candiateID = itr->second;
@@ -120,10 +116,9 @@ public:
 							if (maxID < minID) {
 								swap(maxID, minID);
 							}
-							double mean = sqrt(
-									m_indexTbl.getReadLength(maxID)
-											* m_indexTbl.getReadLength(minID));
-							double score = m_simMat[getSimIdx(maxID, minID)]/mean;
+							double min = min(m_indexTbl.getReadLength(maxID),
+									m_indexTbl.getReadLength(minID));
+							double score = m_simMat[getSimIdx(maxID, minID)]/min;
 							if (score > threshold && maxScore < score) {
 								maxScore = score;
 								candiateID = itr->second;

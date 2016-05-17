@@ -12,4 +12,5 @@ namespace opt {
 	std::vector<std::string> sseeds;
 	unsigned allowMisses = 0;
 	bool idByFile = false;
+	bool colliIDs = false;
 }

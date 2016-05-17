@@ -117,14 +117,15 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 				unsigned threshold = opt::score
 						* (l - m_filter.getKmerSize() + 1);
 				vector<ID> hits;
-				if (score > threshold) {
+				bool aboveThreshold = score > threshold;
+				if (aboveThreshold) {
 					convertToHits(hitCounts, hits);
 				}
-				ID idIndex = resSummary.updateSummaryData(hits);
+				ID idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
 				if (idIndex != opt::EMPTY) {
 					const string &fullID =
 							idIndex == opt::COLLI ?
-									m_unknownID : m_fullIDs.at(idIndex);
+									UNKNOWN : m_fullIDs.at(idIndex);
 					if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
 						{
@@ -221,14 +222,16 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 						* (l2 - m_filter.getKmerSize() + 1);
 
 				vector<ID> hits;
-				if (score1 > threshold1 || score2 > threshold2) {
+				bool aboveThreshold = score1 > threshold1
+						|| score2 > threshold2;
+				if (aboveThreshold) {
 					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
 				}
-				ID idIndex = resSummary.updateSummaryData(hits);
+				ID idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
 				if (idIndex != opt::EMPTY) {
 					const string &fullID =
 							idIndex == opt::COLLI ?
-									m_unknownID : m_fullIDs.at(idIndex);
+									UNKNOWN : m_fullIDs.at(idIndex);
 					if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
 						{
@@ -297,14 +300,16 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 						* (l2 - m_filter.getKmerSize() + 1);
 
 				vector<ID> hits;
-				if (score1 > threshold1 && score2 > threshold2) {
+				bool aboveThreshold = score1 > threshold1
+						&& score2 > threshold2;
+				if (aboveThreshold) {
 					convertToHitsBoth(hitCounts1, hitCounts2, hits);
 				}
-				ID idIndex = resSummary.updateSummaryData(hits);
+				ID idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
 				if (idIndex != opt::EMPTY) {
 					const string &fullID =
 							idIndex == opt::COLLI ?
-									m_unknownID : m_fullIDs.at(idIndex);
+									UNKNOWN : m_fullIDs.at(idIndex);
 					if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
 						{

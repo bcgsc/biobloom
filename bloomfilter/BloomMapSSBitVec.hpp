@@ -94,6 +94,7 @@ public:
 			if (i == 0) {
 				FILE *file = fopen(filterFilePath.c_str(), "rb");
 				if (file == NULL) {
+#pragma omp critical(stderr)
 					cerr << "file \"" << filterFilePath << "\" could not be read."
 							<< endl;
 					exit(1);
@@ -101,15 +102,17 @@ public:
 
 				FileHeader header;
 				if (fread(&header, sizeof(struct FileHeader), 1, file) == 1) {
+#pragma omp critical(stderr)
 					cerr << "Loading header..." << endl;
 				} else {
+#pragma omp critical(stderr)
 					cerr << "Failed to Load header" << endl;
 					exit(1);
 				}
 				char magic[9];
 				strncpy(magic, header.magic, 8);
 				magic[8] = '\0';
-
+#pragma omp critical(stderr)
 				cerr << "Loaded header... magic: " << magic << " hlen: "
 						<< header.hlen << " size: " << header.size << " nhash: "
 						<< header.nhash << " kmer: " << header.kmer << " dFPR: "
@@ -141,7 +144,7 @@ public:
 				m_data = new T[m_dSize]();
 
 				m_ssVal = parseSeedString(m_sseeds);
-
+#pragma omp critical(stderr)
 				cerr << "Loading data vector" << endl;
 
 				long int lCurPos = ftell(file);
@@ -165,6 +168,7 @@ public:
 			}
 			else{
 				string bvFilename = filterFilePath + ".sdsl";
+#pragma omp critical(stderr)
 				cerr << "Loading sdsl interleaved bit vector from: "
 						<< bvFilename << endl;
 				load_from_file(m_bv, bvFilename);

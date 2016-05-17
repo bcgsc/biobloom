@@ -35,8 +35,6 @@ private:
 	vector<string> m_fullIDs;
 	vector< boost::shared_ptr<vector<ID> > > m_colliIDs;
 
-	const string m_unknownID = "unknown";
-
 //	//TODO: REFACTOR WITH BioBloomClassifier
 //	inline void printSingleToFile(const string &outputFileName,
 //			const kseq_t *rec,
@@ -103,8 +101,8 @@ private:
 									hitCounts[m_colliIDs[id]->at(i)] = 1;
 								}
 							}
-							++nonZeroCount;
 						}
+						++nonZeroCount;
 					}
 				}
 				++count;
@@ -125,8 +123,8 @@ private:
 								hitCounts[m_colliIDs[id]->at(i)] = 1;
 							}
 						}
-						++nonZeroCount;
 					}
+					++nonZeroCount;
 				}
 				++itr;
 			}

@@ -225,7 +225,7 @@ inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > BloomMapGener
 		std::ofstream &file) {
 	//compute binary tree based off of reference sequences
 	//TODO make mini-spaced seed value not hard-coded
-	string miniSeed = "111100010010101010010001111";
+	string miniSeed = "11110000100010100101001000100001111";
 	SpacedSeedIndex<ID> ssIdx(miniSeed, m_headerIDs.size());
 
 #pragma omp parallel for

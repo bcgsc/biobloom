@@ -267,7 +267,7 @@ private:
 					}
 					fSeed = fSeed << 2 | fChar;
 					rSeed = rSeed << 2 | rChar;
-				}
+				  }
 			}
 	        if(nonACGT) continue;
 

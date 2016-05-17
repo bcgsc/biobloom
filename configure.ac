@@ -5,6 +5,7 @@ AC_PREREQ(2.59)
 AC_INIT(BIOBLOOMTOOLS, 3.0.0b, cjustin@bcgsc.ca)
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([BioBloomMaker/BioBloomMaker.cpp])
+AC_CONFIG_SRCDIR([BioBloomCategorizer/BioBloomCategorizer.cpp])
 AC_CONFIG_HEADER([config.h])
 
 AC_PROG_RANLIB
