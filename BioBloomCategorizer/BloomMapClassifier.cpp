@@ -88,6 +88,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 			it != inputFiles.end(); ++it) {
 		gzFile fp;
 		fp = gzopen(it->c_str(), "r");
+		assert(fp != -1);
 		kseq_t *seq = kseq_init(fp);
 		int l;
 #pragma omp parallel private(l)
@@ -175,7 +176,9 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	gzFile fp1;
 	gzFile fp2;
 	fp1 = gzopen(file1.c_str(), "r");
+	assert(fp1 != -1);
 	fp2 = gzopen(file2.c_str(), "r");
+	assert(fp2 != -1);
 	kseq_t *seq1 = kseq_init(fp1);
 	kseq_t *seq2 = kseq_init(fp2);
 	int l1;
