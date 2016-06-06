@@ -106,7 +106,7 @@ template<typename ID>
 class SpacedSeedIndex {
 public:
 	SpacedSeedIndex(const string &seed, unsigned numReads) :
-			m_totalSSCount(0), m_removedCount(0), m_readLengths(
+			m_totalSSCount(0), m_removedCount(0), m_numUnique(
 					vector<size_t>(numReads,0)), m_seed(seed) {
 		unsigned ssWeight = 0;
 		for (unsigned i = 0; i < seed.length(); i++)
@@ -119,8 +119,7 @@ public:
 	}
 
 	inline void insert(ID id, const string& seq, uint64_t *occ){
-        m_readLengths[id] += seq.length();
-        loadSeq(id, seq, occ, m_indTable);
+		m_numUnique[id] += loadSeq(id, seq, occ, m_indTable);
 	}
 
 	const inline entry &at(unsigned i) const
@@ -182,8 +181,8 @@ public:
 		return m_indexSize;
 	}
 
-	inline size_t getReadLength(ID readID) const{
-		return m_readLengths[readID];
+	inline size_t getUnique(ID readID) const{
+		return m_numUnique[readID];
 	}
 
 	virtual ~SpacedSeedIndex(){
@@ -209,7 +208,7 @@ private:
 	//TODO: MAKE SURE VALUE IS ADDED UP CORRECTLY (CURRENTLY DOES NOT COUNT REDUNDANT ENTRIES!)
 	size_t m_removedCount;
 
-	vector<size_t> m_readLengths;
+	vector<size_t> m_numUnique;
 
 	const string &m_seed;
 
@@ -248,10 +247,14 @@ private:
 //	    }
 //	}
 
-	inline void loadSeq(const ID readId, const string &faSeq, uint64_t *occ, entry *indTable) {
+	/*
+	 * Returns number of unique seeds added to the table
+	 */
+	inline unsigned loadSeq(const ID readId, const string &faSeq, uint64_t *occ, entry *indTable) {
 		if (faSeq.length() < m_seed.length())
-	        return;
+	        return 0;
 		unsigned length = faSeq.length()-m_seed.length()+1;
+		unsigned uniqueCount = 0;
 
 		for (unsigned i=0; i < length; i++) {
 			SSeed fSeed = 0, rSeed = 0;
@@ -274,6 +277,7 @@ private:
 	        SSeed seed = rSeed < fSeed ? rSeed : fSeed ;
 
 			if ((occ[seed / 64] & ((uint64_t) 1 << (63 - seed % 64))) == 0) {
+				++uniqueCount;
 				omp_set_lock(&m_locks[(uint16_t) seed]);
 //				if (indTable[seed].count != DELETED_ENTRY) {
 //					if (indTable[seed].count > opt::maxCount) {
@@ -293,6 +297,7 @@ private:
 				occ[seed / 64] |= ((uint64_t) 1 << (63 - seed % 64));
 			}
 		}
+		return uniqueCount;
 	}
 
 	inline void initTable(entry *indTable){
@@ -310,47 +315,47 @@ private:
 	        omp_init_lock(&m_locks[ii]);
 	}
 
-	inline void getindTable(const char *aName, entry *indTable) {
-
-	    ifstream rFile(aName);
-	    unsigned readId = 0;
-	    #pragma omp parallel
-	    {
-	    	//table for flagging occupancy of each readID/thread being inserted for each spaced seed
-	    	//faster than using table directly
-	        uint64_t *occ = (uint64_t *) malloc(((m_indexSize + 63)/64) * sizeof(uint64_t));
-	        unsigned lreadId=0;
-	        for (;;) {
-	            bool good;
-	            string faHead, faSeq;
-	            #pragma omp critical(rFile)
-	            {
-	                good=getline(rFile, faHead);
-	                good=getline(rFile, faSeq);
-	                lreadId = readId;
-	                readId++;
-	            }
-	            if(!good) break;
-	            //check for reads shorter than k-merSize
-				if (faSeq.length() < m_seed.size()) {
-					cerr << "ignoring short read; Length: " << faSeq.length() << " ID: " << faHead << endl;
-					continue;
-				}
-	            for (unsigned i=0; i < (m_indexSize + 63)/64; ++i) occ[i]=0;
-	            m_readLengths[lreadId] = faSeq.length();
-	            loadSeq(lreadId, faSeq, occ, indTable);
-#pragma omp atomic
-	            m_totalSSCount += faSeq.length() - m_seed.size() + 1;
-	        }
-	        free(occ);
-	    }
-	    rFile.close();
-
-	    unsigned fullBin=0;
-	    for (unsigned i=0; i < m_indexSize; i++)
-	        if (indTable[i].size!=0) ++fullBin;
-	    cerr << "Entries in index table:" << fullBin << "\n";
-	}
+//	inline void getindTable(const char *aName, entry *indTable) {
+//
+//	    ifstream rFile(aName);
+//	    unsigned readId = 0;
+//	    #pragma omp parallel
+//	    {
+//	    	//table for flagging occupancy of each readID/thread being inserted for each spaced seed
+//	    	//faster than using table directly
+//	        uint64_t *occ = (uint64_t *) malloc(((m_indexSize + 63)/64) * sizeof(uint64_t));
+//	        unsigned lreadId=0;
+//	        for (;;) {
+//	            bool good;
+//	            string faHead, faSeq;
+//	            #pragma omp critical(rFile)
+//	            {
+//	                good=getline(rFile, faHead);
+//	                good=getline(rFile, faSeq);
+//	                lreadId = readId;
+//	                readId++;
+//	            }
+//	            if(!good) break;
+//	            //check for reads shorter than k-merSize
+//				if (faSeq.length() < m_seed.size()) {
+//					cerr << "ignoring short read; Length: " << faSeq.length() << " ID: " << faHead << endl;
+//					continue;
+//				}
+//	            for (unsigned i=0; i < (m_indexSize + 63)/64; ++i) occ[i]=0;
+//	            m_readLengths[lreadId] = faSeq.length();
+//	            loadSeq(lreadId, faSeq, occ, indTable);
+//#pragma omp atomic
+//	            m_totalSSCount += faSeq.length() - m_seed.size() + 1;
+//	        }
+//	        free(occ);
+//	    }
+//	    rFile.close();
+//
+//	    unsigned fullBin=0;
+//	    for (unsigned i=0; i < m_indexSize; i++)
+//	        if (indTable[i].size!=0) ++fullBin;
+//	    cerr << "Entries in index table:" << fullBin << "\n";
+//	}
 };
 
 #endif /* SPACEDSEEDINDEX_H_ */
