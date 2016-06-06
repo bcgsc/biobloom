@@ -33,7 +33,7 @@ public:
 private:
 	BloomMapSSBitVec<ID> m_filter;
 	vector<string> m_fullIDs;
-	vector< boost::shared_ptr<vector<ID> > > m_colliIDs;
+	vector<boost::shared_ptr<vector<ID> > > m_colliIDs;
 
 //	//TODO: REFACTOR WITH BioBloomClassifier
 //	inline void printSingleToFile(const string &outputFileName,
@@ -85,15 +85,15 @@ private:
 				m_filter.getSeedValues());
 		unsigned nonZeroCount = 0;
 
-		if(opt::minHitOnly)
-		{
+		if (opt::minHitOnly) {
 			unsigned count = 0;
 			while (itr != itr.end()) {
-				if (count % (m_filter.getKmerSize()/2) == 0) {
+				if (count % (m_filter.getKmerSize() / 2) == 0) {
 					ID id = m_filter.atBest(*itr, opt::allowMisses);
 					if (id != 0) {
 						if (id != opt::COLLI) {
-							for (unsigned i = 0; i < m_colliIDs[id]->size(); ++i) {
+							for (unsigned i = 0; i < m_colliIDs[id]->size();
+									++i) {
 								if (hitCounts.find(m_colliIDs[id]->at(i))
 										!= hitCounts.end()) {
 									++hitCounts[m_colliIDs[id]->at(i)];
@@ -108,8 +108,7 @@ private:
 				++count;
 				++itr;
 			}
-		}
-		else {
+		} else {
 			while (itr != itr.end()) {
 				//TODO: handle cases with partial collision ID?
 				ID id = m_filter.atBest(*itr, opt::allowMisses);
@@ -155,7 +154,7 @@ private:
 
 	/*
 	 * Returns a vector of best hits to a specific read
-	 * Both reads much match
+	 * Both reads must match
 	 */
 	void convertToHitsBoth(
 			const google::dense_hash_map<ID, unsigned> &hitCounts1,
@@ -170,6 +169,9 @@ private:
 			if (itr != hitCounts2.end()) {
 				hitCount += itr->second;
 			}
+			else{
+				continue;
+			}
 			if (bestHit < hitCount) {
 				bestHit = hitCount;
 			}
@@ -181,6 +183,9 @@ private:
 					hitCounts2.find(i->first);
 			if (itr != hitCounts2.end()) {
 				hitCount += itr->second;
+			}
+			else {
+				continue;
 			}
 			if (bestHit == hitCount) {
 				hits.push_back(i->first);

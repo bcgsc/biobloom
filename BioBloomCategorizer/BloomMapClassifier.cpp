@@ -29,9 +29,8 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 	colliIDs.set_empty_key(opt::EMPTY);
 	ids.set_empty_key(opt::EMPTY);
 	if (!fexists(idFile)) {
-		cerr
-				<< "Error: " + (idFile)
-						+ " File cannot be opened. A corresponding id file is needed."
+		cerr << "Error: " << (idFile)
+				<< " File cannot be opened. A corresponding id file is needed."
 				<< endl;
 		exit(1);
 	}
@@ -88,7 +87,10 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 			it != inputFiles.end(); ++it) {
 		gzFile fp;
 		fp = gzopen(it->c_str(), "r");
-		assert(fp != -1);
+		if (fp == NULL) {
+			cerr << "Cannot open file " << *it << endl;
+			exit(1);
+		}
 		kseq_t *seq = kseq_init(fp);
 		int l;
 #pragma omp parallel private(l)
@@ -149,7 +151,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 	}
 
 	cerr << "Total Reads:" << totalReads << endl;
-	cerr << "Writing file: " << opt::outputPrefix + "_summary.tsv" << endl;
+	cerr << "Writing file: " << opt::outputPrefix << "_summary.tsv" << endl;
 
 	Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
@@ -176,9 +178,15 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	gzFile fp1;
 	gzFile fp2;
 	fp1 = gzopen(file1.c_str(), "r");
-	assert(fp1 != -1);
+	if (fp1 == NULL) {
+		cerr << "Cannot open file " << file1 << endl;
+		exit(1);
+	}
 	fp2 = gzopen(file2.c_str(), "r");
-	assert(fp2 != -1);
+	if (fp2 == NULL) {
+		cerr << "Cannot open file " << file2 << endl;
+		exit(1);
+	}
 	kseq_t *seq1 = kseq_init(fp1);
 	kseq_t *seq2 = kseq_init(fp2);
 	int l1;
@@ -248,7 +256,9 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 					} else {
 #pragma omp critical(outputFiles)
 						{
-							readsOutput << fullID << "\t" << name1 << "\n";
+							readsOutput << fullID << "\t" << name1 << "\t"
+									<< hitCounts1[idIndex] << "\t"
+									<< hitCounts2[idIndex] << "\n";
 						}
 					}
 				}
@@ -326,7 +336,9 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 					} else {
 #pragma omp critical(outputFiles)
 						{
-							readsOutput << fullID << "\t" << name1 << "\n";
+							readsOutput << fullID << "\t" << name1 << "\t"
+									<< hitCounts1[idIndex] << "\t"
+									<< hitCounts2[idIndex] << "\n";
 						}
 					}
 				}
@@ -346,7 +358,7 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	gzclose(fp2);
 
 	cerr << "Total Reads:" << totalReads << endl;
-	cerr << "Writing file: " << opt::outputPrefix + "_summary.tsv" << endl;
+	cerr << "Writing file: " << opt::outputPrefix << "_summary.tsv" << endl;
 
 	Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
