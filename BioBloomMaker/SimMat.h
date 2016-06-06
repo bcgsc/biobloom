@@ -35,12 +35,12 @@ public:
 	typedef typename google::dense_hash_set<ID> IDSet;
 
 	SimMat(const SpacedSeedIndex<ID> &index, unsigned numRead) :
-			m_indexTbl(index), m_numRead(numRead) {
+			m_numRead(numRead), m_simMat(
+					vector<T>(m_numRead * (m_numRead - 1) / 2)), m_indexTbl(
+					index) {
 		cerr << "Size of Similarity Matrix: "
 				<< m_numRead * (m_numRead - 1) * sizeof(T) << " bytes"
 				<< endl;
-		m_simMat = (T *) malloc(
-				m_numRead * (m_numRead - 1) / 2 * sizeof(T));
 		getsimMat(m_simMat, m_indexTbl);
 	}
 
@@ -51,6 +51,7 @@ public:
 	/*
 	 * Note: IDs in matrix are offset by 1 (+1 to get true ID)
 	 */
+	//TODO refactor to simplify code
 	inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > getGroupings(
 			double threshold, std::ofstream &file) {
 		assert(threshold);
@@ -63,16 +64,146 @@ public:
 			groupIndex[readID] = boost::shared_ptr<IDMap>(new IDMap());
 			groupIndex[readID]->set_empty_key(opt::EMPTY);
 		}
+
+		//first level
 		ID lastID = m_numRead + 1;
+
+//		while (lastID != opt::COLLI) {
+//			vector<double> normSim(m_simMat.size());
+//			//convert counts into matrix
+//			for (ID readID1 = 0; readID1 < m_numRead; ++readID1) {
+//				for (ID readID2 = 0; readID2 < m_numRead; ++readID2) {
+//					size_t simInd = getSimIdx(std::max(readID1, readID2),
+//							std::min(readID1, readID2));
+//					double minSize = min(m_indexTbl.getUnique(readID1),
+//							m_indexTbl.getUnique(readID2));
+//					if (readID1 != readID2) {
+//						normSim[simInd] = m_simMat[simInd] / minSize;
+//					}
+//				}
+//			}
+//			//generate ordered list of similar elements
+//			vector<T> indexOrder = sort_indexes(normSim);
+//
+//			for (vector<T>::const_iterator itr = indexOrder.begin();
+//					itr != indexOrder.end(); ++itr) {
+//				//assign collision ID
+//				ID readID1;
+//				ID readID2;
+//				getReadIdx(*itr, readID1, readID2);
+//				//create collision IDs for most similar elements
+//				//if already joined
+//				if (normSim[*itr] > threshold) {
+//					boost::shared_ptr<IDMap> &currMap1 = groupIndex[readID1 + 1];
+//					boost::shared_ptr<IDMap> &currMap2 = groupIndex[readID2 + 1];
+//					(*currMap1)[readID2 + 1] = lastID;
+//					(*currMap2)[readID1 + 1] = lastID;
+//					if (colliIDs.find(lastID) == colliIDs.end()) {
+//						colliIDs[lastID] = boost::shared_ptr<IDSet>(
+//								new IDSet());
+//						colliIDs[lastID]->set_empty_key(opt::EMPTY);
+//					}
+//					colliIDs[lastID]->insert(readID1 + 1);
+//					colliIDs[lastID]->insert(readID2 + 1);
+//					++lastID;
+//					if(lastID == opt::COLLI){
+//						cerr << "ran out of IDs" << endl;
+//						break;
+//					}
+//				} else {
+//					break;
+//				}
+//				//end at threshold
+//			}
+//		}
+//		//collapse collision IDs
+//		//take average? of all significant collisions
+//		//populate list of collapsed IDs
+
+
+//		//populate normalized matrix
+//		for (ID readID1 = 0; readID1 < m_numRead; ++readID1) {
+//			for (ID readID2 = 0; readID2 < readID1; ++readID2) {
+//				size_t simInd = getSimIdx(readID1, readID2);
+//				double minSize = min(m_indexTbl.getReadLength(readID1),
+//						m_indexTbl.getReadLength(readID2));
+//				double simVal = m_simMat[simInd] / minSize;
+//				tempSimMat[readID1][readID2] = simVal;
+//			}
+//		}
+//
+//		double bestSim = 0;
+//		ID bestRead1 = 0;
+//		ID bestRead2 = 0;
+//
+//		//Find most similar elements
+//		for (ID readID1 = 0; readID1 < m_numRead; ++readID1) {
+//			for (ID readID2 = 0; readID2 < readID1; ++readID2) {
+//				if(bestSim < tempSimMat[readID1][readID2]){
+//					bestSim = tempSimMat[readID1][readID2];
+//					bestRead1 = readID1;
+//					bestRead2 = readID2;
+//				}
+//			}
+//		}
+//
+//		//merge most similar elements
+//		for (ID readID1 = 0; readID1 < tempSimMat.size(); ++readID1) {
+//			for (ID readID2 = 0; readID2 < readID1; ++readID2) {
+//				if(bestSim < tempSimMat[readID1][readID2]){
+//					bestSim = tempSimMat[readID1][readID2];
+//					bestRead1 = readID1;
+//					bestRead2 = readID2;
+//				}
+//			}
+//		}
+//
+//
+//
+//		//create collision ID for these elements
+//		//populate groupIndex
+//		//populate colliIDs
+//		//repeat until at root
+//
+//		std::ofstream phylip;
+//		phylip.open((opt::outputPrefix + ".phylip").c_str());
+//
+//		phylip << "\t" << m_numRead << endl;
+//		for (ID readID1 = 0; readID1 < m_numRead; ++readID1) {
+//			phylip << (readID1 + 1);
+//			stringstream convert;
+//			convert << (readID1 + 1);
+//			string id1 = convert.str();
+//			for (unsigned i = id1.length(); i < 10; ++i){
+//				phylip << " ";
+//			}
+//			for (ID readID2 = 0; readID2 < m_numRead; ++readID2) {
+//				if (readID1 == readID2) {
+//					phylip << "\t0";
+//				} else {
+//					size_t simInd = getSimIdx(std::max(readID1, readID2),
+//							std::min(readID1, readID2));
+//					double minSize = min(m_indexTbl.getUnique(readID1),
+//							m_indexTbl.getUnique(readID2));
+//					double simVal = double(m_simMat[simInd]) / minSize;
+//					cout << "\t" << simVal;
+//				}
+//			}
+//			phylip << endl;
+//		}
+//		file.close();
+
 		//for each element compute similarity
-		for (size_t readID1 = 0; readID1 < m_numRead; ++readID1) {
+		for (size_t readID1 = 1; readID1 < m_numRead; ++readID1) {
 			for (unsigned readID2 = 0; readID2 < readID1; ++readID2) {
+				cerr << 5 << endl;
 				size_t simInd = getSimIdx(readID1, readID2);
-				double minSize = min(m_indexTbl.getReadLength(readID1),
-						m_indexTbl.getReadLength(readID2));
-				double simVal = m_simMat[simInd];
+				cerr << 6 << endl;
+				double minSize = min(m_indexTbl.getUnique(readID1),
+						m_indexTbl.getUnique(readID2));
+				double simVal = m_simMat[simInd] / minSize;
 				//if element has sufficient similarity
-				if (simVal / minSize > threshold) {
+				if (simVal > threshold) {
 					boost::shared_ptr<IDMap> &currMap1 = groupIndex[readID1 + 1];
 					boost::shared_ptr<IDMap> &currMap2 = groupIndex[readID2 + 1];
 					if(currMap1->size() > 0){
@@ -83,16 +214,21 @@ public:
 								itr != currMap1->end(); ++itr) {
 							ID maxID = readID2;
 							ID minID = itr->first - 1;
-							if (maxID < minID) {
-								swap(maxID, minID);
-							}
-							double min = min(m_indexTbl.getReadLength(maxID),
-									m_indexTbl.getReadLength(minID));
-							double score = m_simMat[getSimIdx(maxID, minID)]
-									/ min;
-							if (score > threshold && maxScore < score) {
-								maxScore = score;
-								candiateID = itr->second;
+							if (maxID != minID) {
+								if (maxID < minID) {
+									swap(maxID, minID);
+								}
+								double min = std::min(
+										m_indexTbl.getUnique(maxID),
+										m_indexTbl.getUnique(minID));
+								cerr << 1 << endl;
+								double score = m_simMat[getSimIdx(maxID, minID)]
+										/ min;
+								cerr << 2 << endl;
+								if (score > threshold && maxScore < score) {
+									maxScore = score;
+									candiateID = itr->second;
+								}
 							}
 						}
 						if(maxScore == 0){
@@ -110,18 +246,25 @@ public:
 						double maxScore = 0;
 						//check against all current matching IDs
 						for (typename IDMap::const_iterator itr = currMap2->begin();
-								itr != currMap2->end(); ++itr) {
+								itr != currMap2->end();
+								++itr) {
 							ID maxID = readID1;
 							ID minID = itr->first - 1;
-							if (maxID < minID) {
-								swap(maxID, minID);
-							}
-							double min = min(m_indexTbl.getReadLength(maxID),
-									m_indexTbl.getReadLength(minID));
-							double score = m_simMat[getSimIdx(maxID, minID)]/min;
-							if (score > threshold && maxScore < score) {
-								maxScore = score;
-								candiateID = itr->second;
+							if (maxID != minID) {
+								if (maxID < minID) {
+									swap(maxID, minID);
+								}
+								double min = std::min(
+										m_indexTbl.getUnique(maxID),
+										m_indexTbl.getUnique(minID));
+								cerr << 3 << endl;
+								double score = m_simMat[getSimIdx(maxID, minID)]
+										/ min;
+								cerr << 4 << endl;
+								if (score > threshold && maxScore < score) {
+									maxScore = score;
+									candiateID = itr->second;
+								}
 							}
 						}
 						if(maxScore == 0){
@@ -174,10 +317,6 @@ public:
 		return (groupIndex);
 	}
 
-	inline size_t getSimIdx(ID readID1, ID readID2){
-		return (readID1 * (readID1 - 1) / 2 + readID2);
-	}
-
 	/*
 	 * For sorting 2 vectors based on first vector
 	 */
@@ -215,305 +354,13 @@ public:
 		sort(counts, readIDs, i + 1, r);
 	}
 
-//	/*
-//	 * Assumes thresholds are sorted from high to low
-//	 */
-//	inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > getGroupings(
-//			const vector<double> &thresholds, std::ofstream &file) {
-//		//ID mapping to its associated collision ID
-//		google::dense_hash_map<ID, boost::shared_ptr<IDSet> > colliIDs;
-//		colliIDs.set_empty_key(opt::EMPTY);
-//		vector<boost::shared_ptr<IDMap> > groupIndex(m_numRead + 1);
-//		for (size_t readID = 0; readID < m_numRead + 1; ++readID) {
-//			groupIndex[readID] = boost::shared_ptr<IDMap>(new IDMap());
-//			groupIndex[readID]->set_empty_key(opt::EMPTY);
-//		}
-//		ID lastID = m_numRead + 1;
-//		ID start = lastID;
-//		//for each element compute similarity
-//		for (unsigned i = 0; i < thresholds.size(); ++i) {
-//			cerr << "computing grouping for similarity threshold: "
-//					<< thresholds[i] << endl;
-//			ID start = lastID;
-//			double currentThreshold = thresholds[i];
-//			//subgroup index
-//			vector<boost::shared_ptr<IDMap> > subGroupIndex(m_numRead + 1);
-//			for (size_t readID1 = 0; readID1 < m_numRead; ++readID1) {
-//				for (unsigned readID2 = 0; readID2 < readID1; ++readID2) {
-//					size_t simInd = getSimIdx(readID1, readID2);
-//					double ikMean = sqrt(
-//							m_indexTbl.getReadLength(readID1)
-//									* m_indexTbl.getReadLength(readID2));
-//					double simVal = m_simMat[simInd] / ikMean;
-//					//if element has sufficient similarity
-//					if (simVal > threshold) {
-//						boost::shared_ptr<IDMap> &currMap1 = groupIndex[readID1
-//								+ 1];
-//						boost::shared_ptr<IDMap> &currMap2 = groupIndex[readID2
-//								+ 1];
-//						if (currMap1->size() > 0) {
-//							ID candiateID = 0;
-//							double maxScore = 0;
-//							//check against all current matching IDs
-//							for (typename IDMap::const_iterator itr =
-//									currMap1->begin(); itr != currMap1->end();
-//									++itr) {
-//								ID maxID = readID2;
-//								ID minID = itr->first - 1;
-//								if (maxID < minID) {
-//									swap(maxID, minID);
-//								}
-//								double mean = sqrt(
-//										m_indexTbl.getReadLength(maxID)
-//												* m_indexTbl.getReadLength(
-//														minID));
-//								double score = m_simMat[getSimIdx(maxID, minID)]
-//										/ mean;
-//								if (score > threshold && maxScore < score) {
-//									maxScore = score;
-//									candiateID = itr->second;
-//								}
-//							}
-//							if (maxScore == 0) {
-//								continue;
-//							} else {
-//								//assign new ID to hash map
-//								(*currMap1)[readID2 + 1] = candiateID;
-//								(*currMap2)[readID1 + 1] = candiateID;
-//								colliIDs[candiateID]->insert(readID2 + 1);
-//							}
-//						}
-//						if (currMap2->size() > 0) {
-//							ID candiateID = 0;
-//							double maxScore = 0;
-//							//check against all current matching IDs
-//							for (typename IDMap::const_iterator itr =
-//									currMap2->begin(); itr != currMap2->end();
-//									++itr) {
-//								ID maxID = readID1;
-//								ID minID = itr->first - 1;
-//								if (maxID < minID) {
-//									swap(maxID, minID);
-//								}
-//								double mean = sqrt(
-//										m_indexTbl.getReadLength(maxID)
-//												* m_indexTbl.getReadLength(
-//														minID));
-//								double score = m_simMat[getSimIdx(maxID, minID)]
-//										/ mean;
-//								if (score > threshold && maxScore < score) {
-//									maxScore = score;
-//									candiateID = itr->second;
-//								}
-//							}
-//							if (maxScore == 0) {
-//								continue;
-//							} else {
-//								//assign new ID to hash map
-//								(*currMap1)[readID2 + 1] = candiateID;
-//								(*currMap2)[readID1 + 1] = candiateID;
-//								colliIDs[candiateID]->insert(readID1 + 1);
-//							}
-//						}
-//						//new collision ID
-//						if (currMap1->find(readID2 + 1) == currMap1->end()) {
-//							(*currMap1)[readID2 + 1] = lastID;
-//							(*currMap2)[readID1 + 1] = lastID;
-//							if (colliIDs.find(lastID) == colliIDs.end()) {
-//								colliIDs[lastID] = boost::shared_ptr<IDSet>(
-//										new IDSet());
-//								colliIDs[lastID]->set_empty_key(opt::EMPTY);
-//							}
-//							colliIDs[lastID]->insert(readID1 + 1);
-//							colliIDs[lastID]->insert(readID2 + 1);
-//							++lastID;
-//							assert(lastID != opt::COLLI);
-//						}
-//					}
-//				}
-//			}
-//		}
-//		assert(file);
-//		for (typename google::dense_hash_map<ID, boost::shared_ptr<IDSet> >::iterator itr =
-//				colliIDs.begin(); itr != colliIDs.end(); ++itr) {
-//			IDSet idSet = *(itr->second);
-//			file << itr->first;
-//			for (typename IDSet::iterator idItr = idSet.begin();
-//					idItr != idSet.end(); ++idItr) {
-//				file << "\t" << *idItr;
-//			}
-//			file << endl;
-//		}
-//		return (groupIndex);
-//	}
-
-//	inline void getCandidates(
-//			vector<boost::shared_ptr<vector<Link> > > &candidates) {
-//		vector<unsigned> counts(m_numRead, 0);
-//		vector<ID> readIDs(m_numRead, 0);
-//		//get list of count for each element
-////#pragma omp parallel for shared(counts,readIDs) schedule(dynamic)
-//		for (size_t i = 0; i < m_numRead; i++) {
-//			readIDs[i] = i;
-//			candidates[i] = boost::shared_ptr<vector<Link> >(
-//					new vector<Link>());
-//			for (unsigned j = 0; j < i; j++) {
-//				// geometric mean
-//				double ikMean = sqrt(
-//						m_indexTbl.getReadLength(i)
-//								* m_indexTbl.getReadLength(j));
-//				size_t simInd = i * (i - 1) / 2 + j;
-//				double simVal = m_fSimMat[simInd];
-//				if (m_fSimMat[simInd] < m_rSimMat[simInd]) {
-//					simVal = m_rSimMat[simInd];
-//				}
-//				if (simVal / ikMean > opt::thresh) {
-////#pragma omp atomic
-//					++counts[i];
-////#pragma omp atomic
-//					++counts[j];
-//				}
-//			}
-//		}
-//
-//		//TODO Need Parallel sort?
-//		//sort counts;
-//		sort(counts, readIDs, 0, counts.size());
-//
-////#pragma omp parallel for shared(candidates, readIDs) schedule(dynamic)
-//		for (size_t i = 0; i < readIDs.size(); i++) {
-//			size_t readID1 = readIDs[i];
-//			for (ID readID2 = 0; readID2 < readID1; ++readID2) {
-//				// geometric mean
-//				double ikMean = sqrt(
-//						m_indexTbl.getReadLength(readID1)
-//								* m_indexTbl.getReadLength(readID2));
-//				size_t simInd = readID1 * (readID1 - 1) / 2 + readID2;
-////#pragma omp critical(simVal)
-//				{
-//					double simVal =
-//							m_fSimMat[simInd] > m_rSimMat[simInd] ?
-//									m_fSimMat[simInd] : m_rSimMat[simInd];
-//					assert(simVal < ikMean);
-//					Direction forward =
-//							m_fSimMat[simInd] > m_rSimMat[simInd] ? FW : RV;
-//					if (simVal / ikMean > opt::thresh) {
-//						//insert values
-//						candidates[readID1]->push_back(Link(readID2, forward));
-//						//set location to 0 (i.e. marked), both forward and reverse
-//						m_fSimMat[simInd] = 0;
-//						m_rSimMat[simInd] = 0;
-//					}
-//				}
-//			}
-//			for (size_t readID2 = readID1 + 1; readID2 < readIDs.size();
-//					++readID2) {
-//				// geometric mean
-//				double ikMean = sqrt(
-//						m_indexTbl.getReadLength(readID1)
-//								* m_indexTbl.getReadLength(readID2));
-//				size_t simInd = readID2 * (readID2 - 1) / 2 + readID1;
-////#pragma omp critical(simVal)
-//				{
-//					double simVal =
-//							m_fSimMat[simInd] > m_rSimMat[simInd] ?
-//									m_fSimMat[simInd] : m_rSimMat[simInd];
-//					assert(simVal < ikMean);
-//					Direction forward =
-//							m_fSimMat[simInd] > m_rSimMat[simInd] ? FW : RV;
-//					if (simVal / ikMean > opt::thresh) {
-//						//insert values
-//						candidates[readID1]->push_back(Link(readID2, forward));
-//						//set location to 0 (i.e. marked), both forward and reverse
-//						m_fSimMat[simInd] = 0;
-//						m_rSimMat[simInd] = 0;
-//					}
-//				}
-//			}
-//		}
-//	}
-
-//	/*
-//	 * Obtains candidates counts given a threshold
-//	 */
-//	inline unsigned getCandidateCounts(vector<double> &normSSs, double thresh) {
-//		unsigned count = 0;
-//		for (unsigned i = 1; i < m_numRead; i++) {
-//			for (unsigned j = 0; j < i; j++) {
-//				double ikMean = sqrt(
-//						m_indexTbl.getReadLength(i)
-//								* m_indexTbl.getReadLength(j)); // geometric mean
-//				unsigned simInd = i * (i - 1) / 2 + j;
-//				double simVal = m_fSimMat[simInd];
-//				if (m_fSimMat[simInd] < m_rSimMat[simInd]) {
-//					simVal = m_rSimMat[simInd];
-//				}
-//				double normSS = simVal / ikMean;
-//				if (normSS > thresh) {
-//					normSSs.push_back(normSS);
-//					++count;
-//				}
-//			}
-//		}
-//		return count;
-//	}
-
-//	inline void outGraph(const char*aName) {
-//		vector<string> headerSeq;
-//		vector<unsigned> lengthSeq;
-//		getHeader(aName, headerSeq, lengthSeq);
-//
-//		string bName, eName;
-//		getFname(aName, bName, eName);
-//		ostringstream outss;
-//		outss << bName << "-graph.gv";
-//		ofstream outFile(outss.str().c_str());
-//
-//		outFile << "digraph g{\n";
-//		uint64_t *maxVec = (uint64_t *) malloc(
-//				((m_numRead + 63) / 64) * sizeof(uint64_t));
-//		for (unsigned i = 0; i < m_numRead; i++) {
-//			for (unsigned ii = 0; ii < (m_numRead + 63) / 64; ii++)
-//				maxVec[ii] = 0;
-//			maxVec[i / 64] |= ((uint64_t) 1 << (63 - i % 64));
-//			while (true) {
-//				unsigned maxInd = 0;
-//				double max = 0.0;
-//				for (unsigned k = 0; k < m_numRead; k++) {
-//					if ((maxVec[k / 64] & ((uint64_t) 1 << (63 - k % 64)))
-//							== 0) {
-//						double ikMean = sqrt(lengthSeq[i] * lengthSeq[k]); // geometric mean
-//						unsigned simInd = std::max(i, k) * (std::max(i, k) - 1)
-//								/ 2 + std::min(i, k);
-//						double simVal = std::max(m_fSimMat[simInd],
-//								m_rSimMat[simInd]);
-//						if (simVal / ikMean > max) {
-//							maxInd = k;
-//							max = simVal / ikMean;
-//						}
-//					}
-//				}
-//				if (max < opt::thresh)
-//					break;
-//				outFile << "\"" << headerSeq[i] << "\"" << "->" << "\""
-//						<< headerSeq[maxInd] << "\"\n";
-//				maxVec[maxInd / 64] |= ((uint64_t) 1 << (63 - maxInd % 64));
-//			}
-//		}
-//		outFile << "}\n";
-//		outFile.close();
-//		cerr << "Overlap graph was written in: " << outss.str() << "\n";
-//	}
-
 	virtual ~SimMat() {
-		free(m_simMat);
 	}
 private:
 
-	T *m_simMat;
-	const SpacedSeedIndex<ID> &m_indexTbl;
-
 	unsigned m_numRead;
+	vector<T> m_simMat;
+	const SpacedSeedIndex<ID> &m_indexTbl;
 
 	inline void getFname(const char *filename, std::string &bName,
 			std::string &eName) {
@@ -559,7 +406,7 @@ private:
 		rFile.close();
 	}
 
-	inline void getsimMat(T *simMat, const SpacedSeedIndex<ID> &indTable) {
+	inline void getsimMat(vector<T> &simMat, const SpacedSeedIndex<ID> &indTable) {
 		for (size_t i = 0; i < m_numRead * (m_numRead - 1) / 2; i++)
 			simMat[i] = 0;
 		size_t i;
@@ -575,7 +422,7 @@ private:
 						if (minInd > maxInd) {
 							std::swap(minInd,maxInd);
 						}
-						size_t cellIdx = maxInd * (maxInd - 1) / 2 + minInd;
+						size_t cellIdx = getSimIdx(maxInd, minInd);
 #pragma omp atomic
 						++simMat[cellIdx];
 					}
@@ -584,55 +431,17 @@ private:
 		}
 	}
 
-//	void rgetsimMat(T *simMat, const SpacedSeedIndex<ID> &indTable) {
-//		for (size_t i = 0; i < m_numRead * (m_numRead - 1) / 2; i++)
-//			simMat[i] = 0;
-//		size_t i;
-//#pragma omp parallel for shared(indTable, simMat) private(i) schedule(dynamic)
-//		for (i = 0; i < indTable.size(); i++) {
-//			if (indTable.at(i).rsize >= 1 && indTable.at(i).fsize >= 1) {
-//				unsigned *sid = (unsigned *) calloc(
-//						std::min(indTable.at(i).rsize, indTable.at(i).fsize),
-//						sizeof(unsigned));
-//				size_t sInd = 0;
-//				for (size_t j = 0; j < indTable.at(i).rsize; j++) {
-//					for (size_t k = 0; k < indTable.at(i).fsize; k++) {
-//						size_t minInd = indTable.at(i).rid[j], maxInd =
-//								indTable.at(i).fid[k];
-//						if (minInd == maxInd) {
-//							sid[sInd++] = maxInd;
-//							continue;
-//						}
-//						if (minInd > maxInd) {
-//							size_t tmpInd = minInd;
-//							minInd = maxInd;
-//							maxInd = tmpInd;
-//						}
-//#pragma omp atomic
-//						++simMat[maxInd * (maxInd - 1) / 2 + minInd];
-//					}
-//				}
-//				if (sInd > 1) {
-//					for (size_t j = 0; j < sInd - 1; j++) {
-//						for (size_t k = j + 1; k < sInd; k++) {
-//							size_t minInd = sid[j], maxInd = sid[k];
-//							if (minInd > maxInd) {
-//								unsigned tmpInd = minInd;
-//								minInd = maxInd;
-//								maxInd = tmpInd;
-//							}
-//							size_t cellIdx = maxInd * (maxInd - 1) / 2 + minInd;
-//#pragma omp atomic
-//							simMat[cellIdx]--;
-//						}
-//					}
-//				}
-//				free(sid);
-//			}
-//		}
-//		for (size_t i = 0; i < m_numRead * (m_numRead - 1) / 2; i++)
-//			simMat[i] /= 2;
-//	}
+	//readID1 must be > readID2
+	inline size_t getSimIdx(ID readID1, ID readID2){
+		assert(readID1 > readID2);
+		return (readID1 * (readID1 - 1) / 2 + readID2);
+	}
+
+	//read1 > read2
+	inline void getReadIdx(size_t idx, ID &read1, ID &read2){
+		read1 = trunc((sqrt(1 + 4*2*idx)-1)/2);
+		read2 = idx - read1*(read1+1)/2;
+	}
 
 	inline void outsimMat(const char* aName, unsigned *simMat) {
 		string bName, eName;
@@ -649,6 +458,18 @@ private:
 		}
 		outDist.close();
 		cerr << "Similarity matrix was written in: " << outss.str() << "\n";
+	}
+
+	vector<T> sort_indexes(const vector<double> &v) {
+	  // initialize original index locations
+	  vector<T> idx(v.size(),0);
+	  for (size_t i = 0; i != idx.size(); ++i) idx[i] = i;
+
+	  // sort indexes based on comparing values in v
+	  sort(idx.begin(), idx.end(),
+	       [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
+
+	  return idx;
 	}
 };
 

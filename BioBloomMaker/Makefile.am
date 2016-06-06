@@ -18,4 +18,8 @@ biobloommaker_SOURCES = BioBloomMaker.cpp \
 	WindowedFileParser.h WindowedFileParser.cpp \
 	BloomMapGenerator.h BloomMapGenerator.cpp \
 	SimMat.h \
-	SpacedSeedIndex.h
+	SpacedSeedIndex.h \
+	newick_file.cc newick_file.hh \
+	newick.cc newick.hh \
+	tree.cc tree.hh 
+	
