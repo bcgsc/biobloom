@@ -25,6 +25,7 @@
 #include <sdsl/rank_support.hpp>
 #include <boost/shared_ptr.hpp>
 #include "BloomMapSS.hpp"
+#include <omp.h>
 
 using namespace std;
 template<typename T>
@@ -74,10 +75,17 @@ public:
 	 */
 	BloomMapSSBitVec<T>(size_t expectedElemNum, double fpr,
 			const vector<string> seeds,
-			const sdsl::bit_vector_il<BLOCKSIZE> &bv, size_t unique) :
-			m_dSize(0), m_bv(bv), m_dFPR(fpr), m_nEntry(unique), m_tEntry(
+			sdsl::bit_vector &bv, size_t unique) :
+			m_dSize(0), m_dFPR(fpr), m_nEntry(unique), m_tEntry(
 					expectedElemNum), m_sseeds(seeds), m_kmerSize(
 					m_sseeds[0].size()), m_ssVal(parseSeedString(m_sseeds)) {
+		cerr << "Converting bit vector to rank interleaved form" << endl;
+		double start_time = omp_get_wtime();
+		m_bv = sdsl::bit_vector_il<BLOCKSIZE>(bv);
+		bv = sdsl::bit_vector();
+		double time = omp_get_wtime() - start_time;
+		cerr << "Converted bit vector to rank interleaved form " << time << "s"
+				<< endl;
 		for (vector<string>::const_iterator itr = m_sseeds.begin();
 				itr != m_sseeds.end(); ++itr) {
 			//check if spaced seeds are all the same length
@@ -255,7 +263,7 @@ public:
 		//iterates through hashed values adding it to the filter
 		for (size_t i = 0; i < hashes.size(); ++i) {
 			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
-			setIfGreater(&m_data[pos], value, colliIDs);
+			setVal(&m_data[pos], value, colliIDs);
 		}
 	}
 
@@ -456,7 +464,7 @@ private:
 	 * Parses spaced seed string (string consisting of 1s and 0s) to vector
 	 */
 	inline vector< vector<unsigned> > parseSeedString(const vector<string> &spacedSeeds) {
-		SeedVal seeds(spacedSeeds.size());
+		vector< vector<unsigned> > seeds(spacedSeeds.size(), vector<unsigned>() );
 		for(unsigned i = 0; i < spacedSeeds.size(); ++i){
 			const string ss = spacedSeeds.at(i);
 			for(unsigned j = 0; j < ss.size(); ++j){
@@ -510,7 +518,7 @@ private:
 	 * Lock free cas value setting for larger element
 	 * check if it is a collision, setting it accordingly
 	 */
-	inline void setIfGreater(T *val, T newVal,
+	inline void setVal(T *val, T newVal,
 			const vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
 		T oldValue;
 		T insertValue;

@@ -11,7 +11,6 @@
 #include "DataLayer/kseq.h"
 #include "SpacedSeedIndex.h"
 #include "SimMat.h"
-#include <sdsl/bit_vector_il.hpp>
 KSEQ_INIT(gzFile, gzread)
 
 /*
@@ -21,7 +20,7 @@ KSEQ_INIT(gzFile, gzread)
 BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 		unsigned kmerSize, size_t numElements = 0) :
 		m_kmerSize(kmerSize), m_expectedEntries(numElements), m_totalEntries(0), m_fileNames(
-				filenames){
+				filenames) {
 	//Instantiate dense hash map
 	m_headerIDs.set_empty_key("");
 
@@ -33,7 +32,8 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 			gzFile fp;
 			fp = gzopen(m_fileNames[i].c_str(), "r");
 			kseq_t *seq = kseq_init(fp);
-			m_headerIDs[m_fileNames[i].substr(m_fileNames[i].find_last_of("/")+1)] = ++value;
+			m_headerIDs[m_fileNames[i].substr(
+					m_fileNames[i].find_last_of("/") + 1)] = ++value;
 			int l;
 			for (;;) {
 				l = kseq_read(seq);
@@ -83,9 +83,30 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	idFile.open((filePrefix + "_ids.txt").c_str());
 	cerr << "Outputting IDs file: " << filePrefix + "_ids.txt" << endl;
 	writeIDs(idFile, m_headerIDs);
-	if(opt::colliIDs){
-		cerr << "Computing Similarity" << endl;
-		m_colliIDs = generateGroups(idFile);
+
+	if (opt::colliIDs) {
+		//if using prebuilt tree
+		//load in newick file
+
+
+		// assume tree format is as follows:
+		// full ID is a string corresponding to fullIDs used
+		// internal nodes do not yet have collision IDs
+
+		if (fexists(filePrefix + ".newick")) {
+			std::shared_ptr<BiRC::treelib::Tree> tree(
+					BiRC::treelib::parse_newick_file(filePrefix + ".newick"));
+			cerr << "Loading tree for collision IDs" << endl;
+
+			//perform breadth first search of tree
+			//assign largest IDs to top of tree
+			assignIDBFS(*tree, tree->size());
+			//starting at each child node assign collision ID groups
+			setColliIds(*tree, tree->size(), idFile);
+		} else {
+			cerr << "Computing Similarity" << endl;
+			m_colliIDs = generateGroups(idFile);
+		}
 	}
 	idFile.close();
 
@@ -107,12 +128,13 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 				if (l >= 0) {
 					//k-merize with rolling hash insert into bloom map
 					loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
-							m_headerIDs[m_fileNames[i].substr(m_fileNames[i].find_last_of("/")+1)]);
+							m_headerIDs[m_fileNames[i].substr(
+									m_fileNames[i].find_last_of("/") + 1)]);
 				} else {
-					kseq_destroy(seq);
 					break;
 				}
 			}
+			kseq_destroy(seq);
 			gzclose(fp);
 		}
 	} else {
@@ -129,10 +151,10 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 					loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
 							m_headerIDs[seq->name.s]);
 				} else {
-					kseq_destroy(seq);
 					break;
 				}
 			}
+			kseq_destroy(seq);
 			gzclose(fp);
 		}
 	}
@@ -154,78 +176,70 @@ inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
 	cerr << "bitVector Size: " << filterSize << endl;
 	size_t uniqueCounts = 0;
 
-	sdsl::bit_vector_il<BLOCKSIZE> ibv;
-	{
-		sdsl::bit_vector bv(filterSize);
+	sdsl::bit_vector bv(filterSize);
 
-		cerr << "Populating initial bit vector" << endl;
+	cerr << "Populating initial bit vector" << endl;
 
-		//populate sdsl bitvector (bloomFilter)
-		if (opt::idByFile) {
+	//populate sdsl bitvector (bloomFilter)
+	if (opt::idByFile) {
 #pragma omp parallel for
-			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-				gzFile fp;
-				fp = gzopen(m_fileNames[i].c_str(), "r");
-				kseq_t *seq = kseq_init(fp);
-				int l;
-				size_t colliCounts = 0;
-				size_t totalCount = 0;
-				for (;;) {
-					l = kseq_read(seq);
-					if (l >= 0) {
-						const string &seqStr = string(seq->seq.s, seq->seq.l);
-						//k-merize with rolling hash insert into bloom map
-						colliCounts += loadSeq(bv, seqStr, ssVal);
-						totalCount += seq->seq.l - m_kmerSize + 1;
-					} else {
-						kseq_destroy(seq);
-						break;
-					}
+		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+			gzFile fp;
+			fp = gzopen(m_fileNames[i].c_str(), "r");
+			kseq_t *seq = kseq_init(fp);
+			int l;
+			size_t colliCounts = 0;
+			size_t totalCount = 0;
+			for (;;) {
+				l = kseq_read(seq);
+				if (l >= 0) {
+					const string &seqStr = string(seq->seq.s, seq->seq.l);
+					//k-merize with rolling hash insert into bloom map
+					colliCounts += loadSeq(bv, seqStr, ssVal);
+					totalCount += seq->seq.l - m_kmerSize + 1;
+				} else {
+					break;
 				}
-#pragma omp atomic
-				uniqueCounts += totalCount - colliCounts;
-				gzclose(fp);
 			}
-		} else {
-#pragma omp parallel for
-			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-				gzFile fp;
-				fp = gzopen(m_fileNames[i].c_str(), "r");
-				kseq_t *seq = kseq_init(fp);
-				int l;
-				for (;;) {
-					l = kseq_read(seq);
-					if (l >= 0) {
-						const string &seqStr = string(seq->seq.s, seq->seq.l);
-						//k-merize with rolling hash insert into bloom map
-						size_t colliCounts = loadSeq(bv, seqStr, ssVal);
 #pragma omp atomic
-						uniqueCounts += seq->seq.l - m_kmerSize + 1
-								- colliCounts;
-					} else {
-						kseq_destroy(seq);
-						break;
-					}
-				}
-				gzclose(fp);
-			}
+			uniqueCounts += totalCount - colliCounts;
+			kseq_destroy(seq);
+			gzclose(fp);
 		}
-		cerr << "Approximate number of unique entries in filter: "
-				<< uniqueCounts << endl;
-
-		cerr << "Converting bit vector to rank interleaved form" << endl;
-		//init bloom map
-		ibv = sdsl::bit_vector_il<BLOCKSIZE>(bv);
-		cerr << "Converted bit vector to rank interleaved form" << endl;
+	} else {
+#pragma omp parallel for
+		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+			gzFile fp;
+			fp = gzopen(m_fileNames[i].c_str(), "r");
+			kseq_t *seq = kseq_init(fp);
+			int l;
+			for (;;) {
+				l = kseq_read(seq);
+				if (l >= 0) {
+					const string &seqStr = string(seq->seq.s, seq->seq.l);
+					//k-merize with rolling hash insert into bloom map
+					size_t colliCounts = loadSeq(bv, seqStr, ssVal);
+#pragma omp atomic
+					uniqueCounts += seq->seq.l - m_kmerSize + 1 - colliCounts;
+				} else {
+					break;
+				}
+			}
+			kseq_destroy(seq);
+			gzclose(fp);
+		}
 	}
-	return BloomMapSSBitVec<ID>(m_expectedEntries, fpr, opt::sseeds, ibv, uniqueCounts);
+	cerr << "Approximate number of unique entries in filter: " << uniqueCounts
+			<< endl;
+	return BloomMapSSBitVec<ID>(m_expectedEntries, fpr, opt::sseeds, bv,
+			uniqueCounts);
 }
 
 inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > BloomMapGenerator::generateGroups(
 		std::ofstream &file) {
 	//compute binary tree based off of reference sequences
 	//TODO make mini-spaced seed value not hard-coded
-	string miniSeed = "11110000100010100101001000100001111";
+	string miniSeed = "11110000100010010101001000100001111";
 	SpacedSeedIndex<ID> ssIdx(miniSeed, m_headerIDs.size());
 
 #pragma omp parallel for
@@ -234,7 +248,8 @@ inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > BloomMapGener
 		//faster than using table directly
 		uint64_t *occ = (uint64_t *) malloc(
 				((ssIdx.size() + 63) / 64) * sizeof(uint64_t));
-		for (unsigned i=0; i < (ssIdx.size() + 63)/64; ++i) occ[i]=0;
+		for (unsigned i = 0; i < (ssIdx.size() + 63) / 64; ++i)
+			occ[i] = 0;
 		gzFile fp;
 		fp = gzopen(m_fileNames[i].c_str(), "r");
 		kseq_t *seq = kseq_init(fp);
@@ -264,9 +279,9 @@ inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > BloomMapGener
 	cerr << "Total seeds added: " << ssIdx.getCounts() << endl;
 	cerr << "Index finished. Beginning similarity comparison." << endl;
 	//construct similarity matrix
-	//TODO make into better metric? Distance instead?
-	SimMat<uint32_t,ID> calcSim(ssIdx, m_headerIDs.size());
-	return(calcSim.getGroupings(m_colliThresh, file));
+	SimMat<uint32_t, ID> calcSim(ssIdx, m_headerIDs.size());
+	cerr << "Similarity Matrix finished. Obtaining grouping." << endl;
+	return (calcSim.getGroupings(m_colliThresh, file));
 }
 
 BloomMapGenerator::~BloomMapGenerator() {
