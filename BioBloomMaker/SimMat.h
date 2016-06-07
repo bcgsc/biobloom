@@ -196,9 +196,7 @@ public:
 		//for each element compute similarity
 		for (size_t readID1 = 1; readID1 < m_numRead; ++readID1) {
 			for (unsigned readID2 = 0; readID2 < readID1; ++readID2) {
-				cerr << 5 << endl;
 				size_t simInd = getSimIdx(readID1, readID2);
-				cerr << 6 << endl;
 				double minSize = min(m_indexTbl.getUnique(readID1),
 						m_indexTbl.getUnique(readID2));
 				double simVal = m_simMat[simInd] / minSize;
@@ -221,10 +219,8 @@ public:
 								double min = std::min(
 										m_indexTbl.getUnique(maxID),
 										m_indexTbl.getUnique(minID));
-								cerr << 1 << endl;
 								double score = m_simMat[getSimIdx(maxID, minID)]
 										/ min;
-								cerr << 2 << endl;
 								if (score > threshold && maxScore < score) {
 									maxScore = score;
 									candiateID = itr->second;
@@ -257,10 +253,8 @@ public:
 								double min = std::min(
 										m_indexTbl.getUnique(maxID),
 										m_indexTbl.getUnique(minID));
-								cerr << 3 << endl;
 								double score = m_simMat[getSimIdx(maxID, minID)]
 										/ min;
-								cerr << 4 << endl;
 								if (score > threshold && maxScore < score) {
 									maxScore = score;
 									candiateID = itr->second;
