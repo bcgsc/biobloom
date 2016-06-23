@@ -31,6 +31,10 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 			gzFile fp;
 			fp = gzopen(m_fileNames[i].c_str(), "r");
+			if (fp == NULL) {
+				cerr << "file " << m_fileNames[i] << " cannot be opened" << endl;
+				exit(1);
+			}
 			kseq_t *seq = kseq_init(fp);
 			m_headerIDs[m_fileNames[i].substr(
 					m_fileNames[i].find_last_of("/") + 1)] = ++value;
@@ -117,25 +121,67 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 
 	//populate values in bitvector (bloomFilter)
 	if (opt::idByFile) {
+		//overwrite thread usage
+		if (opt::colliAnalysis) {
+			cerr << "Setting thread number to: " << m_fileNames.size() << endl;
+			omp_set_num_threads(m_fileNames.size());
+			Matrix colliMat(m_fileNames.size(), m_fileNames.size(), 0);
 #pragma omp parallel for
-		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-			gzFile fp;
-			fp = gzopen(m_fileNames[i].c_str(), "r");
-			kseq_t *seq = kseq_init(fp);
-			int l;
-			for (;;) {
-				l = kseq_read(seq);
-				if (l >= 0) {
-					//k-merize with rolling hash insert into bloom map
-					loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
-							m_headerIDs[m_fileNames[i].substr(
-									m_fileNames[i].find_last_of("/") + 1)]);
-				} else {
-					break;
+			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+				gzFile fp;
+				fp = gzopen(m_fileNames[i].c_str(), "r");
+				kseq_t *seq = kseq_init(fp);
+				int l;
+				for (;;) {
+					l = kseq_read(seq);
+					if (l >= 0) {
+						//k-merize with rolling hash insert into bloom map
+						loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
+								m_headerIDs[m_fileNames[i].substr(
+										m_fileNames[i].find_last_of("/") + 1)],
+								colliMat);
+					} else {
+						break;
+					}
 				}
+				kseq_destroy(seq);
+				gzclose(fp);
 			}
-			kseq_destroy(seq);
-			gzclose(fp);
+			omp_set_num_threads(opt::threads);
+			cerr << "Outputting matrix" << endl;
+			for (unsigned i = 0; i < colliMat.size1(); i++) {
+				for (unsigned j = 0; j < colliMat.size2(); j++) {
+					if (j == 0) {
+						cout << colliMat(i, j);
+					} else {
+						cout << "\t" << colliMat(i, j);
+					}
+				}
+				cout << endl;
+			}
+			exit(0);
+		}
+		else {
+#pragma omp parallel for
+			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+				gzFile fp;
+				fp = gzopen(m_fileNames[i].c_str(), "r");
+				kseq_t *seq = kseq_init(fp);
+				int l;
+				for (;;) {
+					l = kseq_read(seq);
+					if (l >= 0) {
+						//k-merize with rolling hash insert into bloom map
+						loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
+								m_headerIDs[m_fileNames[i].substr(
+										m_fileNames[i].find_last_of("/") + 1)]);
+					} else {
+						break;
+					}
+				}
+				kseq_destroy(seq);
+				gzclose(fp);
+			}
 		}
 	} else {
 #pragma omp parallel for

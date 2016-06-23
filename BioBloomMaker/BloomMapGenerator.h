@@ -24,6 +24,8 @@
 #include "tree.hh"
 #include "newick_file.hh"
 #include <queue>
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/io.hpp>
 
 using namespace std;
 
@@ -39,6 +41,7 @@ private:
 
 	typedef typename google::dense_hash_set<ID> IDSet;
 	typedef typename google::dense_hash_map<ID, ID> IDMap;
+	typedef typename boost::numeric::ublas::matrix<unsigned> Matrix;
 
 	unsigned m_kmerSize;
 	size_t m_expectedEntries;
@@ -71,6 +74,16 @@ private:
 					bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
 				bloomMap.insert(*itr, value);
 			}
+		}
+	}
+
+	//helper methods
+	inline void loadSeq(BloomMapSSBitVec<ID> &bloomMap, const string& seq,
+			ID value, Matrix &mat ) {
+		/* init rolling hash state and compute hash values for first k-mer */
+		for (RollingHashIterator itr(seq, m_kmerSize,
+				bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
+			bloomMap.insert(*itr, value, mat);
 		}
 	}
 
