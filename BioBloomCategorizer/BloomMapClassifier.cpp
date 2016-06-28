@@ -29,13 +29,13 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 	colliIDs.set_empty_key(opt::EMPTY);
 	ids.set_empty_key(opt::EMPTY);
 	if (!fexists(idFile)) {
-		cerr << "Error: " << (idFile)
+		cerr << "Error: " << idFile.c_str()
 				<< " File cannot be opened. A corresponding id file is needed."
 				<< endl;
 		exit(1);
 	}
 	else{
-		cerr << "Loading ID file: " << idFile << endl;
+		cerr << "Loading ID file: " << idFile.c_str() << endl;
 	}
 
 	ifstream idFH(idFile.c_str(), ifstream::in);
@@ -61,6 +61,7 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		getline(idFH, line);
 	}
 	m_fullIDs = vector<string>(ids.size() + 1); //first element will be empty
+	m_fullIDs[0] = "missing"; //set first element to missing
 	for (google::dense_hash_map<ID, string>::const_iterator itr = ids.begin();
 			itr != ids.end(); ++itr) {
 		m_fullIDs[itr->first] = itr->second;
@@ -88,7 +89,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 		gzFile fp;
 		fp = gzopen(it->c_str(), "r");
 		if (fp == NULL) {
-			cerr << "Cannot open file " << *it << endl;
+			cerr << "Cannot open file" << it->c_str() << endl;
 			exit(1);
 		}
 		kseq_t *seq = kseq_init(fp);
@@ -115,7 +116,9 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 
 				google::dense_hash_map<ID, unsigned> hitCounts;
 				hitCounts.set_empty_key(opt::EMPTY);
-				unsigned score = evaluateRead(name, hitCounts);
+				google::dense_hash_map<ID, unsigned> hitCountsSolid;
+				hitCountsSolid.set_empty_key(opt::EMPTY);
+				unsigned score = evaluateRead(name, hitCounts, hitCountsSolid);
 				assert(score);
 				unsigned threshold = opt::score
 						* (l - m_filter.getKmerSize() + 1);
@@ -151,7 +154,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 	}
 
 	cerr << "Total Reads:" << totalReads << endl;
-	cerr << "Writing file: " << opt::outputPrefix << "_summary.tsv" << endl;
+	cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv" << endl;
 
 	Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
@@ -179,177 +182,110 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	gzFile fp2;
 	fp1 = gzopen(file1.c_str(), "r");
 	if (fp1 == NULL) {
-		cerr << "Cannot open file " << file1 << endl;
+		cerr << "Cannot open file " << file1.c_str() << endl;
 		exit(1);
 	}
 	fp2 = gzopen(file2.c_str(), "r");
 	if (fp2 == NULL) {
-		cerr << "Cannot open file " << file2 << endl;
+		cerr << "Cannot open file " << file2.c_str() << endl;
 		exit(1);
 	}
 	kseq_t *seq1 = kseq_init(fp1);
 	kseq_t *seq2 = kseq_init(fp2);
 	int l1;
 	int l2;
-	if (opt::inclusive) {
 #pragma omp parallel private(l1, l2)
-		for (string sequence1;;) {
-			string sequence2;
-			//TODO sanity check if names to make sure both names are the same
-			string name1;
-			string name2;
-			string qual1;
-			string qual2;
+	for (string sequence1;;) {
+		string sequence2;
+		//TODO sanity check if names to make sure both names are the same
+		string name1;
+		string name2;
+		string qual1;
+		string qual2;
 #pragma omp critical(sequence)
-			{
-				l1 = kseq_read(seq1);
-				sequence1 = string(seq1->seq.s, seq1->seq.l);
-				name1 = string(seq1->name.s, seq1->name.l);
-				qual1 = string(seq1->qual.s, seq1->qual.l);
+		{
+			l1 = kseq_read(seq1);
+			sequence1 = string(seq1->seq.s, seq1->seq.l);
+			name1 = string(seq1->name.s, seq1->name.l);
+			qual1 = string(seq1->qual.s, seq1->qual.l);
 
-				l2 = kseq_read(seq2);
-				sequence2 = string(seq2->seq.s, seq2->seq.l);
-				name2 = string(seq2->name.s, seq2->name.l);
-				qual2 = string(seq2->qual.s, seq2->qual.l);
-			}
-			if (l1 >= 0 && l2 >= 0) {
-#pragma omp atomic
-				++totalReads;
-#pragma omp critical(totalReads)
-				if (totalReads % 1000000 == 0) {
-					cerr << "Currently Reading Read Number: " << totalReads
-							<< endl;
-				}
-
-				google::dense_hash_map<ID, unsigned> hitCounts1;
-				google::dense_hash_map<ID, unsigned> hitCounts2;
-				hitCounts1.set_empty_key(opt::EMPTY);
-				hitCounts2.set_empty_key(opt::EMPTY);
-				unsigned score1 = evaluateRead(sequence1, hitCounts1);
-				unsigned score2 = evaluateRead(sequence2, hitCounts2);
-				unsigned threshold1 = opt::score
-						* (l1 - m_filter.getKmerSize() + 1);
-				unsigned threshold2 = opt::score
-						* (l2 - m_filter.getKmerSize() + 1);
-
-				vector<ID> hits;
-				bool aboveThreshold = score1 > threshold1
-						|| score2 > threshold2;
-				if (aboveThreshold) {
-					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
-				}
-				ID idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
-				if (idIndex != opt::EMPTY) {
-					const string &fullID =
-							idIndex == opt::COLLI ?
-									UNKNOWN : m_fullIDs.at(idIndex);
-					if (opt::outputType == "fq") {
-#pragma omp critical(outputFiles)
-						{
-							readsOutput << "@" << name1 << " "
-									<< fullID << "\n" << sequence1
-									<< "\n+\n" << qual1 << "\n";
-							readsOutput << "@" << name2 << " "
-									<< fullID << "\n" << sequence2
-									<< "\n+\n" << qual2 << "\n";
-						}
-					} else {
-#pragma omp critical(outputFiles)
-						{
-							readsOutput << fullID << "\t" << name1 << "\t"
-									<< hitCounts1[idIndex] << "\t"
-									<< hitCounts2[idIndex] << "\n";
-						}
-					}
-				}
-			} else {
-				if (l1 != -1 || l2 != -1) {
-					cerr << "Terminated without getting to eof at read "
-							<< totalReads << endl;
-					exit(1);
-				}
-				break;
-			}
+			l2 = kseq_read(seq2);
+			sequence2 = string(seq2->seq.s, seq2->seq.l);
+			name2 = string(seq2->name.s, seq2->name.l);
+			qual2 = string(seq2->qual.s, seq2->qual.l);
 		}
-	} else {
-#pragma omp parallel private(l1, l2)
-		for (string sequence1;;) {
-			string sequence2;
-			//TODO sanity check if names to make sure both names are the same
-			string name1;
-			string name2;
-			string qual1;
-			string qual2;
-#pragma omp critical(sequence)
-			{
-				l1 = kseq_read(seq1);
-				sequence1 = string(seq1->seq.s, seq1->seq.l);
-				name1 = string(seq1->name.s, seq1->name.l);
-				qual1 = string(seq1->qual.s, seq1->qual.l);
-
-				l2 = kseq_read(seq2);
-				sequence2 = string(seq2->seq.s, seq2->seq.l);
-				name2 = string(seq2->name.s, seq2->name.l);
-				qual2 = string(seq2->qual.s, seq2->qual.l);
-			}
-			if (l1 >= 0 && l2 >= 0) {
+		if (l1 >= 0 && l2 >= 0) {
 #pragma omp atomic
-				++totalReads;
+			++totalReads;
 #pragma omp critical(totalReads)
-				if (totalReads % 1000000 == 0) {
-					cerr << "Currently Reading Read Number: " << totalReads
-							<< endl;
-				}
+			if (totalReads % 1000000 == 0) {
+				cerr << "Currently Reading Read Number: " << totalReads << endl;
+			}
 
-				google::dense_hash_map<ID, unsigned> hitCounts1;
-				google::dense_hash_map<ID, unsigned> hitCounts2;
-				hitCounts1.set_empty_key(opt::EMPTY);
-				hitCounts2.set_empty_key(opt::EMPTY);
-				unsigned score1 = evaluateRead(sequence1, hitCounts1);
-				unsigned score2 = evaluateRead(sequence2, hitCounts2);
-				unsigned threshold1 = opt::minHitOnly ? opt::minHit - 1 : opt::score
-						* (l1 - m_filter.getKmerSize() + 1);
-				unsigned threshold2 = opt::score
-						* (l2 - m_filter.getKmerSize() + 1);
+			google::dense_hash_map<ID, unsigned> hitCounts1;
+			google::dense_hash_map<ID, unsigned> hitCounts2;
+			google::dense_hash_map<ID, unsigned> hitCountsSolid1;
+			google::dense_hash_map<ID, unsigned> hitCountsSolid2;
+			hitCountsSolid1.set_empty_key(opt::EMPTY);
+			hitCountsSolid2.set_empty_key(opt::EMPTY);
+			hitCountsSolid1.set_empty_key(opt::EMPTY);
+			hitCountsSolid2.set_empty_key(opt::EMPTY);
+			unsigned score1 = evaluateRead(sequence1, hitCounts1,
+					hitCountsSolid1);
+			unsigned score2 = evaluateRead(sequence2, hitCounts2,
+					hitCountsSolid2);
+			unsigned threshold1 =
+					opt::minHitOnly ?
+							opt::minHit - 1 :
+							opt::score * (l1 - m_filter.getKmerSize() + 1);
+			unsigned threshold2 = opt::score
+					* (l2 - m_filter.getKmerSize() + 1);
 
-				vector<ID> hits;
-				bool aboveThreshold = score1 > threshold1
-						&& score2 > threshold2;
-				if (aboveThreshold) {
+			vector<ID> hits;
+			bool aboveThreshold = score1 >= threshold1 && score2 >= threshold2;
+			if (aboveThreshold) {
+				if (opt::inclusive)
+					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
+				else
 					convertToHitsBoth(hitCounts1, hitCounts2, hits);
-				}
-				ID idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
-				if (idIndex != opt::EMPTY) {
-					const string &fullID =
-							idIndex == opt::COLLI ?
-									UNKNOWN : m_fullIDs.at(idIndex);
-					if (opt::outputType == "fq") {
+			}
+			ID idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
+//				if (idIndex != opt::EMPTY) {
+			const string &fullID =
+					idIndex == opt::COLLI ? UNKNOWN : m_fullIDs.at(idIndex);
+			if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
-						{
-							readsOutput << "@" << name1 << " "
-									<< fullID << "\n" << sequence1
-									<< "\n+\n" << qual1 << "\n";
-							readsOutput << "@" << name2 << " "
-									<< fullID << "\n" << sequence2
-									<< "\n+\n" << qual2 << "\n";
-						}
-					} else {
-#pragma omp critical(outputFiles)
-						{
-							readsOutput << fullID << "\t" << name1 << "\t"
-									<< hitCounts1[idIndex] << "\t"
-									<< hitCounts2[idIndex] << "\n";
-						}
-					}
+				{
+					readsOutput << "@" << name1 << " " << fullID << "\n"
+							<< sequence1 << "\n+\n" << qual1 << "\n";
+					readsOutput << "@" << name2 << " " << fullID << "\n"
+							<< sequence2 << "\n+\n" << qual2 << "\n";
 				}
 			} else {
-				if (l1 != -1 || l2 != -1) {
-					cerr << "Terminated without getting to eof at read "
-							<< totalReads << endl;
-					exit(1);
+#pragma omp critical(outputFiles)
+				{
+					readsOutput << fullID << "\t" << name1 << "\t" << score1
+							<< "\t" << score2;
+					for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+							hitCounts1.begin(); i != hitCounts1.end(); ++i) {
+						google::dense_hash_map<ID, unsigned>::const_iterator itr =
+								hitCounts2.find(i->first);
+						if (itr != hitCounts2.end()) {
+							readsOutput << "\t" << i->first << ":" << i->second
+									<< ";" << itr->second;
+						}
+					}
+					readsOutput << "\n";
 				}
-				break;
+//					}
 			}
+		} else {
+			if (l1 != -1 || l2 != -1) {
+				cerr << "Terminated without getting to eof at read "
+						<< totalReads << endl;
+				exit(1);
+			}
+			break;
 		}
 	}
 	kseq_destroy(seq1);
@@ -358,7 +294,7 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	gzclose(fp2);
 
 	cerr << "Total Reads:" << totalReads << endl;
-	cerr << "Writing file: " << opt::outputPrefix << "_summary.tsv" << endl;
+	cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv" << endl;
 
 	Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);

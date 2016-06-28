@@ -80,54 +80,70 @@ private:
 	 * Returns the number of hits
 	 */
 	inline unsigned evaluateRead(const string &seq,
-			google::dense_hash_map<ID, unsigned> &hitCounts) {
+			google::dense_hash_map<ID, unsigned> &hitCounts, google::dense_hash_map<ID, unsigned> &solidHitCounts) {
 		RollingHashIterator itr(seq, m_filter.getKmerSize(),
 				m_filter.getSeedValues());
 		unsigned nonZeroCount = 0;
+//		unsigned partialHit = 0;
 
+		//TODO: REACTIVATE AT SOME POINT
 		if (opt::minHitOnly) {
-			unsigned count = 0;
-			while (itr != itr.end()) {
-				if (count % (m_filter.getKmerSize() / 2) == 0) {
-					ID id = m_filter.atBest(*itr, opt::allowMisses);
-					if (id != 0) {
-						if (id != opt::COLLI) {
-							for (unsigned i = 0; i < m_colliIDs[id]->size();
-									++i) {
-								if (hitCounts.find(m_colliIDs[id]->at(i))
-										!= hitCounts.end()) {
-									++hitCounts[m_colliIDs[id]->at(i)];
-								} else {
-									hitCounts[m_colliIDs[id]->at(i)] = 1;
-								}
-							}
-						}
-						++nonZeroCount;
-					}
-				}
-				++count;
-				++itr;
-			}
-		} else {
-			while (itr != itr.end()) {
-				//TODO: handle cases with partial collision ID?
-				ID id = m_filter.atBest(*itr, opt::allowMisses);
-				if (id != 0) {
-					if (id != opt::COLLI) {
-						for (unsigned i = 0; i < m_colliIDs[id]->size(); ++i) {
-							if (hitCounts.find(m_colliIDs[id]->at(i))
-									!= hitCounts.end()) {
-								++hitCounts[m_colliIDs[id]->at(i)];
-							} else {
-								hitCounts[m_colliIDs[id]->at(i)] = 1;
-							}
-						}
-					}
-					++nonZeroCount;
-				}
-				++itr;
-			}
+			cerr << "MINHITONLY NOT YET IMPLEMENTED" << endl;
+			exit(1);
 		}
+//			unsigned count = 0;
+//			while (itr != itr.end()) {
+//				if (count % (m_filter.getKmerSize() / 2) == 0) {
+//					unsigned missCount = 0;
+//					vector<ID> ids = m_filter.at(*itr, m_colliIDs, missCount);
+//					if (missCount <= opt::allowMisses) {
+//						for (unsigned i = 0; 0 < ids.size(); ++i) {
+//							ID id = ids[i];
+//							if (hitCounts.find(id) != hitCounts.end()) {
+//								++hitCounts[id];
+//							} else {
+//								hitCounts[id] = 1;
+//							}
+//						}
+//						++nonZeroCount;
+//					}
+//				}
+//				++count;
+//				++itr;
+//			}
+//		} else {
+		while (itr != itr.end()) {
+			unsigned missCount = 0;
+			vector<ID> ids = m_filter.at(*itr, m_colliIDs, missCount);
+			if (missCount == 0) {
+				for (unsigned i = 0; i < ids.size(); ++i) {
+					ID id = ids[i];
+					if (solidHitCounts.find(id) != solidHitCounts.end()) {
+						++solidHitCounts[id];
+					} else {
+						solidHitCounts[id] = 1;
+					}
+					if (hitCounts.find(id) != hitCounts.end()) {
+						++hitCounts[id];
+					} else {
+						hitCounts[id] = 1;
+					}
+				}
+				++nonZeroCount;
+			} else if (missCount <= opt::allowMisses) {
+				for (unsigned i = 0; i < ids.size(); ++i) {
+					ID id = ids[i];
+					if (hitCounts.find(id) != hitCounts.end()) {
+						++hitCounts[id];
+					} else {
+						hitCounts[id] = 1;
+					}
+				}
+				++nonZeroCount;
+			}
+			++itr;
+		}
+//		}
 		return nonZeroCount;
 	}
 

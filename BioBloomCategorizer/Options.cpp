@@ -7,12 +7,14 @@
 
 #include <Options.h>
 
+using namespace std;
+
 namespace opt {
 bool inclusive = false;
 double score = 0.15;
-std::string outputPrefix = "";
-std::string filePostfix = "";
-std::string outputType = "";
+string outputPrefix = "";
+string filePostfix = "";
+string outputType = "";
 bool minHitOnly = false;
 unsigned minHit = 0;
 }

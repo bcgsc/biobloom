@@ -26,6 +26,8 @@
 #include <boost/shared_ptr.hpp>
 #include "BloomMapSS.hpp"
 #include <omp.h>
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/io.hpp>
 
 using namespace std;
 template<typename T>
@@ -244,13 +246,27 @@ public:
 
 	/*
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
-	 * ONLY REPLACE VALUE if it is larger than current value (for thread safety)
+	 * ONLY REPLACE VALUE if it is larger than current value (deterministic)
 	 */
 	void insert(std::vector<size_t> const &hashes, T value) {
 		//iterates through hashed values adding it to the filter
 		for (size_t i = 0; i < hashes.size(); ++i) {
 			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
 			setIfGreater(&m_data[pos], value);
+		}
+	}
+
+	/*
+	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
+	 * ALWAYS SETS VALUE
+	 * NOT DETERMINSTIC
+	 */
+	void insert(std::vector<size_t> const &hashes, T value,
+			boost::numeric::ublas::matrix<unsigned> &mat) {
+		//iterates through hashed values adding it to the filter
+		for (size_t i = 0; i < hashes.size(); ++i) {
+			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
+			setVal(&m_data[pos], value, mat);
 		}
 	}
 
@@ -326,6 +342,106 @@ public:
 		} else {
 			return value;
 		}
+	}
+
+	/*
+	 * Returns unambiguous hit to object
+	 * Returns best hit on ambiguous collisions
+	 * Returns numeric_limits<T>::max() on completely ambiguous collision
+	 * Returns 0 on if missing element
+	 * Uses colliIDs to resolve ambiguities
+	 */
+	T at(std::vector<size_t> const &hashes, unsigned missMin,
+			const vector<boost::shared_ptr<vector<T> > > &colliIDs) const {
+		google::dense_hash_map<T, unsigned> tmpHash;
+		tmpHash.set_empty_key(0);
+		unsigned maxCount = 0;
+		unsigned miss = 0;
+		T value = std::numeric_limits<T>::max();
+
+		for (unsigned i = 0; i < hashes.size(); ++i) {
+			size_t pos = hashes.at(i) % m_bv.size();
+			if(m_bv[pos] == 0){
+				++miss;
+				continue;
+			}
+			size_t rankPos = m_rankSupport(pos);
+			T currID = m_data[rankPos];
+
+			if (currID != std::numeric_limits<T>::max()) {
+				for (unsigned i = 0; i < colliIDs[currID]->size(); ++i) {
+					T id = colliIDs[currID]->at(i);
+					if (tmpHash.find(id)
+							!= tmpHash.end()) {
+						++tmpHash[id];
+					} else {
+						tmpHash[id] = 1;
+					}
+					if (maxCount == tmpHash[id]) {
+						//TODO: not the best way of handling ambiguity
+						value = currID;
+					} else if (maxCount < tmpHash[id]) {
+						value = id;
+						maxCount = tmpHash[id];
+					}
+				}
+			}
+		}
+		if (missMin < miss) {
+			return 0;
+		} else {
+			return value;
+		}
+	}
+
+	/*
+	 * Returns unambiguous hit to object
+	 * Returns best hit on ambiguous collisions
+	 * Returns numeric_limits<T>::max() on completely ambiguous collision
+	 * Returns 0 on if missing element
+	 * Uses colliIDs to resolve ambiguities
+	 */
+	vector<T> at(std::vector<size_t> const &hashes,
+			const vector<boost::shared_ptr<vector<T> > > &colliIDs,
+			unsigned &miss) const {
+		google::dense_hash_map<T, unsigned> tmpHash;
+		tmpHash.set_empty_key(0);
+		unsigned maxCount = 0;
+//		T value = std::numeric_limits<T>::max();
+
+		for (unsigned i = 0; i < hashes.size(); ++i) {
+			size_t pos = hashes.at(i) % m_bv.size();
+			if(m_bv[pos] == 0){
+				++miss;
+				continue;
+			}
+			size_t rankPos = m_rankSupport(pos);
+			T currID = m_data[rankPos];
+
+			if (currID != std::numeric_limits<T>::max()) {
+				for (unsigned i = 0; i < colliIDs[currID]->size(); ++i) {
+					T id = colliIDs[currID]->at(i);
+					if (tmpHash.find(id)
+							!= tmpHash.end()) {
+						++tmpHash[id];
+					} else {
+						tmpHash[id] = 1;
+					}
+					if (maxCount < tmpHash[id]) {
+						maxCount = tmpHash[id];
+					}
+				}
+			}
+		}
+		vector<T> results;
+		for (typename google::dense_hash_map<T, unsigned>::iterator itr =
+				tmpHash.begin(); itr != tmpHash.end(); ++itr) {
+			if (maxCount == itr->second) {
+				assert(itr->first != 0);
+				results.push_back(itr->first);
+			}
+		}
+		return results;
 	}
 
 //	/*
@@ -512,6 +628,20 @@ private:
 			if (oldValue >= newVal)
 				break;
 		} while (!__sync_bool_compare_and_swap(val, oldValue, newVal));
+	}
+
+	inline void setVal(T *val, T newVal,
+			boost::numeric::ublas::matrix<unsigned> &mat) {
+		T oldValue;
+		do {
+			oldValue = *val;
+			if (oldValue == newVal)
+				break;
+		} while (!__sync_bool_compare_and_swap(val, oldValue, newVal));
+		if (oldValue != 0 && oldValue != newVal) {
+#pragma omp atomic
+				++mat(oldValue - 1, newVal - 1);
+		}
 	}
 
 	/*
