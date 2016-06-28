@@ -67,7 +67,7 @@ public:
 
 		//first level
 		ID lastID = m_numRead + 1;
-
+//
 //		while (lastID != opt::COLLI) {
 //			vector<double> normSim(m_simMat.size());
 //			//convert counts into matrix
@@ -92,7 +92,6 @@ public:
 //				ID readID2;
 //				getReadIdx(*itr, readID1, readID2);
 //				//create collision IDs for most similar elements
-//				//if already joined
 //				if (normSim[*itr] > threshold) {
 //					boost::shared_ptr<IDMap> &currMap1 = groupIndex[readID1 + 1];
 //					boost::shared_ptr<IDMap> &currMap2 = groupIndex[readID2 + 1];
@@ -105,6 +104,15 @@ public:
 //					}
 //					colliIDs[lastID]->insert(readID1 + 1);
 //					colliIDs[lastID]->insert(readID2 + 1);
+//					//add combination ID to matrix
+//					//only bother with combinations can possibly create a value greater than threshold
+//					//STILL AN O(n) operation
+//					//take average of similarities
+//					for (size_t readID = 0; readID < m_numRead + 1; ++readID) {
+//							groupIndex[readID] = boost::shared_ptr<IDMap>(new IDMap());
+//							groupIndex[readID]->set_empty_key(opt::EMPTY);
+//						}
+//
 //					++lastID;
 //					if(lastID == opt::COLLI){
 //						cerr << "ran out of IDs" << endl;

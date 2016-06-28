@@ -145,6 +145,10 @@ private:
 				travQueue.push(tree.right_child(currentID));
 			}
 		}
+		//assign root total collisionID
+		std::stringstream ss;
+		ss << opt::COLLI;
+		tree.setLabel(tree.root(), std::string(ss.str()));
 	}
 
 	//TODO: optimize me!
@@ -156,6 +160,7 @@ private:
 
 		ID numLeaf = (numNodes + 1)/2;
 
+		//TODO RENAME readID to something else that makes more sense
 		for (ID readID = 0; readID < numNodes; ++readID) {
 			m_colliIDs[readID] = boost::shared_ptr<IDMap>(new IDMap());
 			m_colliIDs[readID]->set_empty_key(opt::EMPTY);
@@ -163,8 +168,9 @@ private:
 
 		ID root = stoi(tree.label(tree.root()));
 
-		//for every possible combinination of IDs
+		//for every possible combination of IDs
 		//do not bother assigning when root node is involved
+		//TODO: Some of these m_colliIDs combinations are impossible thus are wasting space
 		for (ID i = 1; i < numNodes - 1; ++i) {
 			for (ID j = i + 1; j < numNodes - 1; ++j) {
 				ID common = getLCAID(tree, i, j);
@@ -197,6 +203,65 @@ private:
 	}
 
 	/*
+	 * Sets pairs between groups with most collisions
+	 * Assumes collisionIDs based on tree have already been assigned
+	 */
+	void setPairs(const BiRC::treelib::Tree &tree,
+			const vector<pair<ID, ID> > &orderedPairs, ID firstID, std::ofstream &file) {
+
+		google::dense_hash_map<ID,pair<ID,ID > > newIDs;
+		newIDs.set_empty_key(opt::EMPTY);
+
+		size_t pairIdx = 0;
+		ID currentID = firstID;
+		for ( ; currentID < opt::COLLI && pairIdx < orderedPairs.size();
+				++pairIdx) {
+			ID i = orderedPairs[pairIdx].first;
+			ID j = orderedPairs[pairIdx].second;
+			//check if pair is already joined by one parent
+			if (isSingleLink(tree, i, j)) {
+				continue;
+			}
+
+			//output pair to file
+			file << currentID << "\t" << i << "\t" << j << endl;
+
+			//create new collisionID
+			m_colliIDs.push_back(boost::shared_ptr<IDMap>(new IDMap()));
+			m_colliIDs[currentID]->set_empty_key(opt::EMPTY);
+			newIDs[currentID] = pair<ID,ID>(i,j);
+			currentID++;
+		}
+
+		ID root = stoi(tree.label(tree.root()));
+
+		//link all possible colliIDs pairs to LCA if not root
+#pragma omp parallel for
+		for (ID i = firstID; i < currentID; ++i) {
+			IDMap::iterator colliPtr = m_colliIDs[newIDs[i].first]->find(
+					newIDs[i].second);
+			if (colliPtr == m_colliIDs[newIDs[i].first]->end()) {
+				continue;
+			}
+			ID parent = colliPtr->second;
+			for (ID j = 1; j < firstID; ++j) {
+//				cerr << i << "\t" << j << "\t" << parent << "\t"
+//						<< newIDs[i].first << "\t" << newIDs[i].second << endl;
+				ID common = getLCAID(tree, parent, j);
+				if (common != root) {
+					(*m_colliIDs[i])[j] = common;
+				}
+			}
+		}
+		//replace old collisionIDs
+		for(google::dense_hash_map<ID,pair<ID,ID > >::iterator itr = newIDs.begin();
+				itr != newIDs.end(); ++itr){
+			(*m_colliIDs[itr->second.first])[itr->second.second] = itr->first;
+			(*m_colliIDs[itr->second.second])[itr->second.first] = itr->first;
+		}
+	}
+
+	/*
 	 * Traverses tree from current positions to find LCA
 	 */
 	//TODO: optimize me!
@@ -223,6 +288,22 @@ private:
 			currParentID = tree.parent(currParentID);
 		}
 		return stoi(tree.label(tree.root()));
+	}
+
+	/*
+	 * Determines if link is due to a single parent
+	 */
+	//TODO: optimize me!
+	bool isSingleLink(const BiRC::treelib::Tree &tree, ID id1, ID id2) {
+		std::stringstream ss1;
+		ss1 << id1;
+		std::stringstream ss2;
+		ss2 << id2;
+		int nodeID1 = tree.node(std::string(ss1.str()));
+		int nodeID2 = tree.node(std::string(ss2.str()));
+		int parentID1 = tree.parent(nodeID1);
+		int parentID2 = tree.parent(nodeID2);
+		return parentID1 == parentID2;
 	}
 
 	/*

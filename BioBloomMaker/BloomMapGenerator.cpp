@@ -91,8 +91,6 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	if (opt::colliIDs) {
 		//if using prebuilt tree
 		//load in newick file
-
-
 		// assume tree format is as follows:
 		// full ID is a string corresponding to fullIDs used
 		// internal nodes do not yet have collision IDs
@@ -107,6 +105,26 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			assignIDBFS(*tree, tree->size());
 			//starting at each child node assign collision ID groups
 			setColliIds(*tree, tree->size(), idFile);
+
+			//load ordered list of pairwise collisionsIDs
+			cerr << "Loading ordered list of collision pairs" << endl;
+			assert(fexists(filePrefix + "_orderedIDs.txt"));
+			std::ifstream orderedIDFile;
+			orderedIDFile.open((filePrefix + "_orderedIDs.txt").c_str(), ifstream::in);
+			vector<pair<ID,ID> > orderedPairs;
+			string line;
+			getline(orderedIDFile, line);
+			while (orderedIDFile.good()) {
+				stringstream converter(line);
+				ID id1, id2;
+				converter >> id1;
+				converter >> id2;
+				orderedPairs.push_back(pair<ID, ID>(id1, id2));
+				getline(orderedIDFile, line);
+			}
+			//assign remaining IDs to pairwise collisionIDs and assign groups
+			setPairs(*tree, orderedPairs, tree->size(), idFile);
+
 		} else {
 			cerr << "Computing Similarity" << endl;
 			m_colliIDs = generateGroups(idFile);
@@ -149,6 +167,8 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			}
 			omp_set_num_threads(opt::threads);
 			cerr << "Outputting matrix" << endl;
+			std::ofstream matFile;
+			matFile.open((filePrefix + "_matrix.tsv").c_str());
 			for (unsigned i = 0; i < colliMat.size1(); i++) {
 				for (unsigned j = 0; j < colliMat.size2(); j++) {
 					if (j == 0) {
@@ -159,6 +179,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 				}
 				cout << endl;
 			}
+			matFile.close();
 			exit(0);
 		}
 		else {
