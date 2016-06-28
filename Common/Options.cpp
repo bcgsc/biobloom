@@ -13,4 +13,5 @@ namespace opt {
 	unsigned allowMisses = 0;
 	bool idByFile = false;
 	bool colliIDs = false;
+	bool colliAnalysis = false;
 }

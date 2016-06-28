@@ -23,7 +23,11 @@ namespace opt {
 	extern const ID COLLI;
 	extern std::vector<std::string> sseeds;
 	extern unsigned allowMisses;
+
+	//options of BBM only
+	//TODO: move to own header file
 	extern bool idByFile;
 	extern bool colliIDs;
+	extern bool colliAnalysis;
 }
 #endif
