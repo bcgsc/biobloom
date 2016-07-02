@@ -89,7 +89,8 @@ public:
 			const vector<vector<unsigned> > &ssVals) :
 			m_seq(seq), m_k(k), m_rollingHash(m_k, ssVals), m_rollNextHash(
 					false), m_start(true), m_pos(0) {
-		m_nextInvalidChar = strspn(m_seq.c_str(), ACGT_CHARS);
+		//TURN OFF INVALID CHAR CHECKING
+//		m_nextInvalidChar = strspn(m_seq.c_str(), ACGT_CHARS);
 		next();
 	}
 

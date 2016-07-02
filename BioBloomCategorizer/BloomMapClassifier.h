@@ -13,6 +13,7 @@
 #include "Common/Options.h"
 #include "Options.h"
 #include <google/dense_hash_map>
+#include <google/dense_hash_set>
 #include "Common/Dynamicofstream.h"
 #include <vector>
 //#include "DataLayer/FastaReader.h"
@@ -80,7 +81,7 @@ private:
 	 * Returns the number of hits
 	 */
 	inline unsigned evaluateRead(const string &seq,
-			google::dense_hash_map<ID, unsigned> &hitCounts, google::dense_hash_map<ID, unsigned> &solidHitCounts) {
+			google::dense_hash_map<ID, unsigned> &hitCounts) {
 		RollingHashIterator itr(seq, m_filter.getKmerSize(),
 				m_filter.getSeedValues());
 		unsigned nonZeroCount = 0;
@@ -91,27 +92,37 @@ private:
 			cerr << "MINHITONLY NOT YET IMPLEMENTED" << endl;
 			exit(1);
 		}
-//			unsigned count = 0;
-//			while (itr != itr.end()) {
-//				if (count % (m_filter.getKmerSize() / 2) == 0) {
-//					unsigned missCount = 0;
-//					vector<ID> ids = m_filter.at(*itr, m_colliIDs, missCount);
-//					if (missCount <= opt::allowMisses) {
-//						for (unsigned i = 0; 0 < ids.size(); ++i) {
-//							ID id = ids[i];
-//							if (hitCounts.find(id) != hitCounts.end()) {
-//								++hitCounts[id];
-//							} else {
-//								hitCounts[id] = 1;
-//							}
-//						}
-//						++nonZeroCount;
-//					}
-//				}
-//				++count;
-//				++itr;
-//			}
-//		} else {
+		while (itr != itr.end()) {
+			unsigned missCount = 0;
+			vector<ID> ids = m_filter.at(*itr, m_colliIDs, missCount);
+			if (missCount <= opt::allowMisses) {
+				for (unsigned i = 0; i < ids.size(); ++i) {
+					ID id = ids[i];
+					if (hitCounts.find(id) != hitCounts.end()) {
+						++hitCounts[id];
+					} else {
+						hitCounts[id] = 1;
+					}
+				}
+				++nonZeroCount;
+			}
+			++itr;
+		}
+		return nonZeroCount;
+	}
+
+	/*
+	 * Returns the number of hits
+	 */
+	inline unsigned evaluateRead(const string &seq,
+			google::dense_hash_map<ID, unsigned> &hitCounts,
+			google::dense_hash_map<ID, unsigned> &solidHitCounts,
+			unsigned &solidCounts) {
+		RollingHashIterator itr(seq, m_filter.getKmerSize(),
+				m_filter.getSeedValues());
+		unsigned nonZeroCount = 0;
+//		unsigned partialHit = 0;
+
 		while (itr != itr.end()) {
 			unsigned missCount = 0;
 			vector<ID> ids = m_filter.at(*itr, m_colliIDs, missCount);
@@ -129,6 +140,7 @@ private:
 						hitCounts[id] = 1;
 					}
 				}
+				++solidCounts;
 				++nonZeroCount;
 			} else if (missCount <= opt::allowMisses) {
 				for (unsigned i = 0; i < ids.size(); ++i) {
@@ -143,7 +155,6 @@ private:
 			}
 			++itr;
 		}
-//		}
 		return nonZeroCount;
 	}
 
@@ -211,19 +222,27 @@ private:
 
 	/*
 	 * Returns a vector of best hits to a specific read
-	 * Only one read needs to math
+	 * Only one read needs to match
 	 */
+	//TODO: possible to optimize more!
 	void convertToHitsOnlyOne(
 			const google::dense_hash_map<ID, unsigned> &hitCounts1,
 			const google::dense_hash_map<ID, unsigned> &hitCounts2,
-			vector<ID> &hits) {
+			vector<ID> &hits, unsigned &delta) {
 		unsigned bestHit = 0;
+		unsigned secondBestHit = 0;
+
+		//for tracking already found element in first set
+		google::dense_hash_set<ID> tempSet;
+		tempSet.set_empty_key(opt::EMPTY);
+
 		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 				hitCounts1.begin(); i != hitCounts1.end(); ++i) {
 			unsigned hitCount = i->second;
 			google::dense_hash_map<ID, unsigned>::const_iterator itr =
 					hitCounts2.find(i->first);
 			if (itr != hitCounts2.end()) {
+				tempSet.insert(i->first);
 				hitCount += itr->second;
 			}
 			if (bestHit < hitCount) {
@@ -236,6 +255,7 @@ private:
 				bestHit = i->second;
 			}
 		}
+
 		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 				hitCounts1.begin(); i != hitCounts1.end(); ++i) {
 			unsigned hitCount = i->second;
@@ -247,13 +267,21 @@ private:
 			if (bestHit == hitCount) {
 				hits.push_back(i->first);
 			}
+			else if (hitCount > secondBestHit) {
+				secondBestHit = hitCount;
+			}
 		}
 		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 				hitCounts2.begin(); i != hitCounts2.end(); ++i) {
-			if (bestHit == i->second) {
-				hits.push_back(i->first);
+			if (tempSet.find(i->first) == tempSet.end()) {
+				if (bestHit == i->second) {
+					hits.push_back(i->first);
+				} else if (i->second > secondBestHit) {
+					secondBestHit = i->second;
+				}
 			}
 		}
+		delta = bestHit - secondBestHit;
 	}
 };
 

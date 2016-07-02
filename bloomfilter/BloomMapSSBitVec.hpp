@@ -441,6 +441,20 @@ public:
 				results.push_back(itr->first);
 			}
 		}
+//		//TODO: use more efficiently!
+//		//TIE BREAKER
+//		if (results.size() > 1) {
+//			if (m_bv[hashes.at(0) % m_bv.size()] != 0) {
+//				size_t pos = hashes.at(0) % m_bv.size();
+//				size_t rankPos = m_rankSupport(pos);
+//				T currID = m_data[rankPos];
+//				if (currID != std::numeric_limits<T>::max()
+//						&& colliIDs[currID]->size() == 1) {
+//					results.clear();
+//					results.push_back(currID);
+//				}
+//			}
+//		}
 		return results;
 	}
 

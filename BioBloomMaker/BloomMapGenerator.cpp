@@ -172,12 +172,12 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			for (unsigned i = 0; i < colliMat.size1(); i++) {
 				for (unsigned j = 0; j < colliMat.size2(); j++) {
 					if (j == 0) {
-						cout << colliMat(i, j);
+						matFile << colliMat(i, j);
 					} else {
-						cout << "\t" << colliMat(i, j);
+						matFile << "\t" << colliMat(i, j);
 					}
 				}
-				cout << endl;
+				matFile << endl;
 			}
 			matFile.close();
 			exit(0);

@@ -118,7 +118,8 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 				hitCounts.set_empty_key(opt::EMPTY);
 				google::dense_hash_map<ID, unsigned> hitCountsSolid;
 				hitCountsSolid.set_empty_key(opt::EMPTY);
-				unsigned score = evaluateRead(name, hitCounts, hitCountsSolid);
+				unsigned solidCount1 = 0;
+				unsigned score = evaluateRead(name, hitCounts, hitCountsSolid, solidCount1);
 				assert(score);
 				unsigned threshold = opt::score
 						* (l - m_filter.getKmerSize() + 1);
@@ -224,16 +225,22 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 
 			google::dense_hash_map<ID, unsigned> hitCounts1;
 			google::dense_hash_map<ID, unsigned> hitCounts2;
-			google::dense_hash_map<ID, unsigned> hitCountsSolid1;
-			google::dense_hash_map<ID, unsigned> hitCountsSolid2;
-			hitCountsSolid1.set_empty_key(opt::EMPTY);
-			hitCountsSolid2.set_empty_key(opt::EMPTY);
-			hitCountsSolid1.set_empty_key(opt::EMPTY);
-			hitCountsSolid2.set_empty_key(opt::EMPTY);
-			unsigned score1 = evaluateRead(sequence1, hitCounts1,
-					hitCountsSolid1);
-			unsigned score2 = evaluateRead(sequence2, hitCounts2,
-					hitCountsSolid2);
+//			google::dense_hash_map<ID, unsigned> hitCountsSolid1;
+//			google::dense_hash_map<ID, unsigned> hitCountsSolid2;
+			hitCounts1.set_empty_key(opt::EMPTY);
+			hitCounts2.set_empty_key(opt::EMPTY);
+//			hitCountsSolid1.set_empty_key(opt::EMPTY);
+//			hitCountsSolid2.set_empty_key(opt::EMPTY);
+
+			unsigned solidCount1 = 0;
+			unsigned solidCount2 = 0;
+
+//			unsigned score1 = evaluateRead(sequence1, hitCounts1,
+//					hitCountsSolid1, solidCount1);
+//			unsigned score2 = evaluateRead(sequence2, hitCounts2,
+//					hitCountsSolid2, solidCount2);
+			unsigned score1 = evaluateRead(sequence1, hitCounts1);
+			unsigned score2 = evaluateRead(sequence2, hitCounts2);
 			unsigned threshold1 =
 					opt::minHitOnly ?
 							opt::minHit - 1 :
@@ -242,14 +249,49 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 					* (l2 - m_filter.getKmerSize() + 1);
 
 			vector<ID> hits;
-			bool aboveThreshold = score1 >= threshold1 && score2 >= threshold2;
-			if (aboveThreshold) {
-				if (opt::inclusive)
-					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
-				else
+			vector<ID> solidHits;
+			bool aboveThreshold = false;
+			unsigned bestScoreDiff = 0;
+			unsigned bestScoreDiffSolid = 0;
+			if (opt::inclusive) {
+				aboveThreshold = score1 >= threshold1 || score2 >= threshold2;
+				if (aboveThreshold) {
+					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits,
+							bestScoreDiff);
+//					convertToHitsOnlyOne(hitCountsSolid1, hitCountsSolid2,
+//							solidHits, bestScoreDiffSolid);
+				}
+			} else {
+				aboveThreshold = score1 >= threshold1 && score2 >= threshold2;
+				if (aboveThreshold) {
 					convertToHitsBoth(hitCounts1, hitCounts2, hits);
+//					convertToHitsBoth(hitCountsSolid1, hitCountsSolid2,
+//							solidHits);
+				}
 			}
-			ID idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
+
+			ID idIndex = 0;
+			//compare solid hits with hits
+			//if solidHits are the same or have no hits return results
+//			if (hits.size() == solidHits.size() || solidCount1 + solidCount2 == 0 || solidHits.size() == 0) {
+
+			//TODO: make into option!
+//			unsigned delta2 = 1;
+
+
+			if (bestScoreDiff > opt::delta) {
+				idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
+			} else {
+				hits.clear();
+				idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
+//				if (bestScoreDiffSolid <= delta2) {
+//					solidHits.clear();
+//				}
+//				idIndex = resSummary.updateSummaryData(solidHits,
+//						aboveThreshold);
+			}
+			//if solidHits differ, assign ID to solidHit IDs (even if more ambiguous mapping)
+
 //				if (idIndex != opt::EMPTY) {
 			const string &fullID =
 					idIndex == opt::COLLI ? UNKNOWN : m_fullIDs.at(idIndex);
@@ -265,16 +307,56 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 #pragma omp critical(outputFiles)
 				{
 					readsOutput << fullID << "\t" << name1 << "\t" << score1
-							<< "\t" << score2;
-					for (google::dense_hash_map<ID, unsigned>::const_iterator i =
-							hitCounts1.begin(); i != hitCounts1.end(); ++i) {
-						google::dense_hash_map<ID, unsigned>::const_iterator itr =
-								hitCounts2.find(i->first);
-						if (itr != hitCounts2.end()) {
-							readsOutput << "\t" << i->first << ":" << i->second
-									<< ";" << itr->second;
-						}
-					}
+							<< "\t" << score2 << "\t" << solidCount1 << "\t"
+							<< solidCount2 << "\t" << bestScoreDiff << "\t" << bestScoreDiffSolid;
+//					google::dense_hash_set<ID> tempSet;
+//					tempSet.set_empty_key(opt::EMPTY);
+//					for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+//							hitCounts1.begin(); i != hitCounts1.end(); ++i) {
+//						google::dense_hash_map<ID, unsigned>::const_iterator itr =
+//								hitCounts2.find(i->first);
+//						if (itr != hitCounts2.end()) {
+//							tempSet.insert(i->first);
+//							readsOutput << "\t" << i->first << ":" << i->second
+//									<< ";" << itr->second;
+//						}
+//						else {
+//							readsOutput << "\t" << i->first << ":" << i->second
+//									<< ";0";
+//						}
+//					}
+//					for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+//							hitCounts2.begin(); i != hitCounts2.end(); ++i) {
+//						if (tempSet.find(i->first) == tempSet.end()) {
+//							readsOutput << "\t" << i->first << ":0;"
+//									<< i->second;
+//						}
+//					}
+//					readsOutput << "\t|";
+//					google::dense_hash_set<ID> tempSet2;
+//					tempSet2.set_empty_key(opt::EMPTY);
+//					for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+//							hitCountsSolid1.begin(); i != hitCountsSolid1.end();
+//							++i) {
+//						google::dense_hash_map<ID, unsigned>::const_iterator itr =
+//								hitCountsSolid2.find(i->first);
+//						if (itr != hitCountsSolid2.end()) {
+//							tempSet2.insert(i->first);
+//							readsOutput << "\t" << i->first << ":" << i->second
+//									<< ";" << itr->second;
+//						} else {
+//							readsOutput << "\t" << i->first << ":" << i->second
+//									<< ";0";
+//						}
+//					}
+//					for (google::dense_hash_map<ID, unsigned>::const_iterator i =
+//							hitCountsSolid2.begin(); i != hitCountsSolid2.end();
+//							++i) {
+//						if (tempSet2.find(i->first) == tempSet2.end()) {
+//							readsOutput << "\t" << i->first << ":0;"
+//									<< i->second;
+//						}
+//					}
 					readsOutput << "\n";
 				}
 //					}

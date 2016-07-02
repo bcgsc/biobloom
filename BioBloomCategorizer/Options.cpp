@@ -17,6 +17,7 @@ string filePostfix = "";
 string outputType = "";
 bool minHitOnly = false;
 unsigned minHit = 0;
+unsigned delta = 2;
 }
 
 
