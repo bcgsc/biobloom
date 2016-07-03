@@ -191,6 +191,11 @@ public:
 			if(m_data[i] == std::numeric_limits<T>::max()){
 				++colliCount;
 			}
+			if(m_data[i] == 0){
+				cerr << "Empty Element at location " << i << endl;
+				cerr << "Something is probably wrong with the filter!" <<endl;
+				exit(1);
+			}
 		}
 		cerr << "colliCount: " << colliCount << endl;
 
@@ -303,102 +308,6 @@ public:
 	 * Returns best hit on ambiguous collisions
 	 * Returns numeric_limits<T>::max() on completely ambiguous collision
 	 * Returns 0 on if missing element
-	 */
-	//TODO Optimize me!
-	T atBest(std::vector<size_t> const &hashes, unsigned missMin) const {
-		google::dense_hash_map<T, unsigned> tmpHash;
-		tmpHash.set_empty_key(0);
-		unsigned maxCount = 0;
-		unsigned miss = 0;
-		T value = std::numeric_limits<T>::max();
-
-		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
-			if(m_bv[pos] == 0){
-				++miss;
-				continue;
-			}
-			size_t rankPos = m_rankSupport(pos);
-			T currID = m_data[rankPos];
-			if (tmpHash.find(currID) != tmpHash.end()) {
-				++tmpHash[currID];
-			} else {
-				tmpHash[currID] = 1;
-			}
-			if(maxCount == tmpHash[currID]) {
-//				if (currID != std::numeric_limits<T>::max()) {
-					value = m_data[rankPos] < value ? m_data[rankPos] : value;
-//				}
-			}
-			else if ( maxCount < tmpHash[currID] ){
-//				if (currID != std::numeric_limits<T>::max()) {
-					value = m_data[rankPos];
-//				}
-				maxCount = tmpHash[currID];
-			}
-		}
-		if (missMin < miss) {
-			return 0;
-		} else {
-			return value;
-		}
-	}
-
-	/*
-	 * Returns unambiguous hit to object
-	 * Returns best hit on ambiguous collisions
-	 * Returns numeric_limits<T>::max() on completely ambiguous collision
-	 * Returns 0 on if missing element
-	 * Uses colliIDs to resolve ambiguities
-	 */
-	T at(std::vector<size_t> const &hashes, unsigned missMin,
-			const vector<boost::shared_ptr<vector<T> > > &colliIDs) const {
-		google::dense_hash_map<T, unsigned> tmpHash;
-		tmpHash.set_empty_key(0);
-		unsigned maxCount = 0;
-		unsigned miss = 0;
-		T value = std::numeric_limits<T>::max();
-
-		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
-			if(m_bv[pos] == 0){
-				++miss;
-				continue;
-			}
-			size_t rankPos = m_rankSupport(pos);
-			T currID = m_data[rankPos];
-
-			if (currID != std::numeric_limits<T>::max()) {
-				for (unsigned i = 0; i < colliIDs[currID]->size(); ++i) {
-					T id = colliIDs[currID]->at(i);
-					if (tmpHash.find(id)
-							!= tmpHash.end()) {
-						++tmpHash[id];
-					} else {
-						tmpHash[id] = 1;
-					}
-					if (maxCount == tmpHash[id]) {
-						//TODO: not the best way of handling ambiguity
-						value = currID;
-					} else if (maxCount < tmpHash[id]) {
-						value = id;
-						maxCount = tmpHash[id];
-					}
-				}
-			}
-		}
-		if (missMin < miss) {
-			return 0;
-		} else {
-			return value;
-		}
-	}
-
-	/*
-	 * Returns unambiguous hit to object
-	 * Returns best hit on ambiguous collisions
-	 * Returns numeric_limits<T>::max() on completely ambiguous collision
-	 * Returns 0 on if missing element
 	 * Uses colliIDs to resolve ambiguities
 	 */
 	vector<T> at(std::vector<size_t> const &hashes,
@@ -406,9 +315,6 @@ public:
 			unsigned &miss) const {
 		google::dense_hash_map<T, unsigned> tmpHash;
 		tmpHash.set_empty_key(0);
-		unsigned maxCount = 0;
-//		T value = std::numeric_limits<T>::max();
-
 		for (unsigned i = 0; i < hashes.size(); ++i) {
 			size_t pos = hashes.at(i) % m_bv.size();
 			if(m_bv[pos] == 0){
@@ -417,86 +323,43 @@ public:
 			}
 			size_t rankPos = m_rankSupport(pos);
 			T currID = m_data[rankPos];
-
-			if (currID != std::numeric_limits<T>::max()) {
-				for (unsigned i = 0; i < colliIDs[currID]->size(); ++i) {
-					T id = colliIDs[currID]->at(i);
-					if (tmpHash.find(id)
-							!= tmpHash.end()) {
-						++tmpHash[id];
-					} else {
-						tmpHash[id] = 1;
-					}
-					if (maxCount < tmpHash[id]) {
-						maxCount = tmpHash[id];
-					}
+			if (currID != std::numeric_limits<T>::max() && colliIDs[currID] != NULL) {
+				if (tmpHash.find(currID)
+						!= tmpHash.end()) {
+					++tmpHash[currID];
+				} else {
+					tmpHash[currID] = 1;
 				}
 			}
 		}
+		google::dense_hash_map<T, unsigned> tmpHash2;
+		tmpHash2.set_empty_key(0);
 		vector<T> results;
+		unsigned maxCount = 0;
 		for (typename google::dense_hash_map<T, unsigned>::iterator itr =
 				tmpHash.begin(); itr != tmpHash.end(); ++itr) {
+			for (unsigned i = 0; i < colliIDs[itr->first]->size(); ++i) {
+				T id = colliIDs[itr->first]->at(i);
+				if (tmpHash2.find(id)
+						!= tmpHash2.end()) {
+					tmpHash2[id] += itr->second;
+				} else {
+					tmpHash2[id] = itr->second;
+				}
+				if (maxCount < tmpHash2[id]) {
+					maxCount = tmpHash2[id];
+				}
+			}
+		}
+		for (typename google::dense_hash_map<T, unsigned>::iterator itr =
+				tmpHash2.begin(); itr != tmpHash2.end(); ++itr) {
 			if (maxCount == itr->second) {
 				assert(itr->first != 0);
 				results.push_back(itr->first);
 			}
 		}
-//		//TODO: use more efficiently!
-//		//TIE BREAKER
-//		if (results.size() > 1) {
-//			if (m_bv[hashes.at(0) % m_bv.size()] != 0) {
-//				size_t pos = hashes.at(0) % m_bv.size();
-//				size_t rankPos = m_rankSupport(pos);
-//				T currID = m_data[rankPos];
-//				if (currID != std::numeric_limits<T>::max()
-//						&& colliIDs[currID]->size() == 1) {
-//					results.clear();
-//					results.push_back(currID);
-//				}
-//			}
-//		}
 		return results;
 	}
-
-//	/*
-//	 * Returns unambiguous hit to object
-//	 * Returns best hit on ambiguous collisions
-//	 * Returns numeric_limits<T>::max() on completely ambiguous collision
-//	 * Returns 0 on if missing element
-//	 */
-//	T atBestNotInserted(std::vector<size_t> const &hashes, unsigned missMin) const {
-//		google::dense_hash_map<T, unsigned> tmpHash;
-//		tmpHash.set_empty_key(0);
-//		unsigned maxCount = 0;
-//		unsigned miss = 0;
-//		T value = 0;
-//
-//		for (unsigned i = 0; i < hashes.size(); ++i) {
-//			size_t pos = hashes.at(i) % m_bv.size();
-//			size_t rankPos = m_rankSupport(pos);
-//			if(m_data[rankPos] == 0){
-//				++miss;
-//				continue;
-//			}
-//			if (tmpHash.find(m_data[rankPos]) != tmpHash.end()) {
-//				++tmpHash[m_data[rankPos]];
-//			} else {
-//				tmpHash[m_data[rankPos]] = 1;
-//			}
-//			if(maxCount == tmpHash[m_data[rankPos]]) {
-//				value = m_data[rankPos] < value ? m_data[rankPos] : value;
-//			}
-//			else if ( maxCount < tmpHash[m_data[rankPos]] ){
-//				value = m_data[rankPos];
-//				maxCount = tmpHash[m_data[rankPos]];
-//			}
-//		}
-//		if (missMin < miss) {
-//			return 0;
-//		} else {
-//			return value;
-//		}
-//	}
 
 	const vector< vector <unsigned > > &getSeedValues() const {
 		return m_ssVal;
@@ -537,12 +400,11 @@ public:
 	}
 
 	size_t getPop() const {
-		size_t count = 0;
-		size_t index = m_bv.size();
-		while(count == 0){
-			count = m_rankSupport(--index);
+		size_t index = m_bv.size() - 1;
+		while(m_bv[index] == 0) {
+			--index;
 		}
-		return count;
+		return m_rankSupport(index - 1) + 1;
 	}
 
 	size_t getUniqueEntries() const {
