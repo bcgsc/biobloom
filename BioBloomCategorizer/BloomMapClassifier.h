@@ -16,7 +16,6 @@
 #include <google/dense_hash_set>
 #include "Common/Dynamicofstream.h"
 #include <vector>
-//#include "DataLayer/FastaReader.h"
 #include "BioBloomClassifier.h"
 #include "bloomfilter/BloomMapSSBitVec.hpp"
 #include "bloomfilter/RollingHashIterator.h"
@@ -36,45 +35,50 @@ private:
 	vector<string> m_fullIDs;
 	vector<boost::shared_ptr<vector<ID> > > m_colliIDs;
 
-//	//TODO: REFACTOR WITH BioBloomClassifier
-//	inline void printSingleToFile(const string &outputFileName,
-//			const kseq_t *rec,
-//			google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles) {
-//		if (opt::outputType == "fa") {
-//#pragma omp critical(outputFiles)
-//			{
-//				(*outputFiles[outputFileName]) << ">" << rec->name.s << "\n"
-//						<< rec->seq.s << "\n";
+//	/*
+//	 * Returns the number of hits
+//	 */
+//	inline unsigned evaluateRead(const string &seq,
+//			google::dense_hash_map<ID, unsigned> &hitCounts,
+//			google::dense_hash_map<ID, unsigned> &solidHitCounts,
+//			unsigned &solidCounts) {
+//		RollingHashIterator itr(seq, m_filter.getKmerSize(),
+//				m_filter.getSeedValues());
+//		unsigned nonZeroCount = 0;
+//
+//		while (itr != itr.end()) {
+//			unsigned missCount = 0;
+//			vector<ID> ids = m_filter.at(*itr, m_colliIDs, missCount);
+//			if (missCount == 0) {
+//				for (unsigned i = 0; i < ids.size(); ++i) {
+//					ID id = ids[i];
+//					if (solidHitCounts.find(id) != solidHitCounts.end()) {
+//						++solidHitCounts[id];
+//					} else {
+//						solidHitCounts[id] = 1;
+//					}
+//					if (hitCounts.find(id) != hitCounts.end()) {
+//						++hitCounts[id];
+//					} else {
+//						hitCounts[id] = 1;
+//					}
+//				}
+//				++solidCounts;
+//				++nonZeroCount;
+//			} else if (missCount <= opt::allowMisses) {
+//				for (unsigned i = 0; i < ids.size(); ++i) {
+//					ID id = ids[i];
+//					if (hitCounts.find(id) != hitCounts.end()) {
+//						++hitCounts[id];
+//					} else {
+//						hitCounts[id] = 1;
+//					}
+//				}
+//				++nonZeroCount;
 //			}
-//		} else {
-//#pragma omp critical(outputFiles)
-//			{
-//				(*outputFiles[outputFileName]) << "@" << rec->name.s << "\n"
-//						<< rec->seq.s << "\n+\n" << rec->qual.s << "\n";
-//			}
+//			++itr;
 //		}
-//	}
-//	//TODO: REFACTOR WITH BioBloomClassifier
-//	inline void printPairToFile(const string &outputFileName,
-//			const kseq_t *rec1, const kseq_t *rec2,
-//			google::dense_hash_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles) {
-//		if (opt::outputType == "fa") {
-//#pragma omp critical(outputFiles)
-//			{
-//				(*outputFiles[outputFileName + "_1"]) << ">" << rec1->name.s
-//						<< "\n" << rec1->seq.s << "\n";
-//				(*outputFiles[outputFileName + "_2"]) << ">" << rec2->name.s
-//						<< "\n" << rec2->seq.s << "\n";
-//			}
-//		} else {
-//#pragma omp critical(outputFiles)
-//			{
-//				(*outputFiles[outputFileName + "_1"]) << "@" << rec1->name.s << "\n"
-//						<< rec1->seq.s << "\n+\n" << rec1->qual.s << "\n";
-//				(*outputFiles[outputFileName + "_2"]) << "@" << rec2->name.s << "\n"
-//						<< rec2->seq.s << "\n+\n" << rec2->qual.s << "\n";
-//			}
-//		}
+//		return nonZeroCount;
 //	}
 
 	/*
@@ -85,73 +89,16 @@ private:
 		RollingHashIterator itr(seq, m_filter.getKmerSize(),
 				m_filter.getSeedValues());
 		unsigned nonZeroCount = 0;
-//		unsigned partialHit = 0;
-
-		//TODO: REACTIVATE AT SOME POINT
-		if (opt::minHitOnly) {
-			cerr << "MINHITONLY NOT YET IMPLEMENTED" << endl;
-			exit(1);
-		}
 		while (itr != itr.end()) {
-			unsigned missCount = 0;
-			vector<ID> ids = m_filter.at(*itr, m_colliIDs, missCount);
-			if (missCount <= opt::allowMisses) {
-				for (unsigned i = 0; i < ids.size(); ++i) {
-					ID id = ids[i];
-					if (hitCounts.find(id) != hitCounts.end()) {
-						++hitCounts[id];
-					} else {
-						hitCounts[id] = 1;
-					}
+			vector<ID> ids = m_filter.at(*itr, m_colliIDs, opt::allowMisses);
+			nonZeroCount += ids.size() > 0;
+			for (unsigned i = 0; i < ids.size(); ++i) {
+				ID id = ids[i];
+				if (hitCounts.find(id) != hitCounts.end()) {
+					++hitCounts[id];
+				} else {
+					hitCounts[id] = 1;
 				}
-				++nonZeroCount;
-			}
-			++itr;
-		}
-		return nonZeroCount;
-	}
-
-	/*
-	 * Returns the number of hits
-	 */
-	inline unsigned evaluateRead(const string &seq,
-			google::dense_hash_map<ID, unsigned> &hitCounts,
-			google::dense_hash_map<ID, unsigned> &solidHitCounts,
-			unsigned &solidCounts) {
-		RollingHashIterator itr(seq, m_filter.getKmerSize(),
-				m_filter.getSeedValues());
-		unsigned nonZeroCount = 0;
-//		unsigned partialHit = 0;
-
-		while (itr != itr.end()) {
-			unsigned missCount = 0;
-			vector<ID> ids = m_filter.at(*itr, m_colliIDs, missCount);
-			if (missCount == 0) {
-				for (unsigned i = 0; i < ids.size(); ++i) {
-					ID id = ids[i];
-					if (solidHitCounts.find(id) != solidHitCounts.end()) {
-						++solidHitCounts[id];
-					} else {
-						solidHitCounts[id] = 1;
-					}
-					if (hitCounts.find(id) != hitCounts.end()) {
-						++hitCounts[id];
-					} else {
-						hitCounts[id] = 1;
-					}
-				}
-				++solidCounts;
-				++nonZeroCount;
-			} else if (missCount <= opt::allowMisses) {
-				for (unsigned i = 0; i < ids.size(); ++i) {
-					ID id = ids[i];
-					if (hitCounts.find(id) != hitCounts.end()) {
-						++hitCounts[id];
-					} else {
-						hitCounts[id] = 1;
-					}
-				}
-				++nonZeroCount;
 			}
 			++itr;
 		}
@@ -161,7 +108,6 @@ private:
 	/*
 	 * Returns a vector of hits to a specific ID, favoring smaller IDs
 	 */
-	//TODO Currently only returns a single ID
 	void convertToHits(const google::dense_hash_map<ID, unsigned> &hitCounts,
 			vector<ID> &hits) {
 		unsigned bestHit = 0;
@@ -173,7 +119,7 @@ private:
 		}
 		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 				hitCounts.begin(); i != hitCounts.end(); ++i) {
-			if (bestHit == i->second) {
+			if (bestHit <= i->second + opt::delta) {
 				hits.push_back(i->first);
 			}
 		}
@@ -228,9 +174,8 @@ private:
 	void convertToHitsOnlyOne(
 			const google::dense_hash_map<ID, unsigned> &hitCounts1,
 			const google::dense_hash_map<ID, unsigned> &hitCounts2,
-			vector<ID> &hits, unsigned &delta) {
+			vector<ID> &hits) {
 		unsigned bestHit = 0;
-		unsigned secondBestHit = 0;
 
 		//for tracking already found element in first set
 		google::dense_hash_set<ID> tempSet;
@@ -264,24 +209,18 @@ private:
 			if (itr != hitCounts2.end()) {
 				hitCount += itr->second;
 			}
-			if (bestHit == hitCount) {
+			if (bestHit <= hitCount + opt::delta) {
 				hits.push_back(i->first);
-			}
-			else if (hitCount > secondBestHit) {
-				secondBestHit = hitCount;
 			}
 		}
 		for (google::dense_hash_map<ID, unsigned>::const_iterator i =
 				hitCounts2.begin(); i != hitCounts2.end(); ++i) {
 			if (tempSet.find(i->first) == tempSet.end()) {
-				if (bestHit == i->second) {
+				if (bestHit <= i->second + opt::delta) {
 					hits.push_back(i->first);
-				} else if (i->second > secondBestHit) {
-					secondBestHit = i->second;
 				}
 			}
 		}
-		delta = bestHit - secondBestHit;
 	}
 };
 

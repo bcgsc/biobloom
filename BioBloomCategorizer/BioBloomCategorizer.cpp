@@ -96,8 +96,9 @@ void printHelpDialog()
 	"                         output read. [0.15]\n"
 	"  -w, --with_score       Output multimatches with scores in the order of filter.\n"
 	"  -D, --delta            Max Number of matches between second best hit and best\n"
-	"                         hit before it is considered significantly matching to"
+	"                         hit before it is considered significantly matching to\n"
 	"                         best hit (not a multimatch). BloomMaps only. [2]\n"
+	"  -G, --max_group        Max groups size when using collision ids. [inf]\n"
 	"  -t, --threads=N        The number of threads to use. [1]\n"
 	"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
 	"      --fa               Output categorized reads in Fasta files.\n"
@@ -171,6 +172,7 @@ int main(int argc, char *argv[])
 		"threads", required_argument, NULL, 't' }, {
 		"allowed_miss", required_argument, NULL, 'a' }, {
 		"delta", required_argument, NULL, 'D' }, {
+		"max_group", required_argument, NULL, 'G' }, {
 		"gz_output", no_argument, NULL, 'g' }, {
 		"chastity", no_argument, &opt::chastityFilter, 1 }, {
 		"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
@@ -189,7 +191,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:or:t:cd:iwa:D:", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:or:t:cd:iwa:D:G:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -268,6 +270,14 @@ int main(int argc, char *argv[])
 			stringstream convert(optarg);
 			if (!(convert >> opt::delta)) {
 				cerr << "Error - Invalid parameter! D: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
+		case 'G': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::maxGroupSize)) {
+				cerr << "Error - Invalid parameter! G: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
 			break;

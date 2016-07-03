@@ -89,7 +89,6 @@ ID ResultsManager::updateSummaryData(const vector<ID> &hits,
 		if (hits.size() > 1) {
 #pragma omp atomic
 			++m_multiMatch;
-			//TODO return collisionID?
 			return opt::COLLI;
 		} else {
 #pragma omp atomic

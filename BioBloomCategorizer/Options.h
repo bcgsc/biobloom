@@ -24,5 +24,6 @@ extern std::string outputType;
 extern bool minHitOnly;
 extern unsigned minHit;
 extern unsigned delta;
+extern unsigned maxGroupSize;
 }
 #endif

@@ -185,19 +185,19 @@ public:
 				m_rankSupport = sdsl::rank_support_il<1>(&m_bv);
 			}
 		}
-		size_t colliCount = 0;
-		//debug
-		for(size_t i = 0; i < m_dSize; ++i){
-			if(m_data[i] == std::numeric_limits<T>::max()){
-				++colliCount;
-			}
-			if(m_data[i] == 0){
-				cerr << "Empty Element at location " << i << endl;
-				cerr << "Something is probably wrong with the filter!" <<endl;
-				exit(1);
-			}
-		}
-		cerr << "colliCount: " << colliCount << endl;
+//		size_t colliCount = 0;
+//		//debug
+//		for(size_t i = 0; i < m_dSize; ++i){
+//			if(m_data[i] == std::numeric_limits<T>::max()){
+//				++colliCount;
+//			}
+//			if(m_data[i] == 0){
+//				cerr << "Empty Element at location " << i << endl;
+//				cerr << "Something is probably wrong with the filter!" <<endl;
+//				exit(1);
+//			}
+//		}
+//		cerr << "colliCount: " << colliCount << endl;
 
 		cerr << "Bit Vector Size: " << m_bv.size() << endl;
 		cerr << "Popcount: " << getPop() << endl;
@@ -312,49 +312,61 @@ public:
 	 */
 	vector<T> at(std::vector<size_t> const &hashes,
 			const vector<boost::shared_ptr<vector<T> > > &colliIDs,
-			unsigned &miss) const {
+			unsigned maxMiss) const {
+		unsigned misses = 0;
+		vector<T> results;
+		results.reserve(hashes.size());
+		for (unsigned i = 0; i < hashes.size(); ++i) {
+			size_t pos = hashes.at(i) % m_bv.size();
+			if(m_bv[pos] == 0){
+				++misses;
+				if (misses > maxMiss) {
+					return results;
+				}
+			}
+		}
+
 		google::dense_hash_map<T, unsigned> tmpHash;
 		tmpHash.set_empty_key(0);
 		for (unsigned i = 0; i < hashes.size(); ++i) {
 			size_t pos = hashes.at(i) % m_bv.size();
-			if(m_bv[pos] == 0){
-				++miss;
-				continue;
-			}
-			size_t rankPos = m_rankSupport(pos);
-			T currID = m_data[rankPos];
-			if (currID != std::numeric_limits<T>::max() && colliIDs[currID] != NULL) {
-				if (tmpHash.find(currID)
-						!= tmpHash.end()) {
-					++tmpHash[currID];
-				} else {
-					tmpHash[currID] = 1;
+			if (m_bv[pos] != 0) {
+				size_t rankPos = m_rankSupport(pos);
+				T currID = m_data[rankPos];
+				if (currID
+						!= std::numeric_limits<T>::max() && colliIDs[currID] != NULL) {
+					if (tmpHash.find(currID) != tmpHash.end()) {
+						++tmpHash[currID];
+					} else {
+						tmpHash[currID] = 1;
+					}
 				}
 			}
 		}
+
 		google::dense_hash_map<T, unsigned> tmpHash2;
 		tmpHash2.set_empty_key(0);
-		vector<T> results;
 		unsigned maxCount = 0;
 		for (typename google::dense_hash_map<T, unsigned>::iterator itr =
 				tmpHash.begin(); itr != tmpHash.end(); ++itr) {
 			for (unsigned i = 0; i < colliIDs[itr->first]->size(); ++i) {
 				T id = colliIDs[itr->first]->at(i);
-				if (tmpHash2.find(id)
-						!= tmpHash2.end()) {
+				if (tmpHash2.find(id) != tmpHash2.end()) {
 					tmpHash2[id] += itr->second;
+					if (maxCount < tmpHash2[id]) {
+						maxCount = tmpHash2[id];
+					}
 				} else {
 					tmpHash2[id] = itr->second;
-				}
-				if (maxCount < tmpHash2[id]) {
-					maxCount = tmpHash2[id];
+					if (maxCount < tmpHash2[id]) {
+						maxCount = tmpHash2[id];
+					}
 				}
 			}
 		}
 		for (typename google::dense_hash_map<T, unsigned>::iterator itr =
 				tmpHash2.begin(); itr != tmpHash2.end(); ++itr) {
 			if (maxCount == itr->second) {
-				assert(itr->first != 0);
 				results.push_back(itr->first);
 			}
 		}

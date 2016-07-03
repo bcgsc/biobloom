@@ -8,6 +8,7 @@
 #include <Options.h>
 
 using namespace std;
+#include <limits>
 
 namespace opt {
 bool inclusive = false;
@@ -18,6 +19,7 @@ string outputType = "";
 bool minHitOnly = false;
 unsigned minHit = 0;
 unsigned delta = 2;
+unsigned maxGroupSize = std::numeric_limits<unsigned>::max();
 }
 
 
