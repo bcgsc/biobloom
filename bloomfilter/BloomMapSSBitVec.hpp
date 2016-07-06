@@ -312,8 +312,7 @@ public:
 	 */
 	vector<T> at(std::vector<size_t> const &hashes,
 			const vector<boost::shared_ptr<vector<T> > > &colliIDs,
-			unsigned maxMiss) const {
-		unsigned misses = 0;
+			unsigned maxMiss, unsigned &misses) const {
 		vector<T> results;
 		results.reserve(hashes.size());
 		for (unsigned i = 0; i < hashes.size(); ++i) {

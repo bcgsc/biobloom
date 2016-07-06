@@ -80,7 +80,14 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 	size_t totalReads = 0;
 
-	Dynamicofstream readsOutput(opt::outputPrefix + "_reads.tsv");
+	string outputName = opt::outputPrefix + "_reads.tsv";
+
+	//TODO output fasta?
+	if(opt::outputType == "fq"){
+		outputName = opt::outputPrefix + "_reads.fq";
+	}
+
+	Dynamicofstream readsOutput(outputName);
 
 	//print out header info and initialize variables
 	ResultsManager resSummary(m_fullIDs, false);
@@ -121,7 +128,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 				hitCounts.set_empty_key(opt::EMPTY);
 				unsigned score = evaluateRead(sequence, hitCounts);
 				unsigned threshold = opt::score
-						* (l - m_filter.getKmerSize() + 1);
+						* ((l - m_filter.getKmerSize() + 1) * (opt::allowMisses + 1));
 				vector<ID> hits;
 				bool aboveThreshold = score > threshold;
 				if (aboveThreshold) {
@@ -137,6 +144,19 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 						{
 							readsOutput << "@" << name << " " << fullID << "\n"
 									<< sequence << "\n+\n" << qual << "\n";
+						}
+					}else {
+#pragma omp critical(outputFiles)
+						{
+							readsOutput << fullID << "\t" << name << "\t"
+									<< score;
+							for (google::dense_hash_map<ID, unsigned>::iterator itr =
+									hitCounts.begin(); itr != hitCounts.end();
+									++itr) {
+								readsOutput << "\t" << m_fullIDs.at(itr->first)
+										<< ":" << itr->second;
+							}
+							readsOutput << "\n";
 						}
 					}
 				}
@@ -224,37 +244,29 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 
 			unsigned score1 = evaluateRead(sequence1, hitCounts1);
 			unsigned score2 = evaluateRead(sequence2, hitCounts2);
-			unsigned threshold1 =
-					opt::minHitOnly ?
-							opt::minHit - 1 :
-							opt::score * (l1 - m_filter.getKmerSize() + 1);
+			unsigned threshold1 = opt::score
+					* ((l1 - m_filter.getKmerSize() + 1)
+							* (opt::allowMisses + 1));
 			unsigned threshold2 = opt::score
-					* (l2 - m_filter.getKmerSize() + 1);
+					* ((l2 - m_filter.getKmerSize() + 1)
+							* (opt::allowMisses + 1));
 
 			vector<ID> hits;
 			vector<ID> solidHits;
 			bool aboveThreshold = false;
-//			unsigned bestScoreDiff = 0;
 			if (opt::inclusive) {
-				aboveThreshold = score1 >= threshold1 || score2 >= threshold2;
-				if (aboveThreshold) {
+				aboveThreshold = score1 + score2 >= threshold1 + threshold2;
+				if(aboveThreshold)
 					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
-				}
 			} else {
 				aboveThreshold = score1 >= threshold1 && score2 >= threshold2;
-				if (aboveThreshold) {
+				if(aboveThreshold)
 					convertToHitsBoth(hitCounts1, hitCounts2, hits);
-				}
 			}
 
-			ID idIndex = 0;
+			ID idIndex = opt::EMPTY;
 
-//			if (bestScoreDiff > opt::delta) {
-//				idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
-//			} else {
-//				hits.clear();
-				idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
-//			}
+			idIndex = resSummary.updateSummaryData(hits, aboveThreshold);
 
 			if (idIndex != opt::EMPTY) {
 				const string &fullID =

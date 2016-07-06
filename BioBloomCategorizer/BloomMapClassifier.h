@@ -90,8 +90,10 @@ private:
 				m_filter.getSeedValues());
 		unsigned nonZeroCount = 0;
 		while (itr != itr.end()) {
-			vector<ID> ids = m_filter.at(*itr, m_colliIDs, opt::allowMisses);
+			unsigned misses = 0;
+			vector<ID> ids = m_filter.at(*itr, m_colliIDs, opt::allowMisses, misses);
 			nonZeroCount += ids.size() > 0;
+			nonZeroCount += misses == 0 * opt::allowMisses;
 			for (unsigned i = 0; i < ids.size(); ++i) {
 				ID id = ids[i];
 				if (hitCounts.find(id) != hitCounts.end()) {
@@ -99,6 +101,7 @@ private:
 				} else {
 					hitCounts[id] = 1;
 				}
+				hitCounts[id] += misses == 0 * opt::allowMisses;
 			}
 			++itr;
 		}
@@ -169,6 +172,7 @@ private:
 	/*
 	 * Returns a vector of best hits to a specific read
 	 * Only one read needs to match
+	 * outputs additional score based on results
 	 */
 	//TODO: possible to optimize more!
 	void convertToHitsOnlyOne(
