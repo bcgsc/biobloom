@@ -161,11 +161,11 @@ int main(int argc, char *argv[])
 
 	//long form arguments
 	static struct option long_options[] = { {
-		"prefix", optional_argument, NULL, 'p' }, {
+		"prefix", required_argument, NULL, 'p' }, {
 		"filter_files", required_argument, NULL, 'f' }, {
 		"paired_mode", no_argument, NULL, 'e' }, {
 		"inclusive", no_argument, NULL, 'i' }, {
-		"score", no_argument, NULL, 's' }, {
+		"score", required_argument, NULL, 's' }, {
 		"help", no_argument, NULL, 'h' }, {
 		"threads", required_argument, NULL, 't' }, {
 		"gz_output", no_argument, NULL, 'g' }, {
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 		"length_cutoff", required_argument, NULL, 'l' }, {
 		"version", no_argument, NULL, 'v' }, {
 		"min_hit_thr", required_argument, NULL, 'm' }, {
-		"streak", optional_argument, NULL, 'r' }, {
+		"streak", required_argument, NULL, 'r' }, {
 		"min_hit_only", no_argument, NULL, 'o' }, {
 		"ordered", no_argument, NULL, 'c' }, {
 		"stdout_filter", required_argument, NULL, 'd' }, {
