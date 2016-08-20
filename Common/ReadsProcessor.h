@@ -16,6 +16,7 @@ class ReadsProcessor {
 public:
 	ReadsProcessor(unsigned windowSize);
 	const unsigned char* prepSeq(string const &sequence, size_t position);
+	const unsigned char* prepSeq(const char* sequence, size_t position);
 	const string getBases(const unsigned char* c); //for debuging purposes
 	virtual ~ReadsProcessor();
 private:

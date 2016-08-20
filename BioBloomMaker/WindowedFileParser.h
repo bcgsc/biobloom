@@ -23,7 +23,7 @@ class WindowedFileParser {
 public:
 	//constructor/destructor
 	explicit WindowedFileParser(const string &fileName, unsigned windowSize);
-	const vector<string> getHeaders() const;
+	const vector<string> &getHeaders() const;
 	void setLocationByHeader( const string &header);
 	size_t getSequenceSize( const string &header) const;
 	const unsigned char* getNextSeq();

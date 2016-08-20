@@ -14,12 +14,9 @@
 #include <stdio.h>
 #include <iostream>
 #include <assert.h>
-#include "WindowedFileParser.h"
 #include "Common/BloomFilterInfo.h"
 #include <cassert>
 #include <cmath>
-#include <FastaReader.h>
-#include "Common/SeqEval.h"
 
 //Todo Refactor to remove repetitive and potentially error prone parts of code
 
@@ -30,19 +27,24 @@
  */
 BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 		unsigned kmerSize, unsigned hashNum):
-		m_kmerSize(kmerSize), m_hashNum(hashNum), m_expectedEntries(0), m_filterSize(0), m_totalEntries(
-				0), m_redundancy(0){
+		m_fileNames(filenames), m_kmerSize(kmerSize), m_hashNum(hashNum), m_expectedEntries(0), m_filterSize(0), m_totalEntries(
+				0){
 
-	//for each file loop over all headers and obtain max number of elements
-	for (vector<string>::const_iterator i = filenames.begin();
-			i != filenames.end(); ++i) {
-		WindowedFileParser parser(*i, kmerSize);
-		m_fileNamesAndHeaders[*i] = parser.getHeaders();
-		for (vector<string>::iterator j = m_fileNamesAndHeaders[*i].begin();
-				j != m_fileNamesAndHeaders[*i].end(); ++j) {
-			//subtract kmer size for max number of possible kmers
-			m_expectedEntries += parser.getSequenceSize(*j) - kmerSize + 1;
+	for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+		gzFile fp;
+		fp = gzopen(m_fileNames[i].c_str(), "r");
+		kseq_t *seq = kseq_init(fp);
+		int l;
+		for (;;) {
+			l = kseq_read(seq);
+			if (l >= 0) {
+				m_expectedEntries += seq->seq.l - m_kmerSize + 1;
+			} else {
+				kseq_destroy(seq);
+				break;
+			}
 		}
+		gzclose(fp);
 	}
 }
 
@@ -54,14 +56,8 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
  */
 BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 		unsigned kmerSize, unsigned hashNum, size_t numElements) :
-		m_kmerSize(kmerSize), m_hashNum(hashNum),  m_expectedEntries(numElements), m_filterSize(
-				0), m_totalEntries(0), m_redundancy(0) {
-	//for each file loop over all headers and obtain max number of elements
-	for (vector<string>::const_iterator i = filenames.begin();
-			i != filenames.end(); ++i) {
-		WindowedFileParser parser(*i, kmerSize);
-		m_fileNamesAndHeaders[*i] = parser.getHeaders();
-	}
+		m_fileNames(filenames), m_kmerSize(kmerSize), m_hashNum(hashNum),  m_expectedEntries(numElements), m_filterSize(
+				0), m_totalEntries(0) {
 }
 
 /*
@@ -82,27 +78,17 @@ size_t BloomFilterGenerator::generate(const string &filename) {
 	//setup bloom filter
 	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
-	//for each file loop over all headers and obtain seq
-	//load input file + make filter
-	for (boost::unordered_map<string, vector<string> >::iterator i =
-			m_fileNamesAndHeaders.begin(); i != m_fileNamesAndHeaders.end(); ++i) {
-		//let user know that files are being read
-		cerr << "Processing File: " << i->first << endl;
-		WindowedFileParser parser(i->first, m_kmerSize);
-		for (vector<string>::iterator j = i->second.begin();
-				j != i->second.end(); ++j) {
-			parser.setLocationByHeader(*j);
-			//object to process reads
-			//insert elements into filter
-			//read fasta file line by line and split using sliding window
-			while (parser.notEndOfSeqeunce()) {
-				const unsigned char* currentSeq = parser.getNextSeq();
-				checkAndInsertKmer(currentSeq, filter);
-			}
-		}
+	size_t redundancy = 0;
+
+	if(opt::fastIO){
+		redundancy = loadFilterFast(filter);
 	}
+	else{
+		redundancy = loadFilterLowMem(filter);
+	}
+
 	filter.storeFilter(filename);
-	return m_redundancy;
+	return redundancy;
 }
 
 void BloomFilterGenerator::printReadPair(const FastqRecord& rec1,
@@ -158,22 +144,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
-	for (boost::unordered_map<string, vector<string> >::iterator i =
-			m_fileNamesAndHeaders.begin(); i != m_fileNamesAndHeaders.end(); ++i) {
-		//let user know that files are being read
-		cerr << "Processing File: " << i->first << endl;
-		WindowedFileParser parser(i->first, m_kmerSize);
-		for (vector<string>::iterator j = i->second.begin();
-				j != i->second.end(); ++j) {
-			parser.setLocationByHeader(*j);
-			//object to process reads
-			//insert elements into filter
-			//read fasta file line by line and split using sliding window
-			while (parser.notEndOfSeqeunce()) {
-				const unsigned char* currentSeq = parser.getNextSeq();
-				checkAndInsertKmer(currentSeq, filter);
-			}
-		}
+	size_t redundancy = 0;
+
+	if(opt::fastIO){
+		redundancy += loadFilterFast(filter);
+	}
+	else{
+		redundancy += loadFilterLowMem(filter);
 	}
 
 	size_t totalReads = 0;
@@ -232,7 +209,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
-								checkAndInsertKmer(currentSeq, filter);
+								insertKmer(currentSeq, filter);
 							} else {
 								insertKmer(hashValues1[i], filter);
 							}
@@ -241,7 +218,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						for (unsigned i = 0; i < numKmers2; ++i) {
 							const unsigned char* currentSeq = proc.prepSeq(
 									rec2.seq, i);
-							checkAndInsertKmer(currentSeq, filter);
+							insertKmer(currentSeq, filter);
 						}
 						if (printReads)
 							printReadPair(rec1, rec2);
@@ -253,7 +230,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
-								checkAndInsertKmer(currentSeq, filter);
+								insertKmer(currentSeq, filter);
 							} else {
 								insertKmer(hashValues1[i], filter);
 							}
@@ -263,7 +240,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (hashValues2[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec2.seq, i);
-								checkAndInsertKmer(currentSeq, filter);
+								insertKmer(currentSeq, filter);
 							} else {
 								insertKmer(hashValues2[i], filter);
 							}
@@ -285,7 +262,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
-								checkAndInsertKmer(currentSeq, filter);
+								insertKmer(currentSeq, filter);
 							} else {
 								insertKmer(hashValues1[i], filter);
 							}
@@ -295,7 +272,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (hashValues2[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec2.seq, i);
-								checkAndInsertKmer(currentSeq, filter);
+								insertKmer(currentSeq, filter);
 							} else {
 								insertKmer(hashValues2[i], filter);
 							}
@@ -321,7 +298,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	}
 
 	filter.storeFilter(filename);
-	return m_redundancy;
+	return redundancy;
 }
 
 /*
@@ -350,22 +327,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
-	for (boost::unordered_map<string, vector<string> >::iterator i =
-			m_fileNamesAndHeaders.begin(); i != m_fileNamesAndHeaders.end(); ++i) {
-		//let user know that files are being read
-		cerr << "Processing File: " << i->first << endl;
-		WindowedFileParser parser(i->first, m_kmerSize);
-		for (vector<string>::iterator j = i->second.begin();
-				j != i->second.end(); ++j) {
-			parser.setLocationByHeader(*j);
-			//object to process reads
-			//insert elements into filter
-			//read fasta file line by line and split using sliding window
-			while (parser.notEndOfSeqeunce()) {
-				const unsigned char* currentSeq = parser.getNextSeq();
-				checkAndInsertKmer(currentSeq, filter);
-			}
-		}
+	size_t redundancy = 0;
+
+	if(opt::fastIO){
+		redundancy += loadFilterFast(filter);
+	}
+	else{
+		redundancy += loadFilterLowMem(filter);
 	}
 
 	size_t totalReads = 0;
@@ -424,7 +392,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
-								checkAndInsertKmer(currentSeq, filter);
+								insertKmer(currentSeq, filter);
 							} else {
 								insertKmer(hashValues1[i], filter);
 							}
@@ -433,7 +401,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						for (unsigned i = 0; i < numKmers2; ++i) {
 							const unsigned char* currentSeq = proc.prepSeq(
 									rec2.seq, i);
-							checkAndInsertKmer(currentSeq, filter);
+							insertKmer(currentSeq, filter);
 						}
 						if (printReads)
 							printReadPair(rec1, rec2);
@@ -444,7 +412,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
-								checkAndInsertKmer(currentSeq, filter);
+								insertKmer(currentSeq, filter);
 							} else {
 								insertKmer(hashValues1[i], filter);
 							}
@@ -454,7 +422,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (hashValues2[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec2.seq, i);
-								checkAndInsertKmer(currentSeq, filter);
+								insertKmer(currentSeq, filter);
 							} else {
 								insertKmer(hashValues2[i], filter);
 							}
@@ -474,7 +442,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (hashValues1[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec1.seq, i);
-								checkAndInsertKmer(currentSeq, filter);
+								insertKmer(currentSeq, filter);
 							} else {
 								insertKmer(hashValues1[i], filter);
 							}
@@ -484,7 +452,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (hashValues2[i].empty()) {
 								const unsigned char* currentSeq = proc.prepSeq(
 										rec2.seq, i);
-								checkAndInsertKmer(currentSeq, filter);
+								insertKmer(currentSeq, filter);
 							} else {
 								insertKmer(hashValues2[i], filter);
 							}
@@ -510,7 +478,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	}
 
 	filter.storeFilter(filename);
-	return m_redundancy;
+	return redundancy;
 }
 
 
@@ -550,20 +518,18 @@ size_t BloomFilterGenerator::generate(const string &filename,
 		exit(1);
 	}
 
-//	//ReadProcessor for subtraction filter
-//	ReadsProcessor subProc(subInfo.getKmerSize());
-
 	size_t kmerRemoved = 0;
+	size_t redundancy;
 
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
-	for (boost::unordered_map<string, vector<string> >::iterator i =
-			m_fileNamesAndHeaders.begin(); i != m_fileNamesAndHeaders.end(); ++i) {
+	for (vector<string>::iterator i =
+			m_fileNames.begin(); i != m_fileNames.end(); ++i) {
 		//let user know that files are being read
-		cerr << "Processing File: " << i->first << endl;
-		WindowedFileParser parser(i->first, m_kmerSize);
-		for (vector<string>::iterator j = i->second.begin();
-				j != i->second.end(); ++j) {
+		cerr << "Processing File: " << *i << endl;
+		WindowedFileParser parser(*i, m_kmerSize);
+		for (vector<string>::iterator j = parser.getHeaders().begin();
+				j != parser.getHeaders().end(); ++j) {
 			parser.setLocationByHeader(*j);
 			//object to process reads
 			//insert elements into filter
@@ -583,22 +549,13 @@ size_t BloomFilterGenerator::generate(const string &filename,
 						cerr
 								<< "ERROR: Must use identical size k-mers in subtractive filter"
 								<< endl;
-//						uint16_t subSections = kmerSize - kmerSize;
-//						for (uint16_t i = 0; i <= subSections; ++i) {
-//							if (!filterSub.contains(subProc.prepSeq(currentSeq, i)))
-//							{
-//								//if any sub kmer does not exists set allowance to true
-//								allowKmer = true;
-//								break;
-//							}
-//						}
 					}
 
 					if (allowKmer) {
 						const vector<size_t> &tempHash = multiHash(currentSeq,
 								m_hashNum, m_kmerSize);
 						if (filter.contains(tempHash)) {
-							m_redundancy++;
+							redundancy++;
 						} else {
 							filter.insert(tempHash);
 							m_totalEntries++;
@@ -614,7 +571,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 	cerr << "Total Number of K-mers not added: " << kmerRemoved << endl;
 
 	filter.storeFilter(filename);
-	return m_redundancy;
+	return redundancy;
 }
 
 //setters
