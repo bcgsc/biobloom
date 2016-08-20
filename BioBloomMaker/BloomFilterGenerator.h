@@ -7,13 +7,14 @@
 
 #ifndef BLOOMFILTERGENERATOR_H_
 #define BLOOMFILTERGENERATOR_H_
-#include <boost/unordered/unordered_map.hpp>
+#include <boost/shared_ptr.hpp>
 #include <vector>
 #include "Common/BloomFilter.h"
 #include "Common/SeqEval.h"
 #include <FastaReader.h>
 #include "Common/SeqEval.h"
 #include "DataLayer/kseq.h"
+#include "WindowedFileParser.h"
 #include <zlib.h>
 KSEQ_INIT(gzFile, gzread)
 
@@ -49,12 +50,12 @@ public:
 
 	virtual ~BloomFilterGenerator();
 private:
+	vector<string> m_fileNames;
 	unsigned m_kmerSize;
 	unsigned m_hashNum;
 	size_t m_expectedEntries;
 	size_t m_filterSize;
 	size_t m_totalEntries;
-	vector<string> m_fileNames;
 
 	inline size_t loadFilterFast(BloomFilter &bf){
 		vector< boost::shared_ptr<ReadsProcessor> > procs;
@@ -69,6 +70,8 @@ private:
 			tempHashValues[i] = boost::shared_ptr<vector<size_t> >(new vector<size_t>(m_hashNum));
 		}
 
+		int kmerSize = m_kmerSize;
+
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 			gzFile fp;
 			fp = gzopen(m_fileNames[i].c_str(), "r");
@@ -79,9 +82,9 @@ private:
 				size_t tempTotal = 0;
 				l = kseq_read(seq);
 				if (l >= 0) {
-					size_t screeningLoc = 0;
+					int screeningLoc = 0;
 					//k-merize and insert into bloom filter
-					while ( screeningLoc + m_kmerSize <= l) {
+					while ( (screeningLoc + kmerSize) <= l) {
 						const unsigned char* currentKmer =
 								procs[omp_get_thread_num()]->prepSeq(seq->seq.s,
 										screeningLoc);

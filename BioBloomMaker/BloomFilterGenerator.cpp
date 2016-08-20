@@ -519,7 +519,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 	}
 
 	size_t kmerRemoved = 0;
-	size_t redundancy;
+	size_t redundancy = 0;
 
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
@@ -528,7 +528,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 		//let user know that files are being read
 		cerr << "Processing File: " << *i << endl;
 		WindowedFileParser parser(*i, m_kmerSize);
-		for (vector<string>::iterator j = parser.getHeaders().begin();
+		for (vector<string>::const_iterator j = parser.getHeaders().begin();
 				j != parser.getHeaders().end(); ++j) {
 			parser.setLocationByHeader(*j);
 			//object to process reads

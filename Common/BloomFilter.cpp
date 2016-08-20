@@ -93,7 +93,7 @@ void BloomFilter::insert(vector<size_t> const &precomputed)
 	}
 }
 
-void BloomFilter::insert(vector<size_t> const &kmer)
+void BloomFilter::insert(const unsigned char* kmer)
 {
 
 	//iterates through hashed values adding it to the filter
