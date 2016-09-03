@@ -58,9 +58,9 @@ private:
 	size_t m_totalEntries;
 
 	inline size_t loadFilterFast(BloomFilter &bf){
-		vector< boost::shared_ptr<ReadsProcessor> > procs;
-		vector< boost::shared_ptr<vector<size_t> > > tempHashValues;
 		unsigned threadNum = omp_get_max_threads();
+		vector< boost::shared_ptr<ReadsProcessor> > procs(threadNum);
+		vector< boost::shared_ptr<vector<size_t> > > tempHashValues(threadNum);
 
 		size_t redundancy = 0;
 
@@ -75,12 +75,20 @@ private:
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 			gzFile fp;
 			fp = gzopen(m_fileNames[i].c_str(), "r");
+			if (fp == NULL) {
+				cerr << "file " << m_fileNames[i] << " cannot be opened" << endl;
+				exit(1);
+			}
 			kseq_t *seq = kseq_init(fp);
 			int l;
+#pragma omp parallel
 			for (;;) {
+#pragma omp critical(kseq_read)
+				{
+					l = kseq_read(seq);
+				}
 				size_t tempRedund = 0;
 				size_t tempTotal = 0;
-				l = kseq_read(seq);
 				if (l >= 0) {
 					int screeningLoc = 0;
 					//k-merize and insert into bloom filter
@@ -89,13 +97,14 @@ private:
 								procs[omp_get_thread_num()]->prepSeq(seq->seq.s,
 										screeningLoc);
 						if (currentKmer != NULL) {
-							redundancy +=
+							tempRedund +=
 									bf.insertAndCheck(
 											multiHash(currentKmer, m_hashNum,
 													m_kmerSize,
 													*tempHashValues[omp_get_thread_num()]));
-							m_totalEntries++;
+							++tempTotal;
 						}
+						++screeningLoc;
 					}
 #pragma omp atomic
 					redundancy += tempRedund;
