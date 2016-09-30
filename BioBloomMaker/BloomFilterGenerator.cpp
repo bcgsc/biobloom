@@ -200,8 +200,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 			string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 			if (tempStr1 == tempStr2) {
-				size_t numKmers1 = rec1.seq.length() - m_kmerSize + 1;
-				size_t numKmers2 = rec2.seq.length() - m_kmerSize + 1;
+				size_t numKmers1 = rec1.seq.length() > m_kmerSize ? rec1.seq.length() - m_kmerSize + 1 : 0;
+				size_t numKmers2 = rec2.seq.length() > m_kmerSize ? rec2.seq.length() - m_kmerSize + 1 : 0;
 				vector< vector<size_t> > hashValues1(numKmers1);
 				vector< vector<size_t> > hashValues2(numKmers2);
 				switch (mode) {
@@ -389,8 +389,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 			string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 			if (tempStr1 == tempStr2) {
-				size_t numKmers1 = rec1.seq.length() - m_kmerSize + 1;
-				size_t numKmers2 = rec2.seq.length() - m_kmerSize + 1;
+				size_t numKmers1 = rec1.seq.length() > m_kmerSize ? rec1.seq.length() - m_kmerSize + 1 : 0;
+				size_t numKmers2 = rec2.seq.length() > m_kmerSize ? rec2.seq.length() - m_kmerSize + 1 : 0;
+//				if(numKmers2 <= 0){
+//					cerr << rec1.seq.length() << endl;;
+//					cerr << rec2.seq.length() << endl;;
+//					exit(1);
+//				}
 				vector<vector<size_t> > hashValues1(numKmers1);
 				vector<vector<size_t> > hashValues2(numKmers2);
 				switch (mode) {
