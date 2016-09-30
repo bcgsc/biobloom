@@ -155,6 +155,12 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 	size_t totalReads = 0;
 
+	vector< boost::shared_ptr<ReadsProcessor> > procs(opt::threads);
+	//each thread gets its own thread processor
+	for(unsigned i = 0; i < opt::threads; ++i){
+		procs[i] = boost::shared_ptr<ReadsProcessor>(new ReadsProcessor(m_kmerSize));
+	}
+
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
 	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
 #pragma omp parallel
@@ -191,14 +197,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							<< endl;
 				}
 			}
-			ReadsProcessor proc(m_kmerSize);
 			string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 			string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 			if (tempStr1 == tempStr2) {
 				size_t numKmers1 = rec1.seq.length() - m_kmerSize + 1;
 				size_t numKmers2 = rec2.seq.length() - m_kmerSize + 1;
-				vector<vector<size_t> > hashValues1(numKmers1);
-				vector<vector<size_t> > hashValues2(numKmers2);
+				vector< vector<size_t> > hashValues1(numKmers1);
+				vector< vector<size_t> > hashValues2(numKmers2);
 				switch (mode) {
 				case PROG_INC: {
 					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
@@ -207,7 +212,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						//load remaining sequences
 						for (unsigned i = 0; i < numKmers1; ++i) {
 							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq = proc.prepSeq(
+								const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 										rec1.seq, i);
 								insertKmer(currentSeq, filter);
 							} else {
@@ -216,7 +221,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						}
 						//load store second read
 						for (unsigned i = 0; i < numKmers2; ++i) {
-							const unsigned char* currentSeq = proc.prepSeq(
+							const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 									rec2.seq, i);
 							insertKmer(currentSeq, filter);
 						}
@@ -228,7 +233,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						//load remaining sequences
 						for (unsigned i = 0; i < numKmers1; ++i) {
 							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq = proc.prepSeq(
+								const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 										rec1.seq, i);
 								insertKmer(currentSeq, filter);
 							} else {
@@ -238,7 +243,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						//load store second read
 						for (unsigned i = 0; i < numKmers2; ++i) {
 							if (hashValues2[i].empty()) {
-								const unsigned char* currentSeq = proc.prepSeq(
+								const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 										rec2.seq, i);
 								insertKmer(currentSeq, filter);
 							} else {
@@ -260,7 +265,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						//load remaining sequences
 						for (unsigned i = 0; i < numKmers1; ++i) {
 							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq = proc.prepSeq(
+								const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 										rec1.seq, i);
 								insertKmer(currentSeq, filter);
 							} else {
@@ -270,7 +275,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						//load store second read
 						for (unsigned i = 0; i < numKmers2; ++i) {
 							if (hashValues2[i].empty()) {
-								const unsigned char* currentSeq = proc.prepSeq(
+								const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 										rec2.seq, i);
 								insertKmer(currentSeq, filter);
 							} else {
@@ -340,6 +345,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
 	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
+
+	vector< boost::shared_ptr<ReadsProcessor> > procs(opt::threads);
+	//each thread gets its own thread processor
+	for(unsigned i = 0; i < opt::threads; ++i){
+		procs[i] = boost::shared_ptr<ReadsProcessor>(new ReadsProcessor(m_kmerSize));
+	}
+
 #pragma omp parallel
 	for (FastqRecord rec1;;) {
 		FastqRecord rec2;
@@ -369,12 +381,11 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 #pragma omp critical(totalReads)
 			{
 				++totalReads;
-				if (totalReads % 10000000 == 0) {
+				if (totalReads % 1000000 == 0) {
 					cerr << "Currently Reading Read Number: " << totalReads
 							<< endl;
 				}
 			}
-			ReadsProcessor proc(m_kmerSize);
 			string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
 			string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
 			if (tempStr1 == tempStr2) {
@@ -390,7 +401,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						//load remaining sequences
 						for (unsigned i = 0; i < numKmers1; ++i) {
 							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq = proc.prepSeq(
+								const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 										rec1.seq, i);
 								insertKmer(currentSeq, filter);
 							} else {
@@ -399,7 +410,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						}
 						//load store second read
 						for (unsigned i = 0; i < numKmers2; ++i) {
-							const unsigned char* currentSeq = proc.prepSeq(
+							const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 									rec2.seq, i);
 							insertKmer(currentSeq, filter);
 						}
@@ -410,7 +421,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						//load remaining sequences
 						for (unsigned i = 0; i < numKmers1; ++i) {
 							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq = proc.prepSeq(
+								const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 										rec1.seq, i);
 								insertKmer(currentSeq, filter);
 							} else {
@@ -420,7 +431,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						//load store second read
 						for (unsigned i = 0; i < numKmers2; ++i) {
 							if (hashValues2[i].empty()) {
-								const unsigned char* currentSeq = proc.prepSeq(
+								const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 										rec2.seq, i);
 								insertKmer(currentSeq, filter);
 							} else {
@@ -433,6 +444,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 					break;
 				}
 				case PROG_STD: {
+					try{
 					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
 							score, 1.0 - score, m_hashNum, hashValues1, evalMode)
 							&& SeqEval::evalRead(rec2, m_kmerSize, filter,
@@ -440,7 +452,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						//load remaining sequences
 						for (unsigned i = 0; i < numKmers1; ++i) {
 							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq = proc.prepSeq(
+								const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 										rec1.seq, i);
 								insertKmer(currentSeq, filter);
 							} else {
@@ -450,7 +462,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						//load store second read
 						for (unsigned i = 0; i < numKmers2; ++i) {
 							if (hashValues2[i].empty()) {
-								const unsigned char* currentSeq = proc.prepSeq(
+								const unsigned char* currentSeq = procs[omp_get_thread_num()]->prepSeq(
 										rec2.seq, i);
 								insertKmer(currentSeq, filter);
 							} else {
@@ -459,6 +471,10 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						}
 						if (printReads)
 							printReadPair(rec1, rec2);
+					}
+					} catch (const std::bad_alloc&) {
+						cerr << "2 " << totalReads << endl;
+						exit(6);
 					}
 					break;
 				}

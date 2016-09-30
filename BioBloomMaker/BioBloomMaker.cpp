@@ -296,7 +296,7 @@ int main(int argc, char *argv[]) {
 					break;
 			}
 		} else {
-			cerr << "require a least 3 input when using progressive mode"
+			cerr << "at least 3 inputs are required when using progressive mode\nbiobloommaker <options> seed_seq reads1 reads2"
 					<< endl;
 			exit(1);
 		}
