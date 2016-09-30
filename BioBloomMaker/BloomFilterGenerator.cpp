@@ -17,6 +17,9 @@
 #include "Common/BloomFilterInfo.h"
 #include <cassert>
 #include <cmath>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/lexical_cast.hpp>
+
 
 //Todo Refactor to remove repetitive and potentially error prone parts of code
 
@@ -171,7 +174,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 		if (m_totalEntries >= m_expectedEntries) {
 			//so threshold message only printed once
-			if (sequence1.eof() || sequence1.eof()) {
+			if (sequence1.eof() || sequence2.eof()) {
 				break;
 			}
 #pragma omp critical(breakClose)
@@ -206,7 +209,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				vector< vector<size_t> > hashValues2(numKmers2);
 				switch (mode) {
 				case PROG_INC: {
-					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
+					if (numKmers1 > score && SeqEval::evalRead(rec1, m_kmerSize, filter,
 							score, 1.0 - score, m_hashNum,
 							hashValues1, filterSub, evalMode)) {
 						//load remaining sequences
@@ -227,7 +230,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						}
 						if (printReads)
 							printReadPair(rec1, rec2);
-					} else if (SeqEval::evalRead(rec2, m_kmerSize, filter,
+					} else if (numKmers2 > score && SeqEval::evalRead(rec2, m_kmerSize, filter,
 							score, 1.0 - score, m_hashNum,
 							hashValues2, filterSub, evalMode)) {
 						//load remaining sequences
@@ -360,7 +363,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 		if (m_totalEntries >= m_expectedEntries) {
 			//so threshold message only printed once
-			if (sequence1.eof() || sequence1.eof()) {
+			if (sequence1.eof() || sequence2.eof()) {
 				break;
 			}
 #pragma omp critical(breakClose)
@@ -381,7 +384,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 #pragma omp critical(totalReads)
 			{
 				++totalReads;
-				if (totalReads % 1000000 == 0) {
+				cerr << m_expectedEntries << endl;
+				if (totalReads % 10000000 == 0) {
 					cerr << "Currently Reading Read Number: " << totalReads
 							<< endl;
 				}
@@ -391,7 +395,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			if (tempStr1 == tempStr2) {
 				size_t numKmers1 = rec1.seq.length() > m_kmerSize ? rec1.seq.length() - m_kmerSize + 1 : 0;
 				size_t numKmers2 = rec2.seq.length() > m_kmerSize ? rec2.seq.length() - m_kmerSize + 1 : 0;
-//				if(numKmers2 <= 0){
+//				if(numKmers2 == 0){
 //					cerr << rec1.seq.length() << endl;;
 //					cerr << rec2.seq.length() << endl;;
 //					exit(1);
@@ -400,7 +404,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				vector<vector<size_t> > hashValues2(numKmers2);
 				switch (mode) {
 				case PROG_INC: {
-					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
+					if (numKmers1 > score && SeqEval::evalRead(rec1, m_kmerSize, filter,
 							score, 1.0 - score, m_hashNum,
 							hashValues1, evalMode)) {
 						//load remaining sequences
@@ -421,7 +425,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						}
 						if (printReads)
 							printReadPair(rec1, rec2);
-					} else if (SeqEval::evalRead(rec2, m_kmerSize, filter,
+					} else if (numKmers2 > score && SeqEval::evalRead(rec2, m_kmerSize, filter,
 							score, 1.0 - score, m_hashNum, hashValues2, evalMode)) {
 						//load remaining sequences
 						for (unsigned i = 0; i < numKmers1; ++i) {
@@ -450,9 +454,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				}
 				case PROG_STD: {
 					try{
-					if (SeqEval::evalRead(rec1, m_kmerSize, filter,
+					if (numKmers1 > score && SeqEval::evalRead(rec1, m_kmerSize, filter,
 							score, 1.0 - score, m_hashNum, hashValues1, evalMode)
-							&& SeqEval::evalRead(rec2, m_kmerSize, filter,
+							&& numKmers2 > score && SeqEval::evalRead(rec2, m_kmerSize, filter,
 								score, 1.0 - score, m_hashNum, hashValues2, evalMode)) {
 						//load remaining sequences
 						for (unsigned i = 0; i < numKmers1; ++i) {

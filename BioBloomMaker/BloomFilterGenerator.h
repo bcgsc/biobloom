@@ -81,7 +81,7 @@ private:
 			}
 			kseq_t *seq = kseq_init(fp);
 			int l;
-#pragma omp parallel
+#pragma omp parallel private(l)
 			for (;;) {
 #pragma omp critical(kseq_read)
 				{
@@ -97,12 +97,13 @@ private:
 								procs[omp_get_thread_num()]->prepSeq(seq->seq.s,
 										screeningLoc);
 						if (currentKmer != NULL) {
-							tempRedund +=
+							bool found =
 									bf.insertAndCheck(
 											multiHash(currentKmer, m_hashNum,
 													m_kmerSize,
 													*tempHashValues[omp_get_thread_num()]));
-							++tempTotal;
+							tempRedund += found;
+							tempTotal += !found;
 						}
 						++screeningLoc;
 					}
@@ -143,10 +144,11 @@ private:
 				while (parser.notEndOfSeqeunce()) {
 					const unsigned char* currentSeq = parser.getNextSeq();
 					if (currentSeq != NULL) {
-						redundancy += bf.insertAndCheck(
+						bool found = bf.insertAndCheck(
 								multiHash(currentSeq, m_hashNum, m_kmerSize,
 										tempHashValues));
-						m_totalEntries++;
+						m_totalEntries += !found;
+						redundancy += found;
 					}
 				}
 			}

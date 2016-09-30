@@ -108,16 +108,15 @@ void BloomFilter::insert(const unsigned char* kmer)
 
 /*
  * Fetches and sets values from filter
- * Returns if value true if any bits are set
+ * Returns if value true all bits are set
  * */
 bool BloomFilter::insertAndCheck(vector<size_t> const &precomputed) {
-	bool result = false;
+	bool result = true;
 	//iterates through hashed values adding it to the filter
 	for (size_t i = 0; i < m_hashNum; ++i) {
 		size_t normalizedValue = precomputed.at(i) % m_size;
-		result |= bitMask[normalizedValue % bitsPerChar]
-				& __sync_fetch_and_or(&m_filter[normalizedValue / bitsPerChar],
-						bitMask[normalizedValue % bitsPerChar]);
+		result &= (__sync_fetch_and_or(&m_filter[normalizedValue / bitsPerChar],
+						bitMask[normalizedValue % bitsPerChar])) >> (normalizedValue % bitsPerChar) & 1;
 	}
 	return result;
 }
