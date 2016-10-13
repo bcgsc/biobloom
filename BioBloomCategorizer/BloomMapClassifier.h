@@ -96,11 +96,10 @@ private:
 			nonZeroCount += misses == 0 * opt::allowMisses;
 			for (unsigned i = 0; i < ids.size(); ++i) {
 				ID id = ids[i];
-				if (hitCounts.find(id) != hitCounts.end()) {
-					++hitCounts[id];
-				} else {
-					hitCounts[id] = 1;
+				if (hitCounts.find(id) == hitCounts.end()) {
+					hitCounts[id] = 0;
 				}
+				hitCounts[id] += ids.size() > 0;
 				hitCounts[id] += misses == 0 * opt::allowMisses;
 			}
 			++itr;

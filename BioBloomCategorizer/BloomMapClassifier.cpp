@@ -244,10 +244,10 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 
 			unsigned score1 = evaluateRead(sequence1, hitCounts1);
 			unsigned score2 = evaluateRead(sequence2, hitCounts2);
-			unsigned threshold1 = opt::score
+			unsigned threshold1 = opt::score > 1 ? opt::score : opt::score
 					* ((l1 - m_filter.getKmerSize() + 1)
 							* (opt::allowMisses + 1));
-			unsigned threshold2 = opt::score
+			unsigned threshold2 = opt::score > 1 ? opt::score : opt::score
 					* ((l2 - m_filter.getKmerSize() + 1)
 							* (opt::allowMisses + 1));
 
@@ -275,16 +275,15 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 #pragma omp critical(outputFiles)
 					{
 						readsOutput << "@" << name1 << " " << fullID << "\n"
-								<< sequence1 << "\n+\n" << qual1 << "\n";
-						readsOutput << "@" << name2 << " " << fullID << "\n"
-								<< sequence2 << "\n+\n" << qual2 << "\n";
+								<< sequence1 << "\n+\n" << qual1 << "\n" << "@"
+								<< name2 << " " << fullID << "\n" << sequence2
+								<< "\n+\n" << qual2 << "\n";
 					}
 				} else {
 #pragma omp critical(outputFiles)
 					{
 						readsOutput << fullID << "\t" << name1 << "\t" << score1
-								<< "\t" << score2;
-						readsOutput << "\n";
+								<< "\t" << score2 << "\n";
 					}
 				}
 			}
