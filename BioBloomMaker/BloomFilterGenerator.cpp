@@ -38,9 +38,14 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 		fp = gzopen(m_fileNames[i].c_str(), "r");
 		kseq_t *seq = kseq_init(fp);
 		int l;
+#pragma omp parallel private(l)
 		for (;;) {
-			l = kseq_read(seq);
+#pragma omp critical(kseq_read)
+			{
+				l = kseq_read(seq);
+			}
 			if (l >= 0) {
+#pragma omp atomic
 				m_expectedEntries += seq->seq.l - m_kmerSize + 1;
 			} else {
 				kseq_destroy(seq);
