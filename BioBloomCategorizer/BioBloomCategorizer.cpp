@@ -87,7 +87,7 @@ void printHelpDialog()
 	"                         If N is a floating point, the maximum threshold is any \n"
 	"                         number less than 1, and the minimum is 0 (highest\n"
 	"                         sensitivity). If set to 1, the best hit is used rather\n"
-	"                         than the threshold and score will be appended to the\n"
+	"                         than the threshold and the score will be appended to the\n"
 	"                         header of the output read. [0.15]\n"
 	"  -w, --with_score       Output multimatches with scores in the order of filter.\n"
 	"  -t, --threads=N        The number of threads to use. [1]\n"
