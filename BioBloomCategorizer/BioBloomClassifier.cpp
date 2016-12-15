@@ -770,7 +770,7 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 bool BioBloomClassifier::fexists(const string &filename) const
 {
 	ifstream ifile(filename.c_str());
-	return ifile;
+	return ifile.good();
 }
 
 /*
