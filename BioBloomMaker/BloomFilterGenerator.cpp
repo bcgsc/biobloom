@@ -38,20 +38,22 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 		fp = gzopen(m_fileNames[i].c_str(), "r");
 		kseq_t *seq = kseq_init(fp);
 		int l;
-#pragma omp parallel private(l)
+		size_t length;
+#pragma omp parallel private(l, length)
 		for (;;) {
 #pragma omp critical(kseq_read)
 			{
 				l = kseq_read(seq);
+				length = seq->seq.l;
 			}
 			if (l >= 0) {
 #pragma omp atomic
-				m_expectedEntries += seq->seq.l - m_kmerSize + 1;
+				m_expectedEntries += length - m_kmerSize + 1;
 			} else {
-				kseq_destroy(seq);
 				break;
 			}
 		}
+		kseq_destroy(seq);
 		gzclose(fp);
 	}
 }
@@ -199,8 +201,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		if (good1 && good2) {
 #pragma omp critical(totalReads)
 			{
-				++totalReads;
-				if (totalReads % 10000000 == 0) {
+				if (totalReads++ % 10000000 == 0) {
 					cerr << "Currently Reading Read Number: " << totalReads
 							<< endl;
 				}

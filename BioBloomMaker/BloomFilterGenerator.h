@@ -81,11 +81,16 @@ private:
 			}
 			kseq_t *seq = kseq_init(fp);
 			int l;
-#pragma omp parallel private(l)
+			char * tempStr;
+#pragma omp parallel private(l, tempStr)
 			for (;;) {
 #pragma omp critical(kseq_read)
 				{
 					l = kseq_read(seq);
+					if (l >= 0) {
+						tempStr = new char[l];
+						strcpy(tempStr, seq->seq.s);
+					}
 				}
 				size_t tempRedund = 0;
 				size_t tempTotal = 0;
@@ -94,7 +99,7 @@ private:
 					//k-merize and insert into bloom filter
 					while ( (screeningLoc + kmerSize) <= l) {
 						const unsigned char* currentKmer =
-								procs[omp_get_thread_num()]->prepSeq(seq->seq.s,
+								procs[omp_get_thread_num()]->prepSeq(tempStr,
 										screeningLoc);
 						if (currentKmer != NULL) {
 							bool found =
@@ -111,6 +116,7 @@ private:
 					redundancy += tempRedund;
 #pragma omp atomic
 					m_totalEntries += tempTotal;
+					delete[] tempStr;
 				} else {
 					break;
 				}
