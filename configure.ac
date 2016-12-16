@@ -7,8 +7,9 @@ AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([BioBloomMaker/BioBloomMaker.cpp])
 AC_CONFIG_HEADER([config.h])
 
-
+#see http://stackoverflow.com/questions/8215785/how-can-i-use-ac-revision-with-git
 AC_REVISION([m4_esyscmd([./tools/configure.commit])])
+AC_DEFINE([GIT_REVISION], "[m4_esyscmd([./tools/configure.commit])]", [git revision information])
 
 AC_PROG_RANLIB
 

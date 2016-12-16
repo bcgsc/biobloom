@@ -25,7 +25,7 @@ using namespace std;
 #define PROGRAM "biobloommaker"
 
 void printVersion() {
-	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"
+	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " GIT_REVISION "\n"
 	"Written by Justin Chu.\n"
 	"\n"
 	"Copyright 2013 Canada's Michael Smith Genome Science Centre\n";
