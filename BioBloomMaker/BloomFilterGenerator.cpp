@@ -541,64 +541,14 @@ size_t BloomFilterGenerator::generate(const string &filename,
 	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
 			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
 
-	if (subInfo.getKmerSize() > m_kmerSize) {
+	if (subInfo.getKmerSize() != m_kmerSize) {
 		cerr
-				<< "Error: Subtraction filter's k-mer size is larger than output filter's k-mer size."
+				<< "Error: Subtraction filter's k-mer size is a different size from than output filter's k-mer size."
 				<< endl;
 		exit(1);
 	}
 
-	size_t kmerRemoved = 0;
-	size_t redundancy = 0;
-
-	//for each file loop over all headers and obtain seq
-	//load input file + make filter
-	for (vector<string>::iterator i =
-			m_fileNames.begin(); i != m_fileNames.end(); ++i) {
-		//let user know that files are being read
-		cerr << "Processing File: " << *i << endl;
-		WindowedFileParser parser(*i, m_kmerSize);
-		for (vector<string>::const_iterator j = parser.getHeaders().begin();
-				j != parser.getHeaders().end(); ++j) {
-			parser.setLocationByHeader(*j);
-			//object to process reads
-			//insert elements into filter
-			//read fasta file line by line and split using sliding window
-			while (parser.notEndOfSeqeunce()) {
-				const unsigned char* currentSeq = parser.getNextSeq();
-				if (currentSeq != NULL) {
-					//allow kmer into filter?
-					bool allowKmer = false;
-
-					//Check if kmer or subkmers are located in filter
-					if (subInfo.getKmerSize() == m_kmerSize) {
-						//if kmer does not exist set allowance to true
-						allowKmer = !filterSub.contains(currentSeq);
-					} else {
-						//TODO make compatable with smaller kmer sizes
-						cerr
-								<< "ERROR: Must use identical size k-mers in subtractive filter"
-								<< endl;
-					}
-
-					if (allowKmer) {
-						const vector<size_t> &tempHash = multiHash(currentSeq,
-								m_hashNum, m_kmerSize);
-						if (filter.contains(tempHash)) {
-							redundancy++;
-						} else {
-							filter.insert(tempHash);
-							m_totalEntries++;
-						}
-					} else {
-						++kmerRemoved;
-					}
-				}
-			}
-		}
-	}
-
-	cerr << "Total Number of K-mers not added: " << kmerRemoved << endl;
+	size_t redundancy = loadFilterFastSubtract(filter, filterSub);
 
 	filter.storeFilter(filename);
 	return redundancy;

@@ -127,6 +127,82 @@ private:
 		return redundancy;
 	}
 
+	inline size_t loadFilterFastSubtract(BloomFilter &bf, BloomFilter &bfsub){
+		unsigned threadNum = omp_get_max_threads();
+		vector< boost::shared_ptr<ReadsProcessor> > procs(threadNum);
+		vector< boost::shared_ptr<vector<size_t> > > tempHashValues(threadNum);
+
+		size_t kmerRemoved = 0;
+		size_t redundancy = 0;
+
+		//each thread gets its own thread processor
+		for(unsigned i = 0; i < threadNum; ++i){
+			procs[i] = boost::shared_ptr<ReadsProcessor>(new ReadsProcessor(m_kmerSize));
+			tempHashValues[i] = boost::shared_ptr<vector<size_t> >(new vector<size_t>(m_hashNum));
+		}
+
+		int kmerSize = m_kmerSize;
+
+		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+			gzFile fp;
+			fp = gzopen(m_fileNames[i].c_str(), "r");
+			if (fp == NULL) {
+				cerr << "file " << m_fileNames[i] << " cannot be opened" << endl;
+				exit(1);
+			}
+			kseq_t *seq = kseq_init(fp);
+			int l;
+			char * tempStr;
+#pragma omp parallel private(l, tempStr)
+			for (;;) {
+#pragma omp critical(kseq_read)
+				{
+					l = kseq_read(seq);
+					if (l >= 0) {
+						tempStr = new char[l];
+						strcpy(tempStr, seq->seq.s);
+					}
+				}
+				size_t tempRedund = 0;
+				size_t tempTotal = 0;
+				if (l >= 0) {
+					int screeningLoc = 0;
+					//k-merize and insert into bloom filter
+					while ( (screeningLoc + kmerSize) <= l) {
+						const unsigned char* currentKmer =
+								procs[omp_get_thread_num()]->prepSeq(tempStr,
+										screeningLoc);
+						if (currentKmer != NULL) {
+							if (bfsub.contains(currentKmer)) {
+								++kmerRemoved;
+							} else {
+								bool found =
+										bf.insertAndCheck(
+												multiHash(currentKmer,
+														m_hashNum, m_kmerSize,
+														*tempHashValues[omp_get_thread_num()]));
+								tempRedund += found;
+								tempTotal += !found;
+							}
+						}
+						++screeningLoc;
+					}
+#pragma omp atomic
+					redundancy += tempRedund;
+#pragma omp atomic
+					m_totalEntries += tempTotal;
+					delete[] tempStr;
+				} else {
+					break;
+				}
+			}
+			kseq_destroy(seq);
+			gzclose(fp);
+		}
+		cerr << "Total Number of K-mers not added: " << kmerRemoved << endl;
+		return redundancy;
+	}
+
 	inline size_t loadFilterLowMem(BloomFilter &bf){
 
 		size_t redundancy = 0;
