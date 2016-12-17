@@ -241,7 +241,7 @@ private:
 	inline void insertKmer(const vector<size_t> &currentSeq,
 			BloomFilter &filter)
 	{
-#pragma omp atomic update
+#pragma omp atomic
 			m_totalEntries += !filter.insertAndCheck(currentSeq);
 	}
 
@@ -249,7 +249,7 @@ private:
 			BloomFilter &filter)
 	{
 		if (currentSeq != NULL) {
-#pragma omp atomic update
+#pragma omp atomic
 			m_totalEntries += !filter.insertAndCheck(
 					multiHash(currentSeq, m_hashNum, m_kmerSize));
 		}
