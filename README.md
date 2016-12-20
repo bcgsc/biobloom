@@ -197,9 +197,48 @@ There is no cpu minimum speed or number of cores, though it will run faster with
 #####General
 Help dialog from the `--help` options has the most up to date information about all the options in this tool and consulting it should give you good infomation about the effects of some options.
 
+#####biobloommaker
+```
+Usage: biobloommaker -p [FILTERID] [OPTION]... [FILE]...
+Usage: biobloommaker -p [FILTERID] -r 0.2 [FILE]... [FASTQ1] [FASTQ2] 
+Creates a bf and txt file from a list of fasta files. The input sequences are
+cut into a k-mers with a sliding window and their hash signatures are inserted
+into a bloom filter.
+
+  -p, --file_prefix=N    Filter prefix and filter ID. Required option.
+  -o, --output_dir=N     Output location of the filter and filter info files.
+  -h, --help             Display this dialog.
+  -v  --version          Display version information.
+  -t, --threads=N        The number of threads to use.
+
+Advanced options:
+  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]
+  -g, --hash_num=N       Set number of hash functions to use in filter instead
+                         of automatically using calculated optimal number of
+                         functions.
+  -k, --kmer_size=N      K-mer size to use to create filter. [25]
+  -s, --subtract=N       Path to filter that you want to uses to prevent the
+                         addition of k-mers contained into new filter. You may
+                         only use filters with k-mer sizes equal the one you
+                         wish to create.
+  -n, --num_ele=N        Set the number of expected elements. If set to 0 number
+                         is determined from sequences sizes within files. [0]
+  -P, --print_reads      During progressive filter creation, print tagged reads
+                         to STDOUT in FASTQ format [disabled]
+  -r, --progressive=N    Progressive filter creation. The score threshold is
+                         specified by N, which may be either a floating point score
+                         between 0 and 1 or a positive integer.  If N is a
+                         positive integer, it is interpreted as the minimum
+                         number of contiguous matching bases required for a
+                         match.
+  -i, --inclusive        If one paired read matches, both reads will be included
+                         in the filter. Only active with the (-r) option.
+
+Report bugs to <cjustin@bcgsc.ca>.
+```
+
 #####biobloomcategorizer
 ```
-biobloomcategorizer --help
 Usage: biobloomcategorizer [OPTION]... -f "[FILTER1]..." [FILE]...
 biobloomcategorizer [OPTION]... -e -f "[FILTER1]..." [FILE1.fq] [FILE2.fq]
 Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or
@@ -214,12 +253,14 @@ BAM format and compressed with gz, bz2 or xz and may be tarred.
                          larger than normal. Sorting by read name may be needed.
   -i, --inclusive        If one paired read matches, both reads will be included
                          in the filter. 
-  -s, --score=N          Score threshold for matching. Maximum threshold is 1
-                         (highest specificity), minimum is 0 (highest
-                         sensitivity). A lower score threshold will decrease run
-                         time. If set to 1, best hit is used rather than
-                         threshold and score will appended to the header of the
-                         output read.[0.15]
+  -s, --score=N          Score threshold for matching. N may be either a
+                         floating point score between 0 and 1 or a positive
+                         integer representing the minimum match length in bases.
+                         If N is a floating point, the maximum threshold is any 
+                         number less than 1, and the minimum is 0 (highest
+                         sensitivity). If set to 1, the best hit is used rather
+                         than the threshold and the score will be appended to the
+                         header of the output read. [0.15]
   -w, --with_score       Output multimatches with scores in the order of filter.
   -t, --threads=N        The number of threads to use. [1]
   -g, --gz_output        Outputs all output files in compressed gzip.
@@ -240,51 +281,13 @@ Advanced options:
   -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast
                          but low specificity, use only on long reads (>100bp).
   -c, --ordered          Use ordered filtering. Order of filters matters
-                         (filters list first have higher priority). Only taken
+                         (filters listed first have higher priority). Only taken
                          advantage of when k-mer sizes and number of hash
                          functions are the same.
   -d, --stdout_filter=N  Outputs all matching reads to stdout for the specified
                          filter. N is the filter ID without file extension.
                          Reads are outputed in fastq, and if paired will output
                          will be interlaced.
-Report bugs to <cjustin@bcgsc.ca>.
-```
-
-#####biobloommaker
-```
-biobloommaker --help
-Usage: biobloommaker -p [FILTERID] [OPTION]... [FILE]...
-Usage: biobloommaker -p [FILTERID] -r 0.2 [FILE]... [FASTQ1] [FASTQ2] 
-Creates a bf and txt file from a list of fasta files. The input sequences are
-cut into a k-mers with a sliding window and their hash signatures are inserted
-into a bloom filter.
-
-  -p, --file_prefix=N    Filter prefix and filter ID. Required option.
-  -o, --output_dir=N     Output location of the filter and filter info files.
-  -h, --help             Display this dialog.
-  -v  --version          Display version information.
-  -t, --threads=N        The number of threads to use. Experimental. [1]
-                         Currently only active with the (-r) option.
-
-Advanced options:
-  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]
-  -g, --hash_num=N       Set number of hash functions to use in filter instead
-                         of automatically using calculated optimal number of
-                         functions.
-  -k, --kmer_size=N      K-mer size to use to create filter. [25]
-  -s, --subtract=N       Path to filter that you want to uses to prevent the
-                         addition of k-mers contained into new filter. You may
-                         only use filters with k-mer sizes equal the one you
-                         wish to create.
-  -n, --num_ele=N        Set the number of expected elements. If set to 0 number
-                         is determined from sequences sizes within files. [0]
-  -r, --progressive=N    Progressive filter creation. After initial seeding,
-                         filter is created by greedly incorporating reads
-                         into filter according to score threshold of N.
-  -i, --inclusive        If one paired read matches, both reads will be included
-                         in the filter. Only active with the (-r) option.
-
-Report bugs to <cjustin@bcgsc.ca>.
 ```
 
 #####A. How can distinguish between organisms that share lots of k-mer content?
