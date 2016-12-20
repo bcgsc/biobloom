@@ -71,7 +71,7 @@ If your boost library headers are not in your PATH you can specify their locatio
 2. Generating Bloom Filters from Reference Sequences with Biobloommaker
 ------
 To create bloom filters from a FastA file, the FastA file must by indexed. Indexing can
-be done by programs like [samtools](https://github.com/samtools/samtools) (faidx) or [fastahack](https://github.com/ekg/fastahack).
+be done by programs like [samtools](https://github.com/samtools/samtools) (faidx) or [fastahack](https://github.com/ekg/fastahack). (As of version 2.0.13 this is no longer required)
 
 After you have your FastA file and index, a .bf file with corresponding information text
 file can be created by running the command:
