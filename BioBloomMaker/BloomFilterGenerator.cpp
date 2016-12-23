@@ -136,6 +136,35 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//setup bloom filter
 	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
+	size_t baitFilterSize = 0;
+
+	for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+		gzFile fp;
+		fp = gzopen(m_fileNames[i].c_str(), "r");
+		kseq_t *seq = kseq_init(fp);
+		int l;
+		size_t length;
+#pragma omp parallel private(l, length)
+		for (;;) {
+#pragma omp critical(kseq_read)
+			{
+				l = kseq_read(seq);
+				length = seq->seq.l;
+			}
+			if (l >= 0) {
+#pragma omp atomic
+				baitFilterSize += length - m_kmerSize + 1;
+			} else {
+				break;
+			}
+		}
+		kseq_destroy(seq);
+		gzclose(fp);
+	}
+
+	//secondary bait filter
+	BloomFilter baitFilter(baitFilterSize, m_hashNum, m_kmerSize);
+
 	//load other bloom filter info
 	string infoFileName = (subtractFilter).substr(0,
 			(subtractFilter).length() - 2) + "txt";
@@ -157,11 +186,16 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	size_t redundancy = 0;
 
 	if(opt::fastIO){
+		loadFilterFast(baitFilter);
 		redundancy += loadFilterFast(filter);
 	}
 	else{
-		redundancy += loadFilterLowMem(filter);
+		loadFilterLowMem(baitFilter);
+		redundancy += loadFilterFast(filter);
 	}
+
+	//TODO: TEMP VARIABLES
+	double baitThreshold = 0.1;
 
 	size_t totalReads = 0;
 
@@ -215,9 +249,11 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				vector< vector<size_t> > hashValues2(numKmers2);
 				switch (mode) {
 				case PROG_INC: {
-					if (numKmers1 > score && SeqEval::evalRead(rec1, m_kmerSize, filter,
+					if (numKmers1 > score && (SeqEval::evalRead(rec1, m_kmerSize, filter,
 							score, 1.0 - score, m_hashNum,
-							hashValues1, filterSub, evalMode)) {
+							hashValues1, filterSub, evalMode) || SeqEval::evalRead(rec1, m_kmerSize, baitFilter,
+									baitThreshold, 1.0 - baitThreshold, m_hashNum,
+									hashValues1, filterSub, evalMode))) {
 						//load remaining sequences
 						for (unsigned i = 0; i < numKmers1; ++i) {
 							if (hashValues1[i].empty()) {
@@ -236,9 +272,11 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						}
 						if (printReads)
 							printReadPair(rec1, rec2);
-					} else if (numKmers2 > score && SeqEval::evalRead(rec2, m_kmerSize, filter,
+					} else if (numKmers2 > score && (SeqEval::evalRead(rec2, m_kmerSize, filter,
 							score, 1.0 - score, m_hashNum,
-							hashValues2, filterSub, evalMode)) {
+							hashValues2, filterSub, evalMode) || SeqEval::evalRead(rec2, m_kmerSize, baitFilter,
+									baitThreshold, 1.0 - baitThreshold, m_hashNum,
+									hashValues2, filterSub, evalMode))) {
 						//load remaining sequences
 						for (unsigned i = 0; i < numKmers1; ++i) {
 							if (hashValues1[i].empty()) {
