@@ -195,7 +195,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	}
 
 	//TODO: TEMP VARIABLES
-	double baitThreshold = 0.1;
+	double baitThreshold = 0.15;
+	unsigned iterations = 2;
 
 	size_t totalReads = 0;
 
@@ -205,6 +206,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		procs[i] = boost::shared_ptr<ReadsProcessor>(new ReadsProcessor(m_kmerSize));
 	}
 
+	for(unsigned i = 0; i <= iterations; ++i)
+	{
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
 	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
 #pragma omp parallel
@@ -347,6 +350,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		cerr
 				<< "error: eof bit not flipped. Input files may be different lengths"
 				<< endl;
+	}
 	}
 
 	filter.storeFilter(filename);
