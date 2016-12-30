@@ -154,6 +154,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			if (l >= 0) {
 #pragma omp atomic
 				baitFilterSize += length - m_kmerSize + 1;
+				baitFilterSize = baitFilterSize + (64 - baitFilterSize % 64);
 			} else {
 				break;
 			}
@@ -195,8 +196,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	}
 
 	//TODO: TEMP VARIABLES
-	double baitThreshold = 0.15;
-	unsigned iterations = 2;
+	double baitThreshold = 0.9;
+	unsigned iterations = 1;
 
 	size_t totalReads = 0;
 
@@ -206,7 +207,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		procs[i] = boost::shared_ptr<ReadsProcessor>(new ReadsProcessor(m_kmerSize));
 	}
 
-	for(unsigned i = 0; i <= iterations; ++i)
+	for(unsigned i = 0; i < iterations; ++i)
 	{
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
 	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
