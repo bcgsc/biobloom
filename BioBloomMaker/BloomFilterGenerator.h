@@ -159,7 +159,7 @@ private:
 				{
 					l = kseq_read(seq);
 					if (l >= 0) {
-						tempStr = new char[l];
+						tempStr = new char[l + 1];
 						strcpy(tempStr, seq->seq.s);
 					}
 				}
