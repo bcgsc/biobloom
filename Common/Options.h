@@ -11,6 +11,9 @@ namespace opt {
 	extern unsigned streakThreshold;
 	extern unsigned threads;
 	extern int rank;
-	extern bool fastIO;}
+	extern bool fastIO;
+	extern double baitThreshold;
+	extern unsigned progItrns;
+}
 
 #endif

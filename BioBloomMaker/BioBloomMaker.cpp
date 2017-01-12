@@ -55,17 +55,21 @@ void printHelpDialog() {
 		"  -s, --subtract=N       Path to filter that you want to uses to prevent the\n"
 		"                         addition of k-mers contained into new filter. You may\n"
 		"                         only use filters with k-mer sizes equal the one you\n"
-		"                         wish to create.\n"
+		"                         wish to create. Use this to minimize repeat propagation\n"
+		"                         when generating progressive filters.\n"
 		"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 		"                         is determined from sequences sizes within files. [0]\n"
+		"\nOptions for progressive filters:\n"
 		"  -P, --print_reads      During progressive filter creation, print tagged reads\n"
 		"                         to STDOUT in FASTQ format [disabled]\n"
 		"  -r, --progressive=N    Progressive filter creation. The score threshold is\n"
-		"                         specified by N, which may be either a floating point score\n"
-		"                         between 0 and 1 or a positive integer.  If N is a\n"
+		"                         specified by N, which may be either a floating point\n"
+		"                         score between 0 and 1 or a positive integer.  If N is a\n"
 		"                         positive integer, it is interpreted as the minimum\n"
 		"                         number of contiguous matching bases required for a\n"
 		"                         match.\n"
+		"  -b, --baitScore=N      Score threshold when considering only bait. [r]\n"
+		"  -e, --iterations=N     Pass through files N times if threshold is not met."
 		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
 		"                         in the filter. Only active with the (-r) option.\n"
 		"\n"
@@ -110,11 +114,13 @@ int main(int argc, char *argv[]) {
 					"help", no_argument, NULL, 'h' }, {
 					"print_reads", no_argument, NULL, 'P' }, {
 					"progressive", required_argument, NULL, 'r' }, {
+					"baitScore", required_argument, NULL, 'b' }, {
+					"iterations", required_argument, NULL, 'e' }, {
 					NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:i", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -219,12 +225,42 @@ int main(int argc, char *argv[]) {
 					return 0;
 				}
 				if (progressive < 0 || progressive > 1) {
-					cerr << "Error - s must be a positive integer or a floating "
+					cerr << "Error - r must be a positive integer or a floating "
 						<< "point between 0 and 1. Input given:"
 						<< optarg << endl;
 					exit(EXIT_FAILURE);
 				}
 				evalMode = SeqEval::EVAL_STANDARD;
+
+			}
+			break;
+		}
+		case 'r': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::baitThreshold)) {
+				cerr << "Error - Invalid set of bloom filter parameters! b: "
+						<< optarg << endl;
+				return 0;
+			}
+			if (opt::baitThreshold < 0) {
+				cerr << "Error - b must be a positive integer or a floating "
+						<< "point between 0 and 1. Input given:" << optarg
+						<< endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
+		case 'e': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::progItrns)) {
+				cerr << "Error - Invalid set of bloom filter parameters! b: "
+						<< optarg << endl;
+				return 0;
+			}
+			if (opt::progItrns > 0) {
+				cerr << "Error - e must be > 1" << optarg
+						<< endl;
+				exit(EXIT_FAILURE);
 			}
 			break;
 		}
@@ -276,6 +312,18 @@ int main(int argc, char *argv[]) {
 	string file2 = "";
 
 	if (progressive != -1) {
+		if(opt::baitThreshold == -1)
+		{
+			opt::baitThreshold = progressive;
+		}
+		else if ((opt::baitThreshold < 1 && progressive > 1)
+				|| (opt::baitThreshold > 1 && progressive < 1)) {
+			cerr
+					<< "Both the bait threshold and progressive bloom filter must be either < 1 or > 1"
+					<< endl;
+			exit(1);
+		}
+
 		if (inputFiles.size() > 2) {
 			file2 = inputFiles.back();
 			inputFiles.pop_back();

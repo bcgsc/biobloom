@@ -196,17 +196,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		redundancy += loadFilterFast(filter);
 	}
 
-	//TODO: TEMP VARIABLES
-	double baitThreshold = evalMode == SeqEval::EVAL_STANDARD ? 0.35 : 96;
-	unsigned iterations = 5;
-
 	vector< boost::shared_ptr<ReadsProcessor> > procs(opt::threads);
 	//each thread gets its own thread processor
 	for(unsigned i = 0; i < opt::threads; ++i){
 		procs[i] = boost::shared_ptr<ReadsProcessor>(new ReadsProcessor(m_kmerSize));
 	}
 
-	for (unsigned i = 0; i < iterations; ++i) {
+	for (unsigned i = 0; i < opt::progItrns ; ++i) {
 		size_t totalReads = 0;
 		cerr << "Iteration " << i + 1 << endl;
 		FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
@@ -265,8 +261,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 										score, 1.0 - score, m_hashNum,
 										hashValues1, filterSub, evalMode)
 										|| SeqEval::evalRead(rec1, m_kmerSize,
-												baitFilter, baitThreshold,
-												1.0 - baitThreshold, m_hashNum,
+												baitFilter, opt::baitThreshold,
+												1.0 - opt::baitThreshold, m_hashNum,
 												hashValues1, filterSub,
 												evalMode))) {
 							//load remaining sequences
@@ -294,8 +290,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 										score, 1.0 - score, m_hashNum,
 										hashValues2, filterSub, evalMode)
 										|| SeqEval::evalRead(rec2, m_kmerSize,
-												baitFilter, baitThreshold,
-												1.0 - baitThreshold, m_hashNum,
+												baitFilter, opt::baitThreshold,
+												1.0 - opt::baitThreshold, m_hashNum,
 												hashValues2, filterSub,
 												evalMode))) {
 							//load remaining sequences
