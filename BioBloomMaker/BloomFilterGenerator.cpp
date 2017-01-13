@@ -442,8 +442,6 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			BloomFilterInfo::calcOptimalSize(baitFilterElements, 0.0001,
 					m_hashNum), m_hashNum, m_kmerSize);
 
-	size_t totalReads = 0;
-
 	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
 	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
 
