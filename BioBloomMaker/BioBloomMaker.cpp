@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include "BloomFilterGenerator.h"
 #include "Common/BloomFilterInfo.h"
 #include "Common/SeqEval.h"
 #include <boost/unordered/unordered_map.hpp>
@@ -19,6 +18,8 @@
 #if _OPENMP
 # include <omp.h>
 #endif
+#include "BloomMapGenerator.h"
+#include "BloomFilterGenerator.h"
 
 using namespace std;
 
@@ -33,6 +34,21 @@ void printVersion() {
 	exit(EXIT_SUCCESS);
 }
 
+/*
+ * Parses input string into separate strings, returning a vector.
+ */
+vector<string> convertInputString(const string &inputString)
+{
+	vector<string> currentString;
+	string temp;
+	stringstream converter(inputString);
+	while (converter >> temp) {
+		currentString.push_back(temp);
+	}
+	assert(currentString.size() > 0);
+	return currentString;
+}
+
 void printHelpDialog() {
 	static const char dialog[] =
 		"Usage: biobloommaker -p [FILTERID] [OPTION]... [FILE]...\n"
@@ -44,10 +60,21 @@ void printHelpDialog() {
 		"  -p, --file_prefix=N    Filter prefix and filter ID. Required option.\n"
 		"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
 		"  -h, --help             Display this dialog.\n"
-		"  -v  --version          Display version information.\n"
-		"  -t, --threads=N        The number of threads to use.\n"
+		"  -v, --version          Display version information.\n"
+		"  -t, --threads=N        The number of threads to use. Experimental. [1]\n"
+		"                         Currently only active with the (-r) option.\n"
+		"  -m, --map=N            Generates a Bloom Filter Map, expects list of seeds\n"
+		"                         1s & 0s separated by spaces. -k is ignored.\n"
+		"  -I, --id_by_file       For Bloom maps, assign IDs by file rather than by\n"
+		"                         fasta header.\n"
+		"  -c, --colli_id         Compute collision ID for Bloom Map [false].\n"
+		"  -C, --colli_analysis   Compute collision matrix.\n"
 		"\nAdvanced options:\n"
-		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]\n"
+		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter.\n"
+		"                         For Bloom Maps this value reference to the occupancy rate\n"
+		"                         of the filter rather than the FPR [0.0075]\n"
+		"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
+		"                         Bloom Maps. (currently does nothing) [0]\n"
 		"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
 		"                         of automatically using calculated optimal number of\n"
 		"                         functions.\n"
@@ -100,27 +127,31 @@ int main(int argc, char *argv[]) {
 
 	//long form arguments
 	static struct option long_options[] = {
-			{
-					"fal_pos_rate", required_argument, NULL, 'f' }, {
-					"file_prefix", required_argument, NULL, 'p' }, {
-					"output_dir", required_argument, NULL, 'o' }, {
-					"threads", required_argument, NULL, 't' }, {
-					"inclusive", no_argument, NULL, 'i' }, {
-					"version", no_argument, NULL, 'v' }, {
-					"hash_num", required_argument, NULL, 'g' }, {
-					"kmer_size", required_argument, NULL, 'k' }, {
-					"subtract",	required_argument, NULL, 's' }, {
-					"num_ele", required_argument, NULL, 'n' }, {
-					"help", no_argument, NULL, 'h' }, {
-					"print_reads", no_argument, NULL, 'P' }, {
-					"progressive", required_argument, NULL, 'r' }, {
-					"baitScore", required_argument, NULL, 'b' }, {
-					"iterations", required_argument, NULL, 'e' }, {
-					NULL, 0, NULL, 0 } };
-
+		{
+			"fal_pos_rate", required_argument, NULL, 'f' }, {
+			"allowed_miss", required_argument, NULL, 'a' }, {
+			"file_prefix", required_argument, NULL, 'p' }, {
+			"output_dir", required_argument, NULL, 'o' }, {
+			"threads", required_argument, NULL, 't' }, {
+			"map", required_argument, NULL, 'm' }, {
+			"id_by_file", no_argument, NULL, 'I' }, {
+			"colli_id", no_argument, NULL, 'C' }, {
+			"colli_id", no_argument, NULL, 'c' }, {
+			"inclusive", no_argument, NULL, 'i' }, {
+			"version", no_argument, NULL, 'v' }, {
+			"hash_num", required_argument, NULL, 'g' }, {
+			"kmer_size", required_argument, NULL, 'k' }, {
+			"subtract",	required_argument, NULL, 's' }, {
+			"num_ele", required_argument, NULL, 'n' }, {
+			"help", no_argument, NULL, 'h' }, {
+			"print_reads", no_argument, NULL, 'P' }, {
+			"progressive", required_argument, NULL, 'r' }, {
+			"baitScore", required_argument, NULL, 'b' }, {
+			"iterations", required_argument, NULL, 'e' }, {
+			NULL, 0, NULL, 0 } };
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:m:a:IcC", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -155,8 +186,35 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		}
+		case 'm': {
+			opt::sseeds = convertInputString(optarg);
+			//TODO:CHECK IF all seed are the same length here
+			kmerSize = opt::sseeds[0].size();
+			opt::filterType = BLOOMMAP;
+			break;
+		}
+		case 'I': {
+			opt::idByFile = true;
+			break;
+		}
+		case 'c': {
+			opt::colliIDs = true;
+			break;
+		}
+		case 'C': {
+			opt::colliAnalysis = true;
+			break;
+		}
 		case 'i': {
 			inclusive = true;
+			break;
+		}
+		case 'a': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::allowMisses)) {
+				cerr << "Error - Invalid parameter! a: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
 			break;
 		}
 		case 'k': {
@@ -235,7 +293,7 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		}
-		case 'r': {
+		case 'b': {
 			stringstream convert(optarg);
 			if (!(convert >> opt::baitThreshold)) {
 				cerr << "Error - Invalid set of bloom filter parameters! b: "
@@ -349,6 +407,13 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	if (opt::filterType == BLOOMMAP) {
+		BloomMapGenerator filterGen(inputFiles, kmerSize, entryNum);
+		filterGen.generate(outputDir + filterPrefix, fpr);
+		cerr << "Bloom Map Creation Complete." << endl;
+		return 0;
+	}
+
 	//create filter
 	BloomFilterGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
 
@@ -409,7 +474,7 @@ int main(int argc, char *argv[]) {
 
 	//output info
 	info.printInfoFile(outputDir + filterPrefix + ".txt");
-	cerr << "Filter Creation Complete." << endl;
+	cerr << "Bloom Filter Creation Complete." << endl;
 
 	return 0;
 }
