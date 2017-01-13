@@ -48,6 +48,22 @@ public:
 	double getRedundancyFPR() const;
 	double getFPR() const;
 
+	/*
+	 * Only returns multiples of 64 for filter building purposes
+	 * Is an estimated size using approximations of FPR formula
+	 * given the number of hash functions
+	 * see http://en.wikipedia.org/wiki/Bloom_filter
+	 */
+	static size_t calcOptimalSize(size_t entries, float fpr,
+			unsigned hashNum)
+	{
+		size_t non64ApproxVal = size_t(
+				-double(entries) * double(hashNum)
+						/ log(1.0 - pow(fpr, float(1 / (float(hashNum))))));
+
+		return non64ApproxVal + (64 - non64ApproxVal % 64);
+	}
+
 private:
 	//user specified input
 	string m_filterID;
@@ -74,8 +90,6 @@ private:
 	double calcRedunancyFPR(size_t size, size_t numEntr,
 			unsigned hashFunctNum) const;
 	size_t calcOptimalSize(size_t entries, float fpr) const;
-	size_t calcOptimalSize(size_t entries, float fpr,
-			unsigned hashNum) const;
 };
 
 #endif /* BLOOMFILTERINFO_H_ */

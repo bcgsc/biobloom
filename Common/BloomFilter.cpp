@@ -90,23 +90,35 @@ void BloomFilter::insert(vector<size_t> const &precomputed)
 		size_t normalizedValue = precomputed.at(i) % m_size;
 		__sync_or_and_fetch(&m_filter[normalizedValue / bitsPerChar],
 						bitMask[normalizedValue % bitsPerChar]);
-//		m_filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
-//				% bitsPerChar];
 	}
 }
 
 void BloomFilter::insert(const unsigned char* kmer)
 {
+
 	//iterates through hashed values adding it to the filter
 	for (size_t i = 0; i < m_hashNum; ++i) {
 		size_t normalizedValue = CityHash64WithSeed(
 				reinterpret_cast<const char*>(kmer), m_kmerSizeInBytes, i)
 				% m_size;
-		__sync_or_and_fetch(&m_filter[normalizedValue / bitsPerChar],
-				bitMask[normalizedValue % bitsPerChar]);
-//		m_filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
-//				% bitsPerChar];
+		__sync_fetch_and_or(&m_filter[normalizedValue / bitsPerChar],
+								bitMask[normalizedValue % bitsPerChar]);
 	}
+}
+
+/*
+ * Fetches and sets values from filter
+ * Returns if value true all bits are set
+ * */
+bool BloomFilter::insertAndCheck(vector<size_t> const &precomputed) {
+	bool result = true;
+	//iterates through hashed values adding it to the filter
+	for (size_t i = 0; i < m_hashNum; ++i) {
+		size_t normalizedValue = precomputed.at(i) % m_size;
+		result &= (__sync_fetch_and_or(&m_filter[normalizedValue / bitsPerChar],
+						bitMask[normalizedValue % bitsPerChar])) >> (normalizedValue % bitsPerChar) & 1;
+	}
+	return result;
 }
 
 /*

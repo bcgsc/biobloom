@@ -41,12 +41,30 @@ static inline vector<size_t> multiHash(const unsigned char* kmer, size_t num,
 	return tempHashValues;
 }
 
+//prevent reallocation of memory
+/*
+ * For precomputing hash values. kmerSize is the number of bytes of the string used.
+ */
+static inline vector<size_t> multiHash(const unsigned char* kmer, size_t num,
+		unsigned kmerSize, vector<size_t> &tempHashValues) {
+	//use raw kmer number as first hash value
+	size_t kmerSizeInBytes = (kmerSize + 4 - 1) / 4;
+
+	for (size_t i = 0; i < num; ++i) {
+		tempHashValues[i] = CityHash64WithSeed(
+				reinterpret_cast<const char*>(kmer), kmerSizeInBytes, i);
+	}
+	return tempHashValues;
+}
+
+
 class BloomFilter {
 public:
 	//for generating a new filter
 	explicit BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize);
 	void insert(vector<size_t> const &precomputed);
 	void insert(const unsigned char* kmer);
+	bool insertAndCheck(vector<size_t> const &precomputed);
 	bool contains(vector<size_t> const &precomputed) const;
 	bool contains(const unsigned char* kmer) const;
 

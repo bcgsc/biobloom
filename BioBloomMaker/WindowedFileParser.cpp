@@ -23,7 +23,7 @@ WindowedFileParser::WindowedFileParser(string const &fileName,
 	setLocationByHeader(m_headers[0]);
 }
 
-const vector<string> WindowedFileParser::getHeaders() const
+const vector<string> &WindowedFileParser::getHeaders() const
 {
 	return m_headers;
 }

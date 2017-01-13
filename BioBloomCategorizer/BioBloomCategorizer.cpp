@@ -29,7 +29,7 @@ using namespace std;
 
 void printVersion()
 {
-	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " VERSION "\n"
+	const char VERSION_MESSAGE[] = PROGRAM " (" PACKAGE_NAME ") " GIT_REVISION "\n"
 	"Written by Justin Chu.\n"
 	"\n"
 	"Copyright 2013 Canada's Michael Smith Genome Science Centre\n";
@@ -91,9 +91,9 @@ void printHelpDialog()
 	"                         integer representing the minimum match length in bases.\n"
 	"                         If N is a floating point, the maximum threshold is any \n"
 	"                         number less than 1, and the minimum is 0 (highest\n"
-	"                         sensitivity). If set to 1, best hit is used rather than\n"
-	"                         threshold and score will appended to the header of the\n"
-	"                         output read. [0.15]\n"
+	"                         sensitivity). If set to 1, the best hit is used rather\n"
+	"                         than the threshold and the score will be appended to the\n"
+	"                         header of the output read. [0.15]\n"
 	"  -w, --with_score       Output multimatches with scores in the order of filter.\n"
 	"  -D, --delta            Max Number of matches between second best hit and best\n"
 	"                         hit before it is considered significantly matching to\n"
@@ -163,11 +163,11 @@ int main(int argc, char *argv[])
 
 	//long form arguments
 	static struct option long_options[] = { {
-		"prefix", optional_argument, NULL, 'p' }, {
+		"prefix", required_argument, NULL, 'p' }, {
 		"filter_files", required_argument, NULL, 'f' }, {
 		"paired_mode", no_argument, NULL, 'e' }, {
 		"inclusive", no_argument, NULL, 'i' }, {
-		"score", no_argument, NULL, 's' }, {
+		"score", required_argument, NULL, 's' }, {
 		"help", no_argument, NULL, 'h' }, {
 		"threads", required_argument, NULL, 't' }, {
 		"allowed_miss", required_argument, NULL, 'a' }, {
@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
 		"length_cutoff", required_argument, NULL, 'l' }, {
 		"version", no_argument, NULL, 'v' }, {
 		"min_hit_thr", required_argument, NULL, 'm' }, {
-		"streak", optional_argument, NULL, 'r' }, {
+		"streak", required_argument, NULL, 'r' }, {
 		"min_hit_only", no_argument, NULL, 'o' }, {
 		"ordered", no_argument, NULL, 'c' }, {
 		"stdout_filter", required_argument, NULL, 'd' }, {

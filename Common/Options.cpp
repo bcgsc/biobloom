@@ -6,6 +6,7 @@ namespace opt {
 
 	unsigned streakThreshold = 3;
 	unsigned threads = 1;
+
 	FilterType filterType = BLOOMFILTER;
 	const ID EMPTY = 0;
 	const ID COLLI = std::numeric_limits<ID>::max();
@@ -14,4 +15,9 @@ namespace opt {
 	bool idByFile = false;
 	bool colliIDs = false;
 	bool colliAnalysis = false;
+
+	bool fastIO = true;
+
+	double baitThreshold = -1;
+	unsigned progItrns = 1;
 }

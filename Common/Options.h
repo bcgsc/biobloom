@@ -23,6 +23,10 @@ namespace opt {
 	extern const ID COLLI;
 	extern std::vector<std::string> sseeds;
 	extern unsigned allowMisses;
+	extern int rank;
+	extern bool fastIO;
+	extern double baitThreshold;
+	extern unsigned progItrns;
 
 	//options of BBM only
 	//TODO: move to own header file

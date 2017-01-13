@@ -765,6 +765,15 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths)
 }
 
 /*
+ * checks if file exists
+ */
+bool BioBloomClassifier::fexists(const string &filename) const
+{
+	ifstream ifile(filename.c_str());
+	return ifile.good();
+}
+
+/*
  * Collaborative filtering method
  * Assume filters use the same k-mer size
  */
