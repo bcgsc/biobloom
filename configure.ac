@@ -43,10 +43,10 @@ boost_ver=1.58.0
 boost_ver_dir=1_58_0
 AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $CPPFLAGS -isystem$srcdir/$boost_ver_dir")
 
-<<<<<<< HEAD
+
 # make sure -std=c++0x is used for sdsl
 AC_SUBST(CPPFLAGS,"-std=c++0x $CPPFLAGS")
-=======
+
 # Checks for header files.
 AC_LANG([C++])	#sets the auto conf to look for c++ headers
 AC_CHECK_HEADERS([boost/unordered/unordered_map.hpp])
@@ -54,7 +54,6 @@ AC_CHECK_HEADERS([boost/property_tree/ptree.hpp])
 AC_CHECK_HEADERS([boost/property_tree/ini_parser.hpp])
 AC_CHECK_HEADERS([boost/tuple/tuple.hpp])
 AC_CHECK_HEADERS([zlib.h])
->>>>>>> refs/remotes/origin/develop
 
 # Check for Boost.
 if test $ac_cv_header_boost_unordered_unordered_map_hpp != yes; then
