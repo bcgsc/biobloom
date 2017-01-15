@@ -4,7 +4,7 @@ libbloomfilter_a_CPPFLAGS = -I$(top_srcdir)
 
 libbloomfilter_a_SOURCES = \
 	BloomFilter.hpp \
-	BloomMap.hpp \
+	MIBloomFilter.hpp \
 	BloomMapSS.hpp \
 	BloomMapSSBitVec.hpp \
 	rolling.h \
