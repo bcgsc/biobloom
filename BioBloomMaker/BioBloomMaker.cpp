@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
 			"threads", required_argument, NULL, 't' }, {
 			"map", required_argument, NULL, 'm' }, {
 			"id_by_file", no_argument, NULL, 'I' }, {
-			"colli_id", no_argument, NULL, 'C' }, {
+			"colli_analysis", no_argument, NULL, 'C' }, {
 			"colli_id", no_argument, NULL, 'c' }, {
 			"inclusive", no_argument, NULL, 'i' }, {
 			"version", no_argument, NULL, 'v' }, {
