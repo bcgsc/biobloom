@@ -15,7 +15,6 @@
 # include <omp.h>
 #endif
 #include <FastaReader.h>
-#include "Common/SeqEval.h"
 #include "DataLayer/kseq.h"
 #include "WindowedFileParser.h"
 #include <zlib.h>
