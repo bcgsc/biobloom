@@ -32,8 +32,6 @@ public:
 	explicit BloomFilterGenerator(vector<string> const &filenames,
 			unsigned kmerSize, unsigned hashNum);
 
-
-	//TODO: THREAD ME!
 	size_t generate(const string &filename);
 	size_t generate(const string &filename, const string &subtractFilter);
 	size_t generateProgressive(const string &filename, double score,
