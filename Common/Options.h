@@ -5,6 +5,8 @@
 #include <limits>
 #include <string>
 #include <vector>
+#include <vector>
+#include "Common/SeqEval.h"
 
 enum FilterType {BLOOMFILTER, BLOOMMAP};
 
@@ -33,5 +35,16 @@ namespace opt {
 	extern bool idByFile;
 	extern bool colliIDs;
 	extern bool colliAnalysis;
+
+	//options for new refactored code
+	extern double fpr;
+	extern std::string prefix;
+	extern unsigned kmerSize;
+	extern unsigned hashNum;
+	extern unsigned numEle;
+	extern std::string subtract;
+	extern double pScore;
+
+	extern SeqEval::EvalMode mode;
 }
 #endif

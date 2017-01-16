@@ -20,4 +20,14 @@ namespace opt {
 
 	double baitThreshold = -1;
 	unsigned progItrns = 1;
+
+	double fpr = 0.0078125;
+	std::string prefix = "";
+	unsigned kmerSize = 64;
+	unsigned hashNum = 0;
+	unsigned numEle = 0;
+	std::string subtract = "";
+
+	double pScore = 0.5;
+	SeqEval::EvalMode mode = SeqEval::EVAL_STANDARD;
 }
