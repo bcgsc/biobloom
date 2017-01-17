@@ -3,6 +3,7 @@ SUBDIRS = \
 	DataLayer \
 	BioBloomMaker \
 	BioBloomCategorizer \
+	BioBloomRecruit \
 	bloomfilter \
 	Tests
 

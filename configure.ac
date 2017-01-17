@@ -86,6 +86,7 @@ AC_CONFIG_FILES([
 		BioBloomMaker/Makefile
 		BioBloomCategorizer/Makefile
 		bloomfilter/Makefile
+		BioBloomRecruit/Makefile
         Tests/Makefile
 ])
 AC_OUTPUT
