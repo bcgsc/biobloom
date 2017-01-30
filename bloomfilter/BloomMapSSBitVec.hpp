@@ -277,7 +277,7 @@ public:
 
 	/*
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
-	 * ONLY REPLACE VALUE if it is larger than current value (for thread safety)
+	 * Replaces values according to collisionID hashtable (for thread safety)
 	 */
 	void insert(std::vector<size_t> const &hashes, T value,
 			const vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {

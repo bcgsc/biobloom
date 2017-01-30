@@ -20,7 +20,8 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <limits>
-//#include <google/dense_hash_map>
+#include <boost/shared_ptr.hpp>
+#include <google/dense_hash_map>
 
 using namespace std;
 
@@ -141,7 +142,6 @@ public:
 		//iterates through hashed values adding it to the filter
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes.at(i) % m_size;
-			assert(pos < m_size);
 			m_array[pos] = values[i];
 		}
 	}
@@ -151,9 +151,24 @@ public:
 		//add same value to the filter
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes.at(i) % m_size;
-			assert(pos < m_size);
 			m_array[pos] = value;
 		}
+	}
+
+	/*
+	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
+	 * Replaces values according to collisionID hashtable (for thread safety)
+	 */
+	bool insertAndCheck(const uint64_t* hashes, T value,
+			vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
+
+		bool isAlreadySet = true;
+		//iterates through hashed values adding it to the filter
+		for (size_t i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_size;
+			isAlreadySet &= setVal(&m_array[pos], value, colliIDs);
+		}
+		return isAlreadySet;
 	}
 
 	std::vector<T> query(std::vector<size_t> const &hashes) const {
@@ -162,7 +177,6 @@ public:
 
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes.at(i) % m_size;
-			assert(pos < m_size);
 			values.push_back(m_array[pos]);
 		}
 		return values;
@@ -179,7 +193,6 @@ public:
 
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes.at(i) % m_size;
-			assert(pos < m_size);
 			if(m_array[pos] == 0){
 				return 0;
 			}
@@ -329,6 +342,89 @@ private:
 	uint64_t m_nEntry;
 	uint64_t m_tEntry;
 
+//	/*
+//	 * Lock free cas value setting for larger element
+//	 * check if it is a collision, setting it accordingly
+//	 */
+//	inline void setVal(T *val, T newVal,
+//			const vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
+//		T oldValue;
+//		T insertValue;
+//		do {
+//			oldValue = *val;
+//			insertValue = newVal;
+//			if (oldValue != 0) {
+//				//NO NET CHANGE
+//				if (oldValue == insertValue
+//						|| oldValue == numeric_limits<T>::max()) {
+//					break;
+//				}
+//				//check if oldValue and new value have a collision ID together
+//				typename google::dense_hash_map<T, T>::iterator colliPtr =
+//						colliIDs[oldValue]->find(insertValue);
+//				if (colliPtr != colliIDs[oldValue]->end()) {
+//					insertValue = colliPtr->second;
+//					//NO NET CHANGE
+//					if (oldValue == insertValue) {
+//						break;
+//					}
+//				}
+//				//IF UNRESOLVED COLLISION
+//				else {
+//					insertValue = numeric_limits<T>::max();
+//				}
+//			}
+//		} while (!__sync_bool_compare_and_swap(val, oldValue, insertValue));
+//	}
+
+	/*
+	 * Lock free cas value setting for larger element
+	 * check if it is a collision, setting it accordingly
+	 */
+	inline bool setVal(T *val, T newVal,
+			vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
+		T oldValue;
+		T insertValue;
+		bool wasEmpty = false;
+		do {
+			oldValue = *val;
+			insertValue = newVal;
+			if (oldValue != 0) {
+				//NO NET CHANGE
+				if (oldValue == insertValue
+						|| oldValue == numeric_limits<T>::max()) {
+					break;
+				}
+				//check if oldValue and new value have a collision ID together
+				typename google::dense_hash_map<T, T>::iterator colliPtr =
+						colliIDs[oldValue]->find(insertValue);
+				if (colliPtr != colliIDs[oldValue]->end()) {
+					insertValue = colliPtr->second;
+					//NO NET CHANGE
+					if (oldValue == insertValue) {
+						break;
+					}
+				}
+				//IF UNRESOLVED COLLISION
+				//insert new value
+				else {
+#pragma omp critical(newEntry)
+					{
+						T newID = colliIDs.size();
+						colliIDs.push_back(
+								boost::shared_ptr<google::dense_hash_map<T, T> >
+										(new google::dense_hash_map<T, T>()));
+						(*colliIDs[oldValue])[insertValue] = newID;
+						(*colliIDs[insertValue])[oldValue] = newID;
+					}
+				}
+			}
+			else{
+				wasEmpty = true;
+			}
+		} while (!__sync_bool_compare_and_swap(val, oldValue, insertValue));
+		return wasEmpty;
+	}
 };
 
 #endif /* MIBLOOMFILTER_HPP_ */

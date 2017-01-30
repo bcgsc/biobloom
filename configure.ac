@@ -2,10 +2,11 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(BIOBLOOMTOOLS, 3.0.0b, cjustin@bcgsc.ca)
+AC_INIT(BIOBLOOMTOOLS, 3.0.0, cjustin@bcgsc.ca)
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([BioBloomMaker/BioBloomMaker.cpp])
 AC_CONFIG_SRCDIR([BioBloomCategorizer/BioBloomCategorizer.cpp])
+AC_CONFIG_SRCDIR([BioBloomRecruit/BioBloomRecruit.cpp])
 AC_CONFIG_HEADER([config.h])
 
 #see http://stackoverflow.com/questions/8215785/how-can-i-use-ac-revision-with-git
@@ -42,7 +43,6 @@ srcdir=$(cd $srcdir; pwd)
 boost_ver=1.58.0
 boost_ver_dir=1_58_0
 AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $CPPFLAGS -isystem$srcdir/$boost_ver_dir")
-
 
 # make sure -std=c++0x is used for sdsl
 AC_SUBST(CPPFLAGS,"-std=c++0x $CPPFLAGS")
@@ -85,8 +85,8 @@ AC_CONFIG_FILES([
 		DataLayer/Makefile
 		BioBloomMaker/Makefile
 		BioBloomCategorizer/Makefile
-		bloomfilter/Makefile
 		BioBloomRecruit/Makefile
+		bloomfilter/Makefile
         Tests/Makefile
 ])
 AC_OUTPUT

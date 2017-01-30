@@ -20,7 +20,6 @@
 #include "Common/Options.h"
 #include <sdsl/int_vector.hpp>
 #include <boost/shared_ptr.hpp>
-#include "bloomfilter/BloomFilter.hpp"
 #include "tree.hh"
 #include "newick_file.hh"
 #include <queue>

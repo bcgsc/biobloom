@@ -9,10 +9,10 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include "Common/SeqEval.h"
 #include <getopt.h>
 #include "config.h"
 #include "Common/Options.h"
+#include <math.h>
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -275,6 +275,7 @@ int main(int argc, char *argv[]) {
 	//set number of hash functions used
 	if (opt::hashNum == 0) {
 		//get optimal number of hash functions
+		//TODO: put in a standard place (don't forget to remove math.h)
 		opt::hashNum = unsigned(-log(opt::fpr) / log(2));
 	}
 

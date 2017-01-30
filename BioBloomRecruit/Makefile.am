@@ -13,8 +13,7 @@ bbr_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	
 bbr_LDFLAGS = $(OPENMP_CXXFLAGS)
 
-bbr_SOURCES = BioBloomMaker.cpp \
-	BioBloomRecruit.cpp \
+bbr_SOURCES = BioBloomRecruit.cpp \
 	MIBloomTag.cpp MIBloomTag.h \
 	MIRecurit.cpp MIRecurit.h
 	

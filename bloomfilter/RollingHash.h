@@ -41,7 +41,7 @@ private:
 			const std::string::const_iterator &kmerItr, std::vector<size_t> &hashes)
 	{
 		for (unsigned i = 0; i < m_ssVals.size(); ++i) {
-			hashes[i] = maskValues(rHash, fHash, m_k, m_ssVals.at(i), kmerItr);
+			hashes[i] = rolling::maskValues(rHash, fHash, m_k, m_ssVals.at(i), kmerItr);
 		}
 	}
 
@@ -83,11 +83,11 @@ public:
 	void reset(const std::string::const_iterator &kmerItr)
 	{
 		/* compute first hash function for k-mer */
-		m_hash1 = getFhval(kmerItr, m_k);
+		m_hash1 = rolling::getFhval(kmerItr, m_k);
 
 		/* compute first hash function for reverse complement
 		 * of k-mer */
-		m_rcHash1 = getRhval(kmerItr, m_k);
+		m_rcHash1 = rolling::getRhval(kmerItr, m_k);
 
 		/* compute hash values */
 		multiHash(m_hash1, m_rcHash1, kmerItr, m_hashes);
@@ -146,7 +146,7 @@ public:
 	void rollRight(const std::string::const_iterator &kmerItr)
 	{
 		/* update first hash function */
-		rollHashesRight(m_hash1, m_rcHash1, *kmerItr, *(kmerItr + m_k), m_k);
+		rolling::rollHashesRight(m_hash1, m_rcHash1, *kmerItr, *(kmerItr + m_k), m_k);
 //		/* get seed value for computing rest of the hash functions */
 //		size_t seed = canonicalHash(m_hash1, m_rcHash1);
 
@@ -165,7 +165,7 @@ public:
 	void rollLeft(const std::string::const_iterator &kmerItr)
 	{
 		/* update first hash function */
-		rollHashesLeft(m_hash1, m_rcHash1, *kmerItr, *(kmerItr + m_k), m_k);
+		rolling::rollHashesLeft(m_hash1, m_rcHash1, *kmerItr, *(kmerItr + m_k), m_k);
 
 //		/* get seed value for computing rest of the hash functions */
 //		size_t seed = canonicalHash(m_hash1, m_rcHash1);

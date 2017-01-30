@@ -5,10 +5,14 @@
 #include <limits>
 #include <string>
 #include <vector>
-#include <vector>
-#include "Common/SeqEval.h"
 
 enum FilterType {BLOOMFILTER, BLOOMMAP};
+
+namespace SeqEval {
+enum EvalMode {
+	EVAL_STANDARD, EVAL_MIN_MATCH_LEN
+};
+}
 
 typedef uint16_t ID;
 

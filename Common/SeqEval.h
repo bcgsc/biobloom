@@ -202,8 +202,6 @@ inline bool evalMinMatchLen(const FastqRecord &rec, unsigned kmerSize, const Blo
 	return false;
 }
 
-enum EvalMode { EVAL_STANDARD, EVAL_MIN_MATCH_LEN };
-
 inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
 		double threshold, double antiThreshold, unsigned hashNum,
 		vector<vector<size_t> > *hashValues, const BloomFilter *subtract, EvalMode mode)

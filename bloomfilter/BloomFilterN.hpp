@@ -1,13 +1,13 @@
 /*
  *
- * BloomFilter.hpp
+ * BloomFilterN.hpp
  *
  *  Created on: Aug 10, 2012
  *      Author: cjustin
  */
 
-#ifndef BLOOMFILTER_H_
-#define BLOOMFILTER_H_
+#ifndef BLOOMFILTER_HPP_
+#define BLOOMFILTER_HPP_
 #include <string>
 #include <vector>
 #include <stdint.h>
@@ -24,17 +24,13 @@
 
 using namespace std;
 
-static const uint8_t bitsPerChar = 0x08;
-static const unsigned char bitMask[0x08] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
-		0x40, 0x80 };
-
 inline unsigned popCnt(unsigned char x) {
 	return ((0x876543210
 			>> (((0x4332322132212110 >> ((x & 0xF) << 2)) & 0xF) << 2))
 			>> ((0x4332322132212110 >> (((x & 0xF0) >> 2)) & 0xF) << 2)) & 0xf;
 }
 
-class BloomFilter {
+class BloomFilterN {
 public:
 
 #pragma pack(push)
@@ -54,7 +50,7 @@ public:
 	/*
 	 * Default constructor.
 	 */
-	BloomFilter() :
+	BloomFilterN() :
 			m_filter(0), m_size(0), m_sizeInBytes(0), m_hashNum(0), m_kmerSize(
 					0), m_dFPR(0), m_nEntry(0), m_tEntry(0) {
 	}
@@ -66,7 +62,7 @@ public:
 	 *
 	 * kmerSize refers to the number of bases the kmer has
 	 */
-	BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize) :
+	BloomFilterN(size_t filterSize, unsigned hashNum, unsigned kmerSize) :
 			m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize), m_dFPR(
 					0), m_nEntry(0), m_tEntry(0) {
 		initSize(m_size);
@@ -78,7 +74,7 @@ public:
 	 *
 	 * If hashNum is set to 0, an optimal value is computed based on the FPR
 	 */
-	BloomFilter(size_t expectedElemNum, double fpr, unsigned hashNum,
+	BloomFilterN(size_t expectedElemNum, double fpr, unsigned hashNum,
 			unsigned kmerSize) :
 			m_size(0), m_hashNum(hashNum), m_kmerSize(kmerSize), m_dFPR(fpr), m_nEntry(
 					0), m_tEntry(0) {
@@ -92,7 +88,7 @@ public:
 		memset(m_filter, 0, m_sizeInBytes);
 	}
 
-	BloomFilter(const string &filterFilePath) {
+	BloomFilterN(const string &filterFilePath) {
 		FILE *file = fopen(filterFilePath.c_str(), "rb");
 		if (file == NULL) {
 			cerr << "file \"" << filterFilePath << "\" could not be read."
@@ -159,8 +155,8 @@ public:
 		//iterates through hashed values adding it to the filter
 		for (size_t i = 0; i < m_hashNum; ++i) {
 			size_t normalizedValue = precomputed.at(i) % m_size;
-			__sync_or_and_fetch(&m_filter[normalizedValue / bitsPerChar],
-					bitMask[normalizedValue % bitsPerChar]);
+			__sync_or_and_fetch(&m_filter[normalizedValue / 0x08],
+					bitMask[normalizedValue % 0x08]);
 		}
 	}
 
@@ -172,8 +168,8 @@ public:
 		//iterates through hashed values adding it to the filter
 		for (size_t i = 0; i < m_hashNum; ++i) {
 			size_t normalizedValue = precomputed[i] % m_size;
-			__sync_or_and_fetch(&m_filter[normalizedValue / bitsPerChar],
-				bitMask[normalizedValue % bitsPerChar]);
+			__sync_or_and_fetch(&m_filter[normalizedValue / 0x08],
+				bitMask[normalizedValue % 0x08]);
 		}
 	}
 
@@ -181,8 +177,8 @@ public:
 		uint64_t hVal = NT64(kmer, m_kmerSize);
 		for (unsigned i = 0; i < m_hashNum; i++) {
 			size_t normalizedValue = NTE64(hVal, m_kmerSize, i) % m_size;
-			__sync_or_and_fetch(&m_filter[normalizedValue / bitsPerChar],
-					bitMask[normalizedValue % bitsPerChar]);
+			__sync_or_and_fetch(&m_filter[normalizedValue / 0x08],
+					bitMask[normalizedValue % 0x08]);
 		}
 	}
 
@@ -195,8 +191,8 @@ public:
 		for (unsigned i = 0; i < m_hashNum; i++) {
 			size_t normalizedValue = NTE64(hVal, m_kmerSize, i) % m_size;
 			found &= __sync_fetch_and_or(
-					&m_filter[normalizedValue / bitsPerChar],
-					bitMask[normalizedValue % bitsPerChar]);
+					&m_filter[normalizedValue / 0x08],
+					bitMask[normalizedValue % 0x08]);
 		}
 		return found;
 	}
@@ -211,9 +207,9 @@ public:
 		for (size_t i = 0; i < m_hashNum; ++i) {
 			size_t normalizedValue = precomputed.at(i) % m_size;
 			found &= __sync_or_and_fetch(
-					&m_filter[normalizedValue / bitsPerChar],
-					bitMask[normalizedValue % bitsPerChar])
-					>> (normalizedValue % bitsPerChar) & 1;
+					&m_filter[normalizedValue / 0x08],
+					bitMask[normalizedValue % 0x08])
+					>> (normalizedValue % 0x08) & 1;
 		}
 		return found;
 	}
@@ -224,8 +220,8 @@ public:
 	bool contains(vector<size_t> const &precomputed) const {
 		for (size_t i = 0; i < m_hashNum; ++i) {
 			size_t normalizedValue = precomputed.at(i) % m_size;
-			unsigned char bit = bitMask[normalizedValue % bitsPerChar];
-			if ((m_filter[normalizedValue / bitsPerChar] & bit) != bit) {
+			unsigned char bit = bitMask[normalizedValue % 0x08];
+			if ((m_filter[normalizedValue / 0x08] & bit) != bit) {
 				return false;
 			}
 		}
@@ -238,8 +234,8 @@ public:
 	bool contains(const size_t precomputed[]) const {
 		for (size_t i = 0; i < m_hashNum; ++i) {
 			size_t normalizedValue = precomputed[i] % m_size;
-			unsigned char bit = bitMask[normalizedValue % bitsPerChar];
-			if ((m_filter[normalizedValue / bitsPerChar] & bit) != bit) {
+			unsigned char bit = bitMask[normalizedValue % 0x08];
+			if ((m_filter[normalizedValue / 0x08] & bit) != bit) {
 				return false;
 			}
 		}
@@ -253,8 +249,8 @@ public:
 		uint64_t hVal = NT64(kmer, m_kmerSize);
 		for (unsigned i = 0; i < m_hashNum; i++) {
 			size_t normalizedValue = NTE64(hVal, m_kmerSize, i) % m_size;
-			unsigned char bit = bitMask[normalizedValue % bitsPerChar];
-			if ((m_filter[normalizedValue / bitsPerChar] & bit) == 0)
+			unsigned char bit = bitMask[normalizedValue % 0x08];
+			if ((m_filter[normalizedValue / 0x08] & bit) == 0)
 				return false;
 		}
 		return true;
@@ -379,11 +375,11 @@ public:
 		return m_size;
 	}
 
-	~BloomFilter() {
+	~BloomFilterN() {
 		delete[] m_filter;
 	}
 private:
-	BloomFilter(const BloomFilter& that); //to prevent copy construction
+	BloomFilterN(const BloomFilterN& that); //to prevent copy construction
 
 	/*
 	 * Checks filter size and initializes filter
@@ -394,7 +390,7 @@ private:
 					<< "\" is not a multiple of 8." << endl;
 			exit(1);
 		}
-		m_sizeInBytes = size / bitsPerChar;
+		m_sizeInBytes = size / 0x08;
 		m_filter = new unsigned char[m_sizeInBytes];
 	}
 
@@ -437,6 +433,9 @@ private:
 		return pow(2, -double(hashFunctNum));
 	}
 
+	const unsigned char bitMask[0x08] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20,
+			0x40, 0x80 };
+
 	uint8_t* m_filter;
 	size_t m_size;
 	size_t m_sizeInBytes;
@@ -447,4 +446,4 @@ private:
 	uint64_t m_tEntry;
 };
 
-#endif /* BLOOMFILTER_H_ */
+#endif /* BLOOMFILTER_HPP_ */
