@@ -1,10 +1,10 @@
 SUBDIRS = \
 	Common \
 	DataLayer \
+	bloomfilter \
 	BioBloomMaker \
 	BioBloomCategorizer \
 	BioBloomRecruit \
-	bloomfilter \
 	Tests
 
 dist_doc_DATA = \

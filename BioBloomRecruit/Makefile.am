@@ -9,6 +9,7 @@ bbr_CPPFLAGS = -I$(top_srcdir)/BioBloomRecruit \
 
 bbr_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 	$(top_builddir)/Common/libcommon.a -lz \
+	$(top_builddir)/bloomfilter/libbloomfilter.a \
 	-lsdsl
 	
 bbr_LDFLAGS = $(OPENMP_CXXFLAGS)

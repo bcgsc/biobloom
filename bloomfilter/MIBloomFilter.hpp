@@ -383,25 +383,24 @@ private:
 	 */
 	inline bool setVal(T *val, T newVal,
 			vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
-		T oldValue;
-		T insertValue;
+		T oldVal;
+		T insVal = newVal;
 		bool wasEmpty = false;
 		do {
-			oldValue = *val;
-			insertValue = newVal;
-			if (oldValue != 0) {
+			oldVal = *val;
+			if (oldVal != 0) {
 				//NO NET CHANGE
-				if (oldValue == insertValue
-						|| oldValue == numeric_limits<T>::max()) {
+				if (oldVal == insVal
+						|| oldVal == numeric_limits<T>::max()) {
 					break;
 				}
 				//check if oldValue and new value have a collision ID together
 				typename google::dense_hash_map<T, T>::iterator colliPtr =
-						colliIDs[oldValue]->find(insertValue);
-				if (colliPtr != colliIDs[oldValue]->end()) {
-					insertValue = colliPtr->second;
+						colliIDs[oldVal]->find(insVal);
+				if (colliPtr != colliIDs[oldVal]->end()) {
+					insVal = colliPtr->second;
 					//NO NET CHANGE
-					if (oldValue == insertValue) {
+					if (oldVal == insVal) {
 						break;
 					}
 				}
@@ -410,19 +409,24 @@ private:
 				else {
 #pragma omp critical(newEntry)
 					{
-						T newID = colliIDs.size();
+						insVal = colliIDs.size();
 						colliIDs.push_back(
 								boost::shared_ptr<google::dense_hash_map<T, T> >
 										(new google::dense_hash_map<T, T>()));
-						(*colliIDs[oldValue])[insertValue] = newID;
-						(*colliIDs[insertValue])[oldValue] = newID;
+						colliIDs[insVal]->set_empty_key(0);
+						(*colliIDs[oldVal])[newVal] = insVal;
+						(*colliIDs[newVal])[oldVal] = insVal;
+						(*colliIDs[oldVal])[insVal] = insVal;
+						(*colliIDs[newVal])[insVal] = insVal;
+						(*colliIDs[insVal])[oldVal] = insVal;
+						(*colliIDs[insVal])[newVal] = insVal;
 					}
 				}
 			}
 			else{
 				wasEmpty = true;
 			}
-		} while (!__sync_bool_compare_and_swap(val, oldValue, insertValue));
+		} while (!__sync_bool_compare_and_swap(val, oldVal, insVal));
 		return wasEmpty;
 	}
 };

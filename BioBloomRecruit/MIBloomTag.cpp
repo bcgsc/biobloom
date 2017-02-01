@@ -13,9 +13,11 @@ MIBloomTag::MIBloomTag(vector<string> const &filenames,
 				filenames), m_colliIDs(vector<boost::shared_ptr< IDMap > >()) {
 	//Instantiate dense hash map
 	m_ids.set_empty_key("");
-
-	ID value = 0;
 	size_t counts = 0;
+
+	//fill in first index with empty value;
+	m_colliIDs.push_back(boost::shared_ptr<IDMap>(new IDMap()));
+	m_colliIDs[m_colliIDs.size()-1]->set_empty_key(opt::EMPTY);
 
 	for (unsigned i = 0; i < m_filenames.size(); ++i) {
 		gzFile fp;
@@ -27,9 +29,9 @@ MIBloomTag::MIBloomTag(vector<string> const &filenames,
 			if (l >= 0) {
 				string barcode = extractBarcode(seq->name.s);
 				if (m_ids.find(barcode) == m_ids.end()) {
-					m_ids[barcode] = ++value;
-					m_colliIDs[m_ids[barcode]] = boost::shared_ptr<IDMap>(new IDMap());
-					m_colliIDs[m_ids[barcode]]->set_empty_key(opt::EMPTY);
+					m_colliIDs.push_back(boost::shared_ptr<IDMap>(new IDMap()));
+					m_colliIDs[m_colliIDs.size()-1]->set_empty_key(opt::EMPTY);
+					m_ids[barcode] = m_colliIDs.size()-1;
 				}
 				counts += seq->seq.l - opt::kmerSize + 1;
 			} else {
@@ -49,8 +51,7 @@ MIBloomTag::MIBloomTag(vector<string> const &filenames,
 	cerr << "Expected number of elements: " << m_expectedEntries << endl;
 }
 
-MIBloomFilter<ID> MIBloomTag::generate(const string &filePrefix, double fpr,
-		BloomFilterN &filterSub, const string &file1, const string &file2) {
+MIBloomFilter<ID> MIBloomTag::generate(const string &filePrefix, double fpr, const string &file1, const string &file2) {
 
 	//TODO REMOVE
 	cerr<< filePrefix << endl;
@@ -84,17 +85,18 @@ MIBloomFilter<ID> MIBloomTag::generate(const string &filePrefix, double fpr,
 		gzclose(fp);
 	}
 
-	if (filterSub.getKmerSize() != opt::kmerSize) {
-		cerr
-				<< "Error: Subtraction filter's different from current filter's k-mer size."
-				<< endl;
-		exit(1);
-	}
+//	if (filterSub.getKmerSize() != opt::kmerSize) {
+//		cerr
+//				<< "Error: Subtraction filter's different from current filter's k-mer size."
+//				<< endl;
+//		exit(1);
+//	}
 
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	//extract index from header
 	loadFilter(filter);
+	cerr << m_colliIDs.size() << endl;
 
 	exit(0);
 

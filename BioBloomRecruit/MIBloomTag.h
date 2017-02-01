@@ -9,7 +9,7 @@
 #define MIBLOOMTAG_H_
 
 #include "bloomfilter/MIBloomFilter.hpp"
-#include "bloomfilter/BloomFilterN.hpp"
+//#include "bloomfilter/BloomFilterN.hpp"
 #include <vector>
 #include <string>
 #include <google/dense_hash_map>
@@ -18,7 +18,6 @@
 #endif
 #include "Common/Options.h"
 #include "DataLayer/kseq.h"
-//#include "WindowedFileParser.h"
 #include <zlib.h>
 KSEQ_INIT(gzFile, gzread)
 
@@ -34,8 +33,7 @@ public:
 	explicit MIBloomTag(vector<string> const &filenames,
 			size_t numElements);
 
-	MIBloomFilter<ID> generate(const string &filePrefix, double fpr,
-			BloomFilterN &filterSub, const string &file1, const string &file2);
+	MIBloomFilter<ID> generate(const string &filePrefix, double fpr, const string &file1, const string &file2);
 
 private:
 	size_t m_expectedEntries;
@@ -57,7 +55,7 @@ private:
 
 	inline string extractBarcode(const string &header){
 		//TODO remove magic number
-		return header.substr(header.find_last_of("_"), 16);
+		return header.substr(header.find_last_of("_") + 1, 16);
 	}
 
 	inline void loadFilter(MIBloomFilter<ID> &bf){
@@ -90,7 +88,7 @@ private:
 					}
 				}
 
-				if (l >= 0) {
+				if (l > 0) {
 					ID barcodeID = m_ids[extractBarcode(header)];
 #pragma omp atomic update
 					m_totalEntries += loadSeq(bf, tempStr, barcodeID);

@@ -83,10 +83,10 @@ AC_CONFIG_FILES([
 		Makefile
 		Common/Makefile
 		DataLayer/Makefile
+		bloomfilter/Makefile
 		BioBloomMaker/Makefile
 		BioBloomCategorizer/Makefile
 		BioBloomRecruit/Makefile
-		bloomfilter/Makefile
         Tests/Makefile
 ])
 AC_OUTPUT

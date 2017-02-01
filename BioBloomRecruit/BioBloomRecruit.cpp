@@ -16,6 +16,9 @@
 #if _OPENMP
 # include <omp.h>
 #endif
+#include "MIBloomTag.h"
+//#include "MIRecurit.h"
+//#include "bloomfilter/BloomFilterN.hpp"
 
 using namespace std;
 
@@ -32,7 +35,7 @@ void printVersion() {
 
 void printHelpDialog() {
 	static const char dialog[] =
-		"Usage: bbr -p [PREFIX] -s [REPEATFILE] -b [score] [BAITFASTA] [FASTQ1] [FASTQ2] \n"
+		"Usage: bbr -p [PREFIX] -s [REPEATFILE] [BAITFASTA] [FASTQ1] [FASTQ2] \n"
 		"Recruits sequences from fastq files using bait sequences. Accepts fa and gzip.\n"
 		"\n"
 		"  -p, --prefix=STR       Filter prefix and filter ID. Required option.\n"
@@ -61,7 +64,7 @@ void printHelpDialog() {
 		"                         number of contiguous matching bases required for a\n"
 		"                         match. [0.5]\n"
 		"  -b, --baitScore=NUM    Score threshold when considering only bait. [r]\n"
-		"  -e, --iterations=INT   Pass through files N times if threshold is not met."
+		"  -e, --iterations=INT   Pass through files N times if threshold is not met.\n"
 		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
 		"                         in the filter. Only active with the (-r) option.\n"
 		"\n"
@@ -267,6 +270,10 @@ int main(int argc, char *argv[]) {
 		cerr << "Need Filter Prefix ID" << endl;
 		die = true;
 	}
+	if (opt::numEle == 0) {
+		cerr << "Need to know maximum number of k-mers to recruit (-n)" << endl;
+		die = true;
+	}
 	if (die) {
 		cerr << "Try '--help' for more information.\n";
 		exit(EXIT_FAILURE);
@@ -279,7 +286,16 @@ int main(int argc, char *argv[]) {
 		opt::hashNum = unsigned(-log(opt::fpr) / log(2));
 	}
 
+	string filename2 = inputFiles.back();
+	inputFiles.pop_back();
+	string filename1 = inputFiles.back();
+	inputFiles.pop_back();
+
 	//START HERE
+	MIBloomTag tagger(inputFiles, opt::numEle);
+//	BloomFilterN subFilter;
+
+	tagger.generate(opt::prefix,opt::fpr, filename1, filename2);
 
 	return 0;
 }

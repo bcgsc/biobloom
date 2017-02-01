@@ -7,6 +7,7 @@
 
 #ifndef MIRECURIT_H_
 #define MIRECURIT_H_
+#include "bloomfilter/nthash.hpp"
 
 class MIRecurit {
 public:
