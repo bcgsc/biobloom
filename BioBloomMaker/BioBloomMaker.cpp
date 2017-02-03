@@ -235,7 +235,7 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		}
-		case 'r': {
+		case 'b': {
 			stringstream convert(optarg);
 			if (!(convert >> opt::baitThreshold)) {
 				cerr << "Error - Invalid set of bloom filter parameters! b: "
