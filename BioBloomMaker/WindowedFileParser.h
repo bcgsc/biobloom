@@ -40,7 +40,7 @@ private:
 		size_t charsPerLine;
 	};
 
-	boost::unordered_map<string, FastaIndexValue> m_fastaIndex;
+	unordered_map<string, FastaIndexValue> m_fastaIndex;
 	ifstream m_fastaFileHandle;
 	unsigned m_windowSize;
 	vector<string> m_headers;
