@@ -69,7 +69,7 @@ void printHelpDialog() {
 		"                         number of contiguous matching bases required for a\n"
 		"                         match.\n"
 		"  -b, --baitScore=N      Score threshold when considering only bait. [r]\n"
-		"  -e, --iterations=N     Pass through files N times if threshold is not met."
+		"  -e, --iterations=N     Pass through files N times if threshold is not met.\n"
 		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
 		"                         in the filter. Only active with the (-r) option.\n"
 		"\n"
@@ -257,7 +257,7 @@ int main(int argc, char *argv[]) {
 						<< optarg << endl;
 				return 0;
 			}
-			if (opt::progItrns > 0) {
+			if (opt::progItrns < 1) {
 				cerr << "Error - e must be > 1" << optarg
 						<< endl;
 				exit(EXIT_FAILURE);

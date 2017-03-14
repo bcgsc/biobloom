@@ -214,17 +214,10 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			bool good2;
 
 			if (m_totalEntries >= m_expectedEntries) {
-				//so threshold message only printed once
-				if (sequence1.eof() || sequence2.eof()) {
-					break;
-				}
 #pragma omp critical(breakClose)
 				{
 					sequence1.breakClose();
 					sequence2.breakClose();
-					cerr << "K-mer threshold reached at read "
-							<< totalReads << " iteration "
-							<< i+1 << endl;
 				}
 			}
 
@@ -370,6 +363,10 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 					<< "error: eof bit not flipped. Input files may be different lengths"
 					<< endl;
 		}
+		if (m_totalEntries >= m_expectedEntries) {
+				cerr << "K-mer threshold reached at read " << totalReads
+						<< endl;
+		}
 	}
 
 	filter.storeFilter(filename);
@@ -460,16 +457,10 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			bool good2;
 
 			if (m_totalEntries >= m_expectedEntries) {
-				//so threshold message only printed once
-				if (sequence1.eof() || sequence2.eof()) {
-					break;
-				}
 #pragma omp critical(breakClose)
 				{
 					sequence1.breakClose();
 					sequence2.breakClose();
-					cerr << "K-mer threshold reached at read " << totalReads
-							<< endl;
 				}
 			}
 
@@ -627,6 +618,10 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			cerr
 					<< "error: eof bit not flipped. Input files may be different lengths"
 					<< endl;
+		}
+		if (m_totalEntries >= m_expectedEntries) {
+				cerr << "K-mer threshold reached at read " << totalReads
+						<< endl;
 		}
 	}
 
