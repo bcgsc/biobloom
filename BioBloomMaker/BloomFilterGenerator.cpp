@@ -213,16 +213,12 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			bool good1;
 			bool good2;
 
-			if (m_totalEntries >= m_expectedEntries) {
-#pragma omp critical(breakClose)
-				{
+#pragma omp critical(sequence)
+			{
+				if (m_totalEntries >= m_expectedEntries) {
 					sequence1.breakClose();
 					sequence2.breakClose();
 				}
-			}
-
-#pragma omp critical(sequence)
-			{
 				good1 = sequence1 >> rec1;
 				good2 = sequence2 >> rec2;
 			}
@@ -456,16 +452,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			bool good1;
 			bool good2;
 
-			if (m_totalEntries >= m_expectedEntries) {
-#pragma omp critical(breakClose)
-				{
-					sequence1.breakClose();
-					sequence2.breakClose();
-				}
-			}
-
 #pragma omp critical(sequence)
 			{
+				if (m_totalEntries >= m_expectedEntries) {
+					sequence1.breakClose();
+					sequence2.breakClose();
+					cerr << omp_get_thread_num() << endl;
+				}
 				good1 = sequence1 >> rec1;
 				good2 = sequence2 >> rec2;
 			}
