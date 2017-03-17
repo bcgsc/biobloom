@@ -457,7 +457,6 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				if (m_totalEntries >= m_expectedEntries) {
 					sequence1.breakClose();
 					sequence2.breakClose();
-					cerr << omp_get_thread_num() << endl;
 				}
 				good1 = sequence1 >> rec1;
 				good2 = sequence2 >> rec2;
