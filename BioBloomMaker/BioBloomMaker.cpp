@@ -15,9 +15,7 @@
 #include <getopt.h>
 #include "config.h"
 #include "Common/Options.h"
-#if _OPENMP
-# include <omp.h>
-#endif
+#include <omp.h>
 #include "BloomMapGenerator.h"
 #include "BloomFilterGenerator.h"
 
@@ -65,8 +63,9 @@ void printHelpDialog() {
 		"                         Currently only active with the (-r) option.\n"
 		"  -m, --map=N            Generates a Bloom Filter Map, expects list of seeds\n"
 		"                         1s & 0s separated by spaces. -k is ignored.\n"
-		"  -I, --id_by_file       For Bloom maps, assign IDs by file rather than by\n"
-		"                         fasta header.\n"
+		"  -I, --id_type=N        For Bloom maps, assign IDs by file rather than by\n"
+		"                         fasta header [header]. Possible options header,\n"
+		"						  filename, chromium.\n"
 		"  -c, --colli_id         Compute collision ID for Bloom Map [false].\n"
 		"  -C, --colli_analysis   Compute collision matrix.\n"
 		"\nAdvanced options:\n"
@@ -116,8 +115,6 @@ int main(int argc, char *argv[]) {
 	double fpr = 0.0075;
 	string filterPrefix = "";
 	string outputDir = "";
-	unsigned kmerSize = 25;
-	unsigned hashNum = 0;
 	string subtractFilter = "";
 	size_t entryNum = 0;
 	bool printReads = false;
@@ -151,7 +148,7 @@ int main(int argc, char *argv[]) {
 			NULL, 0, NULL, 0 } };
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:m:a:IcC", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:m:a:I:cC", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -189,12 +186,17 @@ int main(int argc, char *argv[]) {
 		case 'm': {
 			opt::sseeds = convertInputString(optarg);
 			//TODO:CHECK IF all seed are the same length here
-			kmerSize = opt::sseeds[0].size();
+			opt::kmerSize = opt::sseeds[0].size();
 			opt::filterType = BLOOMMAP;
 			break;
 		}
 		case 'I': {
-			opt::idByFile = true;
+			if(string(optarg) == "filename"){
+				opt::idType = FILENAME;
+			}
+			else if(string(optarg) == "chromium"){
+				opt::idType = BARCODE;
+			}
 			break;
 		}
 		case 'c': {
@@ -219,7 +221,7 @@ int main(int argc, char *argv[]) {
 		}
 		case 'k': {
 			stringstream convert(optarg);
-			if (!(convert >> kmerSize)) {
+			if (!(convert >> opt::kmerSize)) {
 				cerr << "Error - Invalid set of bloom filter parameters! k: "
 						<< optarg << endl;
 				return 0;
@@ -228,7 +230,7 @@ int main(int argc, char *argv[]) {
 		}
 		case 'g': {
 			stringstream convert(optarg);
-			if (!(convert >> hashNum)) {
+			if (!(convert >> opt::hashNum)) {
 				cerr << "Error - Invalid set of bloom filter parameters! g: "
 						<< optarg << endl;
 				return 0;
@@ -361,9 +363,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	//set number of hash functions used
-	if (hashNum == 0) {
+	if (opt::hashNum == 0) {
 		//get optimal number of hash functions
-		hashNum = unsigned(-log(fpr) / log(2));
+		opt::hashNum = unsigned(-log(fpr) / log(2));
 	}
 
 	string file1 = "";
@@ -408,21 +410,21 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (opt::filterType == BLOOMMAP) {
-		BloomMapGenerator filterGen(inputFiles, kmerSize, entryNum);
+		BloomMapGenerator filterGen(inputFiles, opt::kmerSize, entryNum);
 		filterGen.generate(outputDir + filterPrefix, fpr);
 		cerr << "Bloom Map Creation Complete." << endl;
 		return 0;
 	}
 
 	//create filter
-	BloomFilterGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
+	BloomFilterGenerator filterGen(inputFiles, opt::kmerSize, opt::hashNum, entryNum);
 
 	if (entryNum == 0) {
-		filterGen = BloomFilterGenerator(inputFiles, kmerSize, hashNum);
+		filterGen = BloomFilterGenerator(inputFiles, opt::kmerSize, opt::hashNum);
 		entryNum = filterGen.getExpectedEntries();
 	}
 
-	BloomFilterInfo info(filterPrefix, kmerSize, hashNum, fpr, entryNum,
+	BloomFilterInfo info(filterPrefix, opt::kmerSize, opt::hashNum, fpr, entryNum,
 			inputFiles);
 
 	//get calculated size of Filter
