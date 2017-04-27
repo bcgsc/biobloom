@@ -12,7 +12,8 @@ namespace opt {
 	const ID COLLI = std::numeric_limits<ID>::max();
 	std::vector<std::string> sseeds;
 	unsigned allowMisses = 0;
-	bool idByFile = false;
+
+	IDType idType = HEADER;
 	bool colliIDs = false;
 	bool colliAnalysis = false;
 
@@ -23,7 +24,7 @@ namespace opt {
 
 	double fpr = 0.0078125;
 	std::string prefix = "";
-	unsigned kmerSize = 64;
+	unsigned kmerSize = 25;
 	unsigned hashNum = 0;
 	unsigned numEle = 0;
 	std::string subtract = "";

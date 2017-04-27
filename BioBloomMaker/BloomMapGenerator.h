@@ -15,8 +15,10 @@
 #include <stdint.h>
 #include <google/dense_hash_map>
 #include <google/dense_hash_set>
-#include "bloomfilter/BloomMapSSBitVec.hpp"
-#include "bloomfilter/RollingHashIterator.h"
+//#include "bloomfilter/BloomMapSSBitVec.hpp"
+//#include "bloomfilter/RollingHashIterator.h"
+#include "bloomfilter/MIBloomFilter.hpp"
+#include "bloomfilter/ntHashIterator.hpp"
 #include "Common/Options.h"
 #include <sdsl/int_vector.hpp>
 #include <boost/shared_ptr.hpp>
@@ -25,6 +27,7 @@
 #include <queue>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/io.hpp>
+#include <omp.h>
 
 using namespace std;
 
@@ -52,60 +55,104 @@ private:
 //	//TODO MAKE INTO OPTION
 	double m_colliThresh = 0.15;
 
-	inline BloomMapSSBitVec<ID> generateBV(double fpr,
-			const vector<vector<unsigned> > &ssVal);
+//	inline BloomMapSSBitVec<ID> generateBV(double fpr,
+//			const vector<vector<unsigned> > &ssVal);
+
+	inline MIBloomFilter<ID> generateBV(double fpr);
 
 	inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > generateGroups(
 			std::ofstream &file);
 
+//	//helper methods
+//	inline void loadSeq(BloomMapSSBitVec<ID> &bloomMap, const string& seq,
+//			ID value) {
+//		/* init rolling hash state and compute hash values for first k-mer */
+//		//TODO FIX -> NEED TO VALIDATE THREAD SAFETY!
+//		if (opt::colliIDs) {
+//			for (RollingHashIterator itr(seq, m_kmerSize,
+//					bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
+//				bloomMap.insert(*itr, value, m_colliIDs);
+//			}
+//		} else {
+//			for (RollingHashIterator itr(seq, m_kmerSize,
+//					bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
+//				bloomMap.insert(*itr, value);
+//			}
+//		}
+//	}
+
 	//helper methods
-	inline void loadSeq(BloomMapSSBitVec<ID> &bloomMap, const string& seq,
+	inline void loadSeq(MIBloomFilter<ID> &bf, const string& seq,
 			ID value) {
 		/* init rolling hash state and compute hash values for first k-mer */
 		//TODO FIX -> NEED TO VALIDATE THREAD SAFETY!
-		if (opt::colliIDs) {
-			for (RollingHashIterator itr(seq, m_kmerSize,
-					bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
-				bloomMap.insert(*itr, value, m_colliIDs);
+//		if (opt::colliIDs) {
+//			for (ntHashIterator itr(seq, opt::hashNum, m_kmerSize); itr != itr.end(); ++itr) {
+//				bf.insert(*itr, value, m_colliIDs);
+//			}
+//		} else {
+			for (ntHashIterator itr(seq, opt::hashNum, opt::kmerSize); itr != itr.end(); ++itr) {
+				bf.insert(*itr, value);
 			}
-		} else {
-			for (RollingHashIterator itr(seq, m_kmerSize,
-					bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
-				bloomMap.insert(*itr, value);
-			}
-		}
+//		}
 	}
 
-	//helper methods
-	inline void loadSeq(BloomMapSSBitVec<ID> &bloomMap, const string& seq,
-			ID value, Matrix &mat ) {
-		/* init rolling hash state and compute hash values for first k-mer */
-		for (RollingHashIterator itr(seq, m_kmerSize,
-				bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
-			bloomMap.insert(*itr, value, mat);
-		}
-	}
+	inline void computeSharedKmer(MIBloomFilter<ID> &miBF,const string &filePrefix);
+
+//	//helper methods
+//	inline void loadSeq(MIBloomFilter<ID> &bf, const string& seq,
+//			ID value, Matrix &mat ) {
+//		/* init rolling hash state and compute hash values for first k-mer */
+//		for (ntHashIterator itr(seq, opt::hashNum, opt::kmerSize); itr != itr.end(); ++itr) {
+//			bf.insert(*itr, value, mat);
+//		}
+//	}
+
+//	/*
+//	 * Returns count of collisions (counts unique k-mers)
+//	 */
+//	inline size_t loadSeq(sdsl::bit_vector &bv, const string& seq,
+//			const vector<vector<unsigned>> &seedVal) {
+//		size_t count = 0;
+//		if (seq.size() < m_kmerSize)
+//			return count;
+//		/* init rolling hash state and compute hash values for first k-mer */
+//		for (RollingHashIterator itr(seq, m_kmerSize, seedVal);
+//				itr != itr.end(); ++itr) {
+//			unsigned colliCount = 0;
+//			for (size_t i = 0; i < seedVal.size(); ++i) {
+//				size_t pos = itr->at(i) % bv.size();
+//				uint64_t *dataIndex = bv.data() + (pos >> 6);
+//				uint64_t bitMaskValue = (uint64_t) 1 << (pos & 0x3F);
+//				colliCount += __sync_fetch_and_or(dataIndex, bitMaskValue)
+//						>> (pos & 0x3F) & 1;
+//			}
+//			if (colliCount == seedVal.size()) {
+//				++count;
+//			}
+//		}
+//		return count;
+//	}
 
 	/*
 	 * Returns count of collisions (counts unique k-mers)
 	 */
-	inline size_t loadSeq(sdsl::bit_vector &bv, const string& seq,
-			const vector<vector<unsigned>> &seedVal) {
+	inline size_t loadSeq(sdsl::bit_vector &bv, const string& seq) {
 		size_t count = 0;
 		if (seq.size() < m_kmerSize)
 			return count;
 		/* init rolling hash state and compute hash values for first k-mer */
-		for (RollingHashIterator itr(seq, m_kmerSize, seedVal);
+		for (ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
 				itr != itr.end(); ++itr) {
 			unsigned colliCount = 0;
-			for (size_t i = 0; i < seedVal.size(); ++i) {
-				size_t pos = itr->at(i) % bv.size();
+			for (size_t i = 0; i < opt::hashNum; ++i) {
+				size_t pos = (*itr)[i] % bv.size();
 				uint64_t *dataIndex = bv.data() + (pos >> 6);
 				uint64_t bitMaskValue = (uint64_t) 1 << (pos & 0x3F);
 				colliCount += __sync_fetch_and_or(dataIndex, bitMaskValue)
 						>> (pos & 0x3F) & 1;
 			}
-			if (colliCount == seedVal.size()) {
+			if (colliCount == opt::hashNum) {
 				++count;
 			}
 		}

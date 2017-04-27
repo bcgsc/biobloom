@@ -95,7 +95,7 @@ void printHelpDialog() {
 		"                         number of contiguous matching bases required for a\n"
 		"                         match.\n"
 		"  -b, --baitScore=N      Score threshold when considering only bait. [r]\n"
-		"  -e, --iterations=N     Pass through files N times if threshold is not met."
+		"  -e, --iterations=N     Pass through files N times if threshold is not met.\n"
 		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
 		"                         in the filter. Only active with the (-r) option.\n"
 		"\n"
@@ -184,6 +184,9 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 		case 'm': {
+			if(string(optarg) == "BARCODE"){
+				opt::idType = BARCODE;
+			}
 			opt::sseeds = convertInputString(optarg);
 			//TODO:CHECK IF all seed are the same length here
 			opt::kmerSize = opt::sseeds[0].size();

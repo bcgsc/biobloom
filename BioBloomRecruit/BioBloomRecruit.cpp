@@ -16,7 +16,7 @@
 #if _OPENMP
 # include <omp.h>
 #endif
-#include "MIBloomTag.h"
+//#include "MIBloomTag.h"
 //#include "MIRecurit.h"
 //#include "bloomfilter/BloomFilterN.hpp"
 
@@ -292,10 +292,10 @@ int main(int argc, char *argv[]) {
 	inputFiles.pop_back();
 
 	//START HERE
-	MIBloomTag tagger(inputFiles, opt::numEle);
+//	MIBloomTag tagger(inputFiles, opt::numEle);
 //	BloomFilterN subFilter;
 
-	tagger.generate(opt::prefix,opt::fpr, filename1, filename2);
+//	tagger.generate(opt::prefix,opt::fpr, filename1, filename2);
 
 	return 0;
 }

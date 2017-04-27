@@ -8,6 +8,8 @@
 
 enum FilterType {BLOOMFILTER, BLOOMMAP};
 
+enum IDType {HEADER, FILENAME, BARCODE};
+
 namespace SeqEval {
 enum EvalMode {
 	EVAL_STANDARD, EVAL_MIN_MATCH_LEN
@@ -36,7 +38,7 @@ namespace opt {
 
 	//options of BBM only
 	//TODO: move to own header file
-	extern bool idByFile;
+	extern IDType idType;
 	extern bool colliIDs;
 	extern bool colliAnalysis;
 

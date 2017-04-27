@@ -4,7 +4,6 @@ SUBDIRS = \
 	bloomfilter \
 	BioBloomMaker \
 	BioBloomCategorizer \
-	BioBloomRecruit \
 	Tests
 
 dist_doc_DATA = \

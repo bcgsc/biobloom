@@ -27,12 +27,13 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 	ID value = 0;
 	size_t counts = 0;
 
-	if (opt::idByFile) {
+	if (opt::idType == FILENAME) {
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 			gzFile fp;
 			fp = gzopen(m_fileNames[i].c_str(), "r");
 			if (fp == NULL) {
-				cerr << "file " << m_fileNames[i] << " cannot be opened" << endl;
+				cerr << "file " << m_fileNames[i] << " cannot be opened"
+						<< endl;
 				exit(1);
 			}
 			kseq_t *seq = kseq_init(fp);
@@ -42,6 +43,27 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 			for (;;) {
 				l = kseq_read(seq);
 				if (l >= 0) {
+					counts += seq->seq.l - m_kmerSize + 1;
+				} else {
+					kseq_destroy(seq);
+					break;
+				}
+			}
+			gzclose(fp);
+		}
+	} else if (opt::idType == BARCODE) {
+		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+			gzFile fp;
+			fp = gzopen(m_fileNames[i].c_str(), "r");
+			kseq_t *seq = kseq_init(fp);
+			int l;
+			for (;;) {
+				l = kseq_read(seq);
+				if (l >= 0) {
+					//TODO make more standardized
+					char barcode[17];
+					strncpy(barcode, seq->name.s, 16);
+					m_headerIDs[barcode] = ++value;
 					counts += seq->seq.l - m_kmerSize + 1;
 				} else {
 					kseq_destroy(seq);
@@ -81,7 +103,7 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 /* Generate the bloom filter to the output filename
  */
 void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
-	vector<vector<unsigned> > ssVal = parseSeedString(opt::sseeds);
+//	vector<vector<unsigned> > ssVal = parseSeedString(opt::sseeds);
 
 	std::ofstream idFile;
 	idFile.open((filePrefix + "_ids.txt").c_str());
@@ -110,8 +132,9 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			cerr << "Loading ordered list of collision pairs" << endl;
 			assert(fexists(filePrefix + "_orderedIDs.txt"));
 			std::ifstream orderedIDFile;
-			orderedIDFile.open((filePrefix + "_orderedIDs.txt").c_str(), ifstream::in);
-			vector<pair<ID,ID> > orderedPairs;
+			orderedIDFile.open((filePrefix + "_orderedIDs.txt").c_str(),
+					ifstream::in);
+			vector<pair<ID, ID> > orderedPairs;
 			string line;
 			getline(orderedIDFile, line);
 			while (orderedIDFile.good()) {
@@ -124,87 +147,27 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			}
 			//assign remaining IDs to pairwise collisionIDs and assign groups
 			setPairs(*tree, orderedPairs, tree->size(), idFile);
-
-		} else {
+		}
+		else {
 			cerr << "Computing Similarity" << endl;
 			m_colliIDs = generateGroups(idFile);
 		}
 	}
 	idFile.close();
 
-	BloomMapSSBitVec<ID> bloomMapBV = generateBV(fpr, ssVal);
+//	BloomMapSSBitVec<ID> bloomMapBV = generateBV(fpr, ssVal);
+	MIBloomFilter<ID> miBF = generateBV(fpr);
 	//free memory of old bv
+
+//	if (opt::colliAnalysis && opt::idType == FILE) {
+//		computeSharedKmer(miBF, filePrefix);
+//	}
 
 	cerr << "Populating values of bloom map" << endl;
 
 	//populate values in bitvector (bloomFilter)
-	if (opt::idByFile) {
+	if (opt::idType == FILENAME) {
 		//overwrite thread usage
-		if (opt::colliAnalysis) {
-			cerr << "Setting thread number to: " << m_fileNames.size() << endl;
-			omp_set_num_threads(m_fileNames.size());
-			Matrix colliMat(m_fileNames.size(), m_fileNames.size(), 0);
-#pragma omp parallel for
-			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-				gzFile fp;
-				fp = gzopen(m_fileNames[i].c_str(), "r");
-				kseq_t *seq = kseq_init(fp);
-				int l;
-				for (;;) {
-					l = kseq_read(seq);
-					if (l >= 0) {
-						//k-merize with rolling hash insert into bloom map
-						loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
-								m_headerIDs[m_fileNames[i].substr(
-										m_fileNames[i].find_last_of("/") + 1)],
-								colliMat);
-					} else {
-						break;
-					}
-				}
-				kseq_destroy(seq);
-				gzclose(fp);
-			}
-			omp_set_num_threads(opt::threads);
-			cerr << "Outputting matrix" << endl;
-			std::ofstream matFile;
-			matFile.open((filePrefix + "_matrix.tsv").c_str());
-			for (unsigned i = 0; i < colliMat.size1(); i++) {
-				for (unsigned j = 0; j < colliMat.size2(); j++) {
-					if (j == 0) {
-						matFile << colliMat(i, j);
-					} else {
-						matFile << "\t" << colliMat(i, j);
-					}
-				}
-				matFile << endl;
-			}
-			matFile.close();
-			exit(0);
-		}
-		else {
-#pragma omp parallel for
-			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-				gzFile fp;
-				fp = gzopen(m_fileNames[i].c_str(), "r");
-				kseq_t *seq = kseq_init(fp);
-				int l;
-				for (;;) {
-					l = kseq_read(seq);
-					if (l >= 0) {
-						//k-merize with rolling hash insert into bloom map
-						loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
-								m_headerIDs[m_fileNames[i].substr(
-										m_fileNames[i].find_last_of("/") + 1)]);
-					} else {
-						break;
-					}
-				}
-				kseq_destroy(seq);
-				gzclose(fp);
-			}
-		}
-	} else {
 #pragma omp parallel for
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 			gzFile fp;
@@ -215,7 +178,52 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 				l = kseq_read(seq);
 				if (l >= 0) {
 					//k-merize with rolling hash insert into bloom map
-					loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
+					loadSeq(miBF, string(seq->seq.s, seq->seq.l),
+							m_headerIDs[m_fileNames[i].substr(
+									m_fileNames[i].find_last_of("/") + 1)]);
+				} else {
+					break;
+				}
+			}
+			kseq_destroy(seq);
+			gzclose(fp);
+		}
+	}
+	else if (opt::idType == BARCODE) {
+#pragma omp parallel for
+		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+			gzFile fp;
+			fp = gzopen(m_fileNames[i].c_str(), "r");
+			kseq_t *seq = kseq_init(fp);
+			int l;
+			for (;;) {
+				l = kseq_read(seq);
+				if (l >= 0) {
+					char barcode[17];
+					strncpy(barcode, seq->name.s, 16);
+					//k-merize with rolling hash insert into bloom map
+					loadSeq(miBF, string(seq->seq.s, seq->seq.l),
+							m_headerIDs[barcode]);
+				} else {
+					break;
+				}
+			}
+			kseq_destroy(seq);
+			gzclose(fp);
+		}
+	}
+	else {
+#pragma omp parallel for
+		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+			gzFile fp;
+			fp = gzopen(m_fileNames[i].c_str(), "r");
+			kseq_t *seq = kseq_init(fp);
+			int l;
+			for (;;) {
+				l = kseq_read(seq);
+				if (l >= 0) {
+					//k-merize with rolling hash insert into bloom map
+					loadSeq(miBF, string(seq->seq.s, seq->seq.l),
 							m_headerIDs[seq->name.s]);
 				} else {
 					break;
@@ -229,16 +237,55 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	cerr << "Storing filter" << endl;
 
 	//save filter
-	bloomMapBV.store(filePrefix + ".bf");
+	miBF.store(filePrefix + ".bf");
 }
+
+//inline void BloomMapGenerator::computeSharedKmer(MIBloomFilter<ID> &miBF, const string &filePrefix) {
+//	cerr << "Setting thread number to: " << m_fileNames.size() << endl;
+//	omp_set_num_threads(m_fileNames.size());
+//	Matrix colliMat(m_fileNames.size(), m_fileNames.size(), 0);
+//#pragma omp parallel for
+//	for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+//		gzFile fp;
+//		fp = gzopen(m_fileNames[i].c_str(), "r");
+//		kseq_t *seq = kseq_init(fp);
+//		int l;
+//		for (;;) {
+//			l = kseq_read(seq);
+//			if (l >= 0) {
+//				//k-merize with rolling hash insert into bloom map
+//				loadSeq(miBF, string(seq->seq.s, seq->seq.l));
+//			} else {
+//				break;
+//			}
+//		}
+//		kseq_destroy(seq);
+//		gzclose(fp);
+//	}
+//	omp_set_num_threads(opt::threads);
+//	cerr << "Outputting matrix" << endl;
+//	std::ofstream matFile;
+//	matFile.open((filePrefix + "_matrix.tsv").c_str());
+//	for (unsigned i = 0; i < colliMat.size1(); i++) {
+//		for (unsigned j = 0; j < colliMat.size2(); j++) {
+//			if (j == 0) {
+//				matFile << colliMat(i, j);
+//			} else {
+//				matFile << "\t" << colliMat(i, j);
+//			}
+//		}
+//		matFile << endl;
+//	}
+//	matFile.close();
+//}
+
 
 /*
  * Populates bit vector and returns a compressed bloom map without values set
  */
-inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
-		const vector<vector<unsigned> > &ssVal) {
-	size_t filterSize = calcOptimalSize(m_expectedEntries, opt::sseeds.size(),
-			fpr);
+inline MIBloomFilter<ID> BloomMapGenerator::generateBV(double fpr) {
+	size_t filterSize = MIBloomFilter<ID>::calcOptimalSize(m_expectedEntries,
+			opt::sseeds.size(), fpr);
 
 	cerr << "bitVector Size: " << filterSize << endl;
 	size_t uniqueCounts = 0;
@@ -248,7 +295,7 @@ inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
 	cerr << "Populating initial bit vector" << endl;
 
 	//populate sdsl bitvector (bloomFilter)
-	if (opt::idByFile) {
+	if (opt::idType == FILENAME) {
 #pragma omp parallel for
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 			gzFile fp;
@@ -262,13 +309,44 @@ inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
 				if (l >= 0) {
 					const string &seqStr = string(seq->seq.s, seq->seq.l);
 					//k-merize with rolling hash insert into bloom map
-					colliCounts += loadSeq(bv, seqStr, ssVal);
+					colliCounts += loadSeq(bv, seqStr);
 					totalCount += seq->seq.l - m_kmerSize + 1;
 				} else {
 					break;
 				}
 			}
 #pragma omp atomic
+			uniqueCounts += totalCount - colliCounts;
+			kseq_destroy(seq);
+			gzclose(fp);
+		}
+	} else if (opt::idType == BARCODE) {
+		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+			gzFile fp;
+			fp = gzopen(m_fileNames[i].c_str(), "r");
+			kseq_t *seq = kseq_init(fp);
+			int l;
+			string prevBarCode = "";
+			size_t colliCounts = 0;
+			size_t totalCount = 0;
+			for (;;) {
+				l = kseq_read(seq);
+				if (l >= 0) {
+					char barcode[17];
+					strncpy(barcode, seq->name.s, 16);
+					if (prevBarCode != barcode) {
+						uniqueCounts += totalCount - colliCounts;
+						colliCounts = 0;
+						totalCount = 0;
+					}
+					//k-merize with rolling hash insert into bloom map
+					colliCounts += loadSeq(bv, barcode);
+					totalCount += seq->seq.l - m_kmerSize + 1;
+					prevBarCode = barcode;
+				} else {
+					break;
+				}
+			}
 			uniqueCounts += totalCount - colliCounts;
 			kseq_destroy(seq);
 			gzclose(fp);
@@ -285,7 +363,7 @@ inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
 				if (l >= 0) {
 					const string &seqStr = string(seq->seq.s, seq->seq.l);
 					//k-merize with rolling hash insert into bloom map
-					size_t colliCounts = loadSeq(bv, seqStr, ssVal);
+					size_t colliCounts = loadSeq(bv, seqStr);
 #pragma omp atomic
 					uniqueCounts += seq->seq.l - m_kmerSize + 1 - colliCounts;
 				} else {
@@ -298,7 +376,7 @@ inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
 	}
 	cerr << "Approximate number of unique entries in filter: " << uniqueCounts
 			<< endl;
-	return BloomMapSSBitVec<ID>(m_expectedEntries, fpr, opt::sseeds, bv,
+	return MIBloomFilter<ID>(m_expectedEntries, fpr, opt::hashNum, opt::kmerSize, bv,
 			uniqueCounts);
 }
 
@@ -325,11 +403,17 @@ inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > BloomMapGener
 			l = kseq_read(seq);
 			if (l >= 0) {
 				const string &seqStr = string(seq->seq.s, seq->seq.l);
-				if (opt::idByFile) {
+				if (opt::idType == FILENAME) {
 					ssIdx.insert(
 							m_headerIDs[m_fileNames[i].substr(
 									m_fileNames[i].find_last_of("/") + 1)] - 1,
 							seqStr, occ);
+				} else if (opt::idType == BARCODE) {
+					char barcode[17];
+					strncpy(barcode, seq->name.s, 16);
+					for (unsigned i = 0; i < (ssIdx.size() + 63) / 64; ++i)
+						occ[i] = 0;
+					ssIdx.insert(m_headerIDs[barcode] - 1, seqStr, occ);
 				} else {
 					for (unsigned i = 0; i < (ssIdx.size() + 63) / 64; ++i)
 						occ[i] = 0;
