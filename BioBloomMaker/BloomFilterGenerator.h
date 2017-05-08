@@ -11,7 +11,6 @@
 #include <vector>
 #include "Common/BloomFilter.h"
 #include "Common/SeqEval.h"
-#include <FastaReader.h>
 #include "Common/SeqEval.h"
 #include "DataLayer/kseq.h"
 #include "WindowedFileParser.h"
@@ -43,7 +42,8 @@ public:
 			const string &subtractFilter);
 	void setFilterSize(size_t bits);
 
-	void printReadPair(const FastqRecord& rec1, const FastqRecord& rec2);
+	void printReadPair(const string &rec1, const string &header1,
+			const string &rec2, const string &header2);
 	void setHashFuncs(unsigned numFunc);
 	size_t getTotalEntries() const;
 	size_t getExpectedEntries() const;

@@ -16,6 +16,7 @@
 #include "config.h"
 #include "Common/Options.h"
 #include "Common/SeqEval.h"
+#include <zlib.h>
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -413,14 +414,14 @@ int main(int argc, char *argv[])
 		}
 		if (outputReadType != "") {
 			if (pairedBAMSAM) {
-				BBC.filterPairBAMPrint(inputFiles[0], outputReadType);
+				BBC.filterPair(inputFiles[0], outputReadType);
 			} else {
 				BBC.filterPairPrint(inputFiles[0], inputFiles[1],
 						outputReadType);
 			}
 		} else {
 			if (pairedBAMSAM) {
-				BBC.filterPairBAM(inputFiles[0]);
+				BBC.filterPair(inputFiles[0]);
 			} else {
 				BBC.filterPair(inputFiles[0], inputFiles[1]);
 			}

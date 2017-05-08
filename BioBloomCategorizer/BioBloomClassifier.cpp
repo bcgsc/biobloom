@@ -62,16 +62,22 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 	for (vector<string>::const_iterator it = inputFiles.begin();
 			it != inputFiles.end(); ++it)
 	{
-		FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
+		gzFile fp;
+		fp = gzopen(it->c_str(), "r");
+		if (fp == NULL) {
+			cerr << "file " << *it << " cannot be opened" << endl;
+			exit(1);
+		}
+		vector<kseq_t*> recs(opt::threads);
+		for (unsigned i = 0; i < opt::threads; i++)
+			recs[i] = kseq_init(fp);
+
 #pragma omp parallel
-		for (FastqRecord rec;;) {
-			bool good;
-#pragma omp critical(sequence)
-			{
-				good = sequence >> rec;
-				//track read progress
-			}
-			if (good) {
+		for (int l;;) {
+			const int threadNum = omp_get_thread_num();
+#pragma omp critical(kseq_read)
+			l = kseq_read(recs[threadNum]);
+			if (l >= 0) {
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
@@ -86,18 +92,20 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles)
 
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
-						j != m_hashSigs.end(); ++j)
-				{
-					evaluateRead(rec, *j, hits, score, scores);
+						j != m_hashSigs.end(); ++j) {
+					evaluateRead(recs[threadNum]->seq.s, *j, hits, score,
+							scores);
 				}
 
 				//Evaluate hit data and record for summary and print if needed
-				printSingle(rec, score, resSummary.updateSummaryData(hits));
+				printSingle(recs[threadNum], score, resSummary.updateSummaryData(hits));
 
 			} else
 				break;
 		}
-		assert(sequence.eof());
+		for (unsigned i = 0; i < opt::threads; i++)
+			kseq_destroy(recs[i]);
+		gzclose(fp);
 	}
 
 	cerr << "Total Reads:" << totalReads << endl;
@@ -159,15 +167,22 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	for (vector<string>::const_iterator it = inputFiles.begin();
 			it != inputFiles.end(); ++it)
 	{
-		FastaReader sequence(it->c_str(), FastaReader::NO_FOLD_CASE);
+		gzFile fp;
+		fp = gzopen(it->c_str(), "r");
+		if (fp == NULL) {
+			cerr << "file " << *it << " cannot be opened" << endl;
+			exit(1);
+		}
+		vector<kseq_t*> recs(opt::threads);
+		for (unsigned i = 0; i < opt::threads; i++)
+			recs[i] = kseq_init(fp);
+
 #pragma omp parallel
-		for (FastqRecord rec;;) {
-			bool good;
-#pragma omp critical(sequence)
-			{
-				good = sequence >> rec;
-			}
-			if (good) {
+		for (int l;;) {
+			const int threadNum = omp_get_thread_num();
+#pragma omp critical(kseq_read)
+			l = kseq_read(recs[threadNum]);
+			if (l >= 0) {
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
@@ -184,22 +199,24 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
 						j != m_hashSigs.end(); ++j)
 				{
-					evaluateRead(rec, *j, hits, score, scores);
+					evaluateRead(recs[threadNum]->seq.s, *j, hits, score, scores);
 				}
 
 				//Evaluate hit data and record for summary
 				const string &outputFileName = resSummary.updateSummaryData(
 						hits);
 
-				printSingle(rec, score, outputFileName);
+				printSingle(recs[threadNum], score, outputFileName);
 
-				printSingleToFile(outputFileName, rec, outputFiles, outputType,
+				printSingleToFile(outputFileName, recs[threadNum], outputFiles, outputType,
 						score, scores);
 
 			} else
 				break;
 		}
-		assert(sequence.eof());
+		for (unsigned i = 0; i < opt::threads; i++)
+			kseq_destroy(recs[i]);
+		gzclose(fp);
 	}
 
 	//close sorting files
@@ -235,22 +252,32 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 
 	cerr << "Filtering Start" << "\n";
 
-	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
-	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
+	gzFile fp1, fp2;
+	fp1 = gzopen(file1.c_str(), "r");
+	if (fp1 == NULL) {
+		cerr << "file " << file1.c_str() << " cannot be opened" << endl;
+		exit(1);
+	}
+	fp2 = gzopen(file2.c_str(), "r");
+	if (fp2 == NULL) {
+		cerr << "file " << file2.c_str() << " cannot be opened" << endl;
+		exit(1);
+	}
+	vector<kseq_t*> recs1(opt::threads);
+	vector<kseq_t*> recs2(opt::threads);
+	for (unsigned i = 0; i < opt::threads; i++) {
+		recs1[i] = kseq_init(fp1);
+		recs2[i] = kseq_init(fp2);
+	}
+
 #pragma omp parallel
-	for (FastqRecord rec1;;) {
-		FastqRecord rec2;
-		bool good1;
-		bool good2;
-
-#pragma omp critical(sequence1)
-		{
-			good1 = sequence1 >> rec1;
-			good2 = sequence2 >> rec2;
-			//track read progress
-		}
-
-		if (good1 && good2) {
+	for (int l1, l2;;) {
+		const int threadNum = omp_get_thread_num();
+#pragma omp critical(kseq_read1)
+		l1 = kseq_read(recs1[threadNum]);
+#pragma omp critical(kseq_read2)
+		l2 = kseq_read(recs2[threadNum]);
+		if (l1 >= 0 && l2 >= 0) {
 #pragma omp critical(totalReads)
 			{
 				++totalReads;
@@ -272,32 +299,23 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2)
 
 			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 			for (vector<string>::const_iterator j = m_hashSigs.begin();
-					j != m_hashSigs.end(); ++j)
-			{
-				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
-				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
-				if (tempStr1 == tempStr2) {
-					evaluateRead(rec1, *j, hits1, score1, scores1);
-					evaluateRead(rec2, *j, hits2, score2, scores2);
-				} else {
-					cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
-							<< tempStr2 << endl;
-					exit(1);
-				}
+					j != m_hashSigs.end(); ++j) {
+				evaluateRead(recs1[threadNum]->seq.s, *j, hits1, score1, scores1);
+				evaluateRead(recs2[threadNum]->seq.s, *j, hits2, score2, scores2);
 			}
 
-			//Evaluate hit data and record for summary and print if needed
-			printPair(rec1, rec2, score1, score2,
-					resSummary.updateSummaryData(hits1, hits2));
+			//Evaluate hit data and record for summary
+
+			const string &outputFileName = resSummary.updateSummaryData(hits1,
+					hits2);
+			printPair(recs1[threadNum], recs2[threadNum], score1, score2, outputFileName);
 		} else
 			break;
 	}
-	if (!sequence1.eof() || !sequence2.eof()) {
-		cerr
-				<< "error: eof bit not flipped. Input files may be different lengths"
-				<< endl;
+	for (unsigned i = 0; i < opt::threads; i++) {
+		kseq_destroy(recs1[i]);
+		kseq_destroy(recs2[i]);
 	}
-
 	cerr << "Total Reads:" << totalReads << endl;
 	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
 
@@ -369,21 +387,32 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	cerr << "Filtering Start" << "\n";
 
-	FastaReader sequence1(file1.c_str(), FastaReader::NO_FOLD_CASE);
-	FastaReader sequence2(file2.c_str(), FastaReader::NO_FOLD_CASE);
+	gzFile fp1, fp2;
+	fp1 = gzopen(file1.c_str(), "r");
+	if (fp1 == NULL) {
+		cerr << "file " << file1.c_str() << " cannot be opened" << endl;
+		exit(1);
+	}
+	fp2 = gzopen(file2.c_str(), "r");
+	if (fp2 == NULL) {
+		cerr << "file " << file2.c_str() << " cannot be opened" << endl;
+		exit(1);
+	}
+	vector<kseq_t*> recs1(opt::threads);
+	vector<kseq_t*> recs2(opt::threads);
+	for (unsigned i = 0; i < opt::threads; i++) {
+		recs1[i] = kseq_init(fp1);
+		recs2[i] = kseq_init(fp2);
+	}
+
 #pragma omp parallel
-	for (FastqRecord rec1;;) {
-		FastqRecord rec2;
-		bool good1;
-		bool good2;
-
-#pragma omp critical(sequence1)
-		{
-			good1 = sequence1 >> rec1;
-			good2 = sequence2 >> rec2;
-		}
-
-		if (good1 && good2) {
+	for (int l1, l2;;) {
+		const int threadNum = omp_get_thread_num();
+#pragma omp critical(kseq_read1)
+		l1 = kseq_read(recs1[threadNum]);
+#pragma omp critical(kseq_read2)
+		l2 = kseq_read(recs2[threadNum]);
+		if (l1 >= 0 && l2 >= 0) {
 #pragma omp critical(totalReads)
 			{
 				++totalReads;
@@ -407,32 +436,23 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 			for (vector<string>::const_iterator j = m_hashSigs.begin();
 					j != m_hashSigs.end(); ++j)
 			{
-				string tempStr1 = rec1.id.substr(0, rec1.id.find_last_of("/"));
-				string tempStr2 = rec2.id.substr(0, rec2.id.find_last_of("/"));
-				if (tempStr1 == tempStr2) {
-					evaluateRead(rec1, *j, hits1, score1, scores1);
-					evaluateRead(rec2, *j, hits2, score2, scores2);
-				} else {
-					cerr << "Read IDs do not match" << "\n" << tempStr1 << "\n"
-							<< tempStr2 << endl;
-					exit(1);
-				}
+				evaluateRead(recs1[threadNum]->seq.s, *j, hits1, score1, scores1);
+				evaluateRead(recs2[threadNum]->seq.s, *j, hits2, score2, scores2);
 			}
 
 			//Evaluate hit data and record for summary
 
 			const string &outputFileName = resSummary.updateSummaryData(hits1,
 					hits2);
-			printPair(rec1, rec2, score1, score2, outputFileName);
-			printPairToFile(outputFileName, rec1, rec2, outputFiles, outputType,
+			printPair(recs1[threadNum], recs2[threadNum], score1, score2, outputFileName);
+			printPairToFile(outputFileName, recs1[threadNum], recs2[threadNum], outputFiles, outputType,
 					score1, score2, scores1, scores2 );
 		} else
 			break;
 	}
-	if (!sequence1.eof() || !sequence2.eof()) {
-		cerr
-				<< "error: eof bit not flipped. Input files may be different lengths"
-				<< endl;
+	for (unsigned i = 0; i < opt::threads; i++) {
+		kseq_destroy(recs1[i]);
+		kseq_destroy(recs2[i]);
 	}
 
 	//close sorting files
@@ -459,13 +479,13 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
  * Assumes only one hash signature exists (load only filters with same
  * hash functions)
  */
-void BioBloomClassifier::filterPairBAM(const string &file)
+void BioBloomClassifier::filterPair(const string &file)
 {
 
 	//results summary object
 	ResultsManager resSummary(m_filterOrder, m_inclusive);
 
-	unordered_map<string, FastqRecord> unPairedReads;
+	unordered_map<string, kseq_t *> unPairedReads;
 
 	size_t totalReads = 0;
 
@@ -473,35 +493,41 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 
 	cerr << "Filtering Start" << "\n";
 
-	FastaReader sequence(file.c_str(), FastaReader::NO_FOLD_CASE);
+	gzFile fp = gzopen(file.c_str(), "r");
+	if (fp == NULL) {
+		cerr << "file " << file.c_str() << " cannot be opened" << endl;
+		exit(1);
+	}
+
 #pragma omp parallel
-	for (FastqRecord rec;;) {
-		bool good;
-		bool pairfound;
-		FastqRecord rec1;
-		FastqRecord rec2;
-#pragma omp critical(unPairedReads)
+	for (int l;;) {
+		kseq_t * rec, * rec1, * rec2;
+#pragma omp critical(kseq_read)
 		{
-			good = sequence >> rec;
-			//track read progress
-			if (good) {
-				string readID = rec.id.substr(0, rec.id.length() - 2);
+			rec = kseq_init(fp);
+			l = kseq_read(rec);
+		}
+		bool pairFound;
+		if (l >= 0) {
+			string readID = string(rec->name.s, rec->name.l - 2);
+#pragma omp critical(unPairedReads)
+			{
 				if (unPairedReads.find(readID) != unPairedReads.end()) {
-					rec1 = rec.id.at(rec.id.length() - 1) == '1' ?
-							rec : unPairedReads[readID];
-					rec2 = rec.id.at(rec.id.length() - 1) == '2' ?
-							rec : unPairedReads[readID];
-					pairfound = true;
-					unPairedReads.erase(readID);
+					pairFound = true;
 				} else {
-					pairfound = false;
 					unPairedReads[readID] = rec;
 				}
 			}
-		}
-
-		if (good) {
-			if (pairfound) {
+			if (pairFound) {
+				if(rec->name.s[rec->name.l - 1] == '1')
+				{
+					rec1 = rec;
+					rec2 = unPairedReads[readID];
+				}
+				else{
+					rec1 = unPairedReads[readID];
+					rec2 = rec;
+				}
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
@@ -522,20 +548,22 @@ void BioBloomClassifier::filterPairBAM(const string &file)
 
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
-						j != m_hashSigs.end(); ++j)
-				{
-					evaluateRead(rec1, *j, hits1, score1, scores1);
-					evaluateRead(rec2, *j, hits2, score2, scores2);
+						j != m_hashSigs.end(); ++j) {
+					evaluateRead(rec1->seq.s, *j, hits1, score1, scores1);
+					evaluateRead(rec2->seq.s, *j, hits2, score2, scores2);
 				}
 
 				//Evaluate hit data and record for summary
-				printPair(rec1, rec2, score1, score2,
-						resSummary.updateSummaryData(hits1, hits2));
+				const string &outputFileName = resSummary.updateSummaryData(
+						hits1, hits2);
+				printPair(rec1, rec2, score1, score2, outputFileName);
+				kseq_destroy(rec1);
+				kseq_destroy(rec2);
+				unPairedReads.erase(readID);
 			}
 		} else
 			break;
 	}
-	assert(sequence.eof());
 
 	cerr << "Total Reads:" << totalReads << endl;
 	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
@@ -552,14 +580,14 @@ void BioBloomClassifier::filterPairBAM(const string &file)
  * hash functions)
  * Prints reads into separate files
  */
-void BioBloomClassifier::filterPairBAMPrint(const string &file,
+void BioBloomClassifier::filterPairPrint(const string &file,
 		const string &outputType)
 {
 
 	//results summary object
 	ResultsManager resSummary(m_filterOrder, m_inclusive);
 
-	unordered_map<string, FastqRecord> unPairedReads;
+	unordered_map<string, kseq_t *> unPairedReads;
 
 	size_t totalReads = 0;
 
@@ -609,33 +637,41 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 	//print out header info and initialize variables for summary
 	cerr << "Filtering Start" << "\n";
 
-	FastaReader sequence(file.c_str(), FastaReader::NO_FOLD_CASE);
+	gzFile fp = gzopen(file.c_str(), "r");
+	if (fp == NULL) {
+		cerr << "file " << file.c_str() << " cannot be opened" << endl;
+		exit(1);
+	}
+
 #pragma omp parallel
-	for (FastqRecord rec;;) {
-		bool good;
-		bool pairfound = false;
-		FastqRecord rec1;
-		FastqRecord rec2;
-#pragma omp critical(unPairedReads)
+	for (int l;;) {
+		kseq_t * rec, * rec1, * rec2;
+#pragma omp critical(kseq_read)
 		{
-			good = sequence >> rec;
-			//track read progress
-			if (good) {
-				string readID = rec.id.substr(0, rec.id.length() - 2);
+			rec = kseq_init(fp);
+			l = kseq_read(rec);
+		}
+		bool pairFound;
+		if (l >= 0) {
+			string readID = string(rec->name.s, rec->name.l - 2);
+#pragma omp critical(unPairedReads)
+			{
 				if (unPairedReads.find(readID) != unPairedReads.end()) {
-					rec1 = rec.id.at(rec.id.length() - 1) == '1' ?
-							rec : unPairedReads[readID];
-					rec2 = rec.id.at(rec.id.length() - 1) == '2' ?
-							rec : unPairedReads[readID];
-					pairfound = true;
-					unPairedReads.erase(readID);
+					pairFound = true;
 				} else {
 					unPairedReads[readID] = rec;
 				}
 			}
-		}
-		if (good) {
-			if (pairfound) {
+			if (pairFound) {
+				if(rec->name.s[rec->name.l - 1] == '1')
+				{
+					rec1 = rec;
+					rec2 = unPairedReads[readID];
+				}
+				else{
+					rec1 = unPairedReads[readID];
+					rec2 = rec;
+				}
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
@@ -656,20 +692,9 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
-						j != m_hashSigs.end(); ++j)
-				{
-					string tempStr1 = rec1.id.substr(0,
-							rec1.id.find_last_of("/"));
-					string tempStr2 = rec2.id.substr(0,
-							rec2.id.find_last_of("/"));
-					if (tempStr1 == tempStr2) {
-						evaluateRead(rec1, *j, hits1, score1, scores1);
-						evaluateRead(rec2, *j, hits2, score2, scores2);
-					} else {
-						cerr << "Read IDs do not match" << "\n" << tempStr1
-								<< "\n" << tempStr2 << endl;
-						exit(1);
-					}
+						j != m_hashSigs.end(); ++j) {
+					evaluateRead(rec1->seq.s, *j, hits1, score1, scores1);
+					evaluateRead(rec2->seq.s, *j, hits2, score2, scores2);
 				}
 
 				//Evaluate hit data and record for summary
@@ -678,12 +703,13 @@ void BioBloomClassifier::filterPairBAMPrint(const string &file,
 				printPairToFile(outputFileName, rec1, rec2, outputFiles,
 						outputType, score1, score2, scores1, scores2);
 				printPair(rec1, rec2, score1, score2, outputFileName);
+				kseq_destroy(rec1);
+				kseq_destroy(rec2);
+				unPairedReads.erase(readID);
 			}
 		} else
 			break;
 	}
-	assert(sequence.eof());
-
 	//close sorting files
 	for (unordered_map<string, boost::shared_ptr<Dynamicofstream> >::iterator j =
 			outputFiles.begin(); j != outputFiles.end(); ++j)
@@ -777,7 +803,7 @@ bool BioBloomClassifier::fexists(const string &filename) const
  * Collaborative filtering method
  * Assume filters use the same k-mer size
  */
-void BioBloomClassifier::evaluateReadCollab(const FastqRecord &rec,
+void BioBloomClassifier::evaluateReadCollab(const string &rec,
 		const string &hashSig, unordered_map<string, bool> &hits)
 {
 	//get filterIDs to iterate through has in a consistent order
@@ -796,10 +822,10 @@ void BioBloomClassifier::evaluateReadCollab(const FastqRecord &rec,
 	{
 		hits[*i] = false;
 		unsigned screeningHits = 0;
-		size_t screeningLoc = rec.seq.length() % kmerSize / 2;
+		size_t screeningLoc = rec.length() % kmerSize / 2;
 		//First pass filtering
-		while (rec.seq.length() >= screeningLoc + kmerSize) {
-			const unsigned char* currentKmer = proc.prepSeq(rec.seq,
+		while (rec.length() >= screeningLoc + kmerSize) {
+			const unsigned char* currentKmer = proc.prepSeq(rec,
 					screeningLoc);
 			if (currentKmer != NULL) {
 				if (m_filtersSingle.at(*i)->contains(currentKmer)) {
@@ -832,7 +858,7 @@ void BioBloomClassifier::evaluateReadCollab(const FastqRecord &rec,
  * Updates hits value to number of hits (hashSig is used to as key)
  * Faster variant that assume there a redundant tile of 0
  */
-void BioBloomClassifier::evaluateReadMin(const FastqRecord &rec,
+void BioBloomClassifier::evaluateReadMin(const string &rec,
 		const string &hashSig, unordered_map<string, bool> &hits)
 {
 	//get filterIDs to iterate through has in a consistent order
@@ -844,7 +870,7 @@ void BioBloomClassifier::evaluateReadMin(const FastqRecord &rec,
 	unordered_map<string, unsigned> tempHits;
 
 	//Establish tiling pattern
-	unsigned startModifier1 = (rec.seq.length() % kmerSize) / 2;
+	unsigned startModifier1 = (rec.length() % kmerSize) / 2;
 	size_t currentKmerNum = 0;
 
 	for (vector<string>::const_iterator i = idsInFilter.begin();
@@ -855,9 +881,9 @@ void BioBloomClassifier::evaluateReadMin(const FastqRecord &rec,
 
 	ReadsProcessor proc(kmerSize);
 	//cut read into kmer size given
-	while (rec.seq.length() >= (currentKmerNum + 1) * kmerSize) {
+	while (rec.length() >= (currentKmerNum + 1) * kmerSize) {
 
-		const unsigned char* currentKmer = proc.prepSeq(rec.seq,
+		const unsigned char* currentKmer = proc.prepSeq(rec,
 				currentKmerNum * kmerSize + startModifier1);
 
 		//check to see if string is invalid
@@ -888,7 +914,7 @@ void BioBloomClassifier::evaluateReadMin(const FastqRecord &rec,
  * For a single read evaluate hits for a single hash signature
  * Sections with ambiguity bases are treated as misses
  */
-void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
+void BioBloomClassifier::evaluateReadStd(const string &rec,
 		const string &hashSig, unordered_map<string, bool> &hits)
 {
 
@@ -907,10 +933,10 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
 		hits[*i] = false;
 		if (m_minHit > 0) {
 			unsigned screeningHits = 0;
-			size_t screeningLoc = rec.seq.length() % kmerSize / 2;
+			size_t screeningLoc = rec.length() % kmerSize / 2;
 			//First pass filtering
-			while (rec.seq.length() >= screeningLoc + kmerSize) {
-				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
+			while (rec.length() >= screeningLoc + kmerSize) {
+				const unsigned char* currentKmer = proc.prepSeq(rec,
 						screeningLoc);
 				if (currentKmer != NULL) {
 					if (m_filtersSingle.at(*i)->contains(currentKmer)) {
@@ -939,7 +965,7 @@ void BioBloomClassifier::evaluateReadStd(const FastqRecord &rec,
  * Sections with ambiguity bases are treated as misses
  * Reads are assigned to best hit
  */
-double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
+double BioBloomClassifier::evaluateReadBestHit(const string &rec,
 		const string &hashSig, unordered_map<string, bool> &hits, vector<double> &scores)
 {
 	//get filterIDs to iterate through has in a consistent order
@@ -957,10 +983,10 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
 		hits[idsInFilter[i]] = false;
 		if (m_minHit > 0) {
 			unsigned screeningHits = 0;
-			size_t screeningLoc = rec.seq.length() % kmerSize / 2;
+			size_t screeningLoc = rec.length() % kmerSize / 2;
 			//First pass filtering
-			while (rec.seq.length() >= screeningLoc + kmerSize) {
-				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
+			while (rec.length() >= screeningLoc + kmerSize) {
+				const unsigned char* currentKmer = proc.prepSeq(rec,
 						screeningLoc);
 				if (currentKmer != NULL) {
 					if (m_filtersSingle.at(idsInFilter[i])->contains(
@@ -981,7 +1007,7 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
 		if (pass) {
 			BloomFilter &tempFilter = *m_filtersSingle.at(idsInFilter[i]);
 			double score = SeqEval::evalSingleExhaust(rec, kmerSize, tempFilter);
-			scores[i] = SeqEval::normalizeScore(score, kmerSize, rec.seq.length());;
+			scores[i] = SeqEval::normalizeScore(score, kmerSize, rec.length());;
 			if (maxScore < score) {
 				maxScore = score;
 				bestFilters.clear();
@@ -996,7 +1022,7 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
 			hits[bestFilters[i]] = true;
 		}
 	}
-	return SeqEval::normalizeScore(maxScore, kmerSize, rec.seq.length());
+	return SeqEval::normalizeScore(maxScore, kmerSize, rec.length());
 }
 
 /*
@@ -1005,7 +1031,7 @@ double BioBloomClassifier::evaluateReadBestHit(const FastqRecord &rec,
  * Will return scores in vector
  * Will return partial score if threshold is not met
  */
-void BioBloomClassifier::evaluateReadScore(const FastqRecord &rec,
+void BioBloomClassifier::evaluateReadScore(const string &rec,
 		const string &hashSig, unordered_map<string, bool> &hits, vector<double> &scores)
 {
 	//get filterIDs to iterate through has in a consistent order
@@ -1016,7 +1042,7 @@ void BioBloomClassifier::evaluateReadScore(const FastqRecord &rec,
 	//todo: read proc possibly unneeded, see evalSingle
 	ReadsProcessor proc(kmerSize);
 
-	size_t numKmers = rec.seq.length() - kmerSize + 1;
+	size_t numKmers = rec.length() - kmerSize + 1;
 	unsigned hitCount = 0;
 
 	vector<vector<size_t> > hashValues(numKmers);
@@ -1031,10 +1057,10 @@ void BioBloomClassifier::evaluateReadScore(const FastqRecord &rec,
 		hits[idsInFilter[i]] = false;
 		if (m_minHit > 0) {
 			unsigned screeningHits = 0;
-			size_t screeningLoc = rec.seq.length() % kmerSize / 2;
+			size_t screeningLoc = rec.length() % kmerSize / 2;
 			//First pass filtering
-			while (rec.seq.length() >= screeningLoc + kmerSize) {
-				const unsigned char* currentKmer = proc.prepSeq(rec.seq,
+			while (rec.length() >= screeningLoc + kmerSize) {
+				const unsigned char* currentKmer = proc.prepSeq(rec,
 						screeningLoc);
 				if (currentKmer != NULL) {
 					if (m_filtersSingle.at(idsInFilter[i])->contains(
