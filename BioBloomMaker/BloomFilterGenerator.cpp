@@ -205,12 +205,12 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		gzFile fp1;
 		gzFile fp2;
 
-		fp1 = gzopen(m_fileNames[0].c_str(), "r");
+		fp1 = gzopen(file1.c_str(), "r");
 		if (fp1 == NULL) {
 			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}
-		fp2 = gzopen(m_fileNames[1].c_str(), "r");
+		fp2 = gzopen(file2.c_str(), "r");
 		if (fp2 == NULL) {
 			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
 			exit(1);
@@ -448,12 +448,12 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		gzFile fp1;
 		gzFile fp2;
 
-		fp1 = gzopen(m_fileNames[0].c_str(), "r");
+		fp1 = gzopen(file1.c_str(), "r");
 		if (fp1 == NULL) {
 			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}
-		fp2 = gzopen(m_fileNames[1].c_str(), "r");
+		fp2 = gzopen(file2.c_str(), "r");
 		if (fp2 == NULL) {
 			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
 			exit(1);
