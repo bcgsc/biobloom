@@ -103,8 +103,8 @@ void BloomFilterGenerator::printReadPair(const string &rec1,
 		const string &header1, const string &rec2, const string &header2) {
 #pragma omp critical(cout)
 	{
-		cout << header1 << "\n" << rec1 << "\n";
-		cout << header2 << "\n" << rec2 << "\n";
+		cout << ">" << header1 << "\n" << rec1 << "\n";
+		cout << ">" << header2 << "\n" << rec2 << "\n";
 	}
 }
 
