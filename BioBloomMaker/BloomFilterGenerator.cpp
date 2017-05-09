@@ -246,7 +246,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				}
 			}
 
-			if (l1 >= 0 && l2 >= 0 && m_totalEntries >= m_expectedEntries) {
+			if (l1 >= 0 && l2 >= 0 && m_totalEntries < m_expectedEntries) {
 				size_t numKmers1 =
 						rec1.length() > m_kmerSize ? l1 - m_kmerSize + 1 : 0;
 				size_t numKmers2 =
@@ -363,6 +363,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		cerr << "Reads Read: " << totalReads << endl;
 		if (m_totalEntries >= m_expectedEntries) {
 			cerr << "K-mer threshold reached at read " << totalReads << endl;
+		}
+		else{
+			cerr << "K-mer threshold not reached, number of k-mers: " << m_totalEntries << endl;
 		}
 	}
 
@@ -490,7 +493,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				}
 			}
 
-			if (l1 >= 0 && l2 >= 0 && m_totalEntries >= m_expectedEntries) {
+			if (l1 >= 0 && l2 >= 0 && m_totalEntries < m_expectedEntries) {
 				size_t numKmers1 =
 						rec1.length() > m_kmerSize ?
 								rec1.length() - m_kmerSize + 1 : 0;
@@ -620,6 +623,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		}
 		if (m_totalEntries >= m_expectedEntries) {
 			cerr << "K-mer threshold reached at read " << totalReads << endl;
+		} else {
+			cerr << "K-mer threshold not reached, number of k-mers: "
+					<< m_totalEntries << endl;
 		}
 	}
 
