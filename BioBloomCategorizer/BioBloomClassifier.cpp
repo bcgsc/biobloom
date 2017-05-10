@@ -344,7 +344,7 @@ void BioBloomClassifier::filterPair(const vector<string> &inputFiles1,
 
 	cerr << "Filtering Start" << "\n";
 
-#pragma omp parallel
+#pragma omp parallel for
 	for (unsigned i = 0; i < inputFiles1.size(); ++i) {
 		gzFile fp1, fp2;
 		fp1 = gzopen(inputFiles1[i].c_str(), "r");
