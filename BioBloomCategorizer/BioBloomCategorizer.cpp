@@ -98,7 +98,7 @@ void printHelpDialog()
 	"      --fq               Output categorized reads in Fastq files.\n"
 	"      --chastity         Discard and do not evaluate unchaste reads.\n"
 	"      --no-chastity      Do not discard unchaste reads. [default]\n"
-	"  -l, --file_list=N      List of files to run in parallel (progressive mode).\n"
+	"  -l, --file_list=N      A file of list of file pairs to run in parallel.\n"
 	"  -v  --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
 	"Advanced options:\n"
