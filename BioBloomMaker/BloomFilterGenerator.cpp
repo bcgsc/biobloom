@@ -363,9 +363,221 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		cerr << "Reads Read: " << totalReads << endl;
 		if (m_totalEntries >= m_expectedEntries) {
 			cerr << "K-mer threshold reached at read " << totalReads << endl;
+		} else {
+			cerr << "K-mer threshold not reached, number of k-mers: "
+					<< m_totalEntries << endl;
 		}
-		else{
-			cerr << "K-mer threshold not reached, number of k-mers: " << m_totalEntries << endl;
+	}
+
+	filter.storeFilter(filename);
+	return redundancy;
+}
+
+//TODO REFACTOR to minimize redundant code!
+size_t BloomFilterGenerator::generateProgressive(const string &filename,
+		double score, const vector<string> &files1,
+		const vector<string> &files2, createMode mode,
+		const SeqEval::EvalMode evalMode, bool printReads,
+		const string &subtractFilter) {
+
+	//need the number of hash functions used to be greater than 0
+	assert(m_hashNum > 0);
+
+	//need the filter to be greater than the size of the number of expected entries
+	assert(m_filterSize > m_expectedEntries);
+
+	//setup bloom filter
+	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
+
+	size_t baitFilterElements = 0;
+
+	for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+		gzFile fp;
+		fp = gzopen(m_fileNames[i].c_str(), "r");
+		kseq_t *seq = kseq_init(fp);
+		int l;
+		size_t length;
+#pragma omp parallel private(l, length)
+		for (;;) {
+#pragma omp critical(kseq_read)
+			{
+				l = kseq_read(seq);
+				length = seq->seq.l;
+			}
+			if (l >= 0) {
+#pragma omp atomic
+				baitFilterElements += length - m_kmerSize + 1;
+			} else {
+				break;
+			}
+		}
+		kseq_destroy(seq);
+		gzclose(fp);
+	}
+
+	//secondary bait filter
+	BloomFilter baitFilter(
+			BloomFilterInfo::calcOptimalSize(baitFilterElements, 0.0001,
+					m_hashNum), m_hashNum, m_kmerSize);
+
+	//load other bloom filter info
+	string infoFileName = (subtractFilter).substr(0,
+			(subtractFilter).length() - 2) + "txt";
+	BloomFilterInfo subInfo(infoFileName);
+
+	//load other bloomfilter
+	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
+			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
+
+	if (subInfo.getKmerSize() != m_kmerSize) {
+		cerr
+				<< "Error: Subtraction filter's different from current filter's k-mer size."
+				<< endl;
+		exit(1);
+	}
+
+	//for each file loop over all headers and obtain seq
+	//load input file + make filter
+	size_t redundancy = 0;
+
+	if (opt::fastIO) {
+		loadFilterFast(baitFilter);
+		redundancy += loadFilterFast(filter);
+	} else {
+		loadFilterLowMem(baitFilter);
+		redundancy += loadFilterFast(filter);
+	}
+
+	vector<boost::shared_ptr<ReadsProcessor> > procs(opt::threads);
+	//each thread gets its own thread processor
+	for (unsigned i = 0; i < opt::threads; ++i) {
+		procs[i] = boost::shared_ptr<ReadsProcessor>(
+				new ReadsProcessor(m_kmerSize));
+	}
+	unsigned iter = 0;
+
+	for (; iter < opt::progItrns; ++iter) {
+		size_t totalReads = 0;
+		cerr << "Iteration " << iter + 1 << endl;
+
+#pragma omp parallel
+		for (unsigned i = 0; i < files1.size(); ++i) {
+			gzFile fp1;
+			gzFile fp2;
+
+			fp1 = gzopen(files1[i].c_str(), "r");
+			if (fp1 == NULL) {
+				cerr << "file " << files1[i].c_str() << " cannot be opened"
+						<< endl;
+				exit(1);
+			}
+			fp2 = gzopen(files1[i].c_str(), "r");
+			if (fp2 == NULL) {
+				cerr << "file " << files1[i].c_str() << " cannot be opened"
+						<< endl;
+				exit(1);
+			}
+			kseq_t *seq1 = kseq_init(fp1);
+			kseq_t *seq2 = kseq_init(fp2);
+			int l1;
+			int l2;
+			for (;;) {
+				l1 = kseq_read(seq1);
+				l2 = kseq_read(seq2);
+				if (l1 >= 0 && l2 >= 0 && m_totalEntries < m_expectedEntries) {
+					++totalReads;
+#pragma omp critical(totalReads)
+					if (totalReads % 10000000 == 0) {
+						cerr << "Currently Reading Read Number: " << totalReads
+								<< endl;
+					}
+					size_t numKmers1 =
+							l1 > m_kmerSize ? l1 - m_kmerSize + 1 : 0;
+					size_t numKmers2 =
+							l2 > m_kmerSize ? l2 - m_kmerSize + 1 : 0;
+					vector<vector<size_t> > hashValues1(numKmers1);
+					vector<vector<size_t> > hashValues2(numKmers2);
+
+					if (numKmers1 > score
+							&& (SeqEval::evalRead(seq1->seq.s, m_kmerSize,
+									filter, score, 1.0 - score, m_hashNum,
+									hashValues1, filterSub, evalMode)
+									|| SeqEval::evalRead(seq1->seq.s,
+											m_kmerSize, baitFilter,
+											opt::baitThreshold,
+											1.0 - opt::baitThreshold, m_hashNum,
+											hashValues1, filterSub, evalMode))) {
+						//load remaining sequences
+						for (unsigned i = 0; i < numKmers1; ++i) {
+							if (hashValues1[i].empty()) {
+								const unsigned char* currentSeq =
+										procs[omp_get_thread_num()]->prepSeq(
+												seq1->seq.s, i);
+								insertKmer(currentSeq, filter);
+							} else {
+								insertKmer(hashValues1[i], filter);
+							}
+						}
+						//load store second read
+						for (unsigned i = 0; i < numKmers2; ++i) {
+							const unsigned char* currentSeq =
+									procs[omp_get_thread_num()]->prepSeq(
+											seq2->seq.s, i);
+							insertKmer(currentSeq, filter);
+						}
+						if (printReads)
+							printReadPair(seq1->name.s, seq1->seq.s,
+									seq2->name.s, seq2->seq.s);
+					} else if (numKmers2 > score
+							&& (SeqEval::evalRead(seq2->seq.s, m_kmerSize,
+									filter, score, 1.0 - score, m_hashNum,
+									hashValues2, filterSub, evalMode)
+									|| SeqEval::evalRead(seq2->seq.s,
+											m_kmerSize, baitFilter,
+											opt::baitThreshold,
+											1.0 - opt::baitThreshold, m_hashNum,
+											hashValues2, filterSub, evalMode))) {
+						//load remaining sequences
+						for (unsigned i = 0; i < numKmers1; ++i) {
+							if (hashValues1[i].empty()) {
+								const unsigned char* currentSeq =
+										procs[omp_get_thread_num()]->prepSeq(
+												seq1->seq.s, i);
+								insertKmer(currentSeq, filter);
+							} else {
+								insertKmer(hashValues1[i], filter);
+							}
+						}
+						//load store second read
+						for (unsigned i = 0; i < numKmers2; ++i) {
+							if (hashValues2[i].empty()) {
+								const unsigned char* currentSeq =
+										procs[omp_get_thread_num()]->prepSeq(
+												seq2->seq.s, i);
+								insertKmer(currentSeq, filter);
+							} else {
+								insertKmer(hashValues2[i], filter);
+							}
+						}
+						if (printReads)
+							printReadPair(seq1->name.s, seq1->seq.s,
+									seq2->name.s, seq2->seq.s);
+					}
+					break;
+				} else
+					break;
+			}
+			kseq_destroy(seq1);
+			kseq_destroy(seq2);
+			gzclose(fp1);
+			gzclose(fp2);
+		}
+		if (m_totalEntries >= m_expectedEntries) {
+			cerr << "K-mer threshold reached at read " << totalReads
+					<< " Iteration " << iter + 1 << endl;
+		} else {
+			cerr << "K-mer threshold not reached, number of k-mers: "
+					<< m_totalEntries << endl;
 		}
 	}
 

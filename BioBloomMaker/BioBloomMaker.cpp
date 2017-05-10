@@ -16,6 +16,7 @@
 #include <getopt.h>
 #include "config.h"
 #include "Common/Options.h"
+#include <fstream>
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -68,6 +69,7 @@ void printHelpDialog() {
 		"                         positive integer, it is interpreted as the minimum\n"
 		"                         number of contiguous matching bases required for a\n"
 		"                         match.\n"
+		"  -l, --file_list=N      List of files to run in parallel (progressive mode).\n"
 		"  -b, --baitScore=N      Score threshold when considering only bait. [r]\n"
 		"  -e, --iterations=N     Pass through files N times if threshold is not met.\n"
 		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
@@ -97,6 +99,7 @@ int main(int argc, char *argv[]) {
 	double progressive = -1;
 	bool inclusive = false;
 	SeqEval::EvalMode evalMode = SeqEval::EVAL_STANDARD;
+	string fileListFilename = "";
 
 	//long form arguments
 	static struct option long_options[] = {
@@ -111,6 +114,7 @@ int main(int argc, char *argv[]) {
 					"kmer_size", required_argument, NULL, 'k' }, {
 					"subtract",	required_argument, NULL, 's' }, {
 					"num_ele", required_argument, NULL, 'n' }, {
+					"file_list", required_argument, NULL, 'l' }, {
 					"help", no_argument, NULL, 'h' }, {
 					"print_reads", no_argument, NULL, 'P' }, {
 					"progressive", required_argument, NULL, 'r' }, {
@@ -120,7 +124,7 @@ int main(int argc, char *argv[]) {
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:", long_options,
 			&option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -181,6 +185,15 @@ int main(int argc, char *argv[]) {
 			stringstream convert(optarg);
 			if (!(convert >> entryNum)) {
 				cerr << "Error - Invalid set of bloom filter parameters! n: "
+						<< optarg << endl;
+				return 0;
+			}
+			break;
+		}
+		case 'l': {
+			stringstream convert(optarg);
+			if (!(convert >> fileListFilename)) {
+				cerr << "Error - Invalid set of bloom filter parameters! l: "
 						<< optarg << endl;
 				return 0;
 			}
@@ -312,11 +325,10 @@ int main(int argc, char *argv[]) {
 	string file2 = "";
 
 	if (progressive != -1) {
-		if(opt::baitThreshold == -1)
-		{
+
+		if (opt::baitThreshold == -1) {
 			opt::baitThreshold = progressive;
-		}
-		else if ((opt::baitThreshold < 1 && progressive > 1)
+		} else if ((opt::baitThreshold < 1 && progressive > 1)
 				|| (opt::baitThreshold > 1 && progressive < 1)) {
 			cerr
 					<< "Both the bait threshold and progressive bloom filter must be either < 1 or > 1"
@@ -372,9 +384,33 @@ int main(int argc, char *argv[]) {
 		if (inclusive) {
 			mode = PROG_INC;
 		}
-		redundNum = filterGen.generateProgressive(
-				outputDir + filterPrefix + ".bf", progressive, file1, file2,
-				mode, evalMode, printReads, subtractFilter);
+
+		//load in file list
+		if (fileListFilename != "") {
+			string line;
+			ifstream myfile(fileListFilename);
+			if (myfile.is_open()) {
+				while (getline(myfile, line)) {
+					stringstream ss(line);
+					string fileName1 = "";
+					string fileName2 = "";
+					fileName1 << ss;
+					fileName2 << ss;
+					opt::fileList1.push_back(fileName1);
+					opt::fileList2.push_back(fileName2);
+				}
+				myfile.close();
+				redundNum = filterGen.generateProgressive(
+						outputDir + filterPrefix + ".bf", progressive,
+						opt::fileList1, opt::fileList2, mode, evalMode,
+						printReads, subtractFilter);
+			} else
+				cout << "Unable to open file";
+		} else {
+			redundNum = filterGen.generateProgressive(
+					outputDir + filterPrefix + ".bf", progressive, file1, file2,
+					mode, evalMode, printReads, subtractFilter);
+		}
 	} else if (!subtractFilter.empty()) {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
 				subtractFilter);

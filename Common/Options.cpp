@@ -15,4 +15,7 @@ namespace opt {
 
 	double baitThreshold = -1;
 	unsigned progItrns = 1;
+
+	std::vector<std::string>fileList1;
+	std::vector<std::string>fileList2;
 }
