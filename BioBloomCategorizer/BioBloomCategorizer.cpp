@@ -349,7 +349,7 @@ int main(int argc, char *argv[])
 	}
 
 	//Check needed options
-	if (inputFiles.size() == 0) {
+	if (inputFiles.size() == 0 && fileListFilename == "") {
 		cerr << "Error: Need Input File" << endl;
 		die = true;
 	}
