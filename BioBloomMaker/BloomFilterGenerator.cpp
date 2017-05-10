@@ -460,7 +460,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		size_t totalReads = 0;
 		cerr << "Iteration " << iter + 1 << endl;
 
-#pragma omp parallel
+#pragma omp parallel for
 		for (unsigned i = 0; i < files1.size(); ++i) {
 			gzFile fp1;
 			gzFile fp2;
@@ -485,7 +485,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				l1 = kseq_read(seq1);
 				l2 = kseq_read(seq2);
 				if (l1 >= 0 && l2 >= 0 && m_totalEntries < m_expectedEntries) {
+#pragma omp atomic
 					++totalReads;
+#pragma omp critical(totalReads)
 					if (totalReads % 10000000 == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< endl;
