@@ -338,7 +338,8 @@ int main(int argc, char *argv[])
 			pairedBAMSAM = true;
 		} else if (inputFiles.size() == 2) {
 			pairedBAMSAM = false;
-		} else {
+		}
+		else if (fileListFilename == "") {
 			cerr << "Usage of paired end mode:\n"
 					<< "BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [FILEPAIR1] [FILEPAIR2]\n"
 					<< "or BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [PAIREDBAMSAM]\n"
@@ -426,7 +427,7 @@ int main(int argc, char *argv[])
 		} else {
 			if (pairedBAMSAM) {
 				bbc.filterPair(inputFiles[0]);
-			} else {
+			} else if (fileListFilename != "") {
 				bbc.filterPair(inputFiles[0], inputFiles[1]);
 				//load in file list
 				if (fileListFilename != "") {
@@ -448,6 +449,9 @@ int main(int argc, char *argv[])
 					} else
 						cout << "Unable to open file";
 				}
+			}
+			else{
+				bbc.filterPairPrint(inputFiles[0], inputFiles[1]);
 			}
 		}
 	} else {
