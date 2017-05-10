@@ -354,7 +354,7 @@ int main(int argc, char *argv[]) {
 						<< progressive << endl;
 					break;
 			}
-		} else if(fileListFilename != ""){
+		} else if(fileListFilename == ""){
 			cerr << "at least 3 inputs are required when using progressive mode\nbiobloommaker <options> seed_seq reads1 reads2"
 					<< endl;
 			exit(1);
