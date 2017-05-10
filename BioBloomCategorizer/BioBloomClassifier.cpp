@@ -16,8 +16,6 @@
 #if _OPENMP
 # include <omp.h>
 #endif
-#include "DataLayer/kseq.h"
-KSEQ_INIT(gzFile, gzread)
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		double scoreThreshold, const string &prefix,
@@ -324,6 +322,86 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 	}
 	kseq_destroy(kseq1);
 	kseq_destroy(kseq2);
+	cerr << "Total Reads:" << totalReads << endl;
+	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
+
+	Dynamicofstream summaryOutput(m_prefix + "_summary.tsv");
+	summaryOutput << resSummary.getResultsSummary(totalReads);
+	summaryOutput.close();
+	cout.flush();
+}
+
+/*
+ * Filtering using sets of files
+ */
+void BioBloomClassifier::filterPair(const vector<string> &inputFiles1,
+		const vector<string> &inputFiles2) {
+
+	//results summary object
+	ResultsManager resSummary(m_filterOrder, m_inclusive);
+
+	size_t totalReads = 0;
+
+	cerr << "Filtering Start" << "\n";
+
+#pragma omp parallel
+	for (unsigned i = 0; i < inputFiles1.size(); ++i) {
+		gzFile fp1, fp2;
+		fp1 = gzopen(inputFiles1[i].c_str(), "r");
+		if (fp1 == NULL) {
+			cerr << "file " << inputFiles1[i].c_str() << " cannot be opened"
+					<< endl;
+			exit(1);
+		}
+		fp2 = gzopen(inputFiles2[i].c_str(), "r");
+		if (fp2 == NULL) {
+			cerr << "file " << inputFiles2[i].c_str() << " cannot be opened"
+					<< endl;
+			exit(1);
+		}
+		kseq_t *kseq1 = kseq_init(fp1);
+		kseq_t *kseq2 = kseq_init(fp2);
+
+		for (int l1, l2;;) {
+			l1 = kseq_read(kseq1);
+			l2 = kseq_read(kseq2);
+			if (l1 >= 0 && l2 >= 0) {
+#pragma omp critical(totalReads)
+				{
+					++totalReads;
+					if (totalReads % 10000000 == 0) {
+						cerr << "Currently Reading Read Number: " << totalReads
+								<< endl;
+					}
+				}
+
+				//hits results stored in hashmap of filter names and hits
+				unordered_map<string, bool> hits1(m_filterNum);
+				unordered_map<string, bool> hits2(m_filterNum);
+
+				double score1 = 0;
+				double score2 = 0;
+
+				vector<double> scores1(m_filterNum, 0.0);
+				vector<double> scores2(m_filterNum, 0.0);
+
+				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
+				for (vector<string>::const_iterator j = m_hashSigs.begin();
+						j != m_hashSigs.end(); ++j) {
+					evaluateRead(kseq1->seq.s, *j, hits1, score1, scores1);
+					evaluateRead(kseq2->seq.s, *j, hits2, score2, scores2);
+				}
+
+				//Evaluate hit data and record for summary
+				const string &outputFileName = resSummary.updateSummaryData(
+						hits1, hits2);
+				printPair(kseq1, kseq2, score1, score2, outputFileName);
+			} else
+				break;
+		}
+		kseq_destroy(kseq1);
+		kseq_destroy(kseq2);
+	}
 	cerr << "Total Reads:" << totalReads << endl;
 	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
 

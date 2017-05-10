@@ -17,6 +17,7 @@
 #include "Common/Options.h"
 #include "Common/SeqEval.h"
 #include <zlib.h>
+#include <fstream>
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -97,7 +98,7 @@ void printHelpDialog()
 	"      --fq               Output categorized reads in Fastq files.\n"
 	"      --chastity         Discard and do not evaluate unchaste reads.\n"
 	"      --no-chastity      Do not discard unchaste reads. [default]\n"
-	"  -l  --length_cutoff=N  Discard reads shorter that the cutoff N. [0]\n"
+	"  -l, --file_list=N      List of files to run in parallel (progressive mode).\n"
 	"  -v  --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
 	"Advanced options:\n"
@@ -158,6 +159,8 @@ int main(int argc, char *argv[])
 	// matching criteria
 	SeqEval::EvalMode evalMode = SeqEval::EVAL_STANDARD;
 
+	string fileListFilename = "";
+
 	string mainFilter = "";
 
 	//long form arguments
@@ -174,7 +177,7 @@ int main(int argc, char *argv[])
 		"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
 		"fq", no_argument, &fastq, 1 }, {
 		"fa", no_argument, &fasta, 1 }, {
-		"length_cutoff", required_argument, NULL, 'l' }, {
+		"file_list", required_argument, NULL, 'l' }, {
 		"version", no_argument, NULL, 'v' }, {
 		"min_hit_thr", required_argument, NULL, 'm' }, {
 		"streak", required_argument, NULL, 'r' }, {
@@ -268,9 +271,10 @@ int main(int argc, char *argv[])
 		}
 		case 'l': {
 			stringstream convert(optarg);
-			if (!(convert >> opt::minLength)) {
-				cerr << "Error - Invalid parameter! l: " << optarg << endl;
-				exit(EXIT_FAILURE);
+			if (!(convert >> fileListFilename)) {
+				cerr << "Error - Invalid set of bloom filter parameters! l: "
+						<< optarg << endl;
+				return 0;
 			}
 			break;
 		}
@@ -389,48 +393,68 @@ int main(int argc, char *argv[])
 	}
 
 	//load filters
-	BioBloomClassifier BBC(filterFilePaths, score, outputPrefix, filePostfix,
+	BioBloomClassifier bbc(filterFilePaths, score, outputPrefix, filePostfix,
 			minHit, minHitOnly, withScore);
 
 	//floating point score or min match length
-	BBC.setEvalMode(evalMode);
+	bbc.setEvalMode(evalMode);
 
 	if (collab && minHit) {
 		cerr << "Error: -m -c outputs types cannot be both set" << endl;
 		exit(1);
 	} else if (collab) {
-		BBC.setCollabFilter();
+		bbc.setCollabFilter();
 	}
 
 	if (mainFilter != "") {
-		BBC.setMainFilter(mainFilter);
+		bbc.setMainFilter(mainFilter);
 	}
 
 	//filtering step
 	//create directory structure if it does not exist
 	if (paired) {
 		if (inclusive) {
-			BBC.setInclusive();
+			bbc.setInclusive();
 		}
 		if (outputReadType != "") {
 			if (pairedBAMSAM) {
-				BBC.filterPair(inputFiles[0], outputReadType);
+				bbc.filterPair(inputFiles[0], outputReadType);
 			} else {
-				BBC.filterPairPrint(inputFiles[0], inputFiles[1],
+				bbc.filterPairPrint(inputFiles[0], inputFiles[1],
 						outputReadType);
 			}
 		} else {
 			if (pairedBAMSAM) {
-				BBC.filterPair(inputFiles[0]);
+				bbc.filterPair(inputFiles[0]);
 			} else {
-				BBC.filterPair(inputFiles[0], inputFiles[1]);
+				bbc.filterPair(inputFiles[0], inputFiles[1]);
+				//load in file list
+				if (fileListFilename != "") {
+					string line;
+					ifstream myfile(fileListFilename.c_str());
+					if (myfile.is_open()) {
+						while (getline(myfile, line)) {
+							stringstream ss(line);
+							string fileName1 = "";
+							string fileName2 = "";
+							ss >> fileName1;
+							ss >> fileName2;
+							opt::fileList1.push_back(fileName1);
+							opt::fileList2.push_back(fileName2);
+						}
+						myfile.close();
+						cerr << "Using file list" << endl;
+						bbc.filterPair(opt::fileList1, opt::fileList2);
+					} else
+						cout << "Unable to open file";
+				}
 			}
 		}
 	} else {
 		if (outputReadType != "") {
-			BBC.filterPrint(inputFiles, outputReadType);
+			bbc.filterPrint(inputFiles, outputReadType);
 		} else {
-			BBC.filter(inputFiles);
+			bbc.filter(inputFiles);
 		}
 	}
 }

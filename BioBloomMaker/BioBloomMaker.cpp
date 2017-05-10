@@ -388,18 +388,19 @@ int main(int argc, char *argv[]) {
 		//load in file list
 		if (fileListFilename != "") {
 			string line;
-			ifstream myfile(fileListFilename);
+			ifstream myfile(fileListFilename.c_str());
 			if (myfile.is_open()) {
 				while (getline(myfile, line)) {
 					stringstream ss(line);
 					string fileName1 = "";
 					string fileName2 = "";
-					fileName1 << ss;
-					fileName2 << ss;
+					ss >> fileName1;
+					ss >> fileName2;
 					opt::fileList1.push_back(fileName1);
 					opt::fileList2.push_back(fileName2);
 				}
 				myfile.close();
+				cerr << "Using file list" << endl;
 				redundNum = filterGen.generateProgressive(
 						outputDir + filterPrefix + ".bf", progressive,
 						opt::fileList1, opt::fileList2, mode, evalMode,

@@ -21,6 +21,8 @@
 #include "Common/SeqEval.h"
 #include <zlib.h>
 #include <iostream>
+#include "DataLayer/kseq.h"
+KSEQ_INIT(gzFile, gzread)
 
 using namespace std;
 using namespace boost;
@@ -37,6 +39,14 @@ enum mode {
 //enum printMode {FASTA, FASTQ, BEST_FASTA, BEST_FASTQ};
 //enum printMode {NORMAL, WITH_SCORE};
 
+//To prevent unused variable warning
+static void __attribute__((unused)) wno_unused_kseq(void) {
+	(void) &kseq_init;
+	(void) &kseq_read;
+	(void) &kseq_destroy;
+	return;
+}
+
 class BioBloomClassifier {
 public:
 	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
@@ -51,6 +61,10 @@ public:
 			const string &outputType);
 	void filterPair(const string &file);
 	void filterPairPrint(const string &file, const string &outputType);
+
+	//file list functions
+	void filterPair(const vector<string> &inputFiles1,
+			const vector<string> &inputFiles2);
 
 	void setCollabFilter() {
 		m_mode = COLLAB;
@@ -224,6 +238,29 @@ private:
 							<< rec1.qual << "\n";
 					cout << "@" << rec2.seq << "\n" << rec2.seq << "\n+\n"
 							<< rec2.seq << "\n";
+				}
+			}
+		}
+	}
+
+	inline void printPair(const kseq_t * rec1, const kseq_t * rec2, double score1,
+			double score2, const string &filterID) {
+		if (m_mainFilter == filterID) {
+			if (m_mode == BESTHIT) {
+#pragma omp critical(cout)
+				{
+					cout << "@" << rec1->name.s << " " << score1 << "\n"
+							<< rec1->seq.s << "\n+\n" << rec1->qual.s << "\n";
+					cout << "@" << rec2->name.s << " " << score2 << "\n"
+							<< rec2->seq.s << "\n+\n" << rec2->qual.s << "\n";
+				}
+			} else {
+#pragma omp critical(cout)
+				{
+					cout << "@" << rec1->name.s << "\n" << rec1->seq.s << "\n+\n"
+							<< rec1->qual.s << "\n";
+					cout << "@" << rec2->name.s << "\n" << rec2->seq.s << "\n+\n"
+							<< rec2->qual.s << "\n";
 				}
 			}
 		}
