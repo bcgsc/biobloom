@@ -366,9 +366,10 @@ void BioBloomClassifier::filterPair(const vector<string> &inputFiles1,
 			l1 = kseq_read(kseq1);
 			l2 = kseq_read(kseq2);
 			if (l1 >= 0 && l2 >= 0) {
+#pragma omp atomic
+				++totalReads;
 #pragma omp critical(totalReads)
 				{
-					++totalReads;
 					if (totalReads % 10000000 == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< endl;
