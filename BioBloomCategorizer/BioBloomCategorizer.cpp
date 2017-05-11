@@ -428,7 +428,6 @@ int main(int argc, char *argv[])
 			if (pairedBAMSAM) {
 				bbc.filterPair(inputFiles[0]);
 			} else if (fileListFilename != "") {
-				bbc.filterPair(inputFiles[0], inputFiles[1]);
 				//load in file list
 				if (fileListFilename != "") {
 					string line;
@@ -449,6 +448,7 @@ int main(int argc, char *argv[])
 					} else
 						cout << "Unable to open file";
 				}
+				bbc.filterPair(inputFiles[0], inputFiles[1]);
 			}
 			else{
 				bbc.filterPairPrint(inputFiles[0], inputFiles[1]);
