@@ -336,7 +336,7 @@ int main(int argc, char *argv[]) {
 			exit(1);
 		}
 
-		if (inputFiles.size() > 2) {
+		if (inputFiles.size() > 2 && fileListFilename == "") {
 			file2 = inputFiles.back();
 			inputFiles.pop_back();
 			file1 = inputFiles.back();

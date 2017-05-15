@@ -68,6 +68,39 @@ private:
 	size_t m_filterSize;
 	size_t m_totalEntries;
 
+	inline size_t calcExpectedEntries(){
+		size_t expectedEntries = 0;
+		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+			gzFile fp;
+			fp = gzopen(m_fileNames[i].c_str(), "r");
+			if (fp == Z_NULL) {
+				cerr << "file " << m_fileNames[i] << " cannot be opened"
+						<< endl;
+				exit(1);
+			}
+			kseq_t *seq = kseq_init(fp);
+			int l;
+			size_t length;
+	#pragma omp parallel private(l, length)
+			for (;;) {
+	#pragma omp critical(kseq_read)
+				{
+					l = kseq_read(seq);
+					length = seq->seq.l;
+				}
+				if (l >= 0) {
+	#pragma omp atomic
+					m_expectedEntries += length - m_kmerSize + 1;
+				} else {
+					break;
+				}
+			}
+			kseq_destroy(seq);
+			gzclose(fp);
+		}
+		return(expectedEntries);
+	}
+
 	inline size_t loadFilterFast(BloomFilter &bf) {
 		unsigned threadNum = omp_get_max_threads();
 		vector<boost::shared_ptr<ReadsProcessor> > procs(threadNum);
@@ -88,7 +121,7 @@ private:
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 			gzFile fp;
 			fp = gzopen(m_fileNames[i].c_str(), "r");
-			if (fp == NULL) {
+			if (fp == Z_NULL) {
 				cerr << "file " << m_fileNames[i] << " cannot be opened"
 						<< endl;
 				exit(1);

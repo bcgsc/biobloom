@@ -32,29 +32,7 @@ BloomFilterGenerator::BloomFilterGenerator(vector<string> const &filenames,
 		m_fileNames(filenames), m_kmerSize(kmerSize), m_hashNum(hashNum), m_expectedEntries(
 				0), m_filterSize(0), m_totalEntries(0) {
 
-	for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-		gzFile fp;
-		fp = gzopen(m_fileNames[i].c_str(), "r");
-		kseq_t *seq = kseq_init(fp);
-		int l;
-		size_t length;
-#pragma omp parallel private(l, length)
-		for (;;) {
-#pragma omp critical(kseq_read)
-			{
-				l = kseq_read(seq);
-				length = seq->seq.l;
-			}
-			if (l >= 0) {
-#pragma omp atomic
-				m_expectedEntries += length - m_kmerSize + 1;
-			} else {
-				break;
-			}
-		}
-		kseq_destroy(seq);
-		gzclose(fp);
-	}
+	m_expectedEntries = calcExpectedEntries();
 }
 
 /*
@@ -132,31 +110,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//setup bloom filter
 	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
-	size_t baitFilterElements = 0;
-
-	for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-		gzFile fp;
-		fp = gzopen(m_fileNames[i].c_str(), "r");
-		kseq_t *seq = kseq_init(fp);
-		int l;
-		size_t length;
-#pragma omp parallel private(l, length)
-		for (;;) {
-#pragma omp critical(kseq_read)
-			{
-				l = kseq_read(seq);
-				length = seq->seq.l;
-			}
-			if (l >= 0) {
-#pragma omp atomic
-				baitFilterElements += length - m_kmerSize + 1;
-			} else {
-				break;
-			}
-		}
-		kseq_destroy(seq);
-		gzclose(fp);
-	}
+	size_t baitFilterElements = calcExpectedEntries();
 
 	//secondary bait filter
 	BloomFilter baitFilter(
@@ -206,12 +160,12 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		gzFile fp2;
 
 		fp1 = gzopen(file1.c_str(), "r");
-		if (fp1 == NULL) {
+		if (fp1 == Z_NULL) {
 			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}
 		fp2 = gzopen(file2.c_str(), "r");
-		if (fp2 == NULL) {
+		if (fp2 == Z_NULL) {
 			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}
@@ -389,31 +343,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//setup bloom filter
 	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
-	size_t baitFilterElements = 0;
-
-	for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-		gzFile fp;
-		fp = gzopen(m_fileNames[i].c_str(), "r");
-		kseq_t *seq = kseq_init(fp);
-		int l;
-		size_t length;
-#pragma omp parallel private(l, length)
-		for (;;) {
-#pragma omp critical(kseq_read)
-			{
-				l = kseq_read(seq);
-				length = seq->seq.l;
-			}
-			if (l >= 0) {
-#pragma omp atomic
-				baitFilterElements += length - m_kmerSize + 1;
-			} else {
-				break;
-			}
-		}
-		kseq_destroy(seq);
-		gzclose(fp);
-	}
+	size_t baitFilterElements = calcExpectedEntries();
 
 	//secondary bait filter
 	BloomFilter baitFilter(
@@ -466,13 +396,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			gzFile fp2;
 
 			fp1 = gzopen(files1[i].c_str(), "r");
-			if (fp1 == NULL) {
+			if (fp1 == Z_NULL) {
 				cerr << "file " << files1[i].c_str() << " cannot be opened"
 						<< endl;
 				exit(1);
 			}
 			fp2 = gzopen(files2[i].c_str(), "r");
-			if (fp2 == NULL) {
+			if (fp2 == Z_NULL) {
 				cerr << "file " << files2[i].c_str() << " cannot be opened"
 						<< endl;
 				exit(1);
@@ -659,31 +589,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		redundancy += loadFilterLowMem(filter);
 	}
 
-	size_t baitFilterElements = 0;
-
-	for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-		gzFile fp;
-		fp = gzopen(m_fileNames[i].c_str(), "r");
-		kseq_t *seq = kseq_init(fp);
-		int l;
-		size_t length;
-#pragma omp parallel private(l, length)
-		for (;;) {
-#pragma omp critical(kseq_read)
-			{
-				l = kseq_read(seq);
-				length = seq->seq.l;
-			}
-			if (l >= 0) {
-#pragma omp atomic
-				baitFilterElements += length - m_kmerSize + 1;
-			} else {
-				break;
-			}
-		}
-		kseq_destroy(seq);
-		gzclose(fp);
-	}
+	size_t baitFilterElements = calcExpectedEntries();
 
 	//secondary bait filter
 	BloomFilter baitFilter(
@@ -705,12 +611,12 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		gzFile fp2;
 
 		fp1 = gzopen(file1.c_str(), "r");
-		if (fp1 == NULL) {
+		if (fp1 == Z_NULL) {
 			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}
 		fp2 = gzopen(file2.c_str(), "r");
-		if (fp2 == NULL) {
+		if (fp2 == Z_NULL) {
 			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}

@@ -60,7 +60,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles) {
 			it != inputFiles.end(); ++it) {
 		gzFile fp;
 		fp = gzopen(it->c_str(), "r");
-		if (fp == NULL) {
+		if (fp == Z_NULL) {
 			cerr << "file " << *it << " cannot be opened" << endl;
 			exit(1);
 		}
@@ -164,7 +164,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 			it != inputFiles.end(); ++it) {
 		gzFile fp;
 		fp = gzopen(it->c_str(), "r");
-		if (fp == NULL) {
+		if (fp == Z_NULL) {
 			cerr << "file " << *it << " cannot be opened" << endl;
 			exit(1);
 		}
@@ -251,12 +251,12 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 
 	gzFile fp1, fp2;
 	fp1 = gzopen(file1.c_str(), "r");
-	if (fp1 == NULL) {
+	if (fp1 == Z_NULL) {
 		cerr << "file " << file1.c_str() << " cannot be opened" << endl;
 		exit(1);
 	}
 	fp2 = gzopen(file2.c_str(), "r");
-	if (fp2 == NULL) {
+	if (fp2 == Z_NULL) {
 		cerr << "file " << file2.c_str() << " cannot be opened" << endl;
 		exit(1);
 	}
@@ -348,13 +348,13 @@ void BioBloomClassifier::filterPair(const vector<string> &inputFiles1,
 	for (unsigned i = 0; i < inputFiles1.size(); ++i) {
 		gzFile fp1, fp2;
 		fp1 = gzopen(inputFiles1[i].c_str(), "r");
-		if (fp1 == NULL) {
+		if (fp1 == Z_NULL) {
 			cerr << "file " << inputFiles1[i].c_str() << " cannot be opened"
 					<< endl;
 			exit(1);
 		}
 		fp2 = gzopen(inputFiles2[i].c_str(), "r");
-		if (fp2 == NULL) {
+		if (fp2 == Z_NULL) {
 			cerr << "file " << inputFiles2[i].c_str() << " cannot be opened"
 					<< endl;
 			exit(1);
@@ -473,12 +473,12 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	gzFile fp1, fp2;
 	fp1 = gzopen(file1.c_str(), "r");
-	if (fp1 == NULL) {
+	if (fp1 == Z_NULL) {
 		cerr << "file " << file1.c_str() << " cannot be opened" << endl;
 		exit(1);
 	}
 	fp2 = gzopen(file2.c_str(), "r");
-	if (fp2 == NULL) {
+	if (fp2 == Z_NULL) {
 		cerr << "file " << file2.c_str() << " cannot be opened" << endl;
 		exit(1);
 	}
@@ -584,7 +584,7 @@ void BioBloomClassifier::filterPair(const string &file) {
 	cerr << "Filtering Start" << "\n";
 
 	gzFile fp = gzopen(file.c_str(), "r");
-	if (fp == NULL) {
+	if (fp == Z_NULL) {
 		cerr << "file " << file.c_str() << " cannot be opened" << endl;
 		exit(1);
 	}
@@ -728,7 +728,7 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 	cerr << "Filtering Start" << "\n";
 
 	gzFile fp = gzopen(file.c_str(), "r");
-	if (fp == NULL) {
+	if (fp == Z_NULL) {
 		cerr << "file " << file.c_str() << " cannot be opened" << endl;
 		exit(1);
 	}
