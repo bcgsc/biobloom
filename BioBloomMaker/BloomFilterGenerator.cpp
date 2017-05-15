@@ -152,8 +152,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				new ReadsProcessor(m_kmerSize));
 	}
 
+	size_t totalReads = 0;
 	for (unsigned i = 0; i < opt::progItrns; ++i) {
-		size_t totalReads = 0;
 		cerr << "Iteration " << i + 1 << endl;
 
 		gzFile fp1;
@@ -314,13 +314,12 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		kseq_destroy(seq2);
 		gzclose(fp1);
 		gzclose(fp2);
-		cerr << "Reads Read: " << totalReads << endl;
-		if (m_totalEntries >= m_expectedEntries) {
-			cerr << "K-mer threshold reached at read " << totalReads << endl;
-		} else {
-			cerr << "K-mer threshold not reached, number of k-mers: "
-					<< m_totalEntries << endl;
-		}
+	}
+	if (m_totalEntries >= m_expectedEntries) {
+		cerr << "K-mer threshold reached at read " << totalReads << endl;
+	} else {
+		cerr << "K-mer threshold not reached, number of k-mers: "
+				<< m_totalEntries << endl;
 	}
 
 	filter.storeFilter(filename);
@@ -386,8 +385,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	}
 	unsigned iter = 0;
 
+	size_t totalReads = 0;
 	for (; iter < opt::progItrns; ++iter) {
-		size_t totalReads = 0;
 		cerr << "Iteration " << iter + 1 << endl;
 
 #pragma omp parallel for
@@ -543,13 +542,12 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			gzclose(fp1);
 			gzclose(fp2);
 		}
-		if (m_totalEntries >= m_expectedEntries) {
-			cerr << "K-mer threshold reached at read " << totalReads
-					<< " Iteration " << iter + 1 << endl;
-		} else {
-			cerr << "K-mer threshold not reached, number of k-mers: "
-					<< m_totalEntries << endl;
-		}
+	}
+	if (m_totalEntries >= m_expectedEntries) {
+		cerr << "K-mer threshold reached at read " << totalReads << endl;
+	} else {
+		cerr << "K-mer threshold not reached, number of k-mers: "
+				<< m_totalEntries << endl;
 	}
 
 	filter.storeFilter(filename);
@@ -603,8 +601,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				new ReadsProcessor(m_kmerSize));
 	}
 
+	size_t totalReads = 0;
 	for (unsigned i = 0; i < opt::progItrns; ++i) {
-		size_t totalReads = 0;
 		cerr << "Iteration " << i + 1 << endl;
 
 		gzFile fp1;
