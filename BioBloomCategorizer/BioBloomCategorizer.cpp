@@ -428,26 +428,23 @@ int main(int argc, char *argv[])
 			if (pairedBAMSAM) {
 				bbc.filterPair(inputFiles[0]);
 			} else if (fileListFilename != "") {
-				//load in file list
-				if (fileListFilename != "") {
-					string line;
-					ifstream myfile(fileListFilename.c_str());
-					if (myfile.is_open()) {
-						while (getline(myfile, line)) {
-							stringstream ss(line);
-							string fileName1 = "";
-							string fileName2 = "";
-							ss >> fileName1;
-							ss >> fileName2;
-							opt::fileList1.push_back(fileName1);
-							opt::fileList2.push_back(fileName2);
-						}
-						myfile.close();
-						cerr << "Using file list" << endl;
-						bbc.filterPair(opt::fileList1, opt::fileList2);
-					} else
-						cout << "Unable to open file";
-				}
+				string line;
+				ifstream myfile(fileListFilename.c_str());
+				if (myfile.is_open()) {
+					while (getline(myfile, line)) {
+						stringstream ss(line);
+						string fileName1 = "";
+						string fileName2 = "";
+						ss >> fileName1;
+						ss >> fileName2;
+						opt::fileList1.push_back(fileName1);
+						opt::fileList2.push_back(fileName2);
+					}
+					myfile.close();
+					cerr << "Using file list" << endl;
+					bbc.filterPair(opt::fileList1, opt::fileList2);
+				} else
+					cout << "Unable to open file";
 			}
 			else{
 				bbc.filterPair(inputFiles[0], inputFiles[1]);
