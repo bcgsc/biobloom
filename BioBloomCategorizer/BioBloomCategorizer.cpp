@@ -419,7 +419,7 @@ int main(int argc, char *argv[])
 		}
 		if (outputReadType != "") {
 			if (pairedBAMSAM) {
-				bbc.filterPair(inputFiles[0], outputReadType);
+				bbc.filterPairPrint(inputFiles[0], outputReadType);
 			} else {
 				bbc.filterPairPrint(inputFiles[0], inputFiles[1],
 						outputReadType);
@@ -448,10 +448,9 @@ int main(int argc, char *argv[])
 					} else
 						cout << "Unable to open file";
 				}
-				bbc.filterPair(inputFiles[0], inputFiles[1]);
 			}
 			else{
-				bbc.filterPairPrint(inputFiles[0], inputFiles[1]);
+				bbc.filterPair(inputFiles[0], inputFiles[1]);
 			}
 		}
 	} else {
