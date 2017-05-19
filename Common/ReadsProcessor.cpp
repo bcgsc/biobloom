@@ -347,10 +347,7 @@ const string ReadsProcessor::getBases(const unsigned char* c)
  * - Turning all lower-case sequences to upper-case
  * - Also looks into reverse compliment version and returns consistently
  *   that which is smaller (convention used A<C<G<T, i.e. alphabetical)
- * - Converts input to empty string if any character other than ATCG is found
- * 		-use if(*currentSeq != 0)
- * - If sequence is palamdromic a char with only the first half recorded is used
- *   because that is all that is needed to uniquely identify the sequence
+ * - Converts output to NULL if any character other than ATCG is found
  * - m_kmerSize must be greater than 3 otherwise undefined behavior will occur
  * requires a start position
  */
@@ -521,10 +518,7 @@ const unsigned char* ReadsProcessor::prepSeq(string const &sequence,
  * - Turning all lower-case sequences to upper-case
  * - Also looks into reverse compliment version and returns consistently
  *   that which is smaller (convention used A<C<G<T, i.e. alphabetical)
- * - Converts input to empty string if any character other than ATCG is found
- * 		-use if(*currentSeq != 0)
- * - If sequence is palamdromic a char with only the first half recorded is used
- *   because that is all that is needed to uniquely identify the sequence
+ * - Converts output to NULL if any character other than ATCG is found
  * - m_kmerSize must be greater than 3 otherwise undefined behavior will occur
  * requires a start position
  */
