@@ -78,6 +78,9 @@ private:
 						<< endl;
 				exit(1);
 			}
+			else{
+				cerr << "Opening File " << m_fileNames[i] << endl;
+			}
 			kseq_t *seq = kseq_init(fp);
 			int l;
 			size_t length;
@@ -90,7 +93,7 @@ private:
 				}
 				if (l >= 0) {
 	#pragma omp atomic
-					m_expectedEntries += length - m_kmerSize + 1;
+					expectedEntries += length - m_kmerSize + 1;
 				} else {
 					break;
 				}
