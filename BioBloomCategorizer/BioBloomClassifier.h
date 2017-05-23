@@ -228,7 +228,7 @@ private:
 				{
 					cout << "@" << rec1.header << " " << score1 << "\n"
 							<< rec1.seq << "\n+\n" << rec1.qual << "\n";
-					cout << "@" << rec2.seq << " " << score2 << "\n" << rec2.seq
+					cout << "@" << rec2.header << " " << score2 << "\n" << rec2.seq
 							<< "\n+\n" << rec2.seq << "\n";
 				}
 			} else {
@@ -236,7 +236,7 @@ private:
 				{
 					cout << "@" << rec1.header << "\n" << rec1.seq << "\n+\n"
 							<< rec1.qual << "\n";
-					cout << "@" << rec2.seq << "\n" << rec2.seq << "\n+\n"
+					cout << "@" << rec2.header << "\n" << rec2.seq << "\n+\n"
 							<< rec2.seq << "\n";
 				}
 			}
@@ -336,7 +336,7 @@ private:
 					}
 					(*outputFiles[outputFileName + "_1"]) << "\n" << rec1.seq
 							<< "\n+\n" << rec1.qual << "\n";
-					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.seq;
+					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.header;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles[outputFileName + "_2"]) << " " << *i;
@@ -355,7 +355,7 @@ private:
 					}
 					(*outputFiles[outputFileName + "_1"]) << "\n" << rec1.seq
 							<< "\n+\n" << rec1.qual << "\n";
-					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.seq;
+					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.header;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles[outputFileName + "_2"]) << " " << *i;
@@ -368,7 +368,7 @@ private:
 					(*outputFiles[outputFileName + "_1"]) << "@" << rec1.header
 							<< " " << score1 << "\n" << rec1.seq << "\n+\n"
 							<< rec1.qual << "\n";
-					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.seq
+					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.header
 							<< " " << score2 << "\n" << rec2.seq << "\n+\n"
 							<< rec2.seq << "\n";
 				}
@@ -377,7 +377,7 @@ private:
 				{
 					(*outputFiles[outputFileName + "_1"]) << "@" << rec1.header
 							<< "\n" << rec1.seq << "\n+\n" << rec1.qual << "\n";
-					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.seq
+					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.header
 							<< "\n" << rec2.seq << "\n+\n" << rec2.seq << "\n";
 				}
 			}
