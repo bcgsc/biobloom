@@ -282,7 +282,7 @@ private:
 					}
 					(*outputFiles[outputFileName + "_1"]) << "\n" << rec1.seq
 							<< "\n";
-					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.seq;
+					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.header;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles[outputFileName + "_2"]) << " " << *i;
@@ -301,7 +301,7 @@ private:
 					}
 					(*outputFiles[outputFileName + "_1"]) << "\n" << rec1.seq
 							<< "\n";
-					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.seq;
+					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.header;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles[outputFileName + "_2"]) << " " << *i;
@@ -313,7 +313,7 @@ private:
 				{
 					(*outputFiles[outputFileName + "_1"]) << ">" << rec1.header
 							<< " " << score1 << "\n" << rec1.seq << "\n";
-					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.seq
+					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.header
 							<< " " << score2 << "\n" << rec2.seq << "\n";
 				}
 			} else {
@@ -321,7 +321,7 @@ private:
 				{
 					(*outputFiles[outputFileName + "_1"]) << ">" << rec1.header
 							<< "\n" << rec1.seq << "\n";
-					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.seq
+					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.header
 							<< "\n" << rec2.seq << "\n";
 				}
 			}
