@@ -161,17 +161,21 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 		fp1 = gzopen(file1.c_str(), "r");
 		if (fp1 == Z_NULL) {
+#pragma omp critical(cerr)
 			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}
 		else{
+#pragma omp critical(cerr)
 			cerr << "Reading file " << file1.c_str() << endl;
 		}
 		fp2 = gzopen(file2.c_str(), "r");
 		if (fp2 == Z_NULL) {
+#pragma omp critical(cerr)
 			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}else{
+#pragma omp critical(cerr)
 			cerr << "Reading file " << file2.c_str() << endl;
 		}
 		kseq_t *seq1 = kseq_init(fp1);
@@ -401,20 +405,24 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 			fp1 = gzopen(files1[i].c_str(), "r");
 			if (fp1 == Z_NULL) {
+#pragma omp critical(cerr)
 				cerr << "file " << files1[i].c_str() << " cannot be opened"
 						<< endl;
 				exit(1);
 			}
 			else{
+#pragma omp critical(cerr)
 				cerr << "Reading File: " << files1[i].c_str() << endl;
 			}
 			fp2 = gzopen(files2[i].c_str(), "r");
 			if (fp2 == Z_NULL) {
+#pragma omp critical(cerr)
 				cerr << "file " << files2[i].c_str() << " cannot be opened"
 						<< endl;
 				exit(1);
 			}
 			else{
+#pragma omp critical(cerr)
 				cerr << "Reading File: " << files2[i].c_str() << endl;
 			}
 			kseq_t *seq1 = kseq_init(fp1);
@@ -621,17 +629,21 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 		fp1 = gzopen(file1.c_str(), "r");
 		if (fp1 == Z_NULL) {
+#pragma omp critical(cerr)
 			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}
 		else{
+#pragma omp critical(cerr)
 			cerr << "Reading file " << file1.c_str() << endl;
 		}
 		fp2 = gzopen(file2.c_str(), "r");
 		if (fp2 == Z_NULL) {
+#pragma omp critical(cerr)
 			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}else{
+#pragma omp critical(cerr)
 			cerr << "Reading file " << file2.c_str() << endl;
 		}
 		kseq_t *seq1 = kseq_init(fp1);
