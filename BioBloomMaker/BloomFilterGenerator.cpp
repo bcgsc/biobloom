@@ -725,52 +725,46 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 					break;
 				}
 				case PROG_STD: {
-					try {
-						if (numKmers1 > score
-								&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
-										score, 1.0 - score, m_hashNum,
-										hashValues1, evalMode)
-										|| SeqEval::evalRead(rec1, m_kmerSize,
-												baitFilter, opt::baitThreshold,
-												1.0 - opt::baitThreshold,
-												m_hashNum, hashValues1,
-												evalMode)) && numKmers2 > score
-								&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
-										score, 1.0 - score, m_hashNum,
-										hashValues1, evalMode)
-										|| SeqEval::evalRead(rec1, m_kmerSize,
-												baitFilter, opt::baitThreshold,
-												1.0 - opt::baitThreshold,
-												m_hashNum, hashValues1,
-												evalMode))) {
-							//load remaining sequences
-							for (unsigned i = 0; i < numKmers1; ++i) {
-								if (hashValues1[i].empty()) {
-									const unsigned char* currentSeq =
-											procs[omp_get_thread_num()]->prepSeq(
-													rec1, i);
-									insertKmer(currentSeq, filter);
-								} else {
-									insertKmer(hashValues1[i], filter);
-								}
+					if (numKmers1 > score
+							&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
+									score, 1.0 - score, m_hashNum, hashValues1,
+									evalMode)
+									|| SeqEval::evalRead(rec1, m_kmerSize,
+											baitFilter, opt::baitThreshold,
+											1.0 - opt::baitThreshold, m_hashNum,
+											hashValues1, evalMode))
+							&& numKmers2 > score
+							&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
+									score, 1.0 - score, m_hashNum, hashValues1,
+									evalMode)
+									|| SeqEval::evalRead(rec1, m_kmerSize,
+											baitFilter, opt::baitThreshold,
+											1.0 - opt::baitThreshold, m_hashNum,
+											hashValues1, evalMode))) {
+						//load remaining sequences
+						for (unsigned i = 0; i < numKmers1; ++i) {
+							if (hashValues1[i].empty()) {
+								const unsigned char* currentSeq =
+										procs[omp_get_thread_num()]->prepSeq(
+												rec1, i);
+								insertKmer(currentSeq, filter);
+							} else {
+								insertKmer(hashValues1[i], filter);
 							}
-							//load store second read
-							for (unsigned i = 0; i < numKmers2; ++i) {
-								if (hashValues2[i].empty()) {
-									const unsigned char* currentSeq =
-											procs[omp_get_thread_num()]->prepSeq(
-													rec2, i);
-									insertKmer(currentSeq, filter);
-								} else {
-									insertKmer(hashValues2[i], filter);
-								}
-							}
-							if (printReads)
-								printReadPair(rec1, header1, rec2, header2);
 						}
-					} catch (const std::bad_alloc&) {
-						cerr << "2 " << totalReads << endl;
-						exit(6);
+						//load store second read
+						for (unsigned i = 0; i < numKmers2; ++i) {
+							if (hashValues2[i].empty()) {
+								const unsigned char* currentSeq =
+										procs[omp_get_thread_num()]->prepSeq(
+												rec2, i);
+								insertKmer(currentSeq, filter);
+							} else {
+								insertKmer(hashValues2[i], filter);
+							}
+						}
+						if (printReads)
+							printReadPair(rec1, header1, rec2, header2);
 					}
 					break;
 				}
