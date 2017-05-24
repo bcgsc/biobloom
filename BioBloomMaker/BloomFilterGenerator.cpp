@@ -138,10 +138,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	size_t redundancy = 0;
 
 	if (opt::fastIO) {
-		loadFilterFast(baitFilter);
 		redundancy += loadFilterFast(filter);
 	} else {
-		loadFilterLowMem(baitFilter);
 		redundancy += loadFilterFast(filter);
 	}
 
@@ -379,10 +377,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	size_t redundancy = 0;
 
 	if (opt::fastIO) {
-		loadFilterFast(baitFilter);
 		redundancy += loadFilterFast(filter);
 	} else {
-		loadFilterLowMem(baitFilter);
 		redundancy += loadFilterFast(filter);
 	}
 
