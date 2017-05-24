@@ -164,10 +164,15 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}
+		else{
+			cerr << "Reading file " << file1.c_str() << endl;
+		}
 		fp2 = gzopen(file2.c_str(), "r");
 		if (fp2 == Z_NULL) {
 			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
 			exit(1);
+		}else{
+			cerr << "Reading file " << file2.c_str() << endl;
 		}
 		kseq_t *seq1 = kseq_init(fp1);
 		kseq_t *seq2 = kseq_init(fp2);
@@ -400,11 +405,17 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						<< endl;
 				exit(1);
 			}
+			else{
+				cerr << "Reading File: " << files1[i].c_str() << endl;
+			}
 			fp2 = gzopen(files2[i].c_str(), "r");
 			if (fp2 == Z_NULL) {
 				cerr << "file " << files2[i].c_str() << " cannot be opened"
 						<< endl;
 				exit(1);
+			}
+			else{
+				cerr << "Reading File: " << files2[i].c_str() << endl;
 			}
 			kseq_t *seq1 = kseq_init(fp1);
 			kseq_t *seq2 = kseq_init(fp2);
@@ -613,10 +624,15 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
 			exit(1);
 		}
+		else{
+			cerr << "Reading file " << file1.c_str() << endl;
+		}
 		fp2 = gzopen(file2.c_str(), "r");
 		if (fp2 == Z_NULL) {
 			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
 			exit(1);
+		}else{
+			cerr << "Reading file " << file2.c_str() << endl;
 		}
 		kseq_t *seq1 = kseq_init(fp1);
 		kseq_t *seq2 = kseq_init(fp2);
