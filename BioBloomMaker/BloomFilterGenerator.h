@@ -105,8 +105,6 @@ private:
 	}
 
 	inline size_t loadFilterFast(BloomFilter &bf) {
-
-		cerr << "insert" << endl;
 		unsigned threadNum = omp_get_max_threads();
 		vector<boost::shared_ptr<ReadsProcessor> > procs(threadNum);
 		vector<boost::shared_ptr<vector<size_t> > > tempHashValues(threadNum);
