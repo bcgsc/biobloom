@@ -140,7 +140,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	if (opt::fastIO) {
 		redundancy += loadFilterFast(filter);
 	} else {
-		redundancy += loadFilterFast(filter);
+		redundancy += loadFilterLowMem(filter);
 	}
 
 	vector<boost::shared_ptr<ReadsProcessor> > procs(opt::threads);
@@ -378,7 +378,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	if (opt::fastIO) {
 		redundancy += loadFilterFast(filter);
 	} else {
-		redundancy += loadFilterFast(filter);
+		redundancy += loadFilterLowMem(filter);
 	}
 
 	vector<boost::shared_ptr<ReadsProcessor> > procs(opt::threads);
