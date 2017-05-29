@@ -18,4 +18,6 @@ namespace opt {
 
 	std::vector<std::string>fileList1;
 	std::vector<std::string>fileList2;
+
+	unsigned fileInterval = 10000000;
 }

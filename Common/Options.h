@@ -19,6 +19,7 @@ namespace opt {
 	extern unsigned progItrns;
 	extern std::vector<std::string> fileList1;
 	extern std::vector<std::string> fileList2;
+	extern unsigned fileInterval;
 }
 
 #endif

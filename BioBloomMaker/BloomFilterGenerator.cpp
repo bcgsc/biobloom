@@ -199,7 +199,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				}
 				if (l1 >= 0 && l2 >= 0) {
 					++totalReads;
-					if (totalReads % 10000000 == 0) {
+					if (totalReads % opt::fileInterval == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
 								<< " ; Unique k-mers Added: " << m_totalEntries
 								<< endl;
@@ -424,7 +424,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 #pragma omp atomic
 						++totalReads;
 #pragma omp critical(totalReads)
-						if (totalReads % 10000000 == 0) {
+						if (totalReads % opt::fileInterval == 0) {
 							cerr << "Currently Reading Read Number: "
 									<< totalReads << " ; Unique k-mers Added: "
 									<< m_totalEntries << endl;
@@ -654,7 +654,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 					}
 					if (l1 >= 0 && l2 >= 0) {
 						++totalReads;
-						if (totalReads % 10000000 == 0) {
+						if (totalReads % opt::fileInterval == 0) {
 							cerr << "Currently Reading Read Number: "
 									<< totalReads << " ; Unique k-mers Added: "
 									<< m_totalEntries << endl;
