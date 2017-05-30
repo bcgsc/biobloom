@@ -398,6 +398,8 @@ int main(int argc, char *argv[]) {
 					opt::fileList1.push_back(fileName1);
 					opt::fileList2.push_back(fileName2);
 					while (getline(myfile, line)) {
+						ss.str("");
+						ss.clear();
 						ss << line;
 						ss >> fileName1;
 						ss >> fileName2;
@@ -414,6 +416,8 @@ int main(int argc, char *argv[]) {
 				} else {
 					opt::fileList1.push_back(fileName1);
 					while (getline(myfile, line)) {
+						ss.str("");
+						ss.clear();
 						ss << line;
 						ss >> fileName1;
 						opt::fileList1.push_back(fileName1);
