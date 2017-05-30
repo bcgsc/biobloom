@@ -51,10 +51,16 @@ public:
 			const vector<string> &files1, const vector<string> &files2,
 			createMode mode, const SeqEval::EvalMode evalMode, bool printReads,
 			const string &subtractFilter);
+
+	size_t generateProgressive(const string &filename, double score,
+			const vector<string> &files, const SeqEval::EvalMode evalMode,
+			bool printReads, const string &subtractFilter);
+
 	void setFilterSize(size_t bits);
 
 	void printReadPair(const string &rec1, const string &header1,
 			const string &rec2, const string &header2);
+	inline void printRead(const string &rec, const string &header);
 	void setHashFuncs(unsigned numFunc);
 	size_t getTotalEntries() const;
 	size_t getExpectedEntries() const;
@@ -68,7 +74,7 @@ private:
 	size_t m_filterSize;
 	size_t m_totalEntries;
 
-	inline size_t calcExpectedEntries(){
+	inline size_t calcExpectedEntries() {
 		size_t expectedEntries = 0;
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 			gzFile fp;
@@ -77,22 +83,21 @@ private:
 				cerr << "file " << m_fileNames[i] << " cannot be opened"
 						<< endl;
 				exit(1);
-			}
-			else{
+			} else {
 				cerr << "Opening File " << m_fileNames[i] << endl;
 			}
 			kseq_t *seq = kseq_init(fp);
 			int l;
 			size_t length;
-	#pragma omp parallel private(l, length)
+#pragma omp parallel private(l, length)
 			for (;;) {
-	#pragma omp critical(kseq_read)
+#pragma omp critical(kseq_read)
 				{
 					l = kseq_read(seq);
 					length = seq->seq.l;
 				}
 				if (l >= 0) {
-	#pragma omp atomic
+#pragma omp atomic
 					expectedEntries += length - m_kmerSize + 1;
 				} else {
 					break;
@@ -101,7 +106,7 @@ private:
 			kseq_destroy(seq);
 			gzclose(fp);
 		}
-		return(expectedEntries);
+		return (expectedEntries);
 	}
 
 	inline size_t loadFilterFast(BloomFilter &bf) {
@@ -174,6 +179,7 @@ private:
 			kseq_destroy(seq);
 			gzclose(fp);
 		}
+		cerr << "Approximated (due to fp) total unique k-mers in reference files " << m_totalEntries << endl;
 		return redundancy;
 	}
 
