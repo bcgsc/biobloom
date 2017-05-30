@@ -43,6 +43,7 @@ my @files = glob('*SeqEval.h');
 foreach my $filename (@files) {
 
 	#copy as SeqEval.h
+	print STDERR $filename . "\n";
 	system( "cp -f " . $filename . " ../../Common/SeqEval.h" );
 
 	#run Make again
@@ -111,9 +112,6 @@ sub parseResults {
 			}
 		}
 		print $method . "\t" . $type . "\t" . $matchCount . "\t" . $threshold . "\n";
-#		else{
-#			last;
-#		}
 		$threshold += $increment;
 	}
 }
