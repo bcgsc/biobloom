@@ -644,19 +644,19 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						size_t numKmers =
 								seq->seq.l > m_kmerSize ?
 										seq->seq.l - m_kmerSize + 1 : 0;
-						vector<vector<size_t> > hashValues1(numKmers);
+						vector<vector<size_t> > hashValues(numKmers);
 						if (numKmers > score
 								&& (SeqEval::evalRead(seq->seq.s, m_kmerSize,
 										filter, score, 1.0 - score, m_hashNum,
-										hashValues1, filterSub, evalMode))) {
+										hashValues, filterSub, evalMode))) {
 							//load remaining sequences
 							for (unsigned i = 0; i < numKmers; ++i) {
-								if (hashValues1[i].empty()) {
+								if (hashValues[i].empty()) {
 									const unsigned char* currentSeq =
 											proc.prepSeq(seq->seq.s, i);
 									insertKmer(currentSeq, filter);
 								} else {
-									insertKmer(hashValues1[i], filter);
+									insertKmer(hashValues[i], filter);
 								}
 							}
 							if (printReads)
