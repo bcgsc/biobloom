@@ -27,10 +27,10 @@ using namespace std;
 
 void printVersion() {
 	const char VERSION_MESSAGE[] =
-			PROGRAM " (" PACKAGE_NAME ") " GIT_REVISION "\n"
-			"Written by Justin Chu.\n"
-			"\n"
-			"Copyright 2013 Canada's Michael Smith Genome Science Centre\n";
+	PROGRAM " (" PACKAGE_NAME ") " GIT_REVISION "\n"
+	"Written by Justin Chu.\n"
+	"\n"
+	"Copyright 2013 Canada's Michael Smith Genome Science Centre\n";
 	cerr << VERSION_MESSAGE << endl;
 	exit(EXIT_SUCCESS);
 }
@@ -104,19 +104,19 @@ int main(int argc, char *argv[]) {
 
 	//long form arguments
 	static struct option long_options[] = { { "fal_pos_rate", required_argument,
-			NULL, 'f' }, { "file_prefix", required_argument, NULL, 'p' }, {
+	NULL, 'f' }, { "file_prefix", required_argument, NULL, 'p' }, {
 			"output_dir", required_argument, NULL, 'o' }, { "threads",
-			required_argument, NULL, 't' }, { "inclusive", no_argument, NULL,
-			'i' }, { "version", no_argument, NULL, 'v' }, { "hash_num",
-			required_argument, NULL, 'g' }, { "kmer_size", required_argument,
-			NULL, 'k' }, { "subtract", required_argument, NULL, 's' }, {
-			"num_ele", required_argument, NULL, 'n' }, { "file_list",
-			required_argument, NULL, 'l' }, { "help", no_argument, NULL, 'h' },
-			{ "print_reads", no_argument, NULL, 'P' }, { "progressive",
-					required_argument, NULL, 'r' }, { "baitScore",
-					required_argument, NULL, 'b' }, { "iterations",
-					required_argument, NULL, 'e' }, {
-			NULL, 0, NULL, 0 } };
+	required_argument, NULL, 't' }, { "inclusive", no_argument, NULL, 'i' }, {
+			"version", no_argument, NULL, 'v' }, { "hash_num",
+	required_argument, NULL, 'g' }, { "kmer_size", required_argument,
+	NULL, 'k' }, { "subtract", required_argument, NULL, 's' }, { "num_ele",
+			required_argument, NULL, 'n' }, { "file_list",
+	required_argument, NULL, 'l' }, { "help", no_argument, NULL, 'h' }, {
+			"print_reads", no_argument, NULL, 'P' }, { "progressive",
+	required_argument, NULL, 'r' }, { "baitScore",
+	required_argument, NULL, 'b' }, { "iterations",
+	required_argument, NULL, 'e' }, {
+	NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
@@ -338,22 +338,22 @@ int main(int argc, char *argv[]) {
 			inputFiles.pop_back();
 			file1 = inputFiles.back();
 			inputFiles.pop_back();
-			cerr << "Building Bloom filter in progessive mode. ";
-			switch (evalMode) {
-			case SeqEval::EVAL_MIN_MATCH_LEN:
-				cerr << "Min match length = " << (unsigned) round(progressive)
-						<< " bp" << endl;
-				break;
-			case SeqEval::EVAL_STANDARD:
-			default:
-				cerr << "Score threshold = " << progressive << endl;
-				break;
-			}
 		} else if (fileListFilename == "") {
 			cerr
 					<< "at least 3 inputs are required when using progressive mode\nbiobloommaker <options> seed_seq reads1 reads2"
 					<< endl;
 			exit(1);
+		}
+		cerr << "Building Bloom filter in progessive mode. ";
+		switch (evalMode) {
+		case SeqEval::EVAL_MIN_MATCH_LEN:
+			cerr << "Min match length = " << (unsigned) round(progressive)
+					<< " bp" << endl;
+			break;
+		case SeqEval::EVAL_STANDARD:
+		default:
+			cerr << "Score threshold = " << progressive << endl;
+			break;
 		}
 	}
 
