@@ -9,11 +9,10 @@
 #define BLOOMFILTERGENERATOR_H_
 #include <boost/shared_ptr.hpp>
 #include <vector>
-#include "Common/BloomFilter.h"
-#include "Common/SeqEval.h"
+#include "btl_bloomfilter/BloomFilter.hpp"
+#include "btl_bloomfilter/ntHashIterator.hpp"
 #include "Common/SeqEval.h"
 #include "DataLayer/kseq.h"
-#include "WindowedFileParser.h"
 #include <zlib.h>
 KSEQ_INIT(gzFile, gzread)
 
@@ -31,7 +30,6 @@ public:
 	explicit BloomFilterGenerator(vector<string> const &filenames,
 			unsigned kmerSize, unsigned hashNum);
 
-	//TODO: THREAD ME!
 	size_t generate(const string &filename);
 	size_t generate(const string &filename, const string &subtractFilter);
 	size_t generateProgressive(const string &filename, double score,
@@ -109,23 +107,8 @@ private:
 		return (expectedEntries);
 	}
 
-	inline size_t loadFilterFast(BloomFilter &bf) {
-		unsigned threadNum = omp_get_max_threads();
-		vector<boost::shared_ptr<ReadsProcessor> > procs(threadNum);
-		vector<boost::shared_ptr<vector<size_t> > > tempHashValues(threadNum);
-
+	inline size_t loadFilter(BloomFilter &bf) {
 		size_t redundancy = 0;
-
-		//each thread gets its own thread processor
-		for (unsigned i = 0; i < threadNum; ++i) {
-			procs[i] = boost::shared_ptr<ReadsProcessor>(
-					new ReadsProcessor(m_kmerSize));
-			tempHashValues[i] = boost::shared_ptr<vector<size_t> >(
-					new vector<size_t>(m_hashNum));
-		}
-
-		int kmerSize = m_kmerSize;
-
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 			gzFile fp;
 			fp = gzopen(m_fileNames[i].c_str(), "r");
@@ -150,22 +133,12 @@ private:
 				size_t tempRedund = 0;
 				size_t tempTotal = 0;
 				if (l >= 0) {
-					int screeningLoc = 0;
 					//k-merize and insert into bloom filter
-					while ((screeningLoc + kmerSize) <= l) {
-						const unsigned char* currentKmer =
-								procs[omp_get_thread_num()]->prepSeq(tempStr,
-										screeningLoc);
-						if (currentKmer != NULL) {
-							bool found =
-									bf.insertAndCheck(
-											multiHash(currentKmer, m_hashNum,
-													m_kmerSize,
-													*tempHashValues[omp_get_thread_num()]));
-							tempRedund += found;
-							tempTotal += !found;
-						}
-						++screeningLoc;
+					for (ntHashIterator itr(tempStr); itr != itr.next();
+							++itr) {
+						bool found = bf.insertAndCheck(*itr);
+						tempRedund += found;
+						tempTotal += !found;
 					}
 #pragma omp atomic
 					redundancy += tempRedund;
@@ -179,26 +152,15 @@ private:
 			kseq_destroy(seq);
 			gzclose(fp);
 		}
-		cerr << "Approximated (due to fp) total unique k-mers in reference files " << m_totalEntries << endl;
+		cerr
+				<< "Approximated (due to fp) total unique k-mers in reference files "
+				<< m_totalEntries << endl;
 		return redundancy;
 	}
 
 	inline size_t loadFilterFastSubtract(BloomFilter &bf, BloomFilter &bfsub) {
-		unsigned threadNum = omp_get_max_threads();
-		vector<boost::shared_ptr<ReadsProcessor> > procs(threadNum);
-		vector<boost::shared_ptr<vector<size_t> > > tempHashValues(threadNum);
-
 		size_t kmerRemoved = 0;
 		size_t redundancy = 0;
-
-		//each thread gets its own thread processor
-		for (unsigned i = 0; i < threadNum; ++i) {
-			procs[i] = boost::shared_ptr<ReadsProcessor>(
-					new ReadsProcessor(m_kmerSize));
-			tempHashValues[i] = boost::shared_ptr<vector<size_t> >(
-					new vector<size_t>(m_hashNum));
-		}
-
 		int kmerSize = m_kmerSize;
 
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
@@ -225,26 +187,15 @@ private:
 				size_t tempRedund = 0;
 				size_t tempTotal = 0;
 				if (l >= 0) {
-					int screeningLoc = 0;
-					//k-merize and insert into bloom filter
-					while ((screeningLoc + kmerSize) <= l) {
-						const unsigned char* currentKmer =
-								procs[omp_get_thread_num()]->prepSeq(tempStr,
-										screeningLoc);
-						if (currentKmer != NULL) {
-							if (bfsub.contains(currentKmer)) {
-								++kmerRemoved;
-							} else {
-								bool found =
-										bf.insertAndCheck(
-												multiHash(currentKmer,
-														m_hashNum, m_kmerSize,
-														*tempHashValues[omp_get_thread_num()]));
-								tempRedund += found;
-								tempTotal += !found;
-							}
+					for (ntHashIterator itr(tempStr); itr != itr.next();
+							++itr) {
+						if (bfsub.contains(*itr)) {
+							++kmerRemoved;
+						} else {
+							bool found = bf.insertAndCheck(*itr);
+							tempRedund += found;
+							tempTotal += !found;
 						}
-						++screeningLoc;
 					}
 #pragma omp atomic
 					redundancy += tempRedund;
@@ -262,53 +213,9 @@ private:
 		return redundancy;
 	}
 
-	inline size_t loadFilterLowMem(BloomFilter &bf) {
-
-		size_t redundancy = 0;
-		vector<size_t> tempHashValues(m_hashNum);
-
-		//for each file loop over all headers and obtain seq
-		//load input file + make filter
-		for (vector<string>::iterator i = m_fileNames.begin();
-				i != m_fileNames.end(); ++i) {
-			//let user know that files are being read
-			cerr << "Processing File: " << *i << endl;
-			WindowedFileParser parser(*i, m_kmerSize);
-			vector<string> headers = parser.getHeaders();
-			for (vector<string>::iterator j = headers.begin();
-					j != headers.end(); ++j) {
-				parser.setLocationByHeader(*j);
-				//object to process reads
-				//insert elements into filter
-				//read fasta file line by line and split using sliding window
-				while (parser.notEndOfSeqeunce()) {
-					const unsigned char* currentSeq = parser.getNextSeq();
-					if (currentSeq != NULL) {
-						bool found = bf.insertAndCheck(
-								multiHash(currentSeq, m_hashNum, m_kmerSize,
-										tempHashValues));
-						m_totalEntries += !found;
-						redundancy += found;
-					}
-				}
-			}
-		}
-		return redundancy;
-	}
-
-	inline void insertKmer(const vector<size_t> &currentSeq,
-			BloomFilter &filter) {
+	inline void insertKmer(const size_t precomputed[], BloomFilter &filter) {
 #pragma omp atomic
-		m_totalEntries += !filter.insertAndCheck(currentSeq);
-	}
-
-	inline void insertKmer(const unsigned char* currentSeq,
-			BloomFilter &filter) {
-		if (currentSeq != NULL) {
-#pragma omp atomic
-			m_totalEntries += !filter.insertAndCheck(
-					multiHash(currentSeq, m_hashNum, m_kmerSize));
-		}
+		m_totalEntries += !filter.insertAndCheck(precomputed);
 	}
 };
 

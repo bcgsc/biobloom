@@ -67,12 +67,7 @@ size_t BloomFilterGenerator::generate(const string &filename) {
 
 	size_t redundancy = 0;
 
-	if (opt::fastIO) {
-		redundancy = loadFilterFast(filter);
-	} else {
-		redundancy = loadFilterLowMem(filter);
-	}
-
+	redundancy = loadFilter(filter);
 	filter.storeFilter(filename);
 	return redundancy;
 }
@@ -118,13 +113,6 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//setup bloom filter
 	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
-//	size_t baitFilterElements = calcExpectedEntries();
-//
-//	//secondary bait filter
-//	BloomFilter baitFilter(
-//			BloomFilterInfo::calcOptimalSize(baitFilterElements, 0.0001,
-//					m_hashNum), m_hashNum, m_kmerSize);
-
 //load other bloom filter info
 	string infoFileName = (subtractFilter).substr(0,
 			(subtractFilter).length() - 2) + "txt";
@@ -145,19 +133,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//load input file + make filter
 	size_t redundancy = 0;
 
-	if (opt::fastIO) {
-		redundancy += loadFilterFast(filter);
-	} else {
-		redundancy += loadFilterLowMem(filter);
-	}
-
-	vector<boost::shared_ptr<ReadsProcessor> > procs(opt::threads);
-	//each thread gets its own thread processor
-	for (unsigned i = 0; i < opt::threads; ++i) {
-		procs[i] = boost::shared_ptr<ReadsProcessor>(
-				new ReadsProcessor(m_kmerSize));
-	}
-
+	redundancy += loadFilter(filter);
 	size_t totalReads = 0;
 	for (unsigned i = 0; i < opt::progItrns; ++i) {
 		cerr << "Iteration " << i + 1 << endl;
@@ -349,13 +325,6 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//setup bloom filter
 	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
-//	size_t baitFilterElements = calcExpectedEntries();
-//
-//	//secondary bait filter
-//	BloomFilter baitFilter(
-//			BloomFilterInfo::calcOptimalSize(baitFilterElements, 0.0001,
-//					m_hashNum), m_hashNum, m_kmerSize);
-
 	//load other bloom filter info
 	string infoFileName = (subtractFilter).substr(0,
 			(subtractFilter).length() - 2) + "txt";
@@ -375,19 +344,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
-
-	if (opt::fastIO) {
-		redundancy += loadFilterFast(filter);
-	} else {
-		redundancy += loadFilterLowMem(filter);
-	}
-
-//	vector<boost::shared_ptr<ReadsProcessor> > procs(opt::threads);
-	//each thread gets its own thread processor
-//	for (unsigned i = 0; i < opt::threads; ++i) {
-//		procs[i] = boost::shared_ptr<ReadsProcessor>(
-//				new ReadsProcessor(m_kmerSize));
-//	}
+	redundancy += loadFilter(filter);
 	unsigned iter = 0;
 
 	size_t totalReads = 0;
@@ -399,7 +356,6 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			for (unsigned i = 0; i < files1.size(); ++i) {
 				gzFile fp1;
 				gzFile fp2;
-				ReadsProcessor proc(m_kmerSize);
 
 				fp1 = gzopen(files1[i].c_str(), "r");
 				if (fp1 == Z_NULL) {
@@ -599,11 +555,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//load input file + make filter
 	size_t redundancy = 0;
 
-	if (opt::fastIO) {
-		redundancy += loadFilterFast(filter);
-	} else {
-		redundancy += loadFilterLowMem(filter);
-	}
+	redundancy += loadFilter(filter);
 
 	unsigned iter = 0;
 
@@ -708,25 +660,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//load input file + make filter
 	size_t redundancy = 0;
 
-	if (opt::fastIO) {
-		redundancy += loadFilterFast(filter);
-	} else {
-		redundancy += loadFilterLowMem(filter);
-	}
-
-//	size_t baitFilterElements = calcExpectedEntries();
-//
-//	//secondary bait filter
-//	BloomFilter baitFilter(
-//			BloomFilterInfo::calcOptimalSize(baitFilterElements, 0.0001,
-//					m_hashNum), m_hashNum, m_kmerSize);
-
-	vector<boost::shared_ptr<ReadsProcessor> > procs(opt::threads);
-	//each thread gets its own thread processor
-	for (unsigned i = 0; i < opt::threads; ++i) {
-		procs[i] = boost::shared_ptr<ReadsProcessor>(
-				new ReadsProcessor(m_kmerSize));
-	}
+	redundancy += loadFilter(filter);
 
 	size_t totalReads = 0;
 	for (unsigned i = 0; i < opt::progItrns; ++i) {

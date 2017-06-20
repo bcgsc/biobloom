@@ -16,59 +16,47 @@
 #include <cmath>
 #include <cassert>
 #include "boost/unordered/unordered_map.hpp"
-//#include "DataLayer/FastaReader.h"
 #include "Common/Options.h"
-#include "Common/ReadsProcessor.h"
-#include "Common/BloomFilter.h"
+#include "btl_bloomfilter/BloomFilter.hpp"
+#include "btl_bloomfilter/ntHashIterator.hpp"
 
 using namespace std;
 using namespace boost;
 
 namespace SeqEval {
 
-inline double denormalizeScore(double score, unsigned kmerSize, size_t seqLen)
-{
+inline double denormalizeScore(double score, unsigned kmerSize, size_t seqLen) {
 	assert(score >= 0 && score <= 1);
 	return score * (seqLen - kmerSize + 1);
 }
 
-inline double normalizeScore(double score, unsigned kmerSize, size_t seqLen)
-{
+inline double normalizeScore(double score, unsigned kmerSize, size_t seqLen) {
 	return score / (seqLen - kmerSize + 1);
 }
 
-/*
- * Evaluation algorithm with hashValue storage (minimize redundant work)
- */
-inline bool evalSingle(const string &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > *hashValues, const BloomFilter *subtract)
-{
+inline bool evalSingle(const string &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		unsigned hashNum, const BloomFilter *subtract) {
 	threshold = denormalizeScore(threshold, kmerSize, rec.length());
-	antiThreshold = floor(denormalizeScore(antiThreshold, kmerSize, rec.length()));
-
-	ReadsProcessor proc(kmerSize);
+	antiThreshold = floor(
+			denormalizeScore(antiThreshold, kmerSize, rec.length()));
 
 	size_t currentLoc = 0;
 	double score = 0;
 	unsigned antiScore = 0;
 	unsigned streak = 0;
-	while (rec.length() >= currentLoc + kmerSize) {
-		const unsigned char* currentSeq = proc.prepSeq(rec, currentLoc);
+	unsigned pos = 0;
+	for (ntHashIterator itr(rec); itr != itr.next(); ++itr) {
 		if (streak == 0) {
-			if (currentSeq != NULL) {
-				vector<size_t> hash = multiHash(currentSeq, hashNum, kmerSize);
-				if (hashValues != NULL)
-					(*hashValues)[currentLoc] = hash;
-				if ((subtract == NULL || !subtract->contains(hash))
-						&& filter.contains(hash)) {
+			if (itr.pos()) {
+				if ((subtract == NULL || !subtract->contains(*itr))
+						&& filter.contains(*itr)) {
 					score += 0.5;
 					++streak;
 					if (threshold <= score) {
 						return true;
 					}
-				}
-				else if (antiThreshold <= ++antiScore) {
+				} else if (antiThreshold <= ++antiScore) {
 					return false;
 				}
 				++currentLoc;
@@ -99,8 +87,7 @@ inline bool evalSingle(const string &rec, unsigned kmerSize, const BloomFilter &
 						return true;
 					}
 					continue;
-				}
-				else if (antiThreshold <= ++antiScore) {
+				} else if (antiThreshold <= ++antiScore) {
 					return false;
 				}
 			} else {
@@ -122,45 +109,36 @@ inline bool evalSingle(const string &rec, unsigned kmerSize, const BloomFilter &
 	return false;
 }
 
-/*
- * Evaluation algorithm with hashValue storage (minimize redundant work)
- */
-inline bool evalSingle(const string &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > &hashValues)
-{
+inline bool evalSingle(const string &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		unsigned hashNum) {
 	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
-			&hashValues, NULL);
+	NULL);
 }
 
 /*
  * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
  */
-inline bool evalSingle(const string &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, size_t antiThreshold)
-{
-	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold, filter.getHashNum(),
+inline bool evalSingle(const string &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, size_t antiThreshold) {
+	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold,
+			filter.getHashNum(),
 			NULL, NULL);
 }
 
-/*
- * Evaluation algorithm with hashValue storage (minimize redundant work)
- */
-inline bool evalSingle(const string &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > &hashValues, const BloomFilter &subtract)
-{
+inline bool evalSingle(const string &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		unsigned hashNum, const BloomFilter &subtract) {
 	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
-			&hashValues, &subtract);
+			&subtract);
 }
 
 /*
  * Evaluation algorithm based on minimum number of contiguous matching bases.
  */
-inline bool evalMinMatchLen(const string &rec, unsigned kmerSize, const BloomFilter &filter,
-		unsigned minMatchLen, unsigned hashNum, vector<vector<size_t> > *hashValues,
-		const BloomFilter *subtract)
-{
+inline bool evalMinMatchLen(const string &rec, unsigned kmerSize,
+		const BloomFilter &filter, unsigned minMatchLen, unsigned hashNum,
+		const BloomFilter *subtract) {
 	ReadsProcessor proc(kmerSize);
 	// number of contiguous k-mers matched
 	unsigned matchLen = 0;
@@ -191,8 +169,7 @@ inline bool evalMinMatchLen(const string &rec, unsigned kmerSize, const BloomFil
 				matchLen = kmerSize;
 			else
 				++matchLen;
-		}
-		else {
+		} else {
 			matchLen = 0;
 		}
 		// if min match length reached
@@ -202,12 +179,13 @@ inline bool evalMinMatchLen(const string &rec, unsigned kmerSize, const BloomFil
 	return false;
 }
 
-enum EvalMode { EVAL_STANDARD, EVAL_MIN_MATCH_LEN };
+enum EvalMode {
+	EVAL_STANDARD, EVAL_MIN_MATCH_LEN
+};
 
-inline bool evalRead(const string &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > *hashValues, const BloomFilter *subtract, EvalMode mode)
-{
+inline bool evalRead(const string &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		unsigned hashNum, const BloomFilter *subtract, EvalMode mode) {
 	// compute enough hash values to check both the main Bloom filter
 	// and the subtractive Bloom filter
 	if (subtract != NULL) {
@@ -216,39 +194,37 @@ inline bool evalRead(const string &rec, unsigned kmerSize, const BloomFilter &fi
 		}
 	}
 
-	switch(mode) {
+	switch (mode) {
 	case EVAL_MIN_MATCH_LEN:
-		return evalMinMatchLen(rec, kmerSize, filter, (unsigned)round(threshold),
-			hashNum, hashValues, subtract);
+		return evalMinMatchLen(rec, kmerSize, filter,
+				(unsigned) round(threshold), hashNum, subtract);
 	case EVAL_STANDARD:
 	default:
 		return evalSingle(rec, kmerSize, filter, threshold, antiThreshold,
-			hashNum, hashValues, subtract);
+				hashNum, subtract);
 	}
 	assert(false);
 }
 
-inline bool evalRead(const string &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > &hashValues, const BloomFilter &subtract, EvalMode mode)
-{
+inline bool evalRead(const string &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		unsigned hashNum, const BloomFilter &subtract, EvalMode mode) {
 	return evalRead(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
-		&hashValues, &subtract, mode);
+			&subtract, mode);
 }
 
-inline bool evalRead(const string &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > &hashValues, EvalMode mode)
-{
+inline bool evalRead(const string &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		unsigned hashNum, EvalMode mode) {
 	return evalRead(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
-		&hashValues, NULL, mode);
+			NULL, mode);
 }
 
-inline bool evalRead(const string &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, EvalMode mode)
-{
+inline bool evalRead(const string &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		EvalMode mode) {
 	return evalRead(rec, kmerSize, filter, threshold, antiThreshold,
-		filter.getHashNum(), NULL, NULL, mode);
+			filter.getHashNum(), NULL, mode);
 }
 
 /*
@@ -256,8 +232,7 @@ inline bool evalRead(const string &rec, unsigned kmerSize, const BloomFilter &fi
  * Returns score and does not have a stopping threshold
  */
 inline double evalSingleExhaust(const string &rec, unsigned kmerSize,
-		const BloomFilter &filter)
-{
+		const BloomFilter &filter) {
 	ReadsProcessor proc(kmerSize);
 	size_t currentLoc = 0;
 	double score = 0;
@@ -304,9 +279,7 @@ inline double evalSingleExhaust(const string &rec, unsigned kmerSize,
  */
 inline bool eval(const string &rec, unsigned kmerSize,
 		const BloomFilter &filter, double threshold, double antiThreshold,
-		vector<bool> &visited, vector<vector<size_t> > &hashValues,
-		unsigned &currentLoc, double &score, ReadsProcessor &proc)
-{
+		vector<bool> &visited, unsigned &currentLoc, double &score) {
 	threshold = denormalizeScore(threshold, kmerSize, rec.length());
 	antiThreshold = denormalizeScore(antiThreshold, kmerSize, rec.length());
 	score = denormalizeScore(score, kmerSize, rec.length());
@@ -322,11 +295,10 @@ inline bool eval(const string &rec, unsigned kmerSize,
 		//check if hash value is already generated
 		if (hashValues[currentLoc].size() == 0) {
 			if (!visited[currentLoc]) {
-				const unsigned char* currentSeq = proc.prepSeq(rec,
-						currentLoc);
+				const unsigned char* currentSeq = proc.prepSeq(rec, currentLoc);
 				if (currentSeq != NULL) {
-					hashValues[currentLoc] = multiHash(currentSeq, filter.getHashNum(),
-							kmerSize);
+					hashValues[currentLoc] = multiHash(currentSeq,
+							filter.getHashNum(), kmerSize);
 				}
 				visited[currentLoc] = true;
 			}
@@ -342,8 +314,7 @@ inline bool eval(const string &rec, unsigned kmerSize,
 						hit = true;
 						break;
 					}
-				}
-				else if (antiThreshold <= ++antiScore) {
+				} else if (antiThreshold <= ++antiScore) {
 					++currentLoc;
 					hit = false;
 					break;
@@ -374,8 +345,7 @@ inline bool eval(const string &rec, unsigned kmerSize,
 						break;
 					}
 					continue;
-				}
-				else if (antiThreshold <= ++antiScore) {
+				} else if (antiThreshold <= ++antiScore) {
 					++currentLoc;
 					hit = false;
 					break;
