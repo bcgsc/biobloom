@@ -12,9 +12,8 @@ AC_PROG_RANLIB
 
 # Checks for programs.
 # make sure -O3 by default for speed
-if test -z $CXXFLAGS; then
-    CXXFLAGS='-O3'
-fi
+AC_SUBST(CPPFLAGS,"-O3 -std=c++0x $CPPFLAGS")
+
 AC_PROG_CXX
 
 # Checks for libraries.
