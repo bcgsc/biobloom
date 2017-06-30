@@ -13,6 +13,7 @@
 #include "Common/SeqEval.h"
 #include "Common/SeqEval.h"
 #include "DataLayer/kseq.h"
+#include <iostream>
 #include <zlib.h>
 KSEQ_INIT(gzFile, gzread)
 
