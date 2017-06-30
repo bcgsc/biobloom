@@ -18,4 +18,5 @@ namespace opt {
 	std::vector<std::string>fileList2;
 
 	unsigned fileInterval = 10000000;
+	double fpr = 0.0075;
 }

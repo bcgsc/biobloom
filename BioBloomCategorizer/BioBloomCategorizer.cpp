@@ -105,7 +105,7 @@ void printHelpDialog()
 	"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
 	"                         needed over initial tiling of read to continue. Higher\n"
 	"                         values decrease runtime but lower sensitivity.[0]\n"
-	"  -r, --streak=N         The number of hit tiling in second pass needed to jump\n"
+	"  -r, --streak=N         The number of hits tiling in second pass needed to jump\n"
 	"                         Several tiles upon a miss. Small values decrease\n"
 	"                         runtime but decrease sensitivity. [3]\n"
 	"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"

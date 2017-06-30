@@ -54,14 +54,25 @@ public:
 	 * given the number of hash functions
 	 * see http://en.wikipedia.org/wiki/Bloom_filter
 	 */
-	static size_t calcOptimalSize(size_t entries, float fpr,
+	static size_t calcOptimalSize(size_t entries, double fpr,
 			unsigned hashNum)
 	{
 		size_t non64ApproxVal = size_t(
 				-double(entries) * double(hashNum)
-						/ log(1.0 - pow(fpr, float(1 / (float(hashNum))))));
+						/ log(1.0 - pow(fpr, double(1 / (double(hashNum))))));
 
 		return non64ApproxVal + (64 - non64ApproxVal % 64);
+	}
+
+	/*
+	 * Only returns multiples of 64 for filter building purposes
+	 * Is an estimated size using approximations of FPR formula
+	 * given the number of hash functions
+	 * see http://en.wikipedia.org/wiki/Bloom_filter
+	 */
+	static unsigned calcOptimalHashNum(double fpr)
+	{
+		return unsigned(-log(fpr) / log(2));
 	}
 
 private:
