@@ -71,7 +71,7 @@ void printHelpDialog() {
 					"                         number of contiguous matching bases required for a\n"
 					"                         match.\n"
 					"  -l, --file_list=N      A file of list of file pairs to run in parallel.\n"
-//		"  -b, --baitScore=N      Score threshold when considering only bait. [r]\n"
+					"  -b, --baitScore=N      Score threshold when considering only bait. [r]\n"
 					"  -e, --iterations=N     Pass through files N times if threshold is not met.\n"
 					"  -i, --inclusive        If one paired read matches, both reads will be included\n"
 					"                         in the filter. Only active with the (-r) option.\n"
@@ -89,7 +89,6 @@ int main(int argc, char *argv[]) {
 	int c;
 
 	//command line variables
-	double fpr = 0.0075;
 	string filterPrefix = "";
 	string outputDir = "";
 	unsigned kmerSize = 25;
@@ -110,7 +109,7 @@ int main(int argc, char *argv[]) {
 			"version", no_argument, NULL, 'v' }, { "hash_num",
 	required_argument, NULL, 'g' }, { "kmer_size", required_argument,
 	NULL, 'k' }, { "subtract", required_argument, NULL, 's' }, { "num_ele",
-			required_argument, NULL, 'n' }, { "file_list",
+	required_argument, NULL, 'n' }, { "file_list",
 	required_argument, NULL, 'l' }, { "help", no_argument, NULL, 'h' }, {
 			"print_reads", no_argument, NULL, 'P' }, { "progressive",
 	required_argument, NULL, 'r' }, { "baitScore",
@@ -125,12 +124,12 @@ int main(int argc, char *argv[]) {
 		switch (c) {
 		case 'f': {
 			stringstream convert(optarg);
-			if (!(convert >> fpr)) {
+			if (!(convert >> opt::fpr)) {
 				cerr << "Error - Invalid set of bloom filter parameters! f: "
 						<< optarg << endl;
 				return 0;
 			}
-			if (fpr > 1) {
+			if (opt::fpr > 1) {
 				cerr << "Error -f cannot be greater than 1 " << optarg << endl;
 				return 0;
 			}
@@ -315,7 +314,7 @@ int main(int argc, char *argv[]) {
 	//set number of hash functions used
 	if (hashNum == 0) {
 		//get optimal number of hash functions
-		hashNum = unsigned(-log(fpr) / log(2));
+		hashNum = BloomFilterInfo::calcOptimalHashNum(opt::fpr);
 	}
 
 	string file1 = "";
@@ -365,7 +364,7 @@ int main(int argc, char *argv[]) {
 		entryNum = filterGen.getExpectedEntries();
 	}
 
-	BloomFilterInfo info(filterPrefix, kmerSize, hashNum, fpr, entryNum,
+	BloomFilterInfo info(filterPrefix, kmerSize, hashNum, opt::fpr, entryNum,
 			inputFiles);
 
 	//get calculated size of Filter
