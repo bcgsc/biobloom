@@ -11,8 +11,6 @@ namespace opt {
 
 	unsigned threads = 1;
 
-	bool fastIO = true;
-
 	double baitThreshold = -1;
 	unsigned progItrns = 1;
 

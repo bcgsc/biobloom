@@ -13,7 +13,6 @@
 #include "Common/SeqEval.h"
 #include "Common/SeqEval.h"
 #include "DataLayer/kseq.h"
-#include "WindowedFileParser.h"
 #include <zlib.h>
 KSEQ_INIT(gzFile, gzread)
 
@@ -31,7 +30,6 @@ public:
 	explicit BloomFilterGenerator(vector<string> const &filenames,
 			unsigned kmerSize, unsigned hashNum);
 
-	//TODO: THREAD ME!
 	size_t generate(const string &filename);
 	size_t generate(const string &filename, const string &subtractFilter);
 	size_t generateProgressive(const string &filename, double score,
@@ -41,13 +39,16 @@ public:
 			const string &file1, const string &file2, createMode mode,
 			const SeqEval::EvalMode evalMode, bool printReads,
 			const string &subtractFilter);
-
-//	size_t generateProgressive(const string &filename, double score,
-//			const vector<string> &files, createMode mode,
-//			const SeqEval::EvalMode evalMode, bool printReads,
-//			const string &subtractFilter);
+	size_t generateProgressiveBait(const string &filename, double score,
+			const string &file1, const string &file2, createMode mode,
+			const SeqEval::EvalMode evalMode, bool printReads,
+			const string &subtractFilter);
 
 	size_t generateProgressive(const string &filename, double score,
+			const vector<string> &files1, const vector<string> &files2,
+			createMode mode, const SeqEval::EvalMode evalMode, bool printReads,
+			const string &subtractFilter);
+	size_t generateProgressiveBait(const string &filename, double score,
 			const vector<string> &files1, const vector<string> &files2,
 			createMode mode, const SeqEval::EvalMode evalMode, bool printReads,
 			const string &subtractFilter);
@@ -58,7 +59,7 @@ public:
 
 	void setFilterSize(size_t bits);
 
-	void printReadPair(const string &rec1, const string &header1,
+	inline void printReadPair(const string &rec1, const string &header1,
 			const string &rec2, const string &header2);
 	inline void printRead(const string &rec, const string &header);
 	void setHashFuncs(unsigned numFunc);
@@ -109,7 +110,7 @@ private:
 		return (expectedEntries);
 	}
 
-	inline size_t loadFilterFast(BloomFilter &bf) {
+	inline size_t loadFilterFast(BloomFilter &bf, size_t &totalEntries) {
 		unsigned threadNum = omp_get_max_threads();
 		vector<boost::shared_ptr<ReadsProcessor> > procs(threadNum);
 		vector<boost::shared_ptr<vector<size_t> > > tempHashValues(threadNum);
@@ -170,7 +171,7 @@ private:
 #pragma omp atomic
 					redundancy += tempRedund;
 #pragma omp atomic
-					m_totalEntries += tempTotal;
+					totalEntries += tempTotal;
 					delete[] tempStr;
 				} else {
 					break;
@@ -179,11 +180,11 @@ private:
 			kseq_destroy(seq);
 			gzclose(fp);
 		}
-		cerr << "Approximated (due to fp) total unique k-mers in reference files " << m_totalEntries << endl;
 		return redundancy;
 	}
 
-	inline size_t loadFilterFastSubtract(BloomFilter &bf, BloomFilter &bfsub) {
+	inline size_t loadFilterFastSubtract(BloomFilter &bf, BloomFilter &bfsub,
+			size_t &totalEntries) {
 		unsigned threadNum = omp_get_max_threads();
 		vector<boost::shared_ptr<ReadsProcessor> > procs(threadNum);
 		vector<boost::shared_ptr<vector<size_t> > > tempHashValues(threadNum);
@@ -249,7 +250,7 @@ private:
 #pragma omp atomic
 					redundancy += tempRedund;
 #pragma omp atomic
-					m_totalEntries += tempTotal;
+					totalEntries += tempTotal;
 					delete[] tempStr;
 				} else {
 					break;
@@ -259,40 +260,6 @@ private:
 			gzclose(fp);
 		}
 		cerr << "Total Number of K-mers not added: " << kmerRemoved << endl;
-		return redundancy;
-	}
-
-	inline size_t loadFilterLowMem(BloomFilter &bf) {
-
-		size_t redundancy = 0;
-		vector<size_t> tempHashValues(m_hashNum);
-
-		//for each file loop over all headers and obtain seq
-		//load input file + make filter
-		for (vector<string>::iterator i = m_fileNames.begin();
-				i != m_fileNames.end(); ++i) {
-			//let user know that files are being read
-			cerr << "Processing File: " << *i << endl;
-			WindowedFileParser parser(*i, m_kmerSize);
-			vector<string> headers = parser.getHeaders();
-			for (vector<string>::iterator j = headers.begin();
-					j != headers.end(); ++j) {
-				parser.setLocationByHeader(*j);
-				//object to process reads
-				//insert elements into filter
-				//read fasta file line by line and split using sliding window
-				while (parser.notEndOfSeqeunce()) {
-					const unsigned char* currentSeq = parser.getNextSeq();
-					if (currentSeq != NULL) {
-						bool found = bf.insertAndCheck(
-								multiHash(currentSeq, m_hashNum, m_kmerSize,
-										tempHashValues));
-						m_totalEntries += !found;
-						redundancy += found;
-					}
-				}
-			}
-		}
 		return redundancy;
 	}
 

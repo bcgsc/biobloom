@@ -408,10 +408,17 @@ int main(int argc, char *argv[]) {
 					myfile.close();
 
 					cerr << "Using file list paired mode" << endl;
-					redundNum = filterGen.generateProgressive(
-							outputDir + filterPrefix + ".bf", progressive,
-							opt::fileList1, opt::fileList2, mode, evalMode,
-							printReads, subtractFilter);
+					if (opt::baitThreshold == progressive) {
+						redundNum = filterGen.generateProgressive(
+								outputDir + filterPrefix + ".bf", progressive,
+								opt::fileList1, opt::fileList2, mode, evalMode,
+								printReads, subtractFilter);
+					} else {
+						redundNum = filterGen.generateProgressiveBait(
+								outputDir + filterPrefix + ".bf", progressive,
+								opt::fileList1, opt::fileList2, mode, evalMode,
+								printReads, subtractFilter);
+					}
 				} else {
 					opt::fileList1.push_back(fileName1);
 					while (getline(myfile, line)) {
@@ -424,17 +431,30 @@ int main(int argc, char *argv[]) {
 					myfile.close();
 
 					cerr << "Using file list single end mode" << endl;
-					redundNum = filterGen.generateProgressive(
-							outputDir + filterPrefix + ".bf", progressive,
-							opt::fileList1, evalMode, printReads,
-							subtractFilter);
+					if (opt::baitThreshold == progressive) {
+						redundNum = filterGen.generateProgressive(
+								outputDir + filterPrefix + ".bf", progressive,
+								opt::fileList1, evalMode, printReads,
+								subtractFilter);
+					} else {
+						cerr
+								<< "single end bait mode not implemented. If needed feature request cjustin@bcgsc.ca."
+								<< endl;
+						exit(1);
+					}
 				}
 			} else
 				cout << "Unable to open file";
 		} else {
-			redundNum = filterGen.generateProgressive(
-					outputDir + filterPrefix + ".bf", progressive, file1, file2,
-					mode, evalMode, printReads, subtractFilter);
+			if (opt::baitThreshold == progressive) {
+				redundNum = filterGen.generateProgressive(
+						outputDir + filterPrefix + ".bf", progressive, file1,
+						file2, mode, evalMode, printReads, subtractFilter);
+			} else {
+				redundNum = filterGen.generateProgressiveBait(
+						outputDir + filterPrefix + ".bf", progressive, file1,
+						file2, mode, evalMode, printReads, subtractFilter);
+			}
 		}
 	} else if (!subtractFilter.empty()) {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
@@ -444,9 +464,16 @@ int main(int argc, char *argv[]) {
 		if (inclusive) {
 			mode = PROG_INC;
 		}
+		if (opt::baitThreshold == progressive) {
 		redundNum = filterGen.generateProgressive(
 				outputDir + filterPrefix + ".bf", progressive, file1, file2,
-				mode, evalMode, printReads);
+					mode, evalMode, printReads);
+		} else {
+			cerr
+					<< "Bait mode without subtractive filter not implemented. If needed feature request cjustin@bcgsc.ca."
+					<< endl;
+			exit(1);
+		}
 	} else {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
 	}
