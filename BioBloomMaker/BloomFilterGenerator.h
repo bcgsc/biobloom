@@ -15,6 +15,7 @@
 #include "DataLayer/kseq.h"
 #include <iostream>
 #include <zlib.h>
+#include <omp.h>
 KSEQ_INIT(gzFile, gzread)
 
 using namespace std;
