@@ -20,6 +20,7 @@ public:
 	const string getBases(const unsigned char* c); //for debuging purposes
 	virtual ~ReadsProcessor();
 private:
+	ReadsProcessor(const ReadsProcessor& that);
 	//so reallocation does not have to be done
 	unsigned char* m_fw;
 	unsigned char* m_rv;
