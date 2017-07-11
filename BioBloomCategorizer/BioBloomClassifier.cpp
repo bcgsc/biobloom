@@ -267,7 +267,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 
 #pragma omp parallel private(rec1, rec2)
 	for (int l1, l2;;) {
-#pragma omp critical(kseq_read1)
+#pragma omp critical(kseq)
 		{
 			l1 = kseq_read(kseq1);
 			if (l1 >= 0) {
@@ -275,9 +275,6 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 				rec1.header = string(kseq1->name.s, kseq1->name.l);
 				rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
 			}
-		}
-#pragma omp critical(kseq_read2)
-		{
 			l2 = kseq_read(kseq2);
 			if (l2 >= 0) {
 				rec2.seq = string(kseq2->seq.s, l2);
@@ -313,10 +310,8 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 			}
 
 			//Evaluate hit data and record for summary
-
-			const string &outputFileName = resSummary.updateSummaryData(hits1,
-					hits2);
-			printPair(rec1, rec2, score1, score2, outputFileName);
+			printPair(rec1, rec2, score1, score2,
+					resSummary.updateSummaryData(hits1, hits2));
 		} else
 			break;
 	}
@@ -489,7 +484,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 #pragma omp parallel private(rec1, rec2)
 	for (int l1, l2;;) {
-#pragma omp critical(kseq_read1)
+#pragma omp critical(kseq)
 		{
 			l1 = kseq_read(kseq1);
 			if (l1 >= 0) {
@@ -497,9 +492,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				rec1.header = string(kseq1->name.s, kseq1->name.l);
 				rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
 			}
-		}
-#pragma omp critical(kseq_read2)
-		{
 			l2 = kseq_read(kseq2);
 			if (l2 >= 0) {
 				rec2.seq = string(kseq2->seq.s, l2);
