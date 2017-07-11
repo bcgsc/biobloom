@@ -32,7 +32,7 @@ static const string MULTI_MATCH = "multiMatch";
 
 /** for modes of filtering */
 enum mode {
-	COLLAB, MINHITONLY, BESTHIT, STD, SCORES
+	ORDERED, COLLAB, MINHITONLY, BESTHIT, STD, SCORES
 };
 
 ///** for modes of printing out files */
@@ -132,12 +132,17 @@ private:
 			unordered_map<string, bool> &hits);
 	void evaluateReadCollab(const string &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
+	void evaluateReadOrdered(const string &rec, const string &hashSig,
+			unordered_map<string, bool> &hits);
 	double evaluateReadBestHit(const string &rec, const string &hashSig,
 			unordered_map<string, bool> &hits, vector<double> &scores);
 	void evaluateReadScore(const string &rec, const string &hashSig,
 			unordered_map<string, bool> &hits, vector<double> &scores);
 
 	void evaluateReadCollabPair(const string &rec1, const string &rec2,
+			const string &hashSig, unordered_map<string, bool> &hits1,
+			unordered_map<string, bool> &hits2);
+	void evaluateReadOrderedPair(const string &rec1, const string &rec2,
 			const string &hashSig, unordered_map<string, bool> &hits1,
 			unordered_map<string, bool> &hits2);
 
@@ -396,7 +401,7 @@ private:
 			vector<double> &scores) {
 		switch (m_mode) {
 		case COLLAB: {
-			evaluateReadCollab(rec, hashSig, hits);
+			evaluateReadOrdered(rec, hashSig, hits);
 			break;
 		}
 		case MINHITONLY: {
@@ -424,7 +429,7 @@ private:
 			vector<double> &scores1, vector<double> &scores2) {
 		switch (m_mode) {
 		case COLLAB: {
-			evaluateReadCollabPair(rec1, rec2, hashSig, hits1, hits2);
+			evaluateReadOrderedPair(rec1, rec2, hashSig, hits1, hits2);
 			break;
 		}
 		default: {

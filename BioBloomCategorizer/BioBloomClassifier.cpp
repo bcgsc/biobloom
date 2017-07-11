@@ -1003,6 +1003,71 @@ void BioBloomClassifier::evaluateReadCollabPair(const string &rec1,
 }
 
 /*
+ * Collaborative filtering method
+ * Assume filters use the same k-mer size
+ */
+void BioBloomClassifier::evaluateReadOrdered(const string &rec,
+		const string &hashSig, unordered_map<string, bool> &hits) {
+	//get filterIDs to iterate through has in a consistent order
+	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i) {
+			hits[*i] = false;
+	}
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i) {
+		BloomFilter &tempFilter = *m_filtersSingle.at(*i);
+		if (SeqEval::evalRead(rec, kmerSize, tempFilter, m_scoreThreshold,
+				1.0 - m_scoreThreshold, getEvalMode())) {
+			hits[*i] = true;
+			break;
+		}
+	}
+}
+
+/*
+ * Collaborative filtering method
+ * Assume filters use the same k-mer size
+ */
+void BioBloomClassifier::evaluateReadOrderedPair(const string &rec1,
+		const string &rec2, const string &hashSig,
+		unordered_map<string, bool> &hits1,
+		unordered_map<string, bool> &hits2) {
+	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i) {
+		hits1[*i] = false;
+		hits2[*i] = false;
+	}
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i) {
+		BloomFilter &tempFilter = *m_filtersSingle.at(*i);
+		if (m_inclusive) {
+			if (SeqEval::evalRead(rec1, kmerSize, tempFilter, m_scoreThreshold,
+					1.0 - m_scoreThreshold, getEvalMode())
+					|| SeqEval::evalRead(rec2, kmerSize, tempFilter,
+							m_scoreThreshold, 1.0 - m_scoreThreshold,
+							getEvalMode())) {
+				hits1[*i] = true;
+				hits2[*i] = true;
+				break;
+			}
+		} else {
+			if (SeqEval::evalRead(rec1, kmerSize, tempFilter, m_scoreThreshold,
+					1.0 - m_scoreThreshold, getEvalMode())
+					&& SeqEval::evalRead(rec2, kmerSize, tempFilter,
+							m_scoreThreshold, 1.0 - m_scoreThreshold,
+							getEvalMode())) {
+				hits1[*i] = true;
+				hits2[*i] = true;
+				break;
+			}
+		}
+	}
+}
+
+
+/*
  * For a single read evaluate hits for a single hash signature
  * Sections with ambiguity bases are treated as misses
  * Updates hits value to number of hits (hashSig is used to as key)
