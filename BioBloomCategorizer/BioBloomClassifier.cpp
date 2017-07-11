@@ -897,8 +897,8 @@ void BioBloomClassifier::evaluateReadCollab(const string &rec,
 
 	//base for each filter until one filter obtains hit threshold
 	//TODO: staggered pattering
-	for (vector<string>::const_iterator i = m_filterOrder.begin();
-			i != m_filterOrder.end(); ++i) {
+	for (vector<string>::reverse_iterator i = m_filterOrder.rbegin();
+			i != m_filterOrder.rend(); ++i) {
 		hits[*i] = false;
 		unsigned screeningHits = 0;
 		size_t screeningLoc = rec.length() % kmerSize / 2;
@@ -947,8 +947,8 @@ void BioBloomClassifier::evaluateReadCollabPair(const string &rec1,
 
 	//base for each filter until one filter obtains hit threshold
 	//TODO: staggered pattering
-	for (vector<string>::const_iterator i = m_filterOrder.begin();
-			i != m_filterOrder.end(); ++i) {
+	for (vector<string>::reverse_iterator i = m_filterOrder.rbegin();
+			i != m_filterOrder.rend(); ++i) {
 		hits1[*i] = false;
 		hits2[*i] = false;
 		unsigned screeningHits = 0;
@@ -977,16 +977,15 @@ void BioBloomClassifier::evaluateReadCollabPair(const string &rec1,
 	//evaluate promising group first
 	for (multimap<unsigned, string>::reverse_iterator i =
 			firstPassHits.rbegin(); i != firstPassHits.rend(); ++i) {
-		string filterID = i->second;
-		BloomFilter &tempFilter = *m_filtersSingle.at(filterID);
+		BloomFilter &tempFilter = *m_filtersSingle.at(i->second);
 		if (m_inclusive) {
 			if (SeqEval::evalRead(rec1, kmerSize, tempFilter, m_scoreThreshold,
 					1.0 - m_scoreThreshold, getEvalMode())
 					|| SeqEval::evalRead(rec2, kmerSize, tempFilter,
 							m_scoreThreshold, 1.0 - m_scoreThreshold,
 							getEvalMode())) {
-				hits1[filterID] = true;
-				hits2[filterID] = true;
+				hits1[i->second] = true;
+				hits2[i->second] = true;
 				break;
 			}
 		} else {
@@ -995,8 +994,8 @@ void BioBloomClassifier::evaluateReadCollabPair(const string &rec1,
 					&& SeqEval::evalRead(rec2, kmerSize, tempFilter,
 							m_scoreThreshold, 1.0 - m_scoreThreshold,
 							getEvalMode())) {
-				hits1[filterID] = true;
-				hits2[filterID] = true;
+				hits1[i->second] = true;
+				hits2[i->second] = true;
 				break;
 			}
 		}
