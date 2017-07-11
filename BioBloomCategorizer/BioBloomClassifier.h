@@ -424,7 +424,7 @@ private:
 			vector<double> &scores1, vector<double> &scores2) {
 		switch (m_mode) {
 		case COLLAB: {
-			evaluateReadPair(rec1, rec2, hashSig, hits1, hits2, score1, score2,
+			evaluateReadCollabPair(rec1, rec2, hashSig, hits1, hits2, score1, score2,
 					scores1, scores2);
 			break;
 		}
