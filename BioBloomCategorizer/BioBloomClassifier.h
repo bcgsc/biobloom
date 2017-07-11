@@ -65,6 +65,8 @@ public:
 	//file list functions
 	void filterPair(const vector<string> &inputFiles1,
 			const vector<string> &inputFiles2);
+	void filterPairPrint(const vector<string> &inputFiles1,
+			const vector<string> &inputFiles2, const string &outputType);
 
 	void setCollabFilter() {
 		m_mode = COLLAB;
@@ -123,6 +125,7 @@ private:
 
 	void loadFilters(const vector<string> &filterFilePaths);
 	bool fexists(const string &filename) const;
+
 	void evaluateReadStd(const string &rec, const string &hashSig,
 			unordered_map<string, bool> &hits);
 	void evaluateReadMin(const string &rec, const string &hashSig,
@@ -133,6 +136,10 @@ private:
 			unordered_map<string, bool> &hits, vector<double> &scores);
 	void evaluateReadScore(const string &rec, const string &hashSig,
 			unordered_map<string, bool> &hits, vector<double> &scores);
+
+	void evaluateReadCollabPair(const string &rec1, const string &rec2,
+			const string &hashSig, unordered_map<string, bool> &hits1,
+			unordered_map<string, bool> &hits2);
 
 	inline void printSingle(const FaRec &rec, double score,
 			const string &filterID) {
@@ -228,8 +235,8 @@ private:
 				{
 					cout << "@" << rec1.header << " " << score1 << "\n"
 							<< rec1.seq << "\n+\n" << rec1.qual << "\n";
-					cout << "@" << rec2.header << " " << score2 << "\n" << rec2.seq
-							<< "\n+\n" << rec2.seq << "\n";
+					cout << "@" << rec2.header << " " << score2 << "\n"
+							<< rec2.seq << "\n+\n" << rec2.seq << "\n";
 				}
 			} else {
 #pragma omp critical(cout)
@@ -243,8 +250,8 @@ private:
 		}
 	}
 
-	inline void printPair(const kseq_t * rec1, const kseq_t * rec2, double score1,
-			double score2, const string &filterID) {
+	inline void printPair(const kseq_t * rec1, const kseq_t * rec2,
+			double score1, double score2, const string &filterID) {
 		if (m_mainFilter == filterID) {
 			if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
@@ -257,10 +264,10 @@ private:
 			} else {
 #pragma omp critical(cout)
 				{
-					cout << "@" << rec1->name.s << "\n" << rec1->seq.s << "\n+\n"
-							<< rec1->qual.s << "\n";
-					cout << "@" << rec2->name.s << "\n" << rec2->seq.s << "\n+\n"
-							<< rec2->qual.s << "\n";
+					cout << "@" << rec1->name.s << "\n" << rec1->seq.s
+							<< "\n+\n" << rec1->qual.s << "\n";
+					cout << "@" << rec2->name.s << "\n" << rec2->seq.s
+							<< "\n+\n" << rec2->qual.s << "\n";
 				}
 			}
 		}
@@ -406,6 +413,24 @@ private:
 		}
 		default: {
 			evaluateReadStd(rec, hashSig, hits);
+			break;
+		}
+		}
+	}
+
+	inline void evaluateReadPair(const string &rec1, const string &rec2,
+			const string &hashSig, unordered_map<string, bool> &hits1,
+			unordered_map<string, bool> &hits2, double &score1, double &score2,
+			vector<double> &scores1, vector<double> &scores2) {
+		switch (m_mode) {
+		case COLLAB: {
+			evaluateReadPair(rec1, rec2, hashSig, hits1, hits2, score1, score2,
+					scores1, scores2);
+			break;
+		}
+		default: {
+			evaluateRead(rec1, hashSig, hits1, score1, scores1);
+			evaluateRead(rec2, hashSig, hits2, score2, scores2);
 			break;
 		}
 		}
