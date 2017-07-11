@@ -73,8 +73,8 @@ size_t BloomFilterGenerator::generate(const string &filename) {
 	return redundancy;
 }
 
-inline void BloomFilterGenerator::printReadPair(const string &rec1,
-		const string &header1, const string &rec2, const string &header2) {
+inline void BloomFilterGenerator::printReadPair(const string &header1,
+		const string &header2, const string &rec1, const string &rec2) {
 #pragma omp critical(cout)
 	{
 		cout << ">" << header1 << "\n" << rec1 << "\n";
@@ -82,8 +82,8 @@ inline void BloomFilterGenerator::printReadPair(const string &rec1,
 	}
 }
 
-inline void BloomFilterGenerator::printRead(const string &rec,
-		const string &header) {
+inline void BloomFilterGenerator::printRead(const string &header,
+		const string &rec) {
 #pragma omp critical(cout)
 	{
 		cout << ">" << header << "\n" << rec << "\n";
@@ -235,7 +235,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							insertKmer(currentSeq, filter);
 						}
 						if (printReads)
-							printReadPair(header1, rec1, header2, rec2);
+							printReadPair(header1, header2, rec1, rec2);
 					} else if (numKmers2 > score
 							&& (SeqEval::evalRead(rec2, m_kmerSize, filter,
 									score, 1.0 - score, m_hashNum, hashValues2,
@@ -263,7 +263,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							}
 						}
 						if (printReads)
-							printReadPair(rec1, header1, rec2, header2);
+							printReadPair(header1, header2, rec1, rec2);
 					}
 					break;
 				}
@@ -297,7 +297,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							}
 						}
 						if (printReads)
-							printReadPair(header1, rec1, header2, rec2);
+							printReadPair(header1, header2, rec1, rec2);
 					}
 					break;
 				}
@@ -479,7 +479,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 							insertKmer(currentSeq, filter);
 						}
 						if (printReads)
-							printReadPair(header1, rec1, header2, rec2);
+							printReadPair(header1, header2, rec1, rec2);
 					} else if (numKmers2 > score
 							&& SeqEval::evalRead(rec2, m_kmerSize, filter,
 									score, 1.0 - score, m_hashNum, hashValues2,
@@ -511,7 +511,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 							}
 						}
 						if (printReads)
-							printReadPair(rec1, header1, rec2, header2);
+							printReadPair(header1, header2, rec1, rec2);
 					}
 					break;
 				}
@@ -553,7 +553,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 							}
 						}
 						if (printReads)
-							printReadPair(header1, rec1, header2, rec2);
+							printReadPair(header1, header2, rec1, rec2);
 					}
 					break;
 				}
@@ -720,8 +720,8 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 									insertKmer(currentSeq, filter);
 								}
 								if (printReads)
-									printReadPair(seq1->name.s, seq1->seq.s,
-											seq2->name.s, seq2->seq.s);
+									printReadPair(seq1->name.s, seq2->name.s,
+											seq1->seq.s, seq2->seq.s);
 							} else if (numKmers2 > score
 									&& SeqEval::evalRead(seq2->seq.s,
 											m_kmerSize, filter, score,
@@ -752,8 +752,8 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 									}
 								}
 								if (printReads)
-									printReadPair(seq1->name.s, seq1->seq.s,
-											seq2->name.s, seq2->seq.s);
+									printReadPair(seq1->name.s, seq2->name.s,
+											seq1->seq.s, seq2->seq.s);
 							}
 							break;
 						}
@@ -794,8 +794,8 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 									}
 								}
 								if (printReads)
-									printReadPair(seq1->name.s, seq1->seq.s,
-											seq2->name.s, seq2->seq.s);
+									printReadPair(seq1->name.s, seq2->name.s,
+											seq1->seq.s, seq2->seq.s);
 							}
 							break;
 						}
@@ -949,8 +949,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									insertKmer(currentSeq, filter);
 								}
 								if (printReads)
-									printReadPair(seq1->name.s, seq1->seq.s,
-											seq2->name.s, seq2->seq.s);
+									printReadPair(seq1->name.s, seq2->name.s,
+											seq1->seq.s, seq2->seq.s);
 							} else if (numKmers2 > score
 									&& (SeqEval::evalRead(seq2->seq.s,
 											m_kmerSize, filter, score,
@@ -977,8 +977,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									}
 								}
 								if (printReads)
-									printReadPair(seq1->name.s, seq1->seq.s,
-											seq2->name.s, seq2->seq.s);
+									printReadPair(seq1->name.s, seq2->name.s,
+											seq1->seq.s, seq2->seq.s);
 							}
 							break;
 						}
@@ -1011,8 +1011,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									}
 								}
 								if (printReads)
-									printReadPair(seq1->name.s, seq1->seq.s,
-											seq2->name.s, seq2->seq.s);
+									printReadPair(seq1->name.s, seq2->name.s,
+											seq1->seq.s, seq2->seq.s);
 							}
 							break;
 						}
@@ -1286,7 +1286,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 								insertKmer(currentSeq, filter);
 							}
 							if (printReads)
-								printReadPair(rec1, header1, rec2, header2);
+								printReadPair(header1, header2, rec1, rec2);
 						} else if (numKmers2 > score
 								&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
 										score, 1.0 - score, m_hashNum,
@@ -1314,7 +1314,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 								}
 							}
 							if (printReads)
-								printReadPair(rec1, header1, rec2, header2);
+								printReadPair(header1, header2, rec1, rec2);
 						}
 						break;
 					}
@@ -1350,7 +1350,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 								}
 							}
 							if (printReads)
-								printReadPair(rec1, header1, rec2, header2);
+								printReadPair(header1, header2, rec1, rec2);
 						}
 						break;
 					}
