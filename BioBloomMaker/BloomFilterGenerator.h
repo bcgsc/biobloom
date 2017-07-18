@@ -279,6 +279,23 @@ private:
 					multiHash(currentSeq, m_hashNum, m_kmerSize));
 		}
 	}
+
+	inline void insertKmer(const vector<size_t> &currentSeq,
+			BloomFilter &filter, const BloomFilter &filterSub) {
+		if (!opt::noRep || !filterSub.contains(currentSeq)) {
+#pragma omp atomic
+			m_totalEntries += !filter.insertAndCheck(currentSeq);
+		}
+	}
+
+	inline void insertKmer(const unsigned char* currentSeq,
+			BloomFilter &filter, const BloomFilter &filterSub) {
+		if (currentSeq != NULL && (!opt::noRep || !filterSub.contains(currentSeq))) {
+#pragma omp atomic
+			m_totalEntries += !filter.insertAndCheck(
+					multiHash(currentSeq, m_hashNum, m_kmerSize));
+		}
+	}
 };
 
 #endif /* BLOOMFILTERGENERATOR_H_ */

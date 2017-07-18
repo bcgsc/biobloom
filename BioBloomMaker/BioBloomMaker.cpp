@@ -59,6 +59,8 @@ void printHelpDialog() {
 					"                         only use filters with k-mer sizes equal the one you\n"
 					"                         wish to create. Use this to minimize repeat propagation\n"
 					"                         when generating progressive filters.\n"
+					"  -d, --noRepKmers       Remove all repeat k-mers from the resulting filter in\n"
+					"                         progressive mode.\n"
 					"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 					"                         is determined from sequences sizes within files. [0]\n"
 					"\nOptions for progressive filters:\n"
@@ -115,11 +117,12 @@ int main(int argc, char *argv[]) {
 	required_argument, NULL, 'r' }, { "baitScore",
 	required_argument, NULL, 'b' }, { "iterations",
 	required_argument, NULL, 'e' }, {
+	required_argument, NULL, 'd' }, {
 	NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:",
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:d",
 			long_options, &option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -213,6 +216,10 @@ int main(int argc, char *argv[]) {
 		}
 		case 'P': {
 			printReads = true;
+			break;
+		}
+		case 'd': {
+			opt::noRep = true;
 			break;
 		}
 		case 'r': {

@@ -20,6 +20,7 @@ namespace opt {
 	extern std::vector<std::string> fileList2;
 	extern unsigned fileInterval;
 	extern double fpr;
+	extern bool noRep;
 }
 
 #endif
