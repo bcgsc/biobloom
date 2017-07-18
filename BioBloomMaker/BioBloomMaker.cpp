@@ -59,7 +59,7 @@ void printHelpDialog() {
 					"                         only use filters with k-mer sizes equal the one you\n"
 					"                         wish to create. Use this to minimize repeat propagation\n"
 					"                         when generating progressive filters.\n"
-					"  -d, --noRepKmers       Remove all repeat k-mers from the resulting filter in\n"
+					"  -d, --no_rep_kmer      Remove all repeat k-mers from the resulting filter in\n"
 					"                         progressive mode.\n"
 					"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 					"                         is determined from sequences sizes within files. [0]\n"
@@ -116,8 +116,8 @@ int main(int argc, char *argv[]) {
 			"print_reads", no_argument, NULL, 'P' }, { "progressive",
 	required_argument, NULL, 'r' }, { "baitScore",
 	required_argument, NULL, 'b' }, { "iterations",
-	required_argument, NULL, 'e' }, {
-	required_argument, NULL, 'd' }, {
+	required_argument, NULL, 'e' }, { "iterations",
+			no_argument, NULL, 'd' }, {
 	NULL, 0, NULL, 0 } };
 
 	//actual checking step
