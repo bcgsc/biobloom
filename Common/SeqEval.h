@@ -182,12 +182,10 @@ inline bool evalMinMatchLen(const string &rec, unsigned kmerSize, const BloomFil
 		if (hashValues != NULL)
 			(*hashValues)[i] = hash;
 		if (filter.contains(hash)) {
-			if (matchLen == 0)
-				if (subtract == NULL || !subtract->contains(hash))
+			if (subtract == NULL || !subtract->contains(hash)) {
+				if (matchLen == 0)
 					matchLen = kmerSize;
-			else {
-				// ignore k-mers in subtract filter
-				if (subtract == NULL || !subtract->contains(hash))
+				else
 					++matchLen;
 			}
 		}
