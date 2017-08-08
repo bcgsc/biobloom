@@ -72,6 +72,9 @@ void printHelpDialog() {
 					"                         positive integer, it is interpreted as the minimum\n"
 					"                         number of contiguous matching bases required for a\n"
 					"                         match.\n"
+					"  -a, --streak=N         The number of hits tiling in second pass needed to jump\n"
+					"                         Several tiles upon a miss. Small values decrease\n"
+					"                         runtime but decrease sensitivity. [3]\n"
 					"  -l, --file_list=N      A file of list of file pairs to run in parallel.\n"
 					"  -b, --baitScore=N      Score threshold when considering only bait. [r]\n"
 					"  -e, --iterations=N     Pass through files N times if threshold is not met.\n"
@@ -115,14 +118,15 @@ int main(int argc, char *argv[]) {
 	required_argument, NULL, 'l' }, { "help", no_argument, NULL, 'h' }, {
 			"print_reads", no_argument, NULL, 'P' }, { "progressive",
 	required_argument, NULL, 'r' }, { "baitScore",
-	required_argument, NULL, 'b' }, { "iterations",
+	required_argument, NULL, 'b' }, { "streak",
 	required_argument, NULL, 'e' }, { "iterations",
+			required_argument, NULL, 'a' }, { "no_rep_kmer",
 			no_argument, NULL, 'd' }, {
 	NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:d",
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:da",
 			long_options, &option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -276,6 +280,14 @@ int main(int argc, char *argv[]) {
 			}
 			if (opt::progItrns < 1) {
 				cerr << "Error - e must be > 1" << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
+		case 'a': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::streakThreshold)) {
+				cerr << "Error - Invalid parameter! a: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
 			break;
