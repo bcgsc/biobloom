@@ -86,10 +86,6 @@ public:
 		m_evalMode = mode;
 	}
 
-	SeqEval::EvalMode getEvalMode() {
-		return m_evalMode;
-	}
-
 	void setMainFilter(const string &filtername);
 
 	virtual ~BioBloomClassifier();

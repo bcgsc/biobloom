@@ -921,7 +921,7 @@ void BioBloomClassifier::evaluateReadCollab(const string &rec,
 		string filterID = i->second;
 		BloomFilter &tempFilter = *m_filtersSingle.at(filterID);
 		if (SeqEval::evalRead(rec, kmerSize, tempFilter, m_scoreThreshold,
-				1.0 - m_scoreThreshold, getEvalMode())) {
+				1.0 - m_scoreThreshold, m_evalMode)) {
 			hits[filterID] = true;
 			break;
 		}
@@ -980,20 +980,20 @@ void BioBloomClassifier::evaluateReadCollabPair(const string &rec1,
 		BloomFilter &tempFilter = *m_filtersSingle.at(i->second);
 		if (m_inclusive) {
 			if (SeqEval::evalRead(rec1, kmerSize, tempFilter, m_scoreThreshold,
-					1.0 - m_scoreThreshold, getEvalMode())
+					1.0 - m_scoreThreshold, m_evalMode)
 					|| SeqEval::evalRead(rec2, kmerSize, tempFilter,
 							m_scoreThreshold, 1.0 - m_scoreThreshold,
-							getEvalMode())) {
+							m_evalMode)) {
 				hits1[i->second] = true;
 				hits2[i->second] = true;
 				break;
 			}
 		} else {
 			if (SeqEval::evalRead(rec1, kmerSize, tempFilter, m_scoreThreshold,
-					1.0 - m_scoreThreshold, getEvalMode())
+					1.0 - m_scoreThreshold, m_evalMode)
 					&& SeqEval::evalRead(rec2, kmerSize, tempFilter,
 							m_scoreThreshold, 1.0 - m_scoreThreshold,
-							getEvalMode())) {
+							m_evalMode)) {
 				hits1[i->second] = true;
 				hits2[i->second] = true;
 				break;
@@ -1018,7 +1018,7 @@ void BioBloomClassifier::evaluateReadOrdered(const string &rec,
 			i != m_filterOrder.end(); ++i) {
 		BloomFilter &tempFilter = *m_filtersSingle.at(*i);
 		if (SeqEval::evalRead(rec, kmerSize, tempFilter, m_scoreThreshold,
-				1.0 - m_scoreThreshold, getEvalMode())) {
+				1.0 - m_scoreThreshold, m_evalMode)) {
 			hits[*i] = true;
 			break;
 		}
@@ -1044,20 +1044,20 @@ void BioBloomClassifier::evaluateReadOrderedPair(const string &rec1,
 		BloomFilter &tempFilter = *m_filtersSingle.at(*i);
 		if (m_inclusive) {
 			if (SeqEval::evalRead(rec1, kmerSize, tempFilter, m_scoreThreshold,
-					1.0 - m_scoreThreshold, getEvalMode())
+					1.0 - m_scoreThreshold, m_evalMode)
 					|| SeqEval::evalRead(rec2, kmerSize, tempFilter,
 							m_scoreThreshold, 1.0 - m_scoreThreshold,
-							getEvalMode())) {
+							m_evalMode)) {
 				hits1[*i] = true;
 				hits2[*i] = true;
 				break;
 			}
 		} else {
 			if (SeqEval::evalRead(rec1, kmerSize, tempFilter, m_scoreThreshold,
-					1.0 - m_scoreThreshold, getEvalMode())
+					1.0 - m_scoreThreshold, m_evalMode)
 					&& SeqEval::evalRead(rec2, kmerSize, tempFilter,
 							m_scoreThreshold, 1.0 - m_scoreThreshold,
-							getEvalMode())) {
+							m_evalMode)) {
 				hits1[*i] = true;
 				hits2[*i] = true;
 				break;
@@ -1164,7 +1164,7 @@ void BioBloomClassifier::evaluateReadStd(const string &rec,
 		if (pass) {
 			BloomFilter &tempFilter = *m_filtersSingle.at(*i);
 			hits[*i] = SeqEval::evalRead(rec, kmerSize, tempFilter,
-					m_scoreThreshold, 1.0 - m_scoreThreshold, getEvalMode());
+					m_scoreThreshold, 1.0 - m_scoreThreshold, m_evalMode);
 		}
 	}
 }
@@ -1295,6 +1295,7 @@ void BioBloomClassifier::evaluateReadScore(const string &rec,
 			hits[idsInFilter[i]] = SeqEval::eval(rec, kmerSize, tempFilter,
 					m_scoreThreshold, 1.0 - m_scoreThreshold, visited,
 					hashValues, pos[i], scores[i], proc);
+
 			hitCount += hits[idsInFilter[i]];
 		}
 	}
