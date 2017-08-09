@@ -267,7 +267,7 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 
 #pragma omp parallel private(rec1, rec2)
 	for (int l1, l2;;) {
-#pragma omp critical(kseq_read1)
+#pragma omp critical(kseq)
 		{
 			l1 = kseq_read(kseq1);
 			if (l1 >= 0) {
@@ -275,9 +275,6 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 				rec1.header = string(kseq1->name.s, kseq1->name.l);
 				rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
 			}
-		}
-#pragma omp critical(kseq_read2)
-		{
 			l2 = kseq_read(kseq2);
 			if (l2 >= 0) {
 				rec2.seq = string(kseq2->seq.s, l2);
@@ -308,15 +305,13 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 			for (vector<string>::const_iterator j = m_hashSigs.begin();
 					j != m_hashSigs.end(); ++j) {
-				evaluateRead(rec1.seq, *j, hits1, score1, scores1);
-				evaluateRead(rec2.seq, *j, hits2, score2, scores2);
+				evaluateReadPair(rec1.seq, rec2.seq, *j, hits1, hits2, score1,
+						score2, scores1, scores2);
 			}
 
 			//Evaluate hit data and record for summary
-
-			const string &outputFileName = resSummary.updateSummaryData(hits1,
-					hits2);
-			printPair(rec1, rec2, score1, score2, outputFileName);
+			printPair(rec1, rec2, score1, score2,
+					resSummary.updateSummaryData(hits1, hits2));
 		} else
 			break;
 	}
@@ -389,8 +384,8 @@ void BioBloomClassifier::filterPair(const vector<string> &inputFiles1,
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
 						j != m_hashSigs.end(); ++j) {
-					evaluateRead(kseq1->seq.s, *j, hits1, score1, scores1);
-					evaluateRead(kseq2->seq.s, *j, hits2, score2, scores2);
+					evaluateReadPair(kseq1->seq.s, kseq2->seq.s, *j, hits1,
+							hits2, score1, score2, scores1, scores2);
 				}
 
 				//Evaluate hit data and record for summary
@@ -489,7 +484,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 #pragma omp parallel private(rec1, rec2)
 	for (int l1, l2;;) {
-#pragma omp critical(kseq_read1)
+#pragma omp critical(kseq)
 		{
 			l1 = kseq_read(kseq1);
 			if (l1 >= 0) {
@@ -497,9 +492,6 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				rec1.header = string(kseq1->name.s, kseq1->name.l);
 				rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
 			}
-		}
-#pragma omp critical(kseq_read2)
-		{
 			l2 = kseq_read(kseq2);
 			if (l2 >= 0) {
 				rec2.seq = string(kseq2->seq.s, l2);
@@ -530,8 +522,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 			//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 			for (vector<string>::const_iterator j = m_hashSigs.begin();
 					j != m_hashSigs.end(); ++j) {
-				evaluateRead(rec1.seq, *j, hits1, score1, scores1);
-				evaluateRead(rec2.seq, *j, hits2, score2, scores2);
+				evaluateReadPair(rec1.seq, rec2.seq, *j, hits1, hits2, score1,
+						score2, scores1, scores2);
 			}
 
 			//Evaluate hit data and record for summary
@@ -643,8 +635,8 @@ void BioBloomClassifier::filterPair(const string &file) {
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
 						j != m_hashSigs.end(); ++j) {
-					evaluateRead(rec1.seq, *j, hits1, score1, scores1);
-					evaluateRead(rec2.seq, *j, hits2, score2, scores2);
+					evaluateReadPair(rec1.seq, rec2.seq, *j, hits1, hits2,
+							score1, score2, scores1, scores2);
 				}
 
 				//Evaluate hit data and record for summary
@@ -787,8 +779,8 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 				//for each hashSigniture/kmer combo multi, cut up read into kmer sized used
 				for (vector<string>::const_iterator j = m_hashSigs.begin();
 						j != m_hashSigs.end(); ++j) {
-					evaluateRead(rec1.seq, *j, hits1, score1, scores1);
-					evaluateRead(rec2.seq, *j, hits2, score2, scores2);
+					evaluateReadPair(rec1.seq, rec2.seq, *j, hits1, hits2,
+							score1, score2, scores1, scores2);
 				}
 
 				//Evaluate hit data and record for summary
@@ -905,8 +897,8 @@ void BioBloomClassifier::evaluateReadCollab(const string &rec,
 
 	//base for each filter until one filter obtains hit threshold
 	//TODO: staggered pattering
-	for (vector<string>::const_iterator i = m_filterOrder.begin();
-			i != m_filterOrder.end(); ++i) {
+	for (vector<string>::reverse_iterator i = m_filterOrder.rbegin();
+			i != m_filterOrder.rend(); ++i) {
 		hits[*i] = false;
 		unsigned screeningHits = 0;
 		size_t screeningLoc = rec.length() % kmerSize / 2;
@@ -929,12 +921,151 @@ void BioBloomClassifier::evaluateReadCollab(const string &rec,
 		string filterID = i->second;
 		BloomFilter &tempFilter = *m_filtersSingle.at(filterID);
 		if (SeqEval::evalRead(rec, kmerSize, tempFilter, m_scoreThreshold,
-				1.0 - m_scoreThreshold, getEvalMode())) {
+				1.0 - m_scoreThreshold, m_evalMode)) {
 			hits[filterID] = true;
 			break;
 		}
 	}
 }
+
+/*
+ * Collaborative filtering method
+ * Assume filters use the same k-mer size
+ */
+void BioBloomClassifier::evaluateReadCollabPair(const string &rec1,
+		const string &rec2, const string &hashSig,
+		unordered_map<string, bool> &hits1,
+		unordered_map<string, bool> &hits2) {
+	//get filterIDs to iterate through has in a consistent order
+	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
+
+	//todo: read proc possibly unneeded, see evalSingle
+	ReadsProcessor proc(kmerSize);
+
+	//create storage for hits per filter
+	std::multimap<unsigned, string> firstPassHits;
+
+	//base for each filter until one filter obtains hit threshold
+	//TODO: staggered pattering
+	for (vector<string>::reverse_iterator i = m_filterOrder.rbegin();
+			i != m_filterOrder.rend(); ++i) {
+		hits1[*i] = false;
+		hits2[*i] = false;
+		unsigned screeningHits = 0;
+		size_t screeningLoc = rec1.length() % kmerSize / 2;
+		//First pass filtering
+		while (rec1.length() >= screeningLoc + kmerSize) {
+			const unsigned char* currentKmer1 = proc.prepSeq(rec1,
+					screeningLoc);
+			const unsigned char* currentKmer2 = proc.prepSeq(rec2,
+					screeningLoc);
+			if (currentKmer1 != NULL) {
+				if (m_filtersSingle.at(*i)->contains(currentKmer1)) {
+					++screeningHits;
+				}
+			}
+			if (currentKmer2 != NULL) {
+				if (m_filtersSingle.at(*i)->contains(currentKmer2)) {
+					++screeningHits;
+				}
+			}
+			screeningLoc += kmerSize;
+		}
+		firstPassHits.insert(pair<unsigned, string>(screeningHits, *i));
+	}
+
+	//evaluate promising group first
+	for (multimap<unsigned, string>::reverse_iterator i =
+			firstPassHits.rbegin(); i != firstPassHits.rend(); ++i) {
+		BloomFilter &tempFilter = *m_filtersSingle.at(i->second);
+		if (m_inclusive) {
+			if (SeqEval::evalRead(rec1, kmerSize, tempFilter, m_scoreThreshold,
+					1.0 - m_scoreThreshold, m_evalMode)
+					|| SeqEval::evalRead(rec2, kmerSize, tempFilter,
+							m_scoreThreshold, 1.0 - m_scoreThreshold,
+							m_evalMode)) {
+				hits1[i->second] = true;
+				hits2[i->second] = true;
+				break;
+			}
+		} else {
+			if (SeqEval::evalRead(rec1, kmerSize, tempFilter, m_scoreThreshold,
+					1.0 - m_scoreThreshold, m_evalMode)
+					&& SeqEval::evalRead(rec2, kmerSize, tempFilter,
+							m_scoreThreshold, 1.0 - m_scoreThreshold,
+							m_evalMode)) {
+				hits1[i->second] = true;
+				hits2[i->second] = true;
+				break;
+			}
+		}
+	}
+}
+
+/*
+ * Collaborative filtering method
+ * Assume filters use the same k-mer size
+ */
+void BioBloomClassifier::evaluateReadOrdered(const string &rec,
+		const string &hashSig, unordered_map<string, bool> &hits) {
+	//get filterIDs to iterate through has in a consistent order
+	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i) {
+			hits[*i] = false;
+	}
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i) {
+		BloomFilter &tempFilter = *m_filtersSingle.at(*i);
+		if (SeqEval::evalRead(rec, kmerSize, tempFilter, m_scoreThreshold,
+				1.0 - m_scoreThreshold, m_evalMode)) {
+			hits[*i] = true;
+			break;
+		}
+	}
+}
+
+/*
+ * Collaborative filtering method
+ * Assume filters use the same k-mer size
+ */
+void BioBloomClassifier::evaluateReadOrderedPair(const string &rec1,
+		const string &rec2, const string &hashSig,
+		unordered_map<string, bool> &hits1,
+		unordered_map<string, bool> &hits2) {
+	unsigned kmerSize = m_infoFiles.at(hashSig).front()->getKmerSize();
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i) {
+		hits1[*i] = false;
+		hits2[*i] = false;
+	}
+	for (vector<string>::const_iterator i = m_filterOrder.begin();
+			i != m_filterOrder.end(); ++i) {
+		BloomFilter &tempFilter = *m_filtersSingle.at(*i);
+		if (m_inclusive) {
+			if (SeqEval::evalRead(rec1, kmerSize, tempFilter, m_scoreThreshold,
+					1.0 - m_scoreThreshold, m_evalMode)
+					|| SeqEval::evalRead(rec2, kmerSize, tempFilter,
+							m_scoreThreshold, 1.0 - m_scoreThreshold,
+							m_evalMode)) {
+				hits1[*i] = true;
+				hits2[*i] = true;
+				break;
+			}
+		} else {
+			if (SeqEval::evalRead(rec1, kmerSize, tempFilter, m_scoreThreshold,
+					1.0 - m_scoreThreshold, m_evalMode)
+					&& SeqEval::evalRead(rec2, kmerSize, tempFilter,
+							m_scoreThreshold, 1.0 - m_scoreThreshold,
+							m_evalMode)) {
+				hits1[*i] = true;
+				hits2[*i] = true;
+				break;
+			}
+		}
+	}
+}
+
 
 /*
  * For a single read evaluate hits for a single hash signature
@@ -1033,7 +1164,7 @@ void BioBloomClassifier::evaluateReadStd(const string &rec,
 		if (pass) {
 			BloomFilter &tempFilter = *m_filtersSingle.at(*i);
 			hits[*i] = SeqEval::evalRead(rec, kmerSize, tempFilter,
-					m_scoreThreshold, 1.0 - m_scoreThreshold, getEvalMode());
+					m_scoreThreshold, 1.0 - m_scoreThreshold, m_evalMode);
 		}
 	}
 }
@@ -1164,6 +1295,7 @@ void BioBloomClassifier::evaluateReadScore(const string &rec,
 			hits[idsInFilter[i]] = SeqEval::eval(rec, kmerSize, tempFilter,
 					m_scoreThreshold, 1.0 - m_scoreThreshold, visited,
 					hashValues, pos[i], scores[i], proc);
+
 			hitCount += hits[idsInFilter[i]];
 		}
 	}

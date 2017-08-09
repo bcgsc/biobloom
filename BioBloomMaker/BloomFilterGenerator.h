@@ -13,7 +13,10 @@
 #include "btl_bloomfilter/ntHashIterator.hpp"
 #include "Common/SeqEval.h"
 #include "DataLayer/kseq.h"
+#include <iostream>
 #include <zlib.h>
+#include <omp.h>
+#include "Common/Options.h"
 KSEQ_INIT(gzFile, gzread)
 
 using namespace std;
@@ -39,13 +42,16 @@ public:
 			const string &file1, const string &file2, createMode mode,
 			const SeqEval::EvalMode evalMode, bool printReads,
 			const string &subtractFilter);
-
-//	size_t generateProgressive(const string &filename, double score,
-//			const vector<string> &files, createMode mode,
-//			const SeqEval::EvalMode evalMode, bool printReads,
-//			const string &subtractFilter);
+	size_t generateProgressiveBait(const string &filename, double score,
+			const string &file1, const string &file2, createMode mode,
+			const SeqEval::EvalMode evalMode, bool printReads,
+			const string &subtractFilter);
 
 	size_t generateProgressive(const string &filename, double score,
+			const vector<string> &files1, const vector<string> &files2,
+			createMode mode, const SeqEval::EvalMode evalMode, bool printReads,
+			const string &subtractFilter);
+	size_t generateProgressiveBait(const string &filename, double score,
 			const vector<string> &files1, const vector<string> &files2,
 			createMode mode, const SeqEval::EvalMode evalMode, bool printReads,
 			const string &subtractFilter);
@@ -56,7 +62,7 @@ public:
 
 	void setFilterSize(size_t bits);
 
-	void printReadPair(const string &rec1, const string &header1,
+	inline void printReadPair(const string &rec1, const string &header1,
 			const string &rec2, const string &header2);
 	inline void printRead(const string &rec, const string &header);
 	void setHashFuncs(unsigned numFunc);
@@ -107,7 +113,7 @@ private:
 		return (expectedEntries);
 	}
 
-	inline size_t loadFilter(BloomFilter &bf) {
+	inline size_t loadFilter(BloomFilter &bf, size_t &totalEntries) {
 		size_t redundancy = 0;
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 			gzFile fp;
@@ -143,7 +149,7 @@ private:
 #pragma omp atomic
 					redundancy += tempRedund;
 #pragma omp atomic
-					m_totalEntries += tempTotal;
+					totalEntries += tempTotal;
 					delete[] tempStr;
 				} else {
 					break;
@@ -152,13 +158,11 @@ private:
 			kseq_destroy(seq);
 			gzclose(fp);
 		}
-		cerr
-				<< "Approximated (due to fp) total unique k-mers in reference files "
-				<< m_totalEntries << endl;
 		return redundancy;
 	}
 
-	inline size_t loadFilterFastSubtract(BloomFilter &bf, BloomFilter &bfsub) {
+	inline size_t loadFilterSubtract(BloomFilter &bf, BloomFilter &bfsub,
+			size_t &totalEntries) {
 		size_t kmerRemoved = 0;
 		size_t redundancy = 0;
 		int kmerSize = m_kmerSize;
@@ -200,7 +204,7 @@ private:
 #pragma omp atomic
 					redundancy += tempRedund;
 #pragma omp atomic
-					m_totalEntries += tempTotal;
+					totalEntries += tempTotal;
 					delete[] tempStr;
 				} else {
 					break;
@@ -216,6 +220,14 @@ private:
 	inline void insertKmer(const size_t precomputed[], BloomFilter &filter) {
 #pragma omp atomic
 		m_totalEntries += !filter.insertAndCheck(precomputed);
+	}
+
+	inline void insertKmer(const size_t precomputed[], BloomFilter &filter,
+			const BloomFilter &filterSub) {
+		if (!opt::noRep || !filterSub.contains(precomputed)) {
+#pragma omp atomic
+			m_totalEntries += !filter.insertAndCheck(precomputed);
+		}
 	}
 };
 

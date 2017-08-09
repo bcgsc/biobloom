@@ -12,7 +12,7 @@
 
 WindowedFileParser::WindowedFileParser(string const &fileName,
 		unsigned windowSize) :
-		m_windowSize(windowSize), m_proc(ReadsProcessor(windowSize))
+		m_windowSize(windowSize), m_proc(windowSize)
 {
 	m_fastaFileHandle.open(fileName.c_str(), ifstream::in);
 	assert(m_fastaFileHandle);

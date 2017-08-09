@@ -59,6 +59,8 @@ void printHelpDialog() {
 					"                         only use filters with k-mer sizes equal the one you\n"
 					"                         wish to create. Use this to minimize repeat propagation\n"
 					"                         when generating progressive filters.\n"
+					"  -d, --no_rep_kmer      Remove all repeat k-mers from the resulting filter in\n"
+					"                         progressive mode.\n"
 					"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 					"                         is determined from sequences sizes within files. [0]\n"
 					"\nOptions for progressive filters:\n"
@@ -70,6 +72,8 @@ void printHelpDialog() {
 					"                         positive integer, it is interpreted as the minimum\n"
 					"                         number of contiguous matching bases required for a\n"
 					"                         match.\n"
+					"  -a, --streak=N         The number of hits tiling in second pass needed to jump\n"
+					"                         Several tiles upon a miss. Progressive mode only. [3]\n"
 					"  -l, --file_list=N      A file of list of file pairs to run in parallel.\n"
 					"  -b, --baitScore=N      Score threshold when considering only bait. [r]\n"
 					"  -e, --iterations=N     Pass through files N times if threshold is not met.\n"
@@ -113,13 +117,15 @@ int main(int argc, char *argv[]) {
 	required_argument, NULL, 'l' }, { "help", no_argument, NULL, 'h' }, {
 			"print_reads", no_argument, NULL, 'P' }, { "progressive",
 	required_argument, NULL, 'r' }, { "baitScore",
-	required_argument, NULL, 'b' }, { "iterations",
-	required_argument, NULL, 'e' }, {
+	required_argument, NULL, 'b' }, { "streak",
+	required_argument, NULL, 'e' }, { "iterations",
+			required_argument, NULL, 'a' }, { "no_rep_kmer",
+			no_argument, NULL, 'd' }, {
 	NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:",
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:da",
 			long_options, &option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -215,6 +221,10 @@ int main(int argc, char *argv[]) {
 			printReads = true;
 			break;
 		}
+		case 'd': {
+			opt::noRep = true;
+			break;
+		}
 		case 'r': {
 			stringstream convert(optarg);
 			unsigned matchLen;
@@ -269,6 +279,14 @@ int main(int argc, char *argv[]) {
 			}
 			if (opt::progItrns < 1) {
 				cerr << "Error - e must be > 1" << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
+		case 'a': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::streakThreshold)) {
+				cerr << "Error - Invalid parameter! a: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -408,10 +426,17 @@ int main(int argc, char *argv[]) {
 					myfile.close();
 
 					cerr << "Using file list paired mode" << endl;
-					redundNum = filterGen.generateProgressive(
-							outputDir + filterPrefix + ".bf", progressive,
-							opt::fileList1, opt::fileList2, mode, evalMode,
-							printReads, subtractFilter);
+					if (opt::baitThreshold == progressive) {
+						redundNum = filterGen.generateProgressive(
+								outputDir + filterPrefix + ".bf", progressive,
+								opt::fileList1, opt::fileList2, mode, evalMode,
+								printReads, subtractFilter);
+					} else {
+						redundNum = filterGen.generateProgressiveBait(
+								outputDir + filterPrefix + ".bf", progressive,
+								opt::fileList1, opt::fileList2, mode, evalMode,
+								printReads, subtractFilter);
+					}
 				} else {
 					opt::fileList1.push_back(fileName1);
 					while (getline(myfile, line)) {
@@ -424,17 +449,30 @@ int main(int argc, char *argv[]) {
 					myfile.close();
 
 					cerr << "Using file list single end mode" << endl;
-					redundNum = filterGen.generateProgressive(
-							outputDir + filterPrefix + ".bf", progressive,
-							opt::fileList1, evalMode, printReads,
-							subtractFilter);
+					if (opt::baitThreshold == progressive) {
+						redundNum = filterGen.generateProgressive(
+								outputDir + filterPrefix + ".bf", progressive,
+								opt::fileList1, evalMode, printReads,
+								subtractFilter);
+					} else {
+						cerr
+								<< "single end bait mode not implemented. If needed feature request cjustin@bcgsc.ca."
+								<< endl;
+						exit(1);
+					}
 				}
 			} else
 				cout << "Unable to open file";
 		} else {
-			redundNum = filterGen.generateProgressive(
-					outputDir + filterPrefix + ".bf", progressive, file1, file2,
-					mode, evalMode, printReads, subtractFilter);
+			if (opt::baitThreshold == progressive) {
+				redundNum = filterGen.generateProgressive(
+						outputDir + filterPrefix + ".bf", progressive, file1,
+						file2, mode, evalMode, printReads, subtractFilter);
+			} else {
+				redundNum = filterGen.generateProgressiveBait(
+						outputDir + filterPrefix + ".bf", progressive, file1,
+						file2, mode, evalMode, printReads, subtractFilter);
+			}
 		}
 	} else if (!subtractFilter.empty()) {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
@@ -444,9 +482,16 @@ int main(int argc, char *argv[]) {
 		if (inclusive) {
 			mode = PROG_INC;
 		}
+		if (opt::baitThreshold == progressive) {
 		redundNum = filterGen.generateProgressive(
 				outputDir + filterPrefix + ".bf", progressive, file1, file2,
-				mode, evalMode, printReads);
+					mode, evalMode, printReads);
+		} else {
+			cerr
+					<< "Bait mode without subtractive filter not implemented. If needed feature request cjustin@bcgsc.ca."
+					<< endl;
+			exit(1);
+		}
 	} else {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
 	}

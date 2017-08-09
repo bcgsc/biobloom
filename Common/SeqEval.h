@@ -15,7 +15,6 @@
 #include <string>
 #include <cmath>
 #include <cassert>
-#include "boost/unordered/unordered_map.hpp"
 #include "Common/Options.h"
 #include "btl_bloomfilter/BloomFilter.hpp"
 #include "btl_bloomfilter/ntHashIterator.hpp"
@@ -24,6 +23,8 @@ using namespace std;
 using namespace boost;
 
 namespace SeqEval {
+
+enum EvalMode { EVAL_STANDARD, EVAL_MIN_MATCH_LEN };
 
 inline double denormalizeScore(double score, unsigned kmerSize, size_t seqLen) {
 	assert(score >= 0 && score <= 1);
@@ -48,10 +49,13 @@ inline bool evalSingle(const string &rec, unsigned kmerSize,
 	unsigned pos = 0;
 	for (ntHashIterator itr(rec); itr != itr.next(); ++itr) {
 		if (streak == 0) {
-			if (itr.pos()) {
-				if ((subtract == NULL || !subtract->contains(*itr))
-						&& filter.contains(*itr)) {
-					score += 0.5;
+			if (currentSeq != NULL) {
+				vector<size_t> hash = multiHash(currentSeq, hashNum, kmerSize);
+				if (hashValues != NULL)
+					(*hashValues)[currentLoc] = hash;
+				if (filter.contains(hash)) {
+					if(subtract == NULL || !subtract->contains(hash))
+						score += 0.5;
 					++streak;
 					if (threshold <= score) {
 						return true;
@@ -77,10 +81,10 @@ inline bool evalSingle(const string &rec, unsigned kmerSize,
 				vector<size_t> hash = multiHash(currentSeq, hashNum, kmerSize);
 				if (hashValues != NULL)
 					(*hashValues)[currentLoc] = hash;
-				if ((subtract == NULL || !subtract->contains(hash))
-						&& filter.contains(hash)) {
+				if (filter.contains(hash)) {
 					++streak;
-					++score;
+					if (subtract == NULL || !subtract->contains(hash))
+						++score;
 					++currentLoc;
 
 					if (threshold <= score) {
@@ -159,16 +163,13 @@ inline bool evalMinMatchLen(const string &rec, unsigned kmerSize,
 		// cache hash values for future use
 		if (hashValues != NULL)
 			(*hashValues)[i] = hash;
-		// ignore k-mers in subtract filter
-		if (subtract != NULL && subtract->contains(hash)) {
-			matchLen = 0;
-			continue;
-		}
 		if (filter.contains(hash)) {
-			if (matchLen == 0)
-				matchLen = kmerSize;
-			else
-				++matchLen;
+			if (subtract == NULL || !subtract->contains(hash)) {
+				if (matchLen == 0)
+					matchLen = kmerSize;
+				else
+					++matchLen;
+			}
 		} else {
 			matchLen = 0;
 		}
@@ -178,10 +179,6 @@ inline bool evalMinMatchLen(const string &rec, unsigned kmerSize,
 	}
 	return false;
 }
-
-enum EvalMode {
-	EVAL_STANDARD, EVAL_MIN_MATCH_LEN
-};
 
 inline bool evalRead(const string &rec, unsigned kmerSize,
 		const BloomFilter &filter, double threshold, double antiThreshold,
