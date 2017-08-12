@@ -204,60 +204,22 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						rec1.length() > m_kmerSize ? l1 - m_kmerSize + 1 : 0;
 				size_t numKmers2 =
 						rec2.length() > m_kmerSize ? l2 - m_kmerSize + 1 : 0;
-				vector < vector<size_t> > hashValues1(numKmers1);
-				vector < vector<size_t> > hashValues2(numKmers2);
 				switch (mode) {
 				case PROG_INC: {
 					if (numKmers1 > score
 							&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, hashValues1,
-									filterSub, evalMode))) {
-						//load remaining sequences
-						for (unsigned i = 0; i < numKmers1; ++i) {
-							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq =
-										procs[omp_get_thread_num()]->prepSeq(
-												rec1, i);
-								insertKmer(currentSeq, filter, filterSub);
-							} else {
-								insertKmer(hashValues1[i], filter, filterSub);
-							}
-						}
-						//load store second read
-						for (unsigned i = 0; i < numKmers2; ++i) {
-							const unsigned char* currentSeq =
-									procs[omp_get_thread_num()]->prepSeq(rec2,
-											i);
-							insertKmer(currentSeq, filter, filterSub);
-						}
+									score, 1.0 - score, m_hashNum, filterSub,
+									evalMode))) {
+						loadFilter(filter, rec1);
+						loadFilter(filter, rec2);
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					} else if (numKmers2 > score
 							&& (SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, hashValues2,
-									filterSub, evalMode))) {
-						//load remaining sequences
-						for (unsigned i = 0; i < numKmers1; ++i) {
-							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq =
-										procs[omp_get_thread_num()]->prepSeq(
-												rec1, i);
-								insertKmer(currentSeq, filter, filterSub);
-							} else {
-								insertKmer(hashValues1[i], filter, filterSub);
-							}
-						}
-						//load store second read
-						for (unsigned i = 0; i < numKmers2; ++i) {
-							if (hashValues2[i].empty()) {
-								const unsigned char* currentSeq =
-										procs[omp_get_thread_num()]->prepSeq(
-												rec2, i);
-								insertKmer(currentSeq, filter, filterSub);
-							} else {
-								insertKmer(hashValues2[i], filter, filterSub);
-							}
-						}
+									score, 1.0 - score, m_hashNum, filterSub,
+									evalMode))) {
+						loadFilter(filter, rec1);
+						loadFilter(filter, rec2);
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					}
@@ -265,33 +227,12 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				}
 				case PROG_STD: {
 					if (SeqEval::evalRead(rec1, m_kmerSize, filter, score,
-							1.0 - score, m_hashNum, hashValues1, filterSub,
-							evalMode)
+							1.0 - score, m_hashNum, filterSub, evalMode)
 							&& SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, hashValues2,
-									filterSub, evalMode)) {
-						//load remaining sequences
-						for (unsigned i = 0; i < numKmers1; ++i) {
-							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq =
-										procs[omp_get_thread_num()]->prepSeq(
-												rec1, i);
-								insertKmer(currentSeq, filter, filterSub);
-							} else {
-								insertKmer(hashValues1[i], filter, filterSub);
-							}
-						}
-						//load store second read
-						for (unsigned i = 0; i < numKmers2; ++i) {
-							if (hashValues2[i].empty()) {
-								const unsigned char* currentSeq =
-										procs[omp_get_thread_num()]->prepSeq(
-												rec2, i);
-								insertKmer(currentSeq, filter, filterSub);
-							} else {
-								insertKmer(hashValues2[i], filter, filterSub);
-							}
-						}
+									score, 1.0 - score, m_hashNum, filterSub,
+									evalMode)) {
+						loadFilter(filter, rec1);
+						loadFilter(filter, rec2);
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					}
@@ -349,7 +290,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 					m_hashNum), m_hashNum, m_kmerSize);
 
 	size_t totalEntriesBait = 0;
-	loadFilterFast(baitFilter, totalEntriesBait);
+	loadFilter(baitFilter, totalEntriesBait);
 
 	//load other bloom filter info
 	string infoFileName = (subtractFilter).substr(0,
@@ -371,20 +312,13 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	//load input file + make filter
 	size_t redundancy = 0;
 	if (opt::noRep) {
-		redundancy += loadFilterFastSubtract(filter, filterSub, m_totalEntries);
+		redundancy += loadFilterSubtract(filter, filterSub, m_totalEntries);
 	} else {
-		redundancy += loadFilterFast(filter, m_totalEntries);
+		redundancy += loadFilter(filter, m_totalEntries);
 	}
 	cerr
 			<< "Approximated (due to false positives) total unique k-mers in reference files "
 			<< m_totalEntries << endl;
-
-	vector < boost::shared_ptr<ReadsProcessor> > procs(opt::threads);
-	//each thread gets its own thread processor
-	for (unsigned i = 0; i < opt::threads; ++i) {
-		procs[i] = boost::shared_ptr < ReadsProcessor
-				> (new ReadsProcessor(m_kmerSize));
-	}
 
 	size_t totalReads = 0;
 	for (unsigned i = 0; i < opt::progItrns; ++i) {
@@ -448,110 +382,53 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 						rec1.length() > m_kmerSize ? l1 - m_kmerSize + 1 : 0;
 				size_t numKmers2 =
 						rec2.length() > m_kmerSize ? l2 - m_kmerSize + 1 : 0;
-				vector < vector<size_t> > hashValues1(numKmers1);
-				vector < vector<size_t> > hashValues2(numKmers2);
 				switch (mode) {
 				case PROG_INC: {
 					if (numKmers1 > score
-							&& SeqEval::evalRead(rec1, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, hashValues1,
-									filterSub, evalMode)
-							&& SeqEval::evalRead(rec1, m_kmerSize, baitFilter,
-									opt::baitThreshold,
-									1.0 - opt::baitThreshold, m_hashNum,
-									hashValues1, filterSub, evalMode)) {
+							&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
+									score, 1.0 - score, m_hashNum, filterSub,
+									evalMode)
+									|| SeqEval::evalRead(rec1, m_kmerSize,
+											baitFilter, opt::baitThreshold,
+											1.0 - opt::baitThreshold, m_hashNum,
+											filterSub, evalMode))) {
 						//load remaining sequences
-						for (unsigned i = 0; i < numKmers1; ++i) {
-							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq =
-										procs[omp_get_thread_num()]->prepSeq(
-												rec1, i);
-								insertKmer(currentSeq, filter, filterSub);
-							} else {
-								insertKmer(hashValues1[i], filter, filterSub);
-							}
-						}
-						//load store second read
-						for (unsigned i = 0; i < numKmers2; ++i) {
-							const unsigned char* currentSeq =
-									procs[omp_get_thread_num()]->prepSeq(rec2,
-											i);
-							insertKmer(currentSeq, filter, filterSub);
-						}
+						loadFilter(filter, rec1);
+						loadFilter(filter, rec2);
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					} else if (numKmers2 > score
-							&& SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, hashValues2,
-									filterSub, evalMode)
-							&& SeqEval::evalRead(rec2, m_kmerSize, baitFilter,
-									opt::baitThreshold,
-									1.0 - opt::baitThreshold, m_hashNum,
-									hashValues2, filterSub, evalMode)) {
-						//load remaining sequences
-						for (unsigned i = 0; i < numKmers1; ++i) {
-							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq =
-										procs[omp_get_thread_num()]->prepSeq(
-												rec1, i);
-								insertKmer(currentSeq, filter, filterSub);
-							} else {
-								insertKmer(hashValues1[i], filter, filterSub);
-							}
-						}
-						//load store second read
-						for (unsigned i = 0; i < numKmers2; ++i) {
-							if (hashValues2[i].empty()) {
-								const unsigned char* currentSeq =
-										procs[omp_get_thread_num()]->prepSeq(
-												rec2, i);
-								insertKmer(currentSeq, filter, filterSub);
-							} else {
-								insertKmer(hashValues2[i], filter, filterSub);
-							}
-						}
+							&& (SeqEval::evalRead(rec2, m_kmerSize, filter,
+									score, 1.0 - score, m_hashNum, filterSub,
+									evalMode)
+									|| SeqEval::evalRead(rec2, m_kmerSize,
+											baitFilter, opt::baitThreshold,
+											1.0 - opt::baitThreshold, m_hashNum,
+											filterSub, evalMode))) {
+						loadFilter(filter, rec1);
+						loadFilter(filter, rec2);
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					}
 					break;
 				}
 				case PROG_STD: {
-					if (SeqEval::evalRead(rec1, m_kmerSize, filter, score,
-							1.0 - score, m_hashNum, hashValues1, filterSub,
-							evalMode)
-							&& SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, hashValues2,
-									filterSub, evalMode)
-							&& SeqEval::evalRead(rec1, m_kmerSize, baitFilter,
+					if ((SeqEval::evalRead(rec1, m_kmerSize, filter, score,
+							1.0 - score, m_hashNum, filterSub, evalMode)
+							|| SeqEval::evalRead(rec1, m_kmerSize, baitFilter,
 									opt::baitThreshold,
 									1.0 - opt::baitThreshold, m_hashNum,
-									hashValues2, filterSub, evalMode)
-							&& SeqEval::evalRead(rec2, m_kmerSize, baitFilter,
-									opt::baitThreshold,
-									1.0 - opt::baitThreshold, m_hashNum,
-									hashValues2, filterSub, evalMode)) {
+									filterSub, evalMode))
+							&& (SeqEval::evalRead(rec2, m_kmerSize, filter,
+									score, 1.0 - score, m_hashNum, filterSub,
+									evalMode)
+									|| SeqEval::evalRead(rec2, m_kmerSize,
+											baitFilter, opt::baitThreshold,
+											1.0 - opt::baitThreshold, m_hashNum,
+											filterSub, evalMode))) {
 						//load remaining sequences
-						for (unsigned i = 0; i < numKmers1; ++i) {
-							if (hashValues1[i].empty()) {
-								const unsigned char* currentSeq =
-										procs[omp_get_thread_num()]->prepSeq(
-												rec1, i);
-								insertKmer(currentSeq, filter, filterSub);
-							} else {
-								insertKmer(hashValues1[i], filter, filterSub);
-							}
-						}
-						//load store second read
-						for (unsigned i = 0; i < numKmers2; ++i) {
-							if (hashValues2[i].empty()) {
-								const unsigned char* currentSeq =
-										procs[omp_get_thread_num()]->prepSeq(
-												rec2, i);
-								insertKmer(currentSeq, filter, filterSub);
-							} else {
-								insertKmer(hashValues2[i], filter, filterSub);
-							}
-						}
+						loadFilter(filter, rec1);
+						loadFilter(filter, rec2);
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					}
@@ -606,7 +483,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 					m_hashNum), m_hashNum, m_kmerSize);
 
 	size_t totalEntriesBait = 0;
-	loadFilterFast(baitFilter, totalEntriesBait);
+	loadFilter(baitFilter, totalEntriesBait);
 
 	//load other bloomfilter
 	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
@@ -624,9 +501,9 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	size_t redundancy = 0;
 
 	if (opt::noRep) {
-		redundancy += loadFilterFastSubtract(filter, filterSub, m_totalEntries);
+		redundancy += loadFilterSubtract(filter, filterSub, m_totalEntries);
 	} else {
-		redundancy += loadFilterFast(filter, m_totalEntries);
+		redundancy += loadFilter(filter, m_totalEntries);
 	}
 	cerr
 			<< "Approximated (due to false positives) total unique k-mers in reference files "
@@ -643,7 +520,6 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 			for (unsigned i = 0; i < files1.size(); ++i) {
 				gzFile fp1;
 				gzFile fp2;
-				ReadsProcessor proc(m_kmerSize);
 
 				fp1 = gzopen(files1[i].c_str(), "r");
 				if (fp1 == Z_NULL) {
@@ -694,75 +570,37 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 						size_t numKmers2 =
 								seq2->seq.l > m_kmerSize ?
 										seq2->seq.l - m_kmerSize + 1 : 0;
-						vector < vector<size_t> > hashValues1(numKmers1);
-						vector < vector<size_t> > hashValues2(numKmers2);
 						switch (mode) {
 						case PROG_INC: {
 							if (numKmers1 > score
-									&& SeqEval::evalRead(seq1->seq.s,
+									&& (SeqEval::evalRead(seq1->seq.s,
 											m_kmerSize, filter, score,
-											1.0 - score, m_hashNum, hashValues1,
-											filterSub, evalMode)
-									&& SeqEval::evalRead(seq1->seq.s,
-											m_kmerSize, baitFilter,
-											opt::baitThreshold,
-											1.0 - opt::baitThreshold, m_hashNum,
-											hashValues1, filterSub, evalMode)) {
-								//load remaining sequences
-								for (unsigned i = 0; i < numKmers1; ++i) {
-									if (hashValues1[i].empty()) {
-										const unsigned char* currentSeq =
-												proc.prepSeq(seq1->seq.s, i);
-										insertKmer(currentSeq, filter,
-												filterSub);
-									} else {
-										insertKmer(hashValues1[i], filter,
-												filterSub);
-									}
-								}
-								//load store second read
-								for (unsigned i = 0; i < numKmers2; ++i) {
-									const unsigned char* currentSeq =
-											proc.prepSeq(seq2->seq.s, i);
-									insertKmer(currentSeq, filter, filterSub);
-								}
+											1.0 - score, m_hashNum, filterSub,
+											evalMode)
+											|| SeqEval::evalRead(seq1->seq.s,
+													m_kmerSize, baitFilter,
+													opt::baitThreshold,
+													1.0 - opt::baitThreshold,
+													m_hashNum, filterSub,
+													evalMode))) {
+								loadFilter(filter, seq1->seq.s);
+								loadFilter(filter, seq2->seq.s);
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
 							} else if (numKmers2 > score
-									&& SeqEval::evalRead(seq2->seq.s,
+									&& (SeqEval::evalRead(seq2->seq.s,
 											m_kmerSize, filter, score,
-											1.0 - score, m_hashNum, hashValues2,
-											filterSub, evalMode)
-									&& SeqEval::evalRead(seq2->seq.s,
-											m_kmerSize, baitFilter,
-											opt::baitThreshold,
-											1.0 - opt::baitThreshold, m_hashNum,
-											hashValues2, filterSub, evalMode)) {
-								//load remaining sequences
-								for (unsigned i = 0; i < numKmers1; ++i) {
-									if (hashValues1[i].empty()) {
-										const unsigned char* currentSeq =
-												proc.prepSeq(seq1->seq.s, i);
-										insertKmer(currentSeq, filter,
-												filterSub);
-									} else {
-										insertKmer(hashValues1[i], filter,
-												filterSub);
-									}
-								}
-								//load store second read
-								for (unsigned i = 0; i < numKmers2; ++i) {
-									if (hashValues2[i].empty()) {
-										const unsigned char* currentSeq =
-												proc.prepSeq(seq2->seq.s, i);
-										insertKmer(currentSeq, filter,
-												filterSub);
-									} else {
-										insertKmer(hashValues2[i], filter,
-												filterSub);
-									}
-								}
+											1.0 - score, m_hashNum, filterSub,
+											evalMode)
+											|| SeqEval::evalRead(seq2->seq.s,
+													m_kmerSize, baitFilter,
+													opt::baitThreshold,
+													1.0 - opt::baitThreshold,
+													m_hashNum, filterSub,
+													evalMode))) {
+								loadFilter(filter, seq1->seq.s);
+								loadFilter(filter, seq2->seq.s);
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
@@ -770,47 +608,26 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 							break;
 						}
 						case PROG_STD: {
-							if (SeqEval::evalRead(seq1->seq.s, m_kmerSize,
+							if ((SeqEval::evalRead(seq1->seq.s, m_kmerSize,
 									filter, score, 1.0 - score, m_hashNum,
-									hashValues1, filterSub, evalMode)
-									&& SeqEval::evalRead(seq2->seq.s,
+									filterSub, evalMode)
+									|| SeqEval::evalRead(seq1->seq.s,
+											m_kmerSize, baitFilter,
+											opt::baitThreshold,
+											1.0 - opt::baitThreshold, m_hashNum,
+											filterSub, evalMode))
+									&& (SeqEval::evalRead(seq2->seq.s,
 											m_kmerSize, filter, score,
-											1.0 - score, m_hashNum, hashValues2,
-											filterSub, evalMode)
-									&& SeqEval::evalRead(seq1->seq.s,
-											m_kmerSize, baitFilter,
-											opt::baitThreshold,
-											1.0 - opt::baitThreshold, m_hashNum,
-											hashValues2, filterSub, evalMode)
-									&& SeqEval::evalRead(seq2->seq.s,
-											m_kmerSize, baitFilter,
-											opt::baitThreshold,
-											1.0 - opt::baitThreshold, m_hashNum,
-											hashValues2, filterSub, evalMode)) {
-								//load remaining sequences
-								for (unsigned i = 0; i < numKmers1; ++i) {
-									if (hashValues1[i].empty()) {
-										const unsigned char* currentSeq =
-												proc.prepSeq(seq1->seq.s, i);
-										insertKmer(currentSeq, filter,
-												filterSub);
-									} else {
-										insertKmer(hashValues1[i], filter,
-												filterSub);
-									}
-								}
-								//load store second read
-								for (unsigned i = 0; i < numKmers2; ++i) {
-									if (hashValues2[i].empty()) {
-										const unsigned char* currentSeq =
-												proc.prepSeq(seq2->seq.s, i);
-										insertKmer(currentSeq, filter,
-												filterSub);
-									} else {
-										insertKmer(hashValues2[i], filter,
-												filterSub);
-									}
-								}
+											1.0 - score, m_hashNum, filterSub,
+											evalMode)
+											|| SeqEval::evalRead(seq2->seq.s,
+													m_kmerSize, baitFilter,
+													opt::baitThreshold,
+													1.0 - opt::baitThreshold,
+													m_hashNum, filterSub,
+													evalMode))) {
+								loadFilter(filter, seq1->seq.s);
+								loadFilter(filter, seq2->seq.s);
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
@@ -874,9 +691,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//load input file + make filter
 	size_t redundancy = 0;
 	if (opt::noRep) {
-		redundancy += loadFilterFastSubtract(filter, filterSub, m_totalEntries);
+		redundancy += loadFilterSubtract(filter, filterSub, m_totalEntries);
 	} else {
-		redundancy += loadFilterFast(filter, m_totalEntries);
+		redundancy += loadFilter(filter, m_totalEntries);
 	}
 	cerr
 			<< "Approximated (due to false positives) total unique k-mers in reference files "
@@ -943,8 +760,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						size_t numKmers2 =
 								seq2->seq.l > m_kmerSize ?
 										seq2->seq.l - m_kmerSize + 1 : 0;
-						vector < vector<size_t> > hashValues1(numKmers1);
-						vector < vector<size_t> > hashValues2(numKmers2);
+						vector<vector<size_t> > hashValues1(numKmers1);
+						vector<vector<size_t> > hashValues2(numKmers2);
 						switch (mode) {
 						case PROG_INC: {
 							if (numKmers1 > score
@@ -952,24 +769,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 											m_kmerSize, filter, score,
 											1.0 - score, m_hashNum, hashValues1,
 											filterSub, evalMode))) {
-								//load remaining sequences
-								for (unsigned i = 0; i < numKmers1; ++i) {
-									if (hashValues1[i].empty()) {
-										const unsigned char* currentSeq =
-												proc.prepSeq(seq1->seq.s, i);
-										insertKmer(currentSeq, filter,
-												filterSub);
-									} else {
-										insertKmer(hashValues1[i], filter,
-												filterSub);
-									}
-								}
-								//load store second read
-								for (unsigned i = 0; i < numKmers2; ++i) {
-									const unsigned char* currentSeq =
-											proc.prepSeq(seq2->seq.s, i);
-									insertKmer(currentSeq, filter, filterSub);
-								}
+								loadFilter(filter, seq1->seq.s);
+								loadFilter(filter, seq2->seq.s);
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
@@ -978,30 +779,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 											m_kmerSize, filter, score,
 											1.0 - score, m_hashNum, hashValues2,
 											filterSub, evalMode))) {
-								//load remaining sequences
-								for (unsigned i = 0; i < numKmers1; ++i) {
-									if (hashValues1[i].empty()) {
-										const unsigned char* currentSeq =
-												proc.prepSeq(seq1->seq.s, i);
-										insertKmer(currentSeq, filter,
-												filterSub);
-									} else {
-										insertKmer(hashValues1[i], filter,
-												filterSub);
-									}
-								}
-								//load store second read
-								for (unsigned i = 0; i < numKmers2; ++i) {
-									if (hashValues2[i].empty()) {
-										const unsigned char* currentSeq =
-												proc.prepSeq(seq2->seq.s, i);
-										insertKmer(currentSeq, filter,
-												filterSub);
-									} else {
-										insertKmer(hashValues2[i], filter,
-												filterSub);
-									}
-								}
+								loadFilter(filter, seq1->seq.s);
+								loadFilter(filter, seq2->seq.s);
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
@@ -1016,30 +795,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 											m_kmerSize, filter, score,
 											1.0 - score, m_hashNum, hashValues2,
 											filterSub, evalMode)) {
-								//load remaining sequences
-								for (unsigned i = 0; i < numKmers1; ++i) {
-									if (hashValues1[i].empty()) {
-										const unsigned char* currentSeq =
-												proc.prepSeq(seq1->seq.s, i);
-										insertKmer(currentSeq, filter,
-												filterSub);
-									} else {
-										insertKmer(hashValues1[i], filter,
-												filterSub);
-									}
-								}
-								//load store second read
-								for (unsigned i = 0; i < numKmers2; ++i) {
-									if (hashValues2[i].empty()) {
-										const unsigned char* currentSeq =
-												proc.prepSeq(seq2->seq.s, i);
-										insertKmer(currentSeq, filter,
-												filterSub);
-									} else {
-										insertKmer(hashValues2[i], filter,
-												filterSub);
-									}
-								}
+								loadFilter(filter, seq1->seq.s);
+								loadFilter(filter, seq2->seq.s);
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
@@ -1103,9 +860,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	size_t redundancy = 0;
 
 	if (opt::noRep) {
-		redundancy += loadFilterFastSubtract(filter, filterSub, m_totalEntries);
+		redundancy += loadFilterSubtract(filter, filterSub, m_totalEntries);
 	} else {
-		redundancy += loadFilterFast(filter, m_totalEntries);
+		redundancy += loadFilter(filter, m_totalEntries);
 	}
 	cerr
 			<< "Approximated (due to false positives) total unique k-mers in reference files "
@@ -1120,8 +877,6 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 #pragma omp parallel for
 			for (unsigned i = 0; i < files.size(); ++i) {
-				ReadsProcessor proc(m_kmerSize);
-
 				gzFile fp = gzopen(files[i].c_str(), "r");
 				if (fp == Z_NULL) {
 #pragma omp critical(cerr)
@@ -1150,21 +905,13 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						size_t numKmers =
 								seq->seq.l > m_kmerSize ?
 										seq->seq.l - m_kmerSize + 1 : 0;
-						vector < vector<size_t> > hashValues(numKmers);
+						vector<vector<size_t> > hashValues(numKmers);
 						if (numKmers > score
 								&& (SeqEval::evalRead(seq->seq.s, m_kmerSize,
 										filter, score, 1.0 - score, m_hashNum,
 										hashValues, filterSub, evalMode))) {
 							//load remaining sequences
-							for (unsigned i = 0; i < numKmers; ++i) {
-								if (hashValues[i].empty()) {
-									const unsigned char* currentSeq =
-											proc.prepSeq(seq->seq.s, i);
-									insertKmer(currentSeq, filter, filterSub);
-								} else {
-									insertKmer(hashValues[i], filter);
-								}
-							}
+							loadFilter(filter, seq->seq.s);
 							if (printReads)
 								printRead(seq->name.s, seq->seq.s);
 						}
@@ -1214,7 +961,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//load input file + make filter
 	size_t redundancy = 0;
 
-	redundancy += loadFilterFast(filter, m_totalEntries);
+	redundancy += loadFilter(filter, m_totalEntries);
 	cerr
 			<< "Approximated (due to false positives) total unique k-mers in reference files "
 			<< m_totalEntries << endl;
@@ -1285,60 +1032,24 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 					size_t numKmers2 =
 							rec2.length() > m_kmerSize ?
 									rec2.length() - m_kmerSize + 1 : 0;
-					vector < vector<size_t> > hashValues1(numKmers1);
-					vector < vector<size_t> > hashValues2(numKmers2);
+					vector<vector<size_t> > hashValues1(numKmers1);
+					vector<vector<size_t> > hashValues2(numKmers2);
 					switch (mode) {
 					case PROG_INC: {
 						if (numKmers1 > score
 								&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
 										score, 1.0 - score, m_hashNum,
 										hashValues1, evalMode))) {
-							//load remaining sequences
-							for (unsigned i = 0; i < numKmers1; ++i) {
-								if (hashValues1[i].empty()) {
-									const unsigned char* currentSeq =
-											procs[omp_get_thread_num()]->prepSeq(
-													rec1, i);
-									insertKmer(currentSeq, filter);
-								} else {
-									insertKmer(hashValues1[i], filter);
-								}
-							}
-							//load store second read
-							for (unsigned i = 0; i < numKmers2; ++i) {
-								const unsigned char* currentSeq =
-										procs[omp_get_thread_num()]->prepSeq(
-												rec2, i);
-								insertKmer(currentSeq, filter);
-							}
+							loadFilter(filter, seq1->seq.s);
+							loadFilter(filter, seq2->seq.s);
 							if (printReads)
 								printReadPair(header1, header2, rec1, rec2);
 						} else if (numKmers2 > score
 								&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
 										score, 1.0 - score, m_hashNum,
 										hashValues1, evalMode))) {
-							//load remaining sequences
-							for (unsigned i = 0; i < numKmers1; ++i) {
-								if (hashValues1[i].empty()) {
-									const unsigned char* currentSeq =
-											procs[omp_get_thread_num()]->prepSeq(
-													rec1, i);
-									insertKmer(currentSeq, filter);
-								} else {
-									insertKmer(hashValues1[i], filter);
-								}
-							}
-							//load store second read
-							for (unsigned i = 0; i < numKmers2; ++i) {
-								if (hashValues2[i].empty()) {
-									const unsigned char* currentSeq =
-											procs[omp_get_thread_num()]->prepSeq(
-													rec2, i);
-									insertKmer(currentSeq, filter);
-								} else {
-									insertKmer(hashValues2[i], filter);
-								}
-							}
+							loadFilter(filter, seq1->seq.s);
+							loadFilter(filter, seq2->seq.s);
 							if (printReads)
 								printReadPair(header1, header2, rec1, rec2);
 						}
@@ -1353,28 +1064,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 								&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
 										score, 1.0 - score, m_hashNum,
 										hashValues1, evalMode))) {
-							//load remaining sequences
-							for (unsigned i = 0; i < numKmers1; ++i) {
-								if (hashValues1[i].empty()) {
-									const unsigned char* currentSeq =
-											procs[omp_get_thread_num()]->prepSeq(
-													rec1, i);
-									insertKmer(currentSeq, filter);
-								} else {
-									insertKmer(hashValues1[i], filter);
-								}
-							}
-							//load store second read
-							for (unsigned i = 0; i < numKmers2; ++i) {
-								if (hashValues2[i].empty()) {
-									const unsigned char* currentSeq =
-											procs[omp_get_thread_num()]->prepSeq(
-													rec2, i);
-									insertKmer(currentSeq, filter);
-								} else {
-									insertKmer(hashValues2[i], filter);
-								}
-							}
+							loadFilter(filter, seq1->seq.s);
+							loadFilter(filter, seq2->seq.s);
 							if (printReads)
 								printReadPair(header1, header2, rec1, rec2);
 						}
@@ -1433,7 +1124,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 		exit(1);
 	}
 
-	size_t redundancy = loadFilterFastSubtract(filter, filterSub,
+	size_t redundancy = loadFilterSubtract(filter, filterSub,
 			m_totalEntries);
 
 	filter.storeFilter(filename);

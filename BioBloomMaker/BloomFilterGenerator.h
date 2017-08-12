@@ -161,6 +161,14 @@ private:
 		return redundancy;
 	}
 
+	inline void loadFilter(BloomFilter &bf, const string &str) {
+		size_t tempTotal = 0;
+		for (ntHashIterator itr(str); itr != itr.next(); ++itr) {
+			tempTotal += bf.insertAndCheck(*itr);
+		}
+		m_totalEntries += tempTotal;
+	}
+
 	inline size_t loadFilterSubtract(BloomFilter &bf, BloomFilter &bfsub,
 			size_t &totalEntries) {
 		size_t kmerRemoved = 0;
