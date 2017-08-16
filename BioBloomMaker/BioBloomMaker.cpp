@@ -63,6 +63,7 @@ void printHelpDialog() {
 					"                         progressive mode.\n"
 					"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 					"                         is determined from sequences sizes within files. [0]\n"
+					"  -I, --interval         the interval to report file processing status [10000000]\n"
 					"\nOptions for progressive filters:\n"
 					"  -P, --print_reads      During progressive filter creation, print tagged reads\n"
 					"                         to STDOUT in FASTQ format [disabled]\n"
@@ -113,14 +114,15 @@ int main(int argc, char *argv[]) {
 			"version", no_argument, NULL, 'v' }, { "hash_num",
 	required_argument, NULL, 'g' }, { "kmer_size", required_argument,
 	NULL, 'k' }, { "subtract", required_argument, NULL, 's' }, { "num_ele",
-	required_argument, NULL, 'n' }, { "file_list",
+	required_argument, NULL, 'n' }, { "num_ele",
+	required_argument, NULL, 'I' }, { "interval",
 	required_argument, NULL, 'l' }, { "help", no_argument, NULL, 'h' }, {
 			"print_reads", no_argument, NULL, 'P' }, { "progressive",
 	required_argument, NULL, 'r' }, { "baitScore",
 	required_argument, NULL, 'b' }, { "streak",
 	required_argument, NULL, 'e' }, { "iterations",
-			required_argument, NULL, 'a' }, { "no_rep_kmer",
-			no_argument, NULL, 'd' }, {
+	required_argument, NULL, 'a' }, { "no_rep_kmer",
+	no_argument, NULL, 'd' }, {
 	NULL, 0, NULL, 0 } };
 
 	//actual checking step
@@ -187,6 +189,14 @@ int main(int argc, char *argv[]) {
 			if (!(convert >> entryNum)) {
 				cerr << "Error - Invalid set of bloom filter parameters! n: "
 						<< optarg << endl;
+				return 0;
+			}
+			break;
+		}
+		case 'I': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::fileInterval)) {
+				cerr << "Error - Invalid parameters! I: " << optarg << endl;
 				return 0;
 			}
 			break;
@@ -483,8 +493,8 @@ int main(int argc, char *argv[]) {
 			mode = PROG_INC;
 		}
 		if (opt::baitThreshold == progressive) {
-		redundNum = filterGen.generateProgressive(
-				outputDir + filterPrefix + ".bf", progressive, file1, file2,
+			redundNum = filterGen.generateProgressive(
+					outputDir + filterPrefix + ".bf", progressive, file1, file2,
 					mode, evalMode, printReads);
 		} else {
 			cerr

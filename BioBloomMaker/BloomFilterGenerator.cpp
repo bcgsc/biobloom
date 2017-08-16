@@ -143,6 +143,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			<< m_totalEntries << endl;
 
 	size_t totalReads = 0;
+	size_t taggedReads = 0;
 	for (unsigned i = 0; i < opt::progItrns; ++i) {
 		cerr << "Iteration " << i + 1 << endl;
 
@@ -192,9 +193,12 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				if (l1 >= 0 && l2 >= 0) {
 					++totalReads;
 					if (totalReads % opt::fileInterval == 0) {
-						cerr << "Currently Reading Read Number: " << totalReads
-								<< " ; Unique k-mers Added: " << m_totalEntries
-								<< endl;
+						cerr << "Currently Reading Read Number: "
+								<< totalReads
+								<< " ; Unique k-mers Added: "
+								<< m_totalEntries
+								<< " ; Reads Used in Tagging: "
+								<< taggedReads << endl;
 					}
 				}
 			}
@@ -212,6 +216,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									evalMode))) {
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
+#pragma omp atomic
+						++taggedReads;
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					} else if (numKmers2 > score
@@ -220,6 +226,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									evalMode))) {
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
+#pragma omp atomic
+						++taggedReads;
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					}
@@ -233,6 +241,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									evalMode)) {
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
+#pragma omp atomic
+						++taggedReads;
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					}
@@ -321,6 +331,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 			<< m_totalEntries << endl;
 
 	size_t totalReads = 0;
+	size_t taggedReads = 0;
 	for (unsigned i = 0; i < opt::progItrns; ++i) {
 		cerr << "Iteration " << i + 1 << endl;
 
@@ -370,9 +381,12 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 				if (l1 >= 0 && l2 >= 0) {
 					++totalReads;
 					if (totalReads % opt::fileInterval == 0) {
-						cerr << "Currently Reading Read Number: " << totalReads
-								<< " ; Unique k-mers Added: " << m_totalEntries
-								<< endl;
+						cerr << "Currently Reading Read Number: "
+								<< totalReads
+								<< " ; Unique k-mers Added: "
+								<< m_totalEntries
+								<< " ; Reads Used in Tagging: "
+								<< taggedReads << endl;
 					}
 				}
 			}
@@ -395,6 +409,8 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 						//load remaining sequences
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
+#pragma omp atomic
+						++taggedReads;
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					} else if (numKmers2 > score
@@ -407,6 +423,8 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 											filterSub, evalMode))) {
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
+#pragma omp atomic
+						++taggedReads;
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					}
@@ -429,6 +447,8 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 						//load remaining sequences
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
+#pragma omp atomic
+						++taggedReads;
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					}
@@ -512,6 +532,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	unsigned iter = 0;
 
 	size_t totalReads = 0;
+	size_t taggedReads = 0;
 	if (m_totalEntries < m_expectedEntries) {
 		for (; iter < opt::progItrns; ++iter) {
 			cerr << "Iteration " << iter + 1 << endl;
@@ -550,14 +571,14 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 						l1 = kseq_read(seq1);
 						l2 = kseq_read(seq2);
 						if (l1 >= 0 && l2 >= 0) {
-#pragma omp atomic
-							++totalReads;
 #pragma omp critical(err)
-							if (totalReads % opt::fileInterval == 0) {
+							if (++totalReads % opt::fileInterval == 0) {
 								cerr << "Currently Reading Read Number: "
 										<< totalReads
 										<< " ; Unique k-mers Added: "
-										<< m_totalEntries << endl;
+										<< m_totalEntries
+										<< " ; Reads Used in Tagging: "
+										<< taggedReads << endl;
 							}
 						}
 					}
@@ -585,6 +606,8 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 													evalMode))) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
+#pragma omp atomic
+								++taggedReads;
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
@@ -601,6 +624,8 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 													evalMode))) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
+#pragma omp atomic
+								++taggedReads;
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
@@ -628,6 +653,8 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 													evalMode))) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
+#pragma omp atomic
+								++taggedReads;
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
@@ -702,6 +729,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	unsigned iter = 0;
 
 	size_t totalReads = 0;
+	size_t taggedReads = 0;
 	if (m_totalEntries < m_expectedEntries) {
 		for (; iter < opt::progItrns; ++iter) {
 			cerr << "Iteration " << iter + 1 << endl;
@@ -740,14 +768,14 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						l1 = kseq_read(seq1);
 						l2 = kseq_read(seq2);
 						if (l1 >= 0 && l2 >= 0) {
-#pragma omp atomic
-							++totalReads;
 #pragma omp critical(err)
-							if (totalReads % opt::fileInterval == 0) {
+							if (++totalReads % opt::fileInterval == 0) {
 								cerr << "Currently Reading Read Number: "
 										<< totalReads
 										<< " ; Unique k-mers Added: "
-										<< m_totalEntries << endl;
+										<< m_totalEntries
+										<< " ; Reads Used in Tagging: "
+										<< taggedReads << endl;
 							}
 						}
 					}
@@ -771,6 +799,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 											filterSub, evalMode))) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
+#pragma omp atomic
+								++taggedReads;
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
@@ -781,6 +811,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 											filterSub, evalMode))) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
+#pragma omp atomic
+								++taggedReads;
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
@@ -797,6 +829,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 											filterSub, evalMode)) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
+#pragma omp atomic
+								++taggedReads;
 								if (printReads)
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
@@ -871,6 +905,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	unsigned iter = 0;
 
 	size_t totalReads = 0;
+	size_t taggedReads = 0;
 	if (m_totalEntries < m_expectedEntries) {
 		for (; iter < opt::progItrns; ++iter) {
 			cerr << "Iteration " << iter + 1 << endl;
@@ -899,8 +934,11 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 #pragma omp critical(err)
 						if (totalReads % opt::fileInterval == 0) {
 							cerr << "Currently Reading Read Number: "
-									<< totalReads << " ; Unique k-mers Added: "
-									<< m_totalEntries << endl;
+									<< totalReads
+									<< " ; Unique k-mers Added: "
+									<< m_totalEntries
+									<< " ; Reads Used in Tagging: "
+									<< taggedReads << endl;
 						}
 						size_t numKmers =
 								seq->seq.l > m_kmerSize ?
@@ -912,6 +950,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 										hashValues, filterSub, evalMode))) {
 							//load remaining sequences
 							loadFilter(filter, seq->seq.s);
+#pragma omp atomic
+							++taggedReads;
 							if (printReads)
 								printRead(seq->name.s, seq->seq.s);
 						}
@@ -967,6 +1007,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 			<< m_totalEntries << endl;
 
 	size_t totalReads = 0;
+	size_t taggedReads = 0;
 	for (unsigned i = 0; i < opt::progItrns; ++i) {
 		cerr << "Iteration " << i + 1 << endl;
 
@@ -1019,8 +1060,11 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						++totalReads;
 						if (totalReads % opt::fileInterval == 0) {
 							cerr << "Currently Reading Read Number: "
-									<< totalReads << " ; Unique k-mers Added: "
-									<< m_totalEntries << endl;
+									<< totalReads
+									<< " ; Unique k-mers Added: "
+									<< m_totalEntries
+									<< " ; Reads Used in Tagging: "
+									<< taggedReads << endl;
 						}
 					}
 				}
@@ -1042,6 +1086,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 										hashValues1, evalMode))) {
 							loadFilter(filter, seq1->seq.s);
 							loadFilter(filter, seq2->seq.s);
+#pragma omp atomic
+							++taggedReads;
 							if (printReads)
 								printReadPair(header1, header2, rec1, rec2);
 						} else if (numKmers2 > score
@@ -1050,6 +1096,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 										hashValues1, evalMode))) {
 							loadFilter(filter, seq1->seq.s);
 							loadFilter(filter, seq2->seq.s);
+#pragma omp atomic
+							++taggedReads;
 							if (printReads)
 								printReadPair(header1, header2, rec1, rec2);
 						}
@@ -1066,6 +1114,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 										hashValues1, evalMode))) {
 							loadFilter(filter, seq1->seq.s);
 							loadFilter(filter, seq2->seq.s);
+#pragma omp atomic
+							++taggedReads;
 							if (printReads)
 								printReadPair(header1, header2, rec1, rec2);
 						}
