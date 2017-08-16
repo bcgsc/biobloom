@@ -7,7 +7,7 @@
 
 #include "MultiFilter.h"
 
-MultiFilter::MultiFilter(uint16_t hashNum, uint16_t kmerSize) :
+MultiFilter::MultiFilter(unsigned hashNum, unsigned kmerSize) :
 		hashNum(hashNum), kmerSize(kmerSize) {
 
 }

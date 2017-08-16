@@ -9,8 +9,7 @@
 #define BIOBLOOMCLASSIFIER_H_
 #include <vector>
 #include <string>
-#include "boost/unordered/unordered_map.hpp"
-#include "boost/shared_ptr.hpp"
+#include "google/dense_hash_map"
 #include "Common/BloomFilterInfo.h"
 #include "MultiFilter.h"
 #include "ResultsManager.h"
@@ -67,12 +66,6 @@ public:
 
 	void setCollabFilter() {
 		m_mode = COLLAB;
-		if (m_hashSigs.size() != 1) {
-			cerr
-					<< "To use collaborative filtering all filters must use the same k and same number of hash functions."
-					<< endl;
-			exit(1);
-		}
 	}
 
 	void setInclusive() {
@@ -83,19 +76,17 @@ public:
 		m_evalMode = mode;
 	}
 
-	void setMainFilter(const string &filtername);
+	void setStdout();
 
 	virtual ~BioBloomClassifier();
 
 private:
-	//group filters with same hash number
-	unordered_map<string, vector<boost::shared_ptr<BloomFilterInfo> > > m_infoFiles;
-	unordered_map<string, boost::shared_ptr<MultiFilter> > m_filters;
-	unordered_map<string, boost::shared_ptr<BloomFilter> > m_filtersSingle;
+	//TODO: change some of these variable to static global variable in option namespace
+	vector<BloomFilterInfo*> m_infoFiles;
+	vector<BloomFilter*> m_filters;
 	vector<string> m_filterOrder;
-	vector<string> m_hashSigs;
 	double m_scoreThreshold;
-	unsigned m_filterNum;
+	const unsigned m_filterNum;
 	const string &m_prefix;
 	const string &m_postfix;
 	const unsigned m_minHit;
@@ -107,8 +98,10 @@ private:
 	// ii) EVAL_MIN_MATCH_LEN => minimum match length (in bases)
 	SeqEval::EvalMode m_evalMode;
 
-	string m_mainFilter;
+	bool m_stdout;
 	bool m_inclusive;
+
+	const unsigned m_multiMatchIndex;
 
 	struct FaRec {
 		string header;
@@ -119,29 +112,22 @@ private:
 	void loadFilters(const vector<string> &filterFilePaths);
 	bool fexists(const string &filename) const;
 
-	void evaluateReadStd(const string &rec, const string &hashSig,
-			unordered_map<string, bool> &hits);
-	void evaluateReadMin(const string &rec, const string &hashSig,
-			unordered_map<string, bool> &hits);
-	void evaluateReadCollab(const string &rec, const string &hashSig,
-			unordered_map<string, bool> &hits);
-	void evaluateReadOrdered(const string &rec, const string &hashSig,
-			unordered_map<string, bool> &hits);
-	double evaluateReadBestHit(const string &rec, const string &hashSig,
-			unordered_map<string, bool> &hits, vector<double> &scores);
-	void evaluateReadScore(const string &rec, const string &hashSig,
-			unordered_map<string, bool> &hits, vector<double> &scores);
+	void evaluateReadStd(const string &rec, vector<unsigned> &hits);
+	void evaluateReadMin(const string &rec, vector<unsigned> &hits);
+//	void evaluateReadCollab(const string &rec, vector<unsigned> &hits);
+	void evaluateReadOrdered(const string &rec, vector<unsigned> &hits);
+	double evaluateReadBestHit(const string &rec, vector<unsigned> &hits,
+			vector<double> &scores);
+	void evaluateReadScore(const string &rec, vector<unsigned> &hits,
+			vector<double> &scores);
 
-	void evaluateReadCollabPair(const string &rec1, const string &rec2,
-			const string &hashSig, unordered_map<string, bool> &hits1,
-			unordered_map<string, bool> &hits2);
+//	void evaluateReadCollabPair(const string &rec1, const string &rec2,
+//			vector<unsigned> &hits1, vector<unsigned> &hits2);
 	void evaluateReadOrderedPair(const string &rec1, const string &rec2,
-			const string &hashSig, unordered_map<string, bool> &hits1,
-			unordered_map<string, bool> &hits2);
+			vector<unsigned> &hits1, vector<unsigned> &hits2);
 
-	inline void printSingle(const FaRec &rec, double score,
-			const string &filterID) {
-		if (m_mainFilter == filterID) {
+	inline void printSingle(const FaRec &rec, double score, unsigned filterID) {
+		if (m_stdout && filterID == 0) {
 			if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
 				{
@@ -158,67 +144,66 @@ private:
 		}
 	}
 
-	inline void printSingleToFile(const string &outputFileName,
-			const FaRec &rec,
-			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
-			string const &outputType, double score, vector<double> &scores) {
+	inline void printSingleToFile(unsigned outputFileName, const FaRec &rec,
+			vector<Dynamicofstream> &outputFiles, string const &outputType,
+			double score, vector<double> &scores) {
 		if (outputType == "fa") {
-			if (m_mode == SCORES && outputFileName == MULTI_MATCH) {
+			if (m_mode == SCORES && outputFileName == m_multiMatchIndex) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << ">" << rec.header;
+					outputFiles[outputFileName] << ">" << rec.header;
 					for (vector<double>::iterator i = scores.begin();
 							i != scores.end(); ++i) {
-						(*outputFiles[outputFileName]) << " " << *i;
+						outputFiles[outputFileName] << " " << *i;
 					}
-					(*outputFiles[outputFileName]) << "\n" << rec.seq << "\n";
+					outputFiles[outputFileName] << "\n" << rec.seq << "\n";
 				}
 			} else if (m_mode == BESTHIT) {
-				if (outputFileName == MULTI_MATCH)
+				if (outputFileName == m_multiMatchIndex)
 #pragma omp critical(outputFiles)
 						{
-					(*outputFiles[outputFileName]) << ">" << rec.header;
+					outputFiles[outputFileName] << ">" << rec.header;
 					for (vector<double>::iterator i = scores.begin();
 							i != scores.end(); ++i) {
-						(*outputFiles[outputFileName]) << " " << *i;
+						outputFiles[outputFileName] << " " << *i;
 					}
-					(*outputFiles[outputFileName]) << "\n" << rec.seq << "\n";
+					outputFiles[outputFileName] << "\n" << rec.seq << "\n";
 				} else
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << ">" << rec.header << " "
+					outputFiles[outputFileName] << ">" << rec.header << " "
 							<< score << "\n" << rec.seq << "\n";
 				}
 			} else {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << ">" << rec.header << "\n"
+					outputFiles[outputFileName] << ">" << rec.header << "\n"
 							<< rec.seq << "\n";
 				}
 			}
 		} else {
-			if (m_mode == SCORES && outputFileName == MULTI_MATCH) {
+			if (m_mode == SCORES && outputFileName == m_multiMatchIndex) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << "@" << rec.header;
+					outputFiles[outputFileName] << "@" << rec.header;
 					for (vector<double>::iterator i = scores.begin();
 							i != scores.end(); ++i) {
-						(*outputFiles[outputFileName]) << " " << *i;
+						outputFiles[outputFileName] << " " << *i;
 					}
-					(*outputFiles[outputFileName]) << "\n" << rec.seq << "\n+\n"
+					outputFiles[outputFileName] << "\n" << rec.seq << "\n+\n"
 							<< rec.qual << "\n";
 				}
 			} else if (m_mode == BESTHIT) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << "@" << rec.header << " "
+					outputFiles[outputFileName] << "@" << rec.header << " "
 							<< score << "\n" << rec.seq << "\n+\n" << rec.qual
 							<< "\n";
 				}
 			} else {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << "@" << rec.header << "\n"
+					outputFiles[outputFileName] << "@" << rec.header << "\n"
 							<< rec.seq << "\n+\n" << rec.qual << "\n";
 				}
 			}
@@ -226,8 +211,8 @@ private:
 	}
 
 	inline void printPair(const FaRec &rec1, const FaRec &rec2, double score1,
-			double score2, const string &filterID) {
-		if (m_mainFilter == filterID) {
+			double score2, unsigned filterID) {
+		if (m_stdout && filterID == 0) {
 			if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
 				{
@@ -249,8 +234,8 @@ private:
 	}
 
 	inline void printPair(const kseq_t * rec1, const kseq_t * rec2,
-			double score1, double score2, const string &filterID) {
-		if (m_mainFilter == filterID) {
+			double score1, double score2, unsigned filterID) {
+		if (m_stdout && filterID == 0) {
 			if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
 				{
@@ -271,163 +256,157 @@ private:
 		}
 	}
 
-	inline void printPairToFile(const string &outputFileName, const FaRec &rec1,
-			const FaRec &rec2,
-			unordered_map<string, boost::shared_ptr<Dynamicofstream> > &outputFiles,
-			string const &outputType, double score1, double score2,
-			vector<double> &scores1, vector<double> &scores2) {
+	inline void printPairToFile(unsigned outputFileIndex, const FaRec &rec1,
+			const FaRec &rec2, vector<Dynamicofstream> &outputFiles1,
+			vector<Dynamicofstream> &outputFiles2, string const &outputType,
+			double score1, double score2, vector<double> &scores1,
+			vector<double> &scores2) {
 		if (outputType == "fa") {
-			if (m_mode == SCORES && outputFileName == MULTI_MATCH) {
+			if (m_mode == SCORES && outputFileIndex == m_multiMatchIndex) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName + "_1"]) << ">" << rec1.header;
+					outputFiles1[outputFileIndex] << ">" << rec1.header;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
-						(*outputFiles[outputFileName + "_1"]) << " " << *i;
+						outputFiles1[outputFileIndex] << " " << *i;
 					}
-					(*outputFiles[outputFileName + "_1"]) << "\n" << rec1.seq
-							<< "\n";
-					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.header;
+					outputFiles1[outputFileIndex] << "\n" << rec1.seq << "\n";
+					outputFiles2[outputFileIndex] << ">" << rec2.header;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
-						(*outputFiles[outputFileName + "_2"]) << " " << *i;
+						outputFiles2[outputFileIndex] << " " << *i;
 					}
-					(*outputFiles[outputFileName + "_2"]) << "\n" << rec2.seq
-							<< "\n";
+					outputFiles2[outputFileIndex] << "\n" << rec2.seq << "\n";
 				}
 			} else if (m_mode == BESTHIT) {
-				if (outputFileName == MULTI_MATCH)
+				if (outputFileIndex == m_multiMatchIndex)
 #pragma omp critical(outputFiles)
 						{
-					(*outputFiles[outputFileName + "_1"]) << ">" << rec1.header;
+					outputFiles1[outputFileIndex] << ">" << rec1.header;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
-						(*outputFiles[outputFileName + "_1"]) << " " << *i;
+						outputFiles1[outputFileIndex] << " " << *i;
 					}
-					(*outputFiles[outputFileName + "_1"]) << "\n" << rec1.seq
-							<< "\n";
-					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.header;
+					outputFiles1[outputFileIndex] << "\n" << rec1.seq << "\n";
+					outputFiles2[outputFileIndex] << ">" << rec2.header;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
-						(*outputFiles[outputFileName + "_2"]) << " " << *i;
+						outputFiles2[outputFileIndex] << " " << *i;
 					}
-					(*outputFiles[outputFileName + "_2"]) << "\n" << rec2.seq
-							<< "\n";
+					outputFiles2[outputFileIndex] << "\n" << rec2.seq << "\n";
 				} else
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName + "_1"]) << ">" << rec1.header
-							<< " " << score1 << "\n" << rec1.seq << "\n";
-					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.header
-							<< " " << score2 << "\n" << rec2.seq << "\n";
+					outputFiles1[outputFileIndex] << ">" << rec1.header << " "
+							<< score1 << "\n" << rec1.seq << "\n";
+					outputFiles2[outputFileIndex] << ">" << rec2.header << " "
+							<< score2 << "\n" << rec2.seq << "\n";
 				}
 			} else {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName + "_1"]) << ">" << rec1.header
-							<< "\n" << rec1.seq << "\n";
-					(*outputFiles[outputFileName + "_2"]) << ">" << rec2.header
-							<< "\n" << rec2.seq << "\n";
+					outputFiles1[outputFileIndex] << ">" << rec1.header << "\n"
+							<< rec1.seq << "\n";
+					outputFiles2[outputFileIndex] << ">" << rec2.header << "\n"
+							<< rec2.seq << "\n";
 				}
 			}
 		} else {
-			if (m_mode == SCORES && outputFileName == MULTI_MATCH) {
+			if (m_mode == SCORES && outputFileIndex == m_multiMatchIndex) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName + "_1"]) << "@" << rec1.header;
+					outputFiles1[outputFileIndex] << "@" << rec1.header;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
-						(*outputFiles[outputFileName + "_1"]) << " " << *i;
+						outputFiles1[outputFileIndex] << " " << *i;
 					}
-					(*outputFiles[outputFileName + "_1"]) << "\n" << rec1.seq
-							<< "\n+\n" << rec1.qual << "\n";
-					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.header;
+					outputFiles1[outputFileIndex] << "\n" << rec1.seq << "\n+\n"
+							<< rec1.qual << "\n";
+					outputFiles2[outputFileIndex] << "@" << rec2.header;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
-						(*outputFiles[outputFileName + "_2"]) << " " << *i;
+						outputFiles2[outputFileIndex] << " " << *i;
 					}
-					(*outputFiles[outputFileName + "_2"]) << "\n" << rec2.seq
-							<< "\n+\n" << rec2.qual << "\n";
+					outputFiles2[outputFileIndex] << "\n" << rec2.seq << "\n+\n"
+							<< rec2.qual << "\n";
 				}
 			} else if (m_mode == BESTHIT) {
-				if (outputFileName == MULTI_MATCH)
+				if (outputFileIndex == m_multiMatchIndex)
 #pragma omp critical(outputFiles)
 						{
-					(*outputFiles[outputFileName + "_1"]) << "@" << rec1.header;
+					outputFiles1[outputFileIndex] << "@" << rec1.header;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
-						(*outputFiles[outputFileName + "_1"]) << " " << *i;
+						outputFiles1[outputFileIndex] << " " << *i;
 					}
-					(*outputFiles[outputFileName + "_1"]) << "\n" << rec1.seq
-							<< "\n+\n" << rec1.qual << "\n";
-					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.header;
+					outputFiles1[outputFileIndex] << "\n" << rec1.seq << "\n+\n"
+							<< rec1.qual << "\n";
+					outputFiles2[outputFileIndex] << "@" << rec2.header;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
-						(*outputFiles[outputFileName + "_2"]) << " " << *i;
+						outputFiles2[outputFileIndex] << " " << *i;
 					}
-					(*outputFiles[outputFileName + "_2"]) << "\n" << rec2.seq
-							<< "\n+\n" << rec2.qual << "\n";
+					outputFiles2[outputFileIndex] << "\n" << rec2.seq << "\n+\n"
+							<< rec2.qual << "\n";
 				} else
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName + "_1"]) << "@" << rec1.header
-							<< " " << score1 << "\n" << rec1.seq << "\n+\n"
+					outputFiles1[outputFileIndex] << "@" << rec1.header << " "
+							<< score1 << "\n" << rec1.seq << "\n+\n"
 							<< rec1.qual << "\n";
-					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.header
-							<< " " << score2 << "\n" << rec2.seq << "\n+\n"
+					outputFiles2[outputFileIndex] << "@" << rec2.header << " "
+							<< score2 << "\n" << rec2.seq << "\n+\n"
 							<< rec2.qual << "\n";
 				}
 			} else {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName + "_1"]) << "@" << rec1.header
-							<< "\n" << rec1.seq << "\n+\n" << rec1.qual << "\n";
-					(*outputFiles[outputFileName + "_2"]) << "@" << rec2.header
-							<< "\n" << rec2.seq << "\n+\n" << rec2.qual << "\n";
+					outputFiles1[outputFileIndex] << "@" << rec1.header << "\n"
+							<< rec1.seq << "\n+\n" << rec1.qual << "\n";
+					outputFiles2[outputFileIndex] << "@" << rec2.header << "\n"
+							<< rec2.seq << "\n+\n" << rec2.qual << "\n";
 				}
 			}
 		}
 	}
 
-	inline void evaluateRead(const string &rec, const string &hashSig,
-			unordered_map<string, bool> &hits, double &score,
-			vector<double> &scores) {
+	inline void evaluateRead(const string &rec, vector<unsigned> &hits,
+			double &score, vector<double> &scores) {
 		switch (m_mode) {
 		case COLLAB: {
-			evaluateReadOrdered(rec, hashSig, hits);
+			evaluateReadOrdered(rec, hits);
 			break;
 		}
 		case MINHITONLY: {
-			evaluateReadMin(rec, hashSig, hits);
+			evaluateReadMin(rec, hits);
 			break;
 		}
 		case BESTHIT: {
-			score = evaluateReadBestHit(rec, hashSig, hits, scores);
+			score = evaluateReadBestHit(rec, hits, scores);
 			break;
 		}
 		case SCORES: {
-			evaluateReadScore(rec, hashSig, hits, scores);
+			evaluateReadScore(rec, hits, scores);
 			break;
 		}
 		default: {
-			evaluateReadStd(rec, hashSig, hits);
+			evaluateReadStd(rec, hits);
 			break;
 		}
 		}
 	}
 
 	inline void evaluateReadPair(const string &rec1, const string &rec2,
-			const string &hashSig, unordered_map<string, bool> &hits1,
-			unordered_map<string, bool> &hits2, double &score1, double &score2,
-			vector<double> &scores1, vector<double> &scores2) {
+			vector<unsigned> &hits1, vector<unsigned> &hits2, double &score1,
+			double &score2, vector<double> &scores1, vector<double> &scores2) {
 		switch (m_mode) {
 		case COLLAB: {
-			evaluateReadOrderedPair(rec1, rec2, hashSig, hits1, hits2);
+			evaluateReadOrderedPair(rec1, rec2, hits1, hits2);
 			break;
 		}
 		default: {
-			evaluateRead(rec1, hashSig, hits1, score1, scores1);
-			evaluateRead(rec2, hashSig, hits2, score2, scores2);
+			evaluateRead(rec1, hits1, score1, scores1);
+			evaluateRead(rec2, hits2, score2, scores2);
 			break;
 		}
 		}

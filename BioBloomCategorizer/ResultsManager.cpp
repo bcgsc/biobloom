@@ -15,119 +15,150 @@
 
 ResultsManager::ResultsManager(const vector<string> &filterOrderRef,
 		bool inclusive) :
-		m_filterOrder(filterOrderRef), m_multiMatch(
-				0), m_noMatch(0), m_inclusive(inclusive)
-{
-	//initialize variables and print filter ids
-	for (vector<string>::const_iterator i = m_filterOrder.begin();
-			i != m_filterOrder.end(); ++i)
-	{
-		m_aboveThreshold[*i] = 0;
-		m_unique[*i] = 0;
-	}
+		m_filterOrder(filterOrderRef), m_noMatchIndex(filterOrderRef.size()), m_multiMatchIndex(
+				filterOrderRef.size() + 1), m_aboveThreshold(
+				filterOrderRef.size() + 2, 0), m_unique(
+				filterOrderRef.size() + 2, 0), m_multiMatch(0), m_noMatch(0), m_inclusive(
+				inclusive) {
+
 }
 
 /*
  * Records data for read summary based on thresholds
  * Returns filter ID that this read equals
  */
-const string ResultsManager::updateSummaryData(
-		const unordered_map<string, bool> &hits)
-{
-	string filterID;
-	bool noMatchFlag = true;
-	bool multiMatchFlag = false;
+const unsigned ResultsManager::updateSummaryData(const vector<unsigned> &hits) {
+	unsigned filterIndex = m_noMatchIndex;
 
-	for (vector<string>::const_iterator i = m_filterOrder.begin();
-			i != m_filterOrder.end(); ++i)
-	{
-		if (hits.at(*i)) {
+	for (vector<unsigned>::iterator i = hits.begin(); i != hits.end(); ++i) {
 #pragma omp atomic
-			++m_aboveThreshold[*i];
-			if (noMatchFlag) {
-				noMatchFlag = false;
-				filterID = *i;
-			} else {
-				multiMatchFlag = true;
-			}
+		++m_aboveThreshold[*i];
+		if (filterIndex == m_noMatchIndex) {
+			filterIndex = *i;
+		} else {
+			filterIndex = m_multiMatchIndex;
 		}
 	}
-	if (noMatchFlag) {
-		filterID = NO_MATCH;
+	if (filterIndex == m_noMatchIndex) {
 #pragma omp atomic
 		++m_noMatch;
+	} else if (filterIndex == m_multiMatchIndex) {
+#pragma omp atomic
+		++m_multiMatch;
 	} else {
-		if (multiMatchFlag) {
-			filterID = MULTI_MATCH;
 #pragma omp atomic
-			++m_multiMatch;
-		} else {
-		//TODO : USE LOCKS, # of locks == # of filterIDs
-#pragma omp atomic
-			++m_unique[filterID];
-		}
+		++m_unique[filterIndex];
 	}
-	return filterID;
+	return filterIndex;
 }
 
 /*
  * Records data for read summary based on thresholds
  * Returns filter ID that this read pair equals
+ * Assumes hits vectors are sorted
  */
-const string ResultsManager::updateSummaryData(
-		const unordered_map<string, bool> &hits1,
-		const unordered_map<string, bool> &hits2)
-{
-	string filterID;
-	bool noMatchFlag = true;
-	bool multiMatchFlag = false;
-
-	for (vector<string>::const_iterator i = m_filterOrder.begin();
-			i != m_filterOrder.end(); ++i)
-	{
-		if (m_inclusive) {
-			if (hits1.at(*i) || hits2.at(*i)) {
+const unsigned ResultsManager::updateSummaryData(const vector<unsigned> &hits1,
+		const vector<unsigned> &hits2) {
+	unsigned filterIndex;
+	vector<unsigned>::iterator i1 = hits1.begin();
+	vector<unsigned>::iterator i2 = hits2.begin();
+	if (m_inclusive) {
+		while (i1 != hits1.end() && i1 != hits2.end()) {
+			//check if hits are the same
+			if (*i1 == *i2) {
+				//if they are increment above threshold counts
 #pragma omp atomic
-				++m_aboveThreshold[*i];
-				if (noMatchFlag) {
-					noMatchFlag = false;
-					filterID = *i;
+				++m_aboveThreshold[*i1];
+				//increment both indexes
+				if (filterIndex == m_noMatchIndex) {
+					filterIndex = *i1;
 				} else {
-					multiMatchFlag = true;
+					filterIndex = m_multiMatchIndex;
 				}
+				++i1;
+				++i2;
 			}
-		} else {
-			if (hits1.at(*i) && hits2.at(*i)) {
+			//if not increment the smaller value index
+			else if (*i1 < *i2) {
 #pragma omp atomic
-				++m_aboveThreshold[*i];
-				if (noMatchFlag) {
-					noMatchFlag = false;
-					filterID = *i;
+				++m_aboveThreshold[*i1];
+				if (filterIndex == m_noMatchIndex) {
+					filterIndex = *i1;
 				} else {
-					multiMatchFlag = true;
+					filterIndex = m_multiMatchIndex;
 				}
+				++i1;
+			} else {
+#pragma omp atomic
+				++m_aboveThreshold[*i2];
+				if (filterIndex == m_noMatchIndex) {
+					filterIndex = *i2;
+				} else {
+					filterIndex = m_multiMatchIndex;
+				}
+				++i2;
+			}
+		}
+		//finish off
+		while (i1 != hits1.end()) {
+#pragma omp atomic
+			++m_aboveThreshold[*i2];
+			if (filterIndex == m_noMatchIndex) {
+				filterIndex = *i1;
+			} else {
+				filterIndex = m_multiMatchIndex;
+			}
+			++i1;
+		}
+		while (i2 != hits2.end()) {
+#pragma omp atomic
+			++m_aboveThreshold[*i2];
+			if (filterIndex == m_noMatchIndex) {
+				filterIndex = *i2;
+			} else {
+				filterIndex = m_multiMatchIndex;
+			}
+			++i2;
+		}
+	} else {
+		while (i1 != hits1.end() && i1 != hits2.end()) {
+			//check if hits are the same
+			if (*i1 == *i2) {
+				//if they are increment above threshold counts
+#pragma omp atomic
+				++m_aboveThreshold[*i1];
+				//increment both indexes
+				if (filterIndex == m_noMatchIndex) {
+					filterIndex = *i1;
+				} else {
+					filterIndex = m_multiMatchIndex;
+				}
+				++i1;
+				++i2;
+			}
+			//if not increment the smaller value index
+			else if (*i1 < *i2) {
+				++i1;
+			} else {
+				++i2;
 			}
 		}
 	}
-	if (noMatchFlag) {
-		filterID = NO_MATCH;
+
+	if (filterIndex == m_noMatchIndex) {
 #pragma omp atomic
 		++m_noMatch;
+	} else if (filterIndex == m_multiMatchIndex) {
+#pragma omp atomic
+		++m_multiMatch;
 	} else {
-		if (multiMatchFlag) {
-			filterID = MULTI_MATCH;
 #pragma omp atomic
-			++m_multiMatch;
-		} else {
-#pragma omp atomic
-			++m_unique[filterID];
-		}
+		++m_unique[filterIndex];
 	}
-	return filterID;
+	return filterIndex;
 }
 
-const string ResultsManager::getResultsSummary(size_t readCount) const
-{
+const string ResultsManager::getResultsSummary(size_t readCount) const {
 
 	stringstream summaryOutput;
 
@@ -135,25 +166,23 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	summaryOutput
 			<< "filter_id\thits\tmisses\tshared\trate_hit\trate_miss\trate_shared\n";
 
-	for (vector<string>::const_iterator i = m_filterOrder.begin();
-			i != m_filterOrder.end(); ++i)
-	{
+	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
 		summaryOutput << *i;
-		summaryOutput << "\t" << m_aboveThreshold.at(*i);
-		summaryOutput << "\t" << readCount - m_aboveThreshold.at(*i);
-		summaryOutput << "\t" << (m_aboveThreshold.at(*i) - m_unique.at(*i));
+		summaryOutput << "\t" << m_aboveThreshold.at(i);
+		summaryOutput << "\t" << readCount - m_aboveThreshold.at(i);
+		summaryOutput << "\t" << (m_aboveThreshold.at(i) - m_unique.at(i));
 		summaryOutput << "\t"
-				<< double(m_aboveThreshold.at(*i)) / double(readCount);
+				<< double(m_aboveThreshold.at(i)) / double(readCount);
 		summaryOutput << "\t"
-				<< double(readCount - m_aboveThreshold.at(*i))
+				<< double(readCount - m_aboveThreshold.at(i))
 						/ double(readCount);
 		summaryOutput << "\t"
-				<< double(m_aboveThreshold.at(*i) - m_unique.at(*i))
+				<< double(m_aboveThreshold.at(i) - m_unique.at(i))
 						/ double(readCount);
 		summaryOutput << "\n";
 	}
 
-	summaryOutput << MULTI_MATCH;
+	summaryOutput << NO_MATCH;
 	summaryOutput << "\t" << m_multiMatch;
 	summaryOutput << "\t" << readCount - m_multiMatch;
 	summaryOutput << "\t" << 0;
@@ -163,7 +192,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	summaryOutput << "\t" << 0.0;
 	summaryOutput << "\n";
 
-	summaryOutput << NO_MATCH;
+	summaryOutput << MULTI_MATCH;
 	summaryOutput << "\t" << m_noMatch;
 	summaryOutput << "\t" << readCount - m_noMatch;
 	summaryOutput << "\t" << 0;
@@ -176,7 +205,6 @@ const string ResultsManager::getResultsSummary(size_t readCount) const
 	return summaryOutput.str();
 }
 
-ResultsManager::~ResultsManager()
-{
+ResultsManager::~ResultsManager() {
 }
 
