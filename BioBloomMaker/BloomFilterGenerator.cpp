@@ -122,13 +122,21 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
 			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
 
-	if (subInfo.getKmerSize() != m_kmerSize) {
-		cerr
-				<< "Error: Subtraction filter's different from current filter's k-mer size."
-				<< endl;
+	if (filter.getHashNum() != filterSub.getHashNum()) {
+		cerr << "Error: Subtraction filter's hash number "
+				<< filter.getHashNum()
+				<< " is a different size from than output filter's hash number "
+				<< filterSub.getHashNum() << endl;
 		exit(1);
 	}
 
+	if (filter.getKmerSize() != filterSub.getKmerSize()) {
+		cerr << "Error: Subtraction filter's k-mer size "
+				<< filter.getKmerSize()
+				<< " is a different size from than output filter's k-mer size "
+				<< filterSub.getKmerSize() << endl;
+		exit(1);
+	}
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
@@ -193,12 +201,10 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				if (l1 >= 0 && l2 >= 0) {
 					++totalReads;
 					if (totalReads % opt::fileInterval == 0) {
-						cerr << "Currently Reading Read Number: "
-								<< totalReads
-								<< " ; Unique k-mers Added: "
-								<< m_totalEntries
-								<< " ; Reads Used in Tagging: "
-								<< taggedReads << endl;
+						cerr << "Currently Reading Read Number: " << totalReads
+								<< " ; Unique k-mers Added: " << m_totalEntries
+								<< " ; Reads Used in Tagging: " << taggedReads
+								<< endl;
 					}
 				}
 			}
@@ -311,13 +317,21 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
 			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
 
-	if (subInfo.getKmerSize() != m_kmerSize) {
-		cerr
-				<< "Error: Subtraction filter's different from current filter's k-mer size."
-				<< endl;
+	if (filter.getHashNum() != filterSub.getHashNum()) {
+		cerr << "Error: Subtraction filter's hash number "
+				<< filter.getHashNum()
+				<< " is a different size from than output filter's hash number "
+				<< filterSub.getHashNum() << endl;
 		exit(1);
 	}
 
+	if (filter.getKmerSize() != filterSub.getKmerSize()) {
+		cerr << "Error: Subtraction filter's k-mer size "
+				<< filter.getKmerSize()
+				<< " is a different size from than output filter's k-mer size "
+				<< filterSub.getKmerSize() << endl;
+		exit(1);
+	}
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
@@ -381,12 +395,10 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 				if (l1 >= 0 && l2 >= 0) {
 					++totalReads;
 					if (totalReads % opt::fileInterval == 0) {
-						cerr << "Currently Reading Read Number: "
-								<< totalReads
-								<< " ; Unique k-mers Added: "
-								<< m_totalEntries
-								<< " ; Reads Used in Tagging: "
-								<< taggedReads << endl;
+						cerr << "Currently Reading Read Number: " << totalReads
+								<< " ; Unique k-mers Added: " << m_totalEntries
+								<< " ; Reads Used in Tagging: " << taggedReads
+								<< endl;
 					}
 				}
 			}
@@ -509,13 +521,21 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
 			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
 
-	if (subInfo.getKmerSize() != m_kmerSize) {
-		cerr
-				<< "Error: Subtraction filter's different from current filter's k-mer size."
-				<< endl;
+	if (filter.getHashNum() != filterSub.getHashNum()) {
+		cerr << "Error: Subtraction filter's hash number "
+				<< filter.getHashNum()
+				<< " is a different size from than output filter's hash number "
+				<< filterSub.getHashNum() << endl;
 		exit(1);
 	}
 
+	if (filter.getKmerSize() != filterSub.getKmerSize()) {
+		cerr << "Error: Subtraction filter's k-mer size "
+				<< filter.getKmerSize()
+				<< " is a different size from than output filter's k-mer size "
+				<< filterSub.getKmerSize() << endl;
+		exit(1);
+	}
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
@@ -707,13 +727,21 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
 			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
 
-	if (subInfo.getKmerSize() != m_kmerSize) {
-		cerr
-				<< "Error: Subtraction filter's different from current filter's k-mer size."
-				<< endl;
+	if (filter.getHashNum() != filterSub.getHashNum()) {
+		cerr << "Error: Subtraction filter's hash number "
+				<< filter.getHashNum()
+				<< " is a different size from than output filter's hash number "
+				<< filterSub.getHashNum() << endl;
 		exit(1);
 	}
 
+	if (filter.getKmerSize() != filterSub.getKmerSize()) {
+		cerr << "Error: Subtraction filter's k-mer size "
+				<< filter.getKmerSize()
+				<< " is a different size from than output filter's k-mer size "
+				<< filterSub.getKmerSize() << endl;
+		exit(1);
+	}
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
@@ -882,13 +910,21 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
 			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
 
-	if (subInfo.getKmerSize() != m_kmerSize) {
-		cerr
-				<< "Error: Subtraction filter's different from current filter's k-mer size."
-				<< endl;
+	if (filter.getHashNum() != filterSub.getHashNum()) {
+		cerr << "Error: Subtraction filter's hash number "
+				<< filter.getHashNum()
+				<< " is a different size from than output filter's hash number "
+				<< filterSub.getHashNum() << endl;
 		exit(1);
 	}
 
+	if (filter.getKmerSize() != filterSub.getKmerSize()) {
+		cerr << "Error: Subtraction filter's k-mer size "
+				<< filter.getKmerSize()
+				<< " is a different size from than output filter's k-mer size "
+				<< filterSub.getKmerSize() << endl;
+		exit(1);
+	}
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
@@ -934,8 +970,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 #pragma omp critical(err)
 						if (totalReads % opt::fileInterval == 0) {
 							cerr << "Currently Reading Read Number: "
-									<< totalReads
-									<< " ; Unique k-mers Added: "
+									<< totalReads << " ; Unique k-mers Added: "
 									<< m_totalEntries
 									<< " ; Reads Used in Tagging: "
 									<< taggedReads << endl;
@@ -1060,8 +1095,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						++totalReads;
 						if (totalReads % opt::fileInterval == 0) {
 							cerr << "Currently Reading Read Number: "
-									<< totalReads
-									<< " ; Unique k-mers Added: "
+									<< totalReads << " ; Unique k-mers Added: "
 									<< m_totalEntries
 									<< " ; Reads Used in Tagging: "
 									<< taggedReads << endl;
@@ -1167,15 +1201,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
 			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
 
-	if (subInfo.getKmerSize() != m_kmerSize) {
-		cerr
-				<< "Error: Subtraction filter's k-mer size is a different size from than output filter's k-mer size."
-				<< endl;
-		exit(1);
-	}
-
-	size_t redundancy = loadFilterSubtract(filter, filterSub,
-			m_totalEntries);
+	size_t redundancy = loadFilterSubtract(filter, filterSub, m_totalEntries);
 
 	filter.storeFilter(filename);
 	return redundancy;

@@ -175,6 +175,22 @@ private:
 		size_t redundancy = 0;
 		int kmerSize = m_kmerSize;
 
+		if (bf.getHashNum() != bfsub.getHashNum()) {
+			cerr << "Error: Subtraction filter's hash number "
+					<< bf.getHashNum()
+					<< " is a different size from than output filter's hash number "
+					<< bfsub.getHashNum() << endl;
+			exit(1);
+		}
+
+		if (bf.getKmerSize() != bfsub.getKmerSize()) {
+			cerr << "Error: Subtraction filter's k-mer size "
+					<< bf.getKmerSize()
+					<< " is a different size from than output filter's k-mer size "
+					<< bfsub.getKmerSize() << endl;
+			exit(1);
+		}
+
 		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 			gzFile fp;
 			fp = gzopen(m_fileNames[i].c_str(), "r");
