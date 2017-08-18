@@ -101,8 +101,7 @@ inline void BloomFilterGenerator::printRead(const string &header,
  */
 size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		double score, const string &file1, const string &file2, createMode mode,
-		const SeqEval::EvalMode evalMode, bool printReads,
-		const string &subtractFilter) {
+		bool printReads, const string &subtractFilter) {
 
 	//need the number of hash functions used to be greater than 0
 	assert(m_hashNum > 0);
@@ -217,9 +216,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 				switch (mode) {
 				case PROG_INC: {
 					if (numKmers1 > score
-							&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, filterSub,
-									evalMode))) {
+							&& (SeqEval::evalRead(rec1, filter, score,
+									filterSub))) {
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
 #pragma omp atomic
@@ -227,9 +225,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					} else if (numKmers2 > score
-							&& (SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, filterSub,
-									evalMode))) {
+							&& (SeqEval::evalRead(rec2, filter, score,
+									filterSub))) {
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
 #pragma omp atomic
@@ -240,11 +237,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 					break;
 				}
 				case PROG_STD: {
-					if (SeqEval::evalRead(rec1, m_kmerSize, filter, score,
-							1.0 - score, m_hashNum, filterSub, evalMode)
-							&& SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, filterSub,
-									evalMode)) {
+					if (SeqEval::evalRead(rec1, filter, score, filterSub)
+							&& SeqEval::evalRead(rec2, filter, score,
+									filterSub)) {
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
 #pragma omp atomic
@@ -286,8 +281,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
  */
 size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 		double score, const string &file1, const string &file2, createMode mode,
-		const SeqEval::EvalMode evalMode, bool printReads,
-		const string &subtractFilter) {
+		bool printReads, const string &subtractFilter) {
 
 	//need the number of hash functions used to be greater than 0
 	assert(m_hashNum > 0);
@@ -411,13 +405,10 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 				switch (mode) {
 				case PROG_INC: {
 					if (numKmers1 > score
-							&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, filterSub,
-									evalMode)
-									|| SeqEval::evalRead(rec1, m_kmerSize,
-											baitFilter, opt::baitThreshold,
-											1.0 - opt::baitThreshold, m_hashNum,
-											filterSub, evalMode))) {
+							&& (SeqEval::evalRead(rec1, filter, score,
+									filterSub)
+									|| SeqEval::evalRead(rec1, baitFilter,
+											opt::baitThreshold, filterSub))) {
 						//load remaining sequences
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
@@ -426,13 +417,10 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 						if (printReads)
 							printReadPair(header1, header2, rec1, rec2);
 					} else if (numKmers2 > score
-							&& (SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, filterSub,
-									evalMode)
-									|| SeqEval::evalRead(rec2, m_kmerSize,
-											baitFilter, opt::baitThreshold,
-											1.0 - opt::baitThreshold, m_hashNum,
-											filterSub, evalMode))) {
+							&& (SeqEval::evalRead(rec2, filter, score,
+									filterSub)
+									|| SeqEval::evalRead(rec2, baitFilter,
+											opt::baitThreshold, filterSub))) {
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
 #pragma omp atomic
@@ -443,19 +431,13 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 					break;
 				}
 				case PROG_STD: {
-					if ((SeqEval::evalRead(rec1, m_kmerSize, filter, score,
-							1.0 - score, m_hashNum, filterSub, evalMode)
-							|| SeqEval::evalRead(rec1, m_kmerSize, baitFilter,
-									opt::baitThreshold,
-									1.0 - opt::baitThreshold, m_hashNum,
-									filterSub, evalMode))
-							&& (SeqEval::evalRead(rec2, m_kmerSize, filter,
-									score, 1.0 - score, m_hashNum, filterSub,
-									evalMode)
-									|| SeqEval::evalRead(rec2, m_kmerSize,
-											baitFilter, opt::baitThreshold,
-											1.0 - opt::baitThreshold, m_hashNum,
-											filterSub, evalMode))) {
+					if ((SeqEval::evalRead(rec1, filter, score, filterSub)
+							|| SeqEval::evalRead(rec1, baitFilter,
+									opt::baitThreshold, filterSub))
+							&& (SeqEval::evalRead(rec2, filter, score,
+									filterSub)
+									|| SeqEval::evalRead(rec2, baitFilter,
+											opt::baitThreshold, filterSub))) {
 						//load remaining sequences
 						loadFilter(filter, rec1);
 						loadFilter(filter, rec2);
@@ -489,8 +471,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 //TODO REFACTOR to minimize redundant code!
 size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 		double score, const vector<string> &files1,
-		const vector<string> &files2, createMode mode,
-		const SeqEval::EvalMode evalMode, bool printReads,
+		const vector<string> &files2, createMode mode, bool printReads,
 		const string &subtractFilter) {
 
 	//need the number of hash functions used to be greater than 0
@@ -614,16 +595,12 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 						switch (mode) {
 						case PROG_INC: {
 							if (numKmers1 > score
-									&& (SeqEval::evalRead(seq1->seq.s,
-											m_kmerSize, filter, score,
-											1.0 - score, m_hashNum, filterSub,
-											evalMode)
+									&& (SeqEval::evalRead(seq1->seq.s, filter,
+											score, filterSub)
 											|| SeqEval::evalRead(seq1->seq.s,
-													m_kmerSize, baitFilter,
+													baitFilter,
 													opt::baitThreshold,
-													1.0 - opt::baitThreshold,
-													m_hashNum, filterSub,
-													evalMode))) {
+													filterSub))) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
@@ -632,16 +609,12 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
 							} else if (numKmers2 > score
-									&& (SeqEval::evalRead(seq2->seq.s,
-											m_kmerSize, filter, score,
-											1.0 - score, m_hashNum, filterSub,
-											evalMode)
+									&& (SeqEval::evalRead(seq2->seq.s, filter,
+											score, filterSub)
 											|| SeqEval::evalRead(seq2->seq.s,
-													m_kmerSize, baitFilter,
+													baitFilter,
 													opt::baitThreshold,
-													1.0 - opt::baitThreshold,
-													m_hashNum, filterSub,
-													evalMode))) {
+													filterSub))) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
@@ -653,24 +626,17 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 							break;
 						}
 						case PROG_STD: {
-							if ((SeqEval::evalRead(seq1->seq.s, m_kmerSize,
-									filter, score, 1.0 - score, m_hashNum,
-									filterSub, evalMode)
+							if ((SeqEval::evalRead(seq1->seq.s, filter, score,
+									filterSub)
 									|| SeqEval::evalRead(seq1->seq.s,
-											m_kmerSize, baitFilter,
-											opt::baitThreshold,
-											1.0 - opt::baitThreshold, m_hashNum,
-											filterSub, evalMode))
-									&& (SeqEval::evalRead(seq2->seq.s,
-											m_kmerSize, filter, score,
-											1.0 - score, m_hashNum, filterSub,
-											evalMode)
+											baitFilter, opt::baitThreshold,
+											filterSub))
+									&& (SeqEval::evalRead(seq2->seq.s, filter,
+											score, filterSub)
 											|| SeqEval::evalRead(seq2->seq.s,
-													m_kmerSize, baitFilter,
+													baitFilter,
 													opt::baitThreshold,
-													1.0 - opt::baitThreshold,
-													m_hashNum, filterSub,
-													evalMode))) {
+													filterSub))) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
@@ -705,8 +671,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 
 size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		double score, const vector<string> &files1,
-		const vector<string> &files2, createMode mode,
-		const SeqEval::EvalMode evalMode, bool printReads,
+		const vector<string> &files2, createMode mode, bool printReads,
 		const string &subtractFilter) {
 
 	//need the number of hash functions used to be greater than 0
@@ -816,15 +781,11 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						size_t numKmers2 =
 								seq2->seq.l > m_kmerSize ?
 										seq2->seq.l - m_kmerSize + 1 : 0;
-						vector<vector<size_t> > hashValues1(numKmers1);
-						vector<vector<size_t> > hashValues2(numKmers2);
 						switch (mode) {
 						case PROG_INC: {
 							if (numKmers1 > score
-									&& (SeqEval::evalRead(seq1->seq.s,
-											m_kmerSize, filter, score,
-											1.0 - score, m_hashNum, hashValues1,
-											filterSub, evalMode))) {
+									&& (SeqEval::evalRead(seq1->seq.s, filter,
+											score, filterSub))) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
@@ -833,10 +794,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									printReadPair(seq1->name.s, seq2->name.s,
 											seq1->seq.s, seq2->seq.s);
 							} else if (numKmers2 > score
-									&& (SeqEval::evalRead(seq2->seq.s,
-											m_kmerSize, filter, score,
-											1.0 - score, m_hashNum, hashValues2,
-											filterSub, evalMode))) {
+									&& (SeqEval::evalRead(seq2->seq.s, filter,
+											score, filterSub))) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
@@ -848,13 +807,10 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							break;
 						}
 						case PROG_STD: {
-							if (SeqEval::evalRead(seq1->seq.s, m_kmerSize,
-									filter, score, 1.0 - score, m_hashNum,
-									hashValues1, filterSub, evalMode)
-									&& SeqEval::evalRead(seq2->seq.s,
-											m_kmerSize, filter, score,
-											1.0 - score, m_hashNum, hashValues2,
-											filterSub, evalMode)) {
+							if (SeqEval::evalRead(seq1->seq.s, filter, score,
+									filterSub)
+									&& SeqEval::evalRead(seq2->seq.s, filter,
+											score, filterSub)) {
 								loadFilter(filter, seq1->seq.s);
 								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
@@ -888,8 +844,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 }
 
 size_t BloomFilterGenerator::generateProgressive(const string &filename,
-		double score, const vector<string> &files,
-		const SeqEval::EvalMode evalMode, bool printReads,
+		double score, const vector<string> &files, bool printReads,
 		const string &subtractFilter) {
 
 	//need the number of hash functions used to be greater than 0
@@ -978,11 +933,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						size_t numKmers =
 								seq->seq.l > m_kmerSize ?
 										seq->seq.l - m_kmerSize + 1 : 0;
-						vector<vector<size_t> > hashValues(numKmers);
 						if (numKmers > score
-								&& (SeqEval::evalRead(seq->seq.s, m_kmerSize,
-										filter, score, 1.0 - score, m_hashNum,
-										hashValues, filterSub, evalMode))) {
+								&& (SeqEval::evalRead(seq->seq.s, filter, score,
+										filterSub))) {
 							//load remaining sequences
 							loadFilter(filter, seq->seq.s);
 #pragma omp atomic
@@ -1021,7 +974,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
  */
 size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		double score, const string &file1, const string &file2, createMode mode,
-		const SeqEval::EvalMode evalMode, bool printReads) {
+		bool printReads) {
 
 	//need the number of hash functions used to be greater than 0
 	assert(m_hashNum > 0);
@@ -1110,14 +1063,10 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 					size_t numKmers2 =
 							rec2.length() > m_kmerSize ?
 									rec2.length() - m_kmerSize + 1 : 0;
-					vector<vector<size_t> > hashValues1(numKmers1);
-					vector<vector<size_t> > hashValues2(numKmers2);
 					switch (mode) {
 					case PROG_INC: {
 						if (numKmers1 > score
-								&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
-										score, 1.0 - score, m_hashNum,
-										hashValues1, evalMode))) {
+								&& (SeqEval::evalRead(rec1, filter, score))) {
 							loadFilter(filter, seq1->seq.s);
 							loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
@@ -1125,9 +1074,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (printReads)
 								printReadPair(header1, header2, rec1, rec2);
 						} else if (numKmers2 > score
-								&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
-										score, 1.0 - score, m_hashNum,
-										hashValues1, evalMode))) {
+								&& (SeqEval::evalRead(rec1, filter, score))) {
 							loadFilter(filter, seq1->seq.s);
 							loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
@@ -1139,13 +1086,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 					}
 					case PROG_STD: {
 						if (numKmers1 > score
-								&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
-										score, 1.0 - score, m_hashNum,
-										hashValues1, evalMode))
+								&& (SeqEval::evalRead(rec1, filter, score))
 								&& numKmers2 > score
-								&& (SeqEval::evalRead(rec1, m_kmerSize, filter,
-										score, 1.0 - score, m_hashNum,
-										hashValues1, evalMode))) {
+								&& (SeqEval::evalRead(rec1, filter, score))) {
 							loadFilter(filter, seq1->seq.s);
 							loadFilter(filter, seq2->seq.s);
 #pragma omp atomic

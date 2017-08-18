@@ -103,7 +103,6 @@ int main(int argc, char *argv[]) {
 	bool printReads = false;
 	double progressive = -1;
 	bool inclusive = false;
-	SeqEval::EvalMode evalMode = SeqEval::EVAL_STANDARD;
 	string fileListFilename = "";
 
 	//long form arguments
@@ -242,7 +241,7 @@ int main(int argc, char *argv[]) {
 			// length in bases
 			if ((convert >> matchLen) && matchLen > 1) {
 				progressive = matchLen;
-				evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
+				SeqEval::evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
 			} else {
 				// not a positive integer > 1, so interpret as floating
 				// point score between 0 and 1
@@ -260,7 +259,7 @@ int main(int argc, char *argv[]) {
 							<< endl;
 					exit(EXIT_FAILURE);
 				}
-				evalMode = SeqEval::EVAL_STANDARD;
+				SeqEval::evalMode = SeqEval::EVAL_STANDARD;
 
 			}
 			break;
@@ -372,7 +371,7 @@ int main(int argc, char *argv[]) {
 			exit(1);
 		}
 		cerr << "Building Bloom filter in progessive mode. ";
-		switch (evalMode) {
+		switch (SeqEval::evalMode) {
 		case SeqEval::EVAL_MIN_MATCH_LEN:
 			cerr << "Min match length = " << (unsigned) round(progressive)
 					<< " bp" << endl;
@@ -439,12 +438,12 @@ int main(int argc, char *argv[]) {
 					if (opt::baitThreshold == progressive) {
 						redundNum = filterGen.generateProgressive(
 								outputDir + filterPrefix + ".bf", progressive,
-								opt::fileList1, opt::fileList2, mode, evalMode,
+								opt::fileList1, opt::fileList2, mode,
 								printReads, subtractFilter);
 					} else {
 						redundNum = filterGen.generateProgressiveBait(
 								outputDir + filterPrefix + ".bf", progressive,
-								opt::fileList1, opt::fileList2, mode, evalMode,
+								opt::fileList1, opt::fileList2, mode,
 								printReads, subtractFilter);
 					}
 				} else {
@@ -462,8 +461,7 @@ int main(int argc, char *argv[]) {
 					if (opt::baitThreshold == progressive) {
 						redundNum = filterGen.generateProgressive(
 								outputDir + filterPrefix + ".bf", progressive,
-								opt::fileList1, evalMode, printReads,
-								subtractFilter);
+								opt::fileList1, printReads, subtractFilter);
 					} else {
 						cerr
 								<< "single end bait mode not implemented. If needed feature request cjustin@bcgsc.ca."
@@ -477,11 +475,11 @@ int main(int argc, char *argv[]) {
 			if (opt::baitThreshold == progressive) {
 				redundNum = filterGen.generateProgressive(
 						outputDir + filterPrefix + ".bf", progressive, file1,
-						file2, mode, evalMode, printReads, subtractFilter);
+						file2, mode, printReads, subtractFilter);
 			} else {
 				redundNum = filterGen.generateProgressiveBait(
 						outputDir + filterPrefix + ".bf", progressive, file1,
-						file2, mode, evalMode, printReads, subtractFilter);
+						file2, mode, printReads, subtractFilter);
 			}
 		}
 	} else if (!subtractFilter.empty()) {
@@ -495,7 +493,7 @@ int main(int argc, char *argv[]) {
 		if (opt::baitThreshold == progressive) {
 			redundNum = filterGen.generateProgressive(
 					outputDir + filterPrefix + ".bf", progressive, file1, file2,
-					mode, evalMode, printReads);
+					mode, printReads);
 		} else {
 			cerr
 					<< "Bait mode without subtractive filter not implemented. If needed feature request cjustin@bcgsc.ca."

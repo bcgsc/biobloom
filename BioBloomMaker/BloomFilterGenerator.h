@@ -37,28 +37,24 @@ public:
 	size_t generate(const string &filename, const string &subtractFilter);
 	size_t generateProgressive(const string &filename, double score,
 			const string &file1, const string &file2, createMode mode,
-			const SeqEval::EvalMode evalMode, bool printReads);
+			bool printReads);
 	size_t generateProgressive(const string &filename, double score,
 			const string &file1, const string &file2, createMode mode,
-			const SeqEval::EvalMode evalMode, bool printReads,
-			const string &subtractFilter);
-	size_t generateProgressiveBait(const string &filename, double score,
-			const string &file1, const string &file2, createMode mode,
-			const SeqEval::EvalMode evalMode, bool printReads,
-			const string &subtractFilter);
-
-	size_t generateProgressive(const string &filename, double score,
-			const vector<string> &files1, const vector<string> &files2,
-			createMode mode, const SeqEval::EvalMode evalMode, bool printReads,
-			const string &subtractFilter);
-	size_t generateProgressiveBait(const string &filename, double score,
-			const vector<string> &files1, const vector<string> &files2,
-			createMode mode, const SeqEval::EvalMode evalMode, bool printReads,
-			const string &subtractFilter);
-
-	size_t generateProgressive(const string &filename, double score,
-			const vector<string> &files, const SeqEval::EvalMode evalMode,
 			bool printReads, const string &subtractFilter);
+	size_t generateProgressiveBait(const string &filename, double score,
+			const string &file1, const string &file2, createMode mode,
+			bool printReads, const string &subtractFilter);
+
+	size_t generateProgressive(const string &filename, double score,
+			const vector<string> &files1, const vector<string> &files2,
+			createMode mode, bool printReads, const string &subtractFilter);
+	size_t generateProgressiveBait(const string &filename, double score,
+			const vector<string> &files1, const vector<string> &files2,
+			createMode mode, bool printReads, const string &subtractFilter);
+
+	size_t generateProgressive(const string &filename, double score,
+			const vector<string> &files, bool printReads,
+			const string &subtractFilter);
 
 	void setFilterSize(size_t bits);
 

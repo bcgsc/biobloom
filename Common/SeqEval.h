@@ -25,7 +25,11 @@ using namespace boost;
 
 namespace SeqEval {
 
-enum EvalMode { EVAL_STANDARD, EVAL_MIN_MATCH_LEN };
+EvalMode evalMode = EVAL_STANDARD;
+
+enum EvalMode {
+	EVAL_STANDARD, EVAL_MIN_MATCH_LEN
+};
 
 inline double denormalizeScore(double score, unsigned kmerSize, size_t seqLen) {
 	assert(score >= 0 && score <= 1);
@@ -36,22 +40,27 @@ inline double normalizeScore(double score, unsigned kmerSize, size_t seqLen) {
 	return score / (seqLen - kmerSize + 1);
 }
 
-inline bool evalSingle(const string &rec, unsigned kmerSize,
-		const BloomFilter &filter, double threshold, double antiThreshold,
-		unsigned hashNum, const BloomFilter *subtract) {
-	const double thres = denormalizeScore(threshold, kmerSize, rec.length());
+//TODO experiment with hashvalue storage functions
+
+inline bool evalSingle(const string &rec, const BloomFilter &filter,
+		double threshold, const BloomFilter *subtract =
+		NULL) {
+
+	const double thres = denormalizeScore(threshold, filter.getKmerSize(),
+			rec.length());
 	const double antiThres = floor(
-			denormalizeScore(antiThreshold, kmerSize, rec.length()));
+			denormalizeScore(1.0 - threshold, filter.getKmerSize(),
+					rec.length()));
 
 	double score = 0;
 	unsigned antiScore = 0;
 	unsigned streak = 0;
-	ntHashIterator itr(rec);
+	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
 	unsigned prevPos = itr.pos();
 	while (itr != itr.end()) {
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
-		if(itr.pos() != prevPos + 1){
+		if (itr.pos() != prevPos + 1) {
 			antiScore += itr.pos() - prevPos - 1;
 			if (antiThres <= antiScore) {
 				return false;
@@ -83,9 +92,9 @@ inline bool evalSingle(const string &rec, unsigned kmerSize,
 				itr.next();
 			} else {
 				//TODO: Determine if faster to force re-init
-				unsigned skipEnd = itr.pos() + kmerSize;
+				unsigned skipEnd = itr.pos() + filter.getKmerSize();
 				//skip lookups
-				while(itr.pos() < skipEnd){
+				while (itr.pos() < skipEnd) {
 					if (antiThres <= ++antiScore)
 						return false;
 					prevPos = itr.pos();
@@ -98,41 +107,16 @@ inline bool evalSingle(const string &rec, unsigned kmerSize,
 	return false;
 }
 
-inline bool evalSingle(const string &rec, unsigned kmerSize,
-		const BloomFilter &filter, double threshold, double antiThreshold,
-		unsigned hashNum) {
-	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
-	NULL);
-}
-
-/*
- * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
- */
-inline bool evalSingle(const string &rec, unsigned kmerSize,
-		const BloomFilter &filter, double threshold, size_t antiThreshold) {
-	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold,
-			filter.getHashNum(),
-			NULL, NULL);
-}
-
-inline bool evalSingle(const string &rec, unsigned kmerSize,
-		const BloomFilter &filter, double threshold, double antiThreshold,
-		unsigned hashNum, const BloomFilter &subtract) {
-	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
-			&subtract);
-}
-
 /*
  * Evaluation algorithm based on minimum number of contiguous matching bases.
  */
-inline bool evalMinMatchLen(const string &rec, unsigned kmerSize,
-		const BloomFilter &filter, unsigned minMatchLen, unsigned hashNum,
-		const BloomFilter *subtract) {
+inline bool evalMinMatchLen(const string &rec, const BloomFilter &filter,
+		unsigned minMatchLen, const BloomFilter *subtract = NULL) {
 	// number of contiguous k-mers matched
 	unsigned matchLen = 0;
 	size_t l = rec.length();
 
-	ntHashIterator itr(rec);
+	ntHashIterator itr(rec, filter.getHashNum(), filter.getKmerSize());
 	unsigned prevPos = itr.pos();
 	while (itr != itr.end()) {
 		// quit early if there is no hope
@@ -141,13 +125,13 @@ inline bool evalMinMatchLen(const string &rec, unsigned kmerSize,
 
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
-		if(itr.pos() != prevPos + 1){
+		if (itr.pos() != prevPos + 1) {
 			matchLen = 0;
 		}
 		if (filter.contains(*itr)) {
 			if (subtract == NULL || !subtract->contains(*itr)) {
 				if (matchLen == 0)
-					matchLen = kmerSize;
+					matchLen = filter.getKmerSize();
 				else
 					++matchLen;
 			}
@@ -161,66 +145,39 @@ inline bool evalMinMatchLen(const string &rec, unsigned kmerSize,
 	return false;
 }
 
-inline bool evalRead(const string &rec, unsigned kmerSize,
-		const BloomFilter &filter, double threshold, double antiThreshold,
-		unsigned hashNum, const BloomFilter *subtract, EvalMode mode) {
-	// compute enough hash values to check both the main Bloom filter
-	// and the subtractive Bloom filter
-	if (subtract != NULL) {
-		if (subtract->getHashNum() > hashNum) {
-			hashNum = subtract->getHashNum();
-		}
-	}
-
+inline bool evalRead(const string &rec, const BloomFilter &filter,
+		double threshold, const BloomFilter *subtract = NULL) {
 	switch (mode) {
 	case EVAL_MIN_MATCH_LEN:
-		return evalMinMatchLen(rec, kmerSize, filter,
-				(unsigned) round(threshold), hashNum, subtract);
+		return evalMinMatchLen(rec, filter, (unsigned) round(threshold),
+				subtract);
 	case EVAL_STANDARD:
 	default:
-		return evalSingle(rec, kmerSize, filter, threshold, antiThreshold,
-				hashNum, subtract);
+		return evalSingle(rec, filter, threshold, subtract);
 	}
 	assert(false);
 }
 
-inline bool evalRead(const string &rec, unsigned kmerSize,
-		const BloomFilter &filter, double threshold, double antiThreshold,
-		unsigned hashNum, const BloomFilter &subtract, EvalMode mode) {
-	return evalRead(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
-			&subtract, mode);
-}
-
-inline bool evalRead(const string &rec, unsigned kmerSize,
-		const BloomFilter &filter, double threshold, double antiThreshold,
-		unsigned hashNum, EvalMode mode) {
-	return evalRead(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
-			NULL, mode);
-}
-
-inline bool evalRead(const string &rec, unsigned kmerSize,
-		const BloomFilter &filter, double threshold, double antiThreshold,
-		EvalMode mode) {
-	return evalRead(rec, kmerSize, filter, threshold, antiThreshold,
-			filter.getHashNum(), NULL, mode);
+inline bool evalRead(const string &rec, const BloomFilter &filter,
+		double threshold, const BloomFilter &subtract) {
+	return evalRead(rec, filter, threshold, &subtract);
 }
 
 /*
  * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
- * Returns score and does not have a stopping threshold
+ * Returns score instead if just a match
  */
-inline double evalSingleExhaust(const string &rec, unsigned kmerSize,
-		const BloomFilter &filter) {
+inline double evalSingleScore(const string &rec, const BloomFilter &filter) {
 
 	double score = 0;
 	unsigned antiScore = 0;
 	unsigned streak = 0;
-	ntHashIterator itr(rec);
+	ntHashIterator itr(rec, filter.getHashNum(), filter.getKmerSize());
 	unsigned prevPos = itr.pos();
 	while (itr != itr.end()) {
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
-		if(itr.pos() != prevPos + 1){
+		if (itr.pos() != prevPos + 1) {
 			antiScore += itr.pos() - prevPos - 1;
 			streak = 0;
 		}
@@ -233,15 +190,78 @@ inline double evalSingleExhaust(const string &rec, unsigned kmerSize,
 			prevPos = itr.pos();
 			itr.next();
 			++streak;
-		} else{
+		} else {
 			if (streak < opt::streakThreshold) {
 				streak = 0;
 				prevPos = itr.pos();
 				itr.next();
 			} else {
-				unsigned skipEnd = itr.pos() + kmerSize;
+				unsigned skipEnd = itr.pos() + filter.getKmerSize();
 				//skip lookups
-				while(itr.pos() < skipEnd){
+				while (itr.pos() < skipEnd) {
+					prevPos = itr.pos();
+					itr.next();
+				}
+			}
+			streak = 0;
+		}
+	}
+	return score;
+}
+
+/*
+ * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
+ * Returns score instead if just a match
+ */
+inline double evalSingleScore(const string &rec, const BloomFilter &filter,
+		double threshold, const BloomFilter *subtract =
+		NULL) {
+
+	const double thres = denormalizeScore(threshold, filter.getKmerSize(),
+			rec.length());
+	const double antiThres = floor(
+			denormalizeScore(1.0 - threshold, filter.getKmerSize(),
+					rec.length()));
+
+	double score = 0;
+	unsigned antiScore = 0;
+	unsigned streak = 0;
+	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
+	unsigned prevPos = itr.pos();
+	while (itr != itr.end()) {
+		//check if k-mer has deviated/started again
+		//TODO try to terminate before itr has to re-init after skipping
+		if (itr.pos() != prevPos + 1) {
+			antiScore += itr.pos() - prevPos - 1;
+			if (antiThres <= antiScore) {
+				return score;
+			}
+			streak = 0;
+		}
+		if (filter.contains(*itr)) {
+			if (streak == 0) {
+				if (subtract == NULL || !subtract->contains(*itr))
+					score += 0.5;
+			} else {
+				if (subtract == NULL || !subtract->contains(*itr))
+					++score;
+			}
+			prevPos = itr.pos();
+			itr.next();
+			++streak;
+		} else {
+			if (streak < opt::streakThreshold) {
+				if (antiThres <= ++antiScore)
+					return score;
+				prevPos = itr.pos();
+				itr.next();
+			} else {
+				//TODO: Determine if faster to force re-init
+				unsigned skipEnd = itr.pos() + filter.getKmerSize();
+				//skip lookups
+				while (itr.pos() < skipEnd) {
+					if (antiThres <= ++antiScore)
+						return score;
 					prevPos = itr.pos();
 					itr.next();
 				}
