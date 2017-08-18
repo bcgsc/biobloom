@@ -13,5 +13,4 @@ biobloommaker_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 biobloommaker_LDFLAGS = $(OPENMP_CXXFLAGS)
 
 biobloommaker_SOURCES = BioBloomMaker.cpp \
-	BloomFilterGenerator.h BloomFilterGenerator.cpp \
-	WindowedFileParser.h WindowedFileParser.cpp
+	BloomFilterGenerator.h BloomFilterGenerator.cpp

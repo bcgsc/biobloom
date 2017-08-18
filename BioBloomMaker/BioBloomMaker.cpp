@@ -241,7 +241,7 @@ int main(int argc, char *argv[]) {
 			// length in bases
 			if ((convert >> matchLen) && matchLen > 1) {
 				progressive = matchLen;
-				SeqEval::evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
+//				SeqEval::evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
 			} else {
 				// not a positive integer > 1, so interpret as floating
 				// point score between 0 and 1
@@ -259,8 +259,6 @@ int main(int argc, char *argv[]) {
 							<< endl;
 					exit(EXIT_FAILURE);
 				}
-				SeqEval::evalMode = SeqEval::EVAL_STANDARD;
-
 			}
 			break;
 		}

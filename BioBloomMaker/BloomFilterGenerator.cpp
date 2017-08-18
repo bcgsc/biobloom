@@ -118,8 +118,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	BloomFilterInfo subInfo(infoFileName);
 
 	//load other bloomfilter
-	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
-			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
+	BloomFilter filterSub(subtractFilter);
 
 	if (filter.getHashNum() != filterSub.getHashNum()) {
 		cerr << "Error: Subtraction filter's hash number "
@@ -308,8 +307,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	BloomFilterInfo subInfo(infoFileName);
 
 	//load other bloomfilter
-	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
-			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
+	BloomFilter filterSub(subtractFilter);
 
 	if (filter.getHashNum() != filterSub.getHashNum()) {
 		cerr << "Error: Subtraction filter's hash number "
@@ -499,8 +497,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	loadFilter(baitFilter, totalEntriesBait);
 
 	//load other bloomfilter
-	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
-			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
+	BloomFilter filterSub(subtractFilter);
 
 	if (filter.getHashNum() != filterSub.getHashNum()) {
 		cerr << "Error: Subtraction filter's hash number "
@@ -689,8 +686,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	BloomFilterInfo subInfo(infoFileName);
 
 	//load other bloomfilter
-	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
-			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
+	BloomFilter filterSub(subtractFilter);
 
 	if (filter.getHashNum() != filterSub.getHashNum()) {
 		cerr << "Error: Subtraction filter's hash number "
@@ -862,8 +858,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	BloomFilterInfo subInfo(infoFileName);
 
 	//load other bloomfilter
-	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
-			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
+	BloomFilter filterSub(subtractFilter);
 
 	if (filter.getHashNum() != filterSub.getHashNum()) {
 		cerr << "Error: Subtraction filter's hash number "
@@ -1141,8 +1136,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 	BloomFilterInfo subInfo(infoFileName);
 
 	//load other bloomfilter
-	BloomFilter filterSub(subInfo.getCalcuatedFilterSize(),
-			subInfo.getHashNum(), subInfo.getKmerSize(), subtractFilter);
+	BloomFilter filterSub(subtractFilter);
 
 	size_t redundancy = loadFilterSubtract(filter, filterSub, m_totalEntries);
 

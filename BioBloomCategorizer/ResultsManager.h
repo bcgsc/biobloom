@@ -11,7 +11,6 @@
 #include <vector>
 #include <string>
 #include "Common/BloomFilterInfo.h"
-#include "MultiFilter.h"
 #include "Common/Options.h"
 
 using namespace std;
@@ -22,8 +21,8 @@ public:
 	explicit ResultsManager(const vector<string> &m_filterOrder,
 			bool inclusive);
 
-	const unsigned updateSummaryData(const vector<unsigned> &hits);
-	const unsigned updateSummaryData(const vector<unsigned> &hits1,
+	unsigned updateSummaryData(const vector<unsigned> &hits);
+	unsigned updateSummaryData(const vector<unsigned> &hits1,
 			const vector<unsigned> &hits2);
 
 	const string getResultsSummary(size_t readCount) const;

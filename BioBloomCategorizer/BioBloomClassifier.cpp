@@ -1129,16 +1129,16 @@ void BioBloomClassifier::evaluateReadOrderedPair(const string &rec1,
 			if (SeqEval::evalRead(rec1, *m_filters[i], m_scoreThreshold)
 					|| SeqEval::evalRead(rec2, *m_filters[i],
 							m_scoreThreshold)) {
-				hits1 hits1[*i] = true;
-				hits2[*i] = true;
+				hits1.push_back(i);
+				hits2.push_back(i);
 				break;
 			}
 		} else {
 			if (SeqEval::evalRead(rec1, *m_filters[i], m_scoreThreshold)
 					&& SeqEval::evalRead(rec2, *m_filters[i],
 							m_scoreThreshold)) {
-				hits1[*i] = true;
-				hits2[*i] = true;
+				hits1.push_back(i);
+				hits2.push_back(i);
 				break;
 			}
 		}
@@ -1228,10 +1228,11 @@ double BioBloomClassifier::evaluateReadBestHit(const string &rec,
 	}
 	if (maxScore > 0) {
 		for (unsigned i = 0; i < bestFilters.size(); ++i) {
-			hits[bestFilters[i]] = true;
+			hits.push_back(i);
+			scores.push_back(maxScore);
 		}
 	}
-	return SeqEval::normalizeScore(maxScore, opt::kmerLen, rec.length());
+	return maxScore;
 }
 
 /*

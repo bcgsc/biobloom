@@ -27,10 +27,10 @@ ResultsManager::ResultsManager(const vector<string> &filterOrderRef,
  * Records data for read summary based on thresholds
  * Returns filter ID that this read equals
  */
-const unsigned ResultsManager::updateSummaryData(const vector<unsigned> &hits) {
+unsigned ResultsManager::updateSummaryData(const vector<unsigned> &hits) {
 	unsigned filterIndex = m_noMatchIndex;
 
-	for (vector<unsigned>::iterator i = hits.begin(); i != hits.end(); ++i) {
+	for (vector<unsigned>::const_iterator i = hits.begin(); i != hits.end(); ++i) {
 #pragma omp atomic
 		++m_aboveThreshold[*i];
 		if (filterIndex == m_noMatchIndex) {
@@ -57,11 +57,11 @@ const unsigned ResultsManager::updateSummaryData(const vector<unsigned> &hits) {
  * Returns filter ID that this read pair equals
  * Assumes hits vectors are sorted
  */
-const unsigned ResultsManager::updateSummaryData(const vector<unsigned> &hits1,
+unsigned ResultsManager::updateSummaryData(const vector<unsigned> &hits1,
 		const vector<unsigned> &hits2) {
-	unsigned filterIndex;
-	vector<unsigned>::iterator i1 = hits1.begin();
-	vector<unsigned>::iterator i2 = hits2.begin();
+	unsigned filterIndex = m_noMatchIndex;
+	vector<unsigned>::const_iterator i1 = hits1.begin();
+	vector<unsigned>::const_iterator i2 = hits2.begin();
 	if (m_inclusive) {
 		while (i1 != hits1.end() && i1 != hits2.end()) {
 			//check if hits are the same
@@ -102,7 +102,7 @@ const unsigned ResultsManager::updateSummaryData(const vector<unsigned> &hits1,
 		//finish off
 		while (i1 != hits1.end()) {
 #pragma omp atomic
-			++m_aboveThreshold[*i2];
+			++m_aboveThreshold[*i1];
 			if (filterIndex == m_noMatchIndex) {
 				filterIndex = *i1;
 			} else {
@@ -167,7 +167,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const {
 			<< "filter_id\thits\tmisses\tshared\trate_hit\trate_miss\trate_shared\n";
 
 	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
-		summaryOutput << *i;
+		summaryOutput << m_filterOrder.at(i);
 		summaryOutput << "\t" << m_aboveThreshold.at(i);
 		summaryOutput << "\t" << readCount - m_aboveThreshold.at(i);
 		summaryOutput << "\t" << (m_aboveThreshold.at(i) - m_unique.at(i));

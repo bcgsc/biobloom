@@ -11,7 +11,7 @@ libcommon_a_SOURCES = \
 	IOUtil.h \
 	Options.cpp Options.h \
 	Sequence.cpp Sequence.h \
-	SeqEval.h \
+	SeqEval.h SeqEval.cpp \
 	SignalHandler.cpp SignalHandler.h \
 	StringUtil.h \
 	Uncompress.cpp Uncompress.h

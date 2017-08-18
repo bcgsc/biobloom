@@ -6,12 +6,11 @@
  *  Created on: Mar 10, 2015
  *      Author: cjustin
  *
- * Todo: try to expand and transfer methods from BioBloomClassifier
  * TODO: See if intermediate hash value storage helps speed thing up at all
  */
 
 #ifndef SEQEVAL_H_
-#define SEQEVAL_H_
+#define SEQEVAL_H_ 1
 
 #include <string>
 #include <cmath>
@@ -21,7 +20,6 @@
 #include "btl_bloomfilter/ntHashIterator.hpp"
 
 using namespace std;
-using namespace boost;
 
 namespace SeqEval {
 
@@ -29,7 +27,7 @@ enum EvalMode {
 	EVAL_STANDARD, EVAL_MIN_MATCH_LEN
 };
 
-EvalMode evalMode = EVAL_STANDARD;
+extern EvalMode evalMode;
 
 inline double denormalizeScore(double score, unsigned kmerSize, size_t seqLen) {
 	assert(score >= 0 && score <= 1);
@@ -206,7 +204,7 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter) {
 			streak = 0;
 		}
 	}
-	return score;
+	return normalizeScore(score, filter.getKmerSize(), rec.length());
 }
 
 /*
@@ -267,7 +265,7 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 			streak = 0;
 		}
 	}
-	return score;
+	return normalizeScore(score, filter.getKmerSize(), rec.length());
 }
 
 ///*

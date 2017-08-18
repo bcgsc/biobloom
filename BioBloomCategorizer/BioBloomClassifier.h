@@ -11,7 +11,6 @@
 #include <string>
 #include "google/dense_hash_map"
 #include "Common/BloomFilterInfo.h"
-#include "MultiFilter.h"
 #include "ResultsManager.h"
 #include "Common/Dynamicofstream.h"
 #include "Common/SeqEval.h"
