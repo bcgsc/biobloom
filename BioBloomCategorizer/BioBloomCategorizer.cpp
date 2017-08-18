@@ -102,22 +102,21 @@ void printHelpDialog()
 	"  -v  --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
 	"Advanced options:\n"
-	"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
-	"                         needed over initial tiling of read to continue. Higher\n"
-	"                         values decrease runtime but lower sensitivity.[0]\n"
+//	"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
+//	"                         needed over initial tiling of read to continue. Higher\n"
+//	"                         values decrease runtime but lower sensitivity.[0]\n"
 	"  -r, --streak=N         The number of hits tiling in second pass needed to jump\n"
 	"                         Several tiles upon a miss. Small values decrease\n"
 	"                         runtime but decrease sensitivity. [3]\n"
-	"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
-	"                         but low specificity, use only on long reads (>100bp).\n"
+//	"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
+//	"                         but low specificity, use only on long reads (>100bp).\n"
 	"  -c, --ordered          Use ordered filtering. Order of filters matters\n"
 	"                         (filters listed first have higher priority). Only taken\n"
 	"                         advantage of when k-mer sizes and number of hash\n"
 	"                         functions are the same.\n"
-	"  -d, --stdout_filter=N  Outputs all matching reads to stdout for the specified\n"
-	"                         filter. N is the filter ID without file extension.\n"
-	"                         Reads are outputed in fastq, and if paired will output\n"
-	"                         will be interlaced.\n"
+	"  -d, --stdout_filter    Outputs all matching reads to stdout for the first\n"
+	"                         filter listed by -f. Reads are outputed in fastq,\n"
+	"                         and if paired will output will be interlaced.\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
 	cerr << dialog << endl;
@@ -148,20 +147,13 @@ int main(int argc, char *argv[])
 	string filePostfix = "";
 	double score = 0.15;
 	bool withScore = false;
+	bool stdout = false;
 
 	//advanced options
 	unsigned minHit = 0;
-	bool minHitOnly = false;
 	bool collab = false;
-	// indicates whether we are using a floating
-	// point score (between 0 and 1) or a minimum
-	// match length (in bases) as our Bloom filter
-	// matching criteria
-	SeqEval::EvalMode evalMode = SeqEval::EVAL_STANDARD;
 
 	string fileListFilename = "";
-
-	string mainFilter = "";
 
 	//long form arguments
 	static struct option long_options[] = { {
@@ -190,7 +182,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:or:t:cd:iw", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:or:t:cdiw", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -210,7 +202,7 @@ int main(int argc, char *argv[])
 			// length in bases
 			if ((convert >> matchLen) && matchLen > 1) {
 				score = (unsigned)matchLen;
-				evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
+				SeqEval::evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
 				cerr << "Min match length threshold: " << matchLen
 					<<" bp" << endl;
 			} else {
@@ -228,7 +220,7 @@ int main(int argc, char *argv[])
 						<< optarg << endl;
 					exit(EXIT_FAILURE);
 				}
-				evalMode = SeqEval::EVAL_STANDARD;
+				SeqEval::evalMode = SeqEval::EVAL_STANDARD;
 				if (score == 1)
 					cerr << "Running in 'best match' mode (no score threshold)"
 						<< endl;
@@ -282,10 +274,10 @@ int main(int argc, char *argv[])
 			printVersion();
 			break;
 		}
-		case 'o': {
-			minHitOnly = true;
-			break;
-		}
+//		case 'o': {
+//			minHitOnly = true;
+//			break;
+//		}
 		case 'r': {
 			stringstream convert(optarg);
 			if (!(convert >> opt::streakThreshold)) {
@@ -299,7 +291,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'd': {
-			mainFilter = optarg;
+			stdout = true;
 			break;
 		}
 		case 'w': {
@@ -386,7 +378,7 @@ int main(int argc, char *argv[])
 	}
 
 	// -w option cannot be used with min match length arg to -s
-	if (withScore && evalMode == SeqEval::EVAL_MIN_MATCH_LEN) {
+	if (withScore && SeqEval::evalMode == SeqEval::EVAL_MIN_MATCH_LEN) {
 		cerr << "Error: -w option is not supported when using "
 			<< "minimum match length (positive integer arg "
 			<< "to -s)" << endl;
@@ -395,20 +387,17 @@ int main(int argc, char *argv[])
 
 	//load filters
 	BioBloomClassifier bbc(filterFilePaths, score, outputPrefix, filePostfix,
-			minHit, minHitOnly, withScore);
+			withScore);
 
-	//floating point score or min match length
-	bbc.setEvalMode(evalMode);
+	if (stdout) {
+		bbc.setStdout();
+	}
 
 	if (collab && minHit) {
 		cerr << "Error: -m -c outputs types cannot be both set" << endl;
 		exit(1);
 	} else if (collab) {
 		bbc.setCollabFilter();
-	}
-
-	if (mainFilter != "") {
-		bbc.setMainFilter(mainFilter);
 	}
 
 	//filtering step

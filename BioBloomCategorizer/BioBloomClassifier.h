@@ -28,7 +28,7 @@ static const string MULTI_MATCH = "multiMatch";
 
 /** for modes of filtering */
 enum mode {
-	ORDERED, COLLAB, MINHITONLY, BESTHIT, STD, SCORES
+	ORDERED, COLLAB, BESTHIT, STD, SCORES
 };
 
 ///** for modes of printing out files */
@@ -47,8 +47,7 @@ class BioBloomClassifier {
 public:
 	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
 			double scoreThreshold, const string &outputPrefix,
-			const string &outputPostFix, unsigned minHit, bool minHitOnly,
-			bool withScore);
+			const string &outputPostFix, bool withScore);
 	void filter(const vector<string> &inputFiles);
 	void filterPrint(const vector<string> &inputFiles,
 			const string &outputType);
@@ -72,11 +71,9 @@ public:
 		m_inclusive = true;
 	}
 
-	void setEvalMode(SeqEval::EvalMode mode) {
-		m_evalMode = mode;
+	void setStdout(){
+		m_stdout = true;
 	}
-
-	void setStdout();
 
 	virtual ~BioBloomClassifier();
 
@@ -89,14 +86,9 @@ private:
 	const unsigned m_filterNum;
 	const string &m_prefix;
 	const string &m_postfix;
-	const unsigned m_minHit;
 
 	// modes of filtering
 	mode m_mode;
-	// Match scoring method. Possible values:
-	// i) EVAL_STANDARD => score in range (0,1)
-	// ii) EVAL_MIN_MATCH_LEN => minimum match length (in bases)
-	SeqEval::EvalMode m_evalMode;
 
 	bool m_stdout;
 	bool m_inclusive;
@@ -113,7 +105,7 @@ private:
 	bool fexists(const string &filename) const;
 
 	void evaluateReadStd(const string &rec, vector<unsigned> &hits);
-	void evaluateReadMin(const string &rec, vector<unsigned> &hits);
+//	void evaluateReadMin(const string &rec, vector<unsigned> &hits);
 //	void evaluateReadCollab(const string &rec, vector<unsigned> &hits);
 	void evaluateReadOrdered(const string &rec, vector<unsigned> &hits);
 	double evaluateReadBestHit(const string &rec, vector<unsigned> &hits,
@@ -377,10 +369,10 @@ private:
 			evaluateReadOrdered(rec, hits);
 			break;
 		}
-		case MINHITONLY: {
-			evaluateReadMin(rec, hits);
-			break;
-		}
+//		case MINHITONLY: {
+//			evaluateReadMin(rec, hits);
+//			break;
+//		}
 		case BESTHIT: {
 			score = evaluateReadBestHit(rec, hits, scores);
 			break;

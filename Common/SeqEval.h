@@ -25,11 +25,11 @@ using namespace boost;
 
 namespace SeqEval {
 
-EvalMode evalMode = EVAL_STANDARD;
-
 enum EvalMode {
 	EVAL_STANDARD, EVAL_MIN_MATCH_LEN
 };
+
+EvalMode evalMode = EVAL_STANDARD;
 
 inline double denormalizeScore(double score, unsigned kmerSize, size_t seqLen) {
 	assert(score >= 0 && score <= 1);
@@ -147,7 +147,7 @@ inline bool evalMinMatchLen(const string &rec, const BloomFilter &filter,
 
 inline bool evalRead(const string &rec, const BloomFilter &filter,
 		double threshold, const BloomFilter *subtract = NULL) {
-	switch (mode) {
+	switch (evalMode) {
 	case EVAL_MIN_MATCH_LEN:
 		return evalMinMatchLen(rec, filter, (unsigned) round(threshold),
 				subtract);
@@ -217,8 +217,6 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 		double threshold, const BloomFilter *subtract =
 		NULL) {
 
-	const double thres = denormalizeScore(threshold, filter.getKmerSize(),
-			rec.length());
 	const double antiThres = floor(
 			denormalizeScore(1.0 - threshold, filter.getKmerSize(),
 					rec.length()));

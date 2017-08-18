@@ -13,6 +13,5 @@ biobloomcategorizer_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
 biobloomcategorizer_LDFLAGS = $(OPENMP_CXXFLAGS)
 
 biobloomcategorizer_SOURCES = BioBloomCategorizer.cpp \
-	MultiFilter.h MultiFilter.cpp \
 	ResultsManager.h ResultsManager.cpp \
 	BioBloomClassifier.h BioBloomClassifier.cpp

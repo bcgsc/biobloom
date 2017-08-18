@@ -136,8 +136,7 @@ private:
 				size_t tempTotal = 0;
 				if (l >= 0) {
 					//k-merize and insert into bloom filter
-					for (ntHashIterator itr(tempStr); itr != itr.next();
-							++itr) {
+					for (ntHashIterator itr(tempStr); itr != itr.end(); ++itr) {
 						bool found = bf.insertAndCheck(*itr);
 						tempRedund += found;
 						tempTotal += !found;
@@ -159,7 +158,7 @@ private:
 
 	inline void loadFilter(BloomFilter &bf, const string &str) {
 		size_t tempTotal = 0;
-		for (ntHashIterator itr(str); itr != itr.next(); ++itr) {
+		for (ntHashIterator itr(str); itr != itr.end(); ++itr) {
 			tempTotal += bf.insertAndCheck(*itr);
 		}
 		m_totalEntries += tempTotal;
@@ -169,7 +168,6 @@ private:
 			size_t &totalEntries) {
 		size_t kmerRemoved = 0;
 		size_t redundancy = 0;
-		int kmerSize = m_kmerSize;
 
 		if (bf.getHashNum() != bfsub.getHashNum()) {
 			cerr << "Error: Subtraction filter's hash number "
@@ -211,8 +209,7 @@ private:
 				size_t tempRedund = 0;
 				size_t tempTotal = 0;
 				if (l >= 0) {
-					for (ntHashIterator itr(tempStr); itr != itr.next();
-							++itr) {
+					for (ntHashIterator itr(tempStr); itr != itr.end(); ++itr) {
 						if (bfsub.contains(*itr)) {
 							++kmerRemoved;
 						} else {
