@@ -327,24 +327,26 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 		//TODO Change to move/emplace (C++11) or pointer?
 		outputFiles1.push_back(
 				Dynamicofstream(
-						m_prefix + "_1" + *i + "." + outputType + m_postfix));
+						m_prefix + "_" + *i + "_1." + outputType + m_postfix));
 		outputFiles2.push_back(
 				Dynamicofstream(
-						m_prefix + "_1" + *i + "." + outputType + m_postfix));
+						m_prefix + "_" + *i + "_2." + outputType + m_postfix));
 	}
 	outputFiles1.push_back(
 			Dynamicofstream(
-					m_prefix + "_1" + NO_MATCH + "." + outputType + m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_2" + NO_MATCH + "." + outputType + m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_1" + MULTI_MATCH + "." + outputType
+					m_prefix + "_" + NO_MATCH + "_1." + outputType
 							+ m_postfix));
 	outputFiles1.push_back(
 			Dynamicofstream(
-					m_prefix + "_2" + MULTI_MATCH + "." + outputType
+					m_prefix + "_" + NO_MATCH + "_2." + outputType
+							+ m_postfix));
+	outputFiles1.push_back(
+			Dynamicofstream(
+					m_prefix + "_" + MULTI_MATCH + "_1." + outputType
+							+ m_postfix));
+	outputFiles1.push_back(
+			Dynamicofstream(
+					m_prefix + "_" + MULTI_MATCH + "_2." + outputType
 							+ m_postfix));
 
 	cerr << "Filtering Start" << "\n";
@@ -590,24 +592,26 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 		//TODO Change to move/emplace (C++11) or pointer?
 		outputFiles1.push_back(
 				Dynamicofstream(
-						m_prefix + "_1" + *i + "." + outputType + m_postfix));
+						m_prefix + "_" + *i + "_1." + outputType + m_postfix));
 		outputFiles2.push_back(
 				Dynamicofstream(
-						m_prefix + "_1" + *i + "." + outputType + m_postfix));
+						m_prefix + "_" + *i + "_2." + outputType + m_postfix));
 	}
 	outputFiles1.push_back(
 			Dynamicofstream(
-					m_prefix + "_1" + NO_MATCH + "." + outputType + m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_2" + NO_MATCH + "." + outputType + m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_1" + MULTI_MATCH + "." + outputType
+					m_prefix + "_" + NO_MATCH + "_1." + outputType
 							+ m_postfix));
 	outputFiles1.push_back(
 			Dynamicofstream(
-					m_prefix + "_2" + MULTI_MATCH + "." + outputType
+					m_prefix + "_" + NO_MATCH + "_2." + outputType
+							+ m_postfix));
+	outputFiles1.push_back(
+			Dynamicofstream(
+					m_prefix + "_" + MULTI_MATCH + "_1." + outputType
+							+ m_postfix));
+	outputFiles1.push_back(
+			Dynamicofstream(
+					m_prefix + "_" + MULTI_MATCH + "_2." + outputType
 							+ m_postfix));
 
 	//print out header info and initialize variables for summary
@@ -830,25 +834,23 @@ void BioBloomClassifier::filterPairPrint(const vector<string> &inputFiles1,
 		//TODO Change to move/emplace (C++11) or pointer?
 		outputFiles1.push_back(
 				Dynamicofstream(
-						m_prefix + "_1" + *i + "." + outputType + m_postfix));
+						m_prefix + *i + "_1." + outputType + m_postfix));
 		outputFiles2.push_back(
 				Dynamicofstream(
-						m_prefix + "_1" + *i + "." + outputType + m_postfix));
+						m_prefix + *i + "_2." + outputType + m_postfix));
 	}
 	outputFiles1.push_back(
 			Dynamicofstream(
-					m_prefix + "_1" + NO_MATCH + "." + outputType + m_postfix));
+					m_prefix + NO_MATCH + "_1." + outputType + m_postfix));
 	outputFiles1.push_back(
 			Dynamicofstream(
-					m_prefix + "_2" + NO_MATCH + "." + outputType + m_postfix));
+					m_prefix + NO_MATCH + "_2." + outputType + m_postfix));
 	outputFiles1.push_back(
 			Dynamicofstream(
-					m_prefix + "_1" + MULTI_MATCH + "." + outputType
-							+ m_postfix));
+					m_prefix + MULTI_MATCH + "_1." + outputType + m_postfix));
 	outputFiles1.push_back(
 			Dynamicofstream(
-					m_prefix + "_2" + MULTI_MATCH + "." + outputType
-							+ m_postfix));
+					m_prefix + MULTI_MATCH + "_1." + outputType + m_postfix));
 
 	vector<double> scores1(m_filterNum, 0.0);
 	vector<double> scores2(m_filterNum, 0.0);
@@ -1248,8 +1250,7 @@ void BioBloomClassifier::evaluateReadScore(const string &rec,
 		if (m_scoreThreshold > score) {
 			hits.push_back(i);
 			scores.push_back(score);
-		}
-		else{
+		} else {
 			scores.push_back(0);
 		}
 	}
