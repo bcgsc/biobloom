@@ -101,6 +101,7 @@ void printHelpDialog()
 	"  -l, --file_list=N      A file of list of file pairs to run in parallel.\n"
 	"  -v  --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
+	"  -I, --interval         the interval to report file processing status [10000000]\n"
 	"Advanced options:\n"
 //	"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
 //	"                         needed over initial tiling of read to continue. Higher\n"
@@ -163,6 +164,7 @@ int main(int argc, char *argv[])
 		"inclusive", no_argument, NULL, 'i' }, {
 		"score", required_argument, NULL, 's' }, {
 		"help", no_argument, NULL, 'h' }, {
+		"interval",	required_argument, NULL, 'I' }, {
 		"threads", required_argument, NULL, 't' }, {
 		"gz_output", no_argument, NULL, 'g' }, {
 		"chastity", no_argument, &opt::chastityFilter, 1 }, {
@@ -182,7 +184,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:or:t:cdiw", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:or:t:cdiwI:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -239,6 +241,14 @@ int main(int argc, char *argv[])
 		}
 		case 'h': {
 			printHelpDialog();
+			break;
+		}
+		case 'I': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::fileInterval)) {
+				cerr << "Error - Invalid parameters! I: " << optarg << endl;
+				return 0;
+			}
 			break;
 		}
 		case 'e': {
