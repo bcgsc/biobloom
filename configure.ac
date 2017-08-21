@@ -45,7 +45,7 @@ AC_CHECK_HEADERS([boost/property_tree/ini_parser.hpp])6
 AC_CHECK_HEADERS([zlib.h])
 
 # Check for Boost.
-if test $ac_cv_header_boost_unordered_unordered_map_hpp != yes; then
+if test $ac_cv_header_boost_property_tree_ptree_hpp != yes; then
 	AC_MSG_ERROR([Requires the Boost C++ libraries, which may
 	be downloaded from here: http://www.boost.org/users/download/
 	The following commands will download and install Boost:
