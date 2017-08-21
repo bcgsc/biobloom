@@ -71,10 +71,10 @@ int main() {
 	ifile.seekg(0, ios::end); // move to end of file
 	size_t fileSize = ifile.tellg(); // file size in bytes
 	//file size should be same as filter size (Round to block size)
-	if (filterSize % 64 > 0) {
-		assert((filterSize + (64 - (filterSize% 64))) == fileSize*8);
+	if (filter.getFilterSize() % 64 > 0) {
+		assert((filter.getFilterSize() + (64 - (filter.getFilterSize()% 64))) == fileSize*8);
 	} else {
-		assert(filterSize == fileSize*8);
+		assert(filter.getFilterSize() < fileSize*8);
 	}
 	ifile.close();
 

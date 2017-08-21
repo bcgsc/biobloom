@@ -26,7 +26,7 @@ int main()
 
 //	//test getting Optimal Number of hash functions' function.
 //	assert(info.calcOptiHashNum(16,1) == 11);
-
+	info.setTotalNum(47000000);
 	info.printInfoFile(infoFile);
 
 	cout << "Output tests done. check info file: " << infoFile << endl;
