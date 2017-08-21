@@ -3,11 +3,11 @@
  * BloomFilterGenerator Unit tests
  */
 
-#include "BioBloomMaker/WindowedFileParser.h"
-#include "BioBloomMaker/WindowedFileParser.cpp"
+//#include "BioBloomMaker/WindowedFileParser.h"
+//#include "BioBloomMaker/WindowedFileParser.cpp"
 #include "BioBloomMaker/BloomFilterGenerator.h"
 #include "BioBloomMaker/BloomFilterGenerator.cpp"
-#include "Common/BloomFilter.h"
+//#include "Common/BloomFilter.h"
 #include <string>
 #include <assert.h>
 #include <iostream>
@@ -15,11 +15,14 @@
 #include <boost/unordered/unordered_map.hpp>
 #include <vector>
 #include <fstream>
-#include "Common/ReadsProcessor.h"
+#include "btl_bloomfilter/BloomFilter.hpp"
+#include "btl_bloomfilter/ntHashIterator.hpp"
+#include "omp.h"
+//#include "Common/ReadsProcessor.h"
 
 using namespace std;
 
-int main(int argc, char **argv) {
+int main() {
 
 	//Load some testdata
 	string fileName = "ecoli.fasta";
@@ -61,23 +64,10 @@ int main(int argc, char **argv) {
 	ifile.close();
 
 	//check loading of stored filter
-	BloomFilter filter2(filterSize, hashNum, kmerSize, filename);
+	BloomFilter filter2(filename);
 
-	ReadsProcessor proc(kmerSize);
-
-//	//Check if loaded filter is able to report expected results
-
-//	int countsHit = 0;
-//
-//	for (int i = 0; i < 100000; ++i) {
-//		if(filter2.contains(proc.prepSeq("AGCTTTTCATTCTGACTGCA", 0)))
-//		{
-//			++countsHit;
-//		}
-//	}
-//	cout << countsHit << endl;
-	assert(filter2.contains(proc.prepSeq("AGCTTTTCATTCTGACTGCA", 0)));
-	assert(!filter2.contains(proc.prepSeq("GGCTTTTCATTCTGACTGCA", 0)));
+	assert(filter2.contains(*ntHashIterator("AGCTTTTCATTCTGACTGCA", filter2.getHashNum(), filter2.getKmerSize())));
+	assert(!filter2.contains(*ntHashIterator("AGCTTTTCATTCTGACTGCA", filter2.getHashNum(), filter2.getKmerSize())));
 
 	cout << "BloomFilterGenerator Tests Done. Cleaning up" << endl;
 	remove(filename.c_str());

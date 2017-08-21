@@ -6,7 +6,6 @@
 #include "Common/BloomFilterInfo.h"
 #include <assert.h>
 #include <iostream>
-#include <boost/unordered/unordered_map.hpp>
 #include <vector>
 #include <string>
 #include <cassert>
@@ -14,7 +13,7 @@
 
 using namespace std;
 
-int main(int argc, char **argv)
+int main()
 {
 
 	string infoFile = "Test.txt";

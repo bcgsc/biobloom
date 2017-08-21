@@ -5,14 +5,14 @@
  *      Author: cjustin
  */
 
-#include "Common/BloomFilter.h"
 #include <string>
 #include <assert.h>
 #include <vector>
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include "Common/ReadsProcessor.h"
+#include "btl_bloomfilter/BloomFilter.hpp"
+#include "btl_bloomfilter/ntHashIterator.hpp"
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -20,8 +20,8 @@
 using namespace std;
 
 //returns memory of program in kb
-int memory_usage() {
-	int mem = 0;
+size_t memory_usage() {
+	size_t mem = 0;
 	ifstream proc("/proc/self/status");
 	string s;
 	while (getline(proc, s), !proc.fail()) {
@@ -37,27 +37,26 @@ int memory_usage() {
 	return mem;
 }
 
-int main(int argc, char **argv) {
+int main() {
 	//memory usage from before
 	int memUsage = memory_usage();
 
 	size_t filterSize = 1000000000;
 	BloomFilter filter(filterSize, 5, 20);
-	ReadsProcessor proc(20);
 
-	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAT", 0));
-	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAC", 0));
-	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAG", 0));
-	filter.insert(proc.prepSeq("ATCGGGTCATCAACCAATAA", 0));
+	filter.insert(*ntHashIterator("ATCGGGTCATCAACCAATAT", filter.getHashNum(), filter.getKmerSize()));
+	filter.insert(*ntHashIterator("ATCGGGTCATCAACCAATAC", filter.getHashNum(), filter.getKmerSize()));
+	filter.insert(*ntHashIterator("ATCGGGTCATCAACCAATAG", filter.getHashNum(), filter.getKmerSize()));
+	filter.insert(*ntHashIterator("ATCGGGTCATCAACCAATAA", filter.getHashNum(), filter.getKmerSize()));
 
 	//Check if filter is able to report expected results
-	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAT", 0)));
-	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAC", 0)));
-	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAG", 0)));
-	assert(filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATAA", 0)));
+	assert(filter.contains(*ntHashIterator("ATCGGGTCATCAACCAATAT", filter.getHashNum(), filter.getKmerSize())));
+	assert(filter.contains(*ntHashIterator("ATCGGGTCATCAACCAATAC", filter.getHashNum(), filter.getKmerSize())));
+	assert(filter.contains(*ntHashIterator("ATCGGGTCATCAACCAATAG", filter.getHashNum(), filter.getKmerSize())));
+	assert(filter.contains(*ntHashIterator("ATCGGGTCATCAACCAATAA", filter.getHashNum(), filter.getKmerSize())));
 
-	assert(!filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATTA",0)));
-	assert(!filter.contains(proc.prepSeq("ATCGGGTCATCAACCAATTC",0)));
+	assert(!filter.contains(*ntHashIterator("ATCGGGTCATCAACCAATTA", filter.getHashNum(), filter.getKmerSize())));
+	assert(!filter.contains(*ntHashIterator("ATCGGGTCATCAACCAATTC", filter.getHashNum(), filter.getKmerSize())));
 
 	//should be size of bf (amortized)
 	cout << memory_usage() - memUsage << "kb" << endl;
@@ -83,19 +82,19 @@ int main(int argc, char **argv) {
 	cout << memory_usage() - memUsage << "kb" << endl;
 
 	//check loading of stored filter
-	BloomFilter filter2(filterSize, 5, 20, filename);
+	BloomFilter filter2(filename);
 
 	//should be double size of bf (amortized)
 	cout << memory_usage() - memUsage << "kb" << endl;
 
 	//Check if loaded filter is able to report expected results
-	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAT", 0)));
-	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAC", 0)));
-	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAG", 0)));
-	assert(filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATAA", 0)));
+	assert(filter2.contains(*ntHashIterator("ATCGGGTCATCAACCAATAT", filter2.getHashNum(), filter2.getKmerSize())));
+	assert(filter2.contains(*ntHashIterator("ATCGGGTCATCAACCAATAC", filter2.getHashNum(), filter2.getKmerSize())));
+	assert(filter2.contains(*ntHashIterator("ATCGGGTCATCAACCAATAG", filter2.getHashNum(), filter2.getKmerSize())));
+	assert(filter2.contains(*ntHashIterator("ATCGGGTCATCAACCAATAA", filter2.getHashNum(), filter2.getKmerSize())));
 
-	assert(!filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATTA",0)));
-	assert(!filter2.contains(proc.prepSeq("ATCGGGTCATCAACCAATTC",0)));
+	assert(!filter2.contains(*ntHashIterator("ATCGGGTCATCAACCAATTA", filter2.getHashNum(), filter2.getKmerSize())));
+	assert(!filter2.contains(*ntHashIterator("ATCGGGTCATCAACCAATTC", filter2.getHashNum(), filter2.getKmerSize())));
 	cout << "premade bf tests done" << endl;
 
 	//memory leak tests
