@@ -113,8 +113,8 @@ int main(int argc, char *argv[]) {
 			"version", no_argument, NULL, 'v' }, { "hash_num",
 	required_argument, NULL, 'g' }, { "kmer_size", required_argument,
 	NULL, 'k' }, { "subtract", required_argument, NULL, 's' }, { "num_ele",
-	required_argument, NULL, 'n' }, { "num_ele",
-	required_argument, NULL, 'I' }, { "interval",
+	required_argument, NULL, 'n' }, { "interval",
+	required_argument, NULL, 'I' }, { "file_list",
 	required_argument, NULL, 'l' }, { "help", no_argument, NULL, 'h' }, {
 			"print_reads", no_argument, NULL, 'P' }, { "progressive",
 	required_argument, NULL, 'r' }, { "baitScore",
