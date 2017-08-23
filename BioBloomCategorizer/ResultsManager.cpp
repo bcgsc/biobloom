@@ -63,7 +63,7 @@ unsigned ResultsManager::updateSummaryData(const vector<unsigned> &hits1,
 	vector<unsigned>::const_iterator i1 = hits1.begin();
 	vector<unsigned>::const_iterator i2 = hits2.begin();
 	if (m_inclusive) {
-		while (i1 != hits1.end() && i1 != hits2.end()) {
+		while (i1 != hits1.end() && i2 != hits2.end()) {
 			//check if hits are the same
 			if (*i1 == *i2) {
 				//if they are increment above threshold counts
@@ -121,7 +121,7 @@ unsigned ResultsManager::updateSummaryData(const vector<unsigned> &hits1,
 			++i2;
 		}
 	} else {
-		while (i1 != hits1.end() && i1 != hits2.end()) {
+		while (i1 != hits1.end() && i2 != hits2.end()) {
 			//check if hits are the same
 			if (*i1 == *i2) {
 				//if they are increment above threshold counts
@@ -182,7 +182,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const {
 		summaryOutput << "\n";
 	}
 
-	summaryOutput << NO_MATCH;
+	summaryOutput << MULTI_MATCH;
 	summaryOutput << "\t" << m_multiMatch;
 	summaryOutput << "\t" << readCount - m_multiMatch;
 	summaryOutput << "\t" << 0;
@@ -192,7 +192,7 @@ const string ResultsManager::getResultsSummary(size_t readCount) const {
 	summaryOutput << "\t" << 0.0;
 	summaryOutput << "\n";
 
-	summaryOutput << MULTI_MATCH;
+	summaryOutput << NO_MATCH;
 	summaryOutput << "\t" << m_noMatch;
 	summaryOutput << "\t" << readCount - m_noMatch;
 	summaryOutput << "\t" << 0;

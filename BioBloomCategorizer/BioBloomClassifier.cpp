@@ -84,7 +84,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles) {
 				}
 				hits.clear();
 				score = 0;
-				std::fill(scores.begin(), scores.end(), 0);
+				scores.clear();
 				evaluateRead(rec.seq, hits, score, scores);
 				//Evaluate hit data and record for summary and print if needed
 				printSingle(rec, score, resSummary.updateSummaryData(hits));
@@ -118,22 +118,18 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 
 	size_t totalReads = 0;
 
-	vector<Dynamicofstream> outputFiles;
+	vector<Dynamicofstream*> outputFiles(m_filterOrder.size() + 2);
 	//initialize variables
+	unsigned index = 0;
 	for (vector<string>::const_iterator i = m_filterOrder.begin();
 			i != m_filterOrder.end(); ++i) {
-		//TODO Change to move/emplace (C++11) or pointer?
-		outputFiles.push_back(
-				Dynamicofstream(
-						m_prefix + "_" + *i + "." + outputType + m_postfix));
+		outputFiles[index++] = new Dynamicofstream(
+						m_prefix + "_" + *i + "." + outputType + m_postfix);
 	}
-	outputFiles.push_back(
-			Dynamicofstream(
-					m_prefix + "_" + NO_MATCH + "." + outputType + m_postfix));
-	outputFiles.push_back(
-			Dynamicofstream(
-					m_prefix + "_" + MULTI_MATCH + "." + outputType
-							+ m_postfix));
+	outputFiles[index++] = new Dynamicofstream(
+			m_prefix + "_" + NO_MATCH + "." + outputType + m_postfix);
+	outputFiles[index] = new Dynamicofstream(
+			m_prefix + "_" + MULTI_MATCH + "." + outputType + m_postfix);
 
 	//print out header info and initialize variables
 
@@ -176,7 +172,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				}
 				hits.clear();
 				score = 0;
-				std::fill(scores.begin(), scores.end(), 0);
+				scores.clear();
 				evaluateRead(rec.seq, hits, score, scores);
 				//Evaluate hit data and record for summary
 				unsigned outputFileName = resSummary.updateSummaryData(hits);
@@ -193,15 +189,18 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 
 	//close sorting files
 	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
-		outputFiles[i].close();
+		outputFiles[i]->close();
+		delete(outputFiles[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "." + outputType
 						+ m_postfix << endl;
 	}
-	outputFiles[m_filterOrder.size() + 1].close();
+	outputFiles[m_filterOrder.size()]->close();
+	delete(outputFiles[m_filterOrder.size()]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + NO_MATCH + "." + outputType + m_postfix << endl;
-	outputFiles[m_filterOrder.size() + 1].close();
+	outputFiles[m_filterOrder.size() + 1]->close();
+	delete(outputFiles[m_filterOrder.size() + 1]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + MULTI_MATCH + "." + outputType + m_postfix
 			<< endl;
@@ -282,8 +281,8 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 			hits2.clear();
 			score1 = 0;
 			score2 = 0;
-			std::fill(scores1.begin(), scores1.end(), 0);
-			std::fill(scores2.begin(), scores2.end(), 0);
+			scores1.clear();
+			scores2.clear();
 
 			evaluateReadPair(rec1.seq, rec2.seq, hits1, hits2, score1, score2,
 					scores1, scores2);
@@ -319,35 +318,27 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	size_t totalReads = 0;
 
-	vector<Dynamicofstream> outputFiles1;
-	vector<Dynamicofstream> outputFiles2;
+	vector<Dynamicofstream*> outputFiles1(m_filterOrder.size() + 2);
+	vector<Dynamicofstream*> outputFiles2(m_filterOrder.size() + 2);
 	//initialize variables
+	unsigned index = 0;
 	for (vector<string>::const_iterator i = m_filterOrder.begin();
 			i != m_filterOrder.end(); ++i) {
-		//TODO Change to move/emplace (C++11) or pointer?
-		outputFiles1.push_back(
+		outputFiles1[index] = new
 				Dynamicofstream(
-						m_prefix + "_" + *i + "_1." + outputType + m_postfix));
-		outputFiles2.push_back(
+						m_prefix + "_" + *i + "_1." + outputType + m_postfix);
+		outputFiles2[index++] = new
 				Dynamicofstream(
-						m_prefix + "_" + *i + "_2." + outputType + m_postfix));
+				m_prefix + "_" + *i + "_2." + outputType + m_postfix);
 	}
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_" + NO_MATCH + "_1." + outputType
-							+ m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_" + NO_MATCH + "_2." + outputType
-							+ m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_" + MULTI_MATCH + "_1." + outputType
-							+ m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_" + MULTI_MATCH + "_2." + outputType
-							+ m_postfix));
+	outputFiles1[index] = new Dynamicofstream(
+			m_prefix + "_" + NO_MATCH + "_1." + outputType + m_postfix);
+	outputFiles2[index++] = new Dynamicofstream(
+			m_prefix + "_" + NO_MATCH + "_2." + outputType + m_postfix);
+	outputFiles1[index] = new Dynamicofstream(
+			m_prefix + "_" + MULTI_MATCH + "_1." + outputType + m_postfix);
+	outputFiles2[index] = new Dynamicofstream(
+			m_prefix + "_" + MULTI_MATCH + "_2." + outputType + m_postfix);
 
 	cerr << "Filtering Start" << "\n";
 
@@ -406,8 +397,8 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 			hits2.clear();
 			score1 = 0;
 			score2 = 0;
-			std::fill(scores1.begin(), scores1.end(), 0);
-			std::fill(scores2.begin(), scores2.end(), 0);
+			scores1.clear();
+			scores2.clear();
 
 			evaluateReadPair(rec1.seq, rec2.seq, hits1, hits2, score1, score2,
 					scores1, scores2);
@@ -427,32 +418,37 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	//close sorting files
 	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
-		outputFiles1[i].close();
+		outputFiles1[i]->close();
+		delete(outputFiles1[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_1." + outputType
 						+ m_postfix << endl;
-		outputFiles2[i].close();
+		outputFiles2[i]->close();
+		delete(outputFiles2[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_2." + outputType
 						+ m_postfix << endl;
 	}
-	outputFiles1[m_filterOrder.size() + 1].close();
+	outputFiles1[m_filterOrder.size()]->close();
+	delete (outputFiles1[m_filterOrder.size()]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + NO_MATCH + "_1." + outputType + m_postfix
 			<< endl;
-	outputFiles2[m_filterOrder.size() + 1].close();
+	outputFiles2[m_filterOrder.size()]->close();
+	delete (outputFiles2[m_filterOrder.size()]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + NO_MATCH + "_2." + outputType + m_postfix
 			<< endl;
-	outputFiles1[m_filterOrder.size() + 1].close();
+	outputFiles1[m_filterOrder.size() + 1]->close();
+	delete (outputFiles1[m_filterOrder.size() + 1]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + MULTI_MATCH + "_1." + outputType + m_postfix
 			<< endl;
-	outputFiles2[m_filterOrder.size() + 1].close();
+	outputFiles2[m_filterOrder.size() + 1]->close();
+	delete (outputFiles2[m_filterOrder.size() + 1]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + MULTI_MATCH + "_2." + outputType + m_postfix
 			<< endl;
-
 	cerr << "Total Reads:" << totalReads << endl;
 	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
 
@@ -541,8 +537,8 @@ void BioBloomClassifier::filterPair(const string &file) {
 				hits2.clear();
 				score1 = 0;
 				score2 = 0;
-				std::fill(scores1.begin(), scores1.end(), 0);
-				std::fill(scores2.begin(), scores2.end(), 0);
+				scores1.clear();
+				scores2.clear();
 
 				evaluateReadPair(rec1.seq, rec2.seq, hits1, hits2, score1,
 						score2, scores1, scores2);
@@ -584,35 +580,27 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 
 	size_t totalReads = 0;
 
-	vector<Dynamicofstream> outputFiles1;
-	vector<Dynamicofstream> outputFiles2;
+	vector<Dynamicofstream*> outputFiles1(m_filterOrder.size() + 2);
+	vector<Dynamicofstream*> outputFiles2(m_filterOrder.size() + 2);
 	//initialize variables
+	unsigned index = 0;
 	for (vector<string>::const_iterator i = m_filterOrder.begin();
 			i != m_filterOrder.end(); ++i) {
-		//TODO Change to move/emplace (C++11) or pointer?
-		outputFiles1.push_back(
+		outputFiles1[index] = new
 				Dynamicofstream(
-						m_prefix + "_" + *i + "_1." + outputType + m_postfix));
-		outputFiles2.push_back(
+						m_prefix + "_" + *i + "_1." + outputType + m_postfix);
+		outputFiles2[index++] = new
 				Dynamicofstream(
-						m_prefix + "_" + *i + "_2." + outputType + m_postfix));
+				m_prefix + "_" + *i + "_2." + outputType + m_postfix);
 	}
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_" + NO_MATCH + "_1." + outputType
-							+ m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_" + NO_MATCH + "_2." + outputType
-							+ m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_" + MULTI_MATCH + "_1." + outputType
-							+ m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + "_" + MULTI_MATCH + "_2." + outputType
-							+ m_postfix));
+	outputFiles1[index] = new Dynamicofstream(
+			m_prefix + "_" + NO_MATCH + "_1." + outputType + m_postfix);
+	outputFiles2[index++] = new Dynamicofstream(
+			m_prefix + "_" + NO_MATCH + "_2." + outputType + m_postfix);
+	outputFiles1[index] = new Dynamicofstream(
+			m_prefix + "_" + MULTI_MATCH + "_1." + outputType + m_postfix);
+	outputFiles2[index] = new Dynamicofstream(
+			m_prefix + "_" + MULTI_MATCH + "_2." + outputType + m_postfix);
 
 	//print out header info and initialize variables for summary
 	cerr << "Filtering Start" << "\n";
@@ -677,8 +665,8 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 				hits2.clear();
 				score1 = 0;
 				score2 = 0;
-				std::fill(scores1.begin(), scores1.end(), 0);
-				std::fill(scores2.begin(), scores2.end(), 0);
+				scores1.clear();
+				scores2.clear();
 
 				evaluateReadPair(rec1.seq, rec2.seq, hits1, hits2, score1,
 						score2, scores1, scores2);
@@ -698,32 +686,37 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 	kseq_destroy(kseq);
 	//close sorting files
 	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
-		outputFiles1[i].close();
+		outputFiles1[i]->close();
+		delete(outputFiles1[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_1." + outputType
 						+ m_postfix << endl;
-		outputFiles2[i].close();
+		outputFiles2[i]->close();
+		delete(outputFiles2[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_2." + outputType
 						+ m_postfix << endl;
 	}
-	outputFiles1[m_filterOrder.size() + 1].close();
+	outputFiles1[m_filterOrder.size()]->close();
+	delete (outputFiles1[m_filterOrder.size()]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + NO_MATCH + "_1." + outputType + m_postfix
 			<< endl;
-	outputFiles2[m_filterOrder.size() + 1].close();
+	outputFiles2[m_filterOrder.size()]->close();
+	delete (outputFiles2[m_filterOrder.size()]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + NO_MATCH + "_2." + outputType + m_postfix
 			<< endl;
-	outputFiles1[m_filterOrder.size() + 1].close();
+	outputFiles1[m_filterOrder.size() + 1]->close();
+	delete (outputFiles1[m_filterOrder.size() + 1]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + MULTI_MATCH + "_1." + outputType + m_postfix
 			<< endl;
-	outputFiles2[m_filterOrder.size() + 1].close();
+	outputFiles2[m_filterOrder.size() + 1]->close();
+	delete (outputFiles2[m_filterOrder.size() + 1]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + MULTI_MATCH + "_2." + outputType + m_postfix
 			<< endl;
-
 	cerr << "Total Reads:" << totalReads << endl;
 	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
 
@@ -790,8 +783,8 @@ void BioBloomClassifier::filterPair(const vector<string> &inputFiles1,
 				hits2.clear();
 				score1 = 0;
 				score2 = 0;
-				std::fill(scores1.begin(), scores1.end(), 0);
-				std::fill(scores2.begin(), scores2.end(), 0);
+				scores1.clear();
+				scores2.clear();
 				evaluateReadPair(kseq1->seq.s, kseq2->seq.s, hits1, hits2,
 						score1, score2, scores1, scores2);
 
@@ -826,31 +819,27 @@ void BioBloomClassifier::filterPairPrint(const vector<string> &inputFiles1,
 
 	cerr << "Filtering Start" << "\n";
 
-	vector<Dynamicofstream> outputFiles1;
-	vector<Dynamicofstream> outputFiles2;
+	vector<Dynamicofstream*> outputFiles1;
+	vector<Dynamicofstream*> outputFiles2;
 	//initialize variables
+	unsigned index = 0;
 	for (vector<string>::const_iterator i = m_filterOrder.begin();
 			i != m_filterOrder.end(); ++i) {
-		//TODO Change to move/emplace (C++11) or pointer?
-		outputFiles1.push_back(
+		outputFiles1[index] = new
 				Dynamicofstream(
-						m_prefix + *i + "_1." + outputType + m_postfix));
-		outputFiles2.push_back(
+						m_prefix + "_" + *i + "_1." + outputType + m_postfix);
+		outputFiles2[index++] = new
 				Dynamicofstream(
-						m_prefix + *i + "_2." + outputType + m_postfix));
+				m_prefix + "_" + *i + "_2." + outputType + m_postfix);
 	}
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + NO_MATCH + "_1." + outputType + m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + NO_MATCH + "_2." + outputType + m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + MULTI_MATCH + "_1." + outputType + m_postfix));
-	outputFiles1.push_back(
-			Dynamicofstream(
-					m_prefix + MULTI_MATCH + "_1." + outputType + m_postfix));
+	outputFiles1[index] = new Dynamicofstream(
+			m_prefix + "_" + NO_MATCH + "_1." + outputType + m_postfix);
+	outputFiles2[index++] = new Dynamicofstream(
+			m_prefix + "_" + NO_MATCH + "_2." + outputType + m_postfix);
+	outputFiles1[index] = new Dynamicofstream(
+			m_prefix + "_" + MULTI_MATCH + "_1." + outputType + m_postfix);
+	outputFiles2[index] = new Dynamicofstream(
+			m_prefix + "_" + MULTI_MATCH + "_2." + outputType + m_postfix);
 
 	vector<double> scores1(m_filterNum, 0.0);
 	vector<double> scores2(m_filterNum, 0.0);
@@ -896,14 +885,18 @@ void BioBloomClassifier::filterPairPrint(const vector<string> &inputFiles1,
 				hits2.clear();
 				score1 = 0;
 				score2 = 0;
-				std::fill(scores1.begin(), scores1.end(), 0);
-				std::fill(scores2.begin(), scores2.end(), 0);
+				scores1.clear();
+				scores2.clear();
 				evaluateReadPair(kseq1->seq.s, kseq2->seq.s, hits1, hits2,
 						score1, score2, scores1, scores2);
 
 				//Evaluate hit data and record for summary
-				printPair(kseq1, kseq2, score1, score2,
-						resSummary.updateSummaryData(hits1, hits2));
+				unsigned outputFileIndex = resSummary.updateSummaryData(hits1,
+						hits2);
+				printPair(kseq1, kseq2, score1, score2, outputFileIndex);
+				printPairToFile(outputFileIndex, kseq1, kseq2, outputFiles1,
+						outputFiles2, outputType, score1, score2, scores1,
+						scores2);
 			} else
 				break;
 		}
@@ -911,32 +904,37 @@ void BioBloomClassifier::filterPairPrint(const vector<string> &inputFiles1,
 		kseq_destroy(kseq2);
 	}
 	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
-		outputFiles1[i].close();
+		outputFiles1[i]->close();
+		delete(outputFiles1[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_1." + outputType
 						+ m_postfix << endl;
-		outputFiles2[i].close();
+		outputFiles2[i]->close();
+		delete(outputFiles2[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_2." + outputType
 						+ m_postfix << endl;
 	}
-	outputFiles1[m_filterOrder.size() + 1].close();
+	outputFiles1[m_filterOrder.size()]->close();
+	delete (outputFiles1[m_filterOrder.size()]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + NO_MATCH + "_1." + outputType + m_postfix
 			<< endl;
-	outputFiles2[m_filterOrder.size() + 1].close();
+	outputFiles2[m_filterOrder.size()]->close();
+	delete (outputFiles2[m_filterOrder.size()]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + NO_MATCH + "_2." + outputType + m_postfix
 			<< endl;
-	outputFiles1[m_filterOrder.size() + 1].close();
+	outputFiles1[m_filterOrder.size() + 1]->close();
+	delete (outputFiles1[m_filterOrder.size() + 1]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + MULTI_MATCH + "_1." + outputType + m_postfix
 			<< endl;
-	outputFiles2[m_filterOrder.size() + 1].close();
+	outputFiles2[m_filterOrder.size() + 1]->close();
+	delete (outputFiles2[m_filterOrder.size() + 1]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + MULTI_MATCH + "_2." + outputType + m_postfix
 			<< endl;
-
 	cerr << "Total Reads:" << totalReads << endl;
 	cerr << "Writing file: " << m_prefix + "_summary.tsv" << endl;
 
@@ -1215,6 +1213,7 @@ void BioBloomClassifier::evaluateReadStd(const string &rec,
  */
 double BioBloomClassifier::evaluateReadBestHit(const string &rec,
 		vector<unsigned> &hits, vector<double> &scores) {
+	assert(scores.size() == 0);
 	vector<unsigned> bestFilters;
 	double maxScore = 0;
 
