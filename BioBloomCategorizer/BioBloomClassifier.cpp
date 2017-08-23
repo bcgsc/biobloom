@@ -1228,8 +1228,9 @@ double BioBloomClassifier::evaluateReadBestHit(const string &rec,
 		}
 	}
 	if (maxScore > 0) {
-		for (unsigned i = 0; i < bestFilters.size(); ++i) {
-			hits.push_back(i);
+		for (vector<unsigned>::iterator i = bestFilters.begin();
+				i != bestFilters.end(); ++i) {
+			hits.push_back(*i);
 			scores.push_back(maxScore);
 		}
 	}
