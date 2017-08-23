@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:or:t:cdiwI:", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:r:t:cdiwI:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -407,7 +407,7 @@ int main(int argc, char *argv[])
 		cerr << "Error: -m -c outputs types cannot be both set" << endl;
 		exit(1);
 	} else if (collab) {
-		bbc.setCollabFilter();
+		bbc.setOrderedFilter();
 	}
 
 	//filtering step

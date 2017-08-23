@@ -27,7 +27,7 @@ static const string MULTI_MATCH = "multiMatch";
 
 /** for modes of filtering */
 enum mode {
-	ORDERED, COLLAB, BESTHIT, STD, SCORES
+	ORDERED, BESTHIT, STD, SCORES
 };
 
 ///** for modes of printing out files */
@@ -62,8 +62,8 @@ public:
 	void filterPairPrint(const vector<string> &inputFiles1,
 			const vector<string> &inputFiles2, const string &outputType);
 
-	void setCollabFilter() {
-		m_mode = COLLAB;
+	void setOrderedFilter() {
+		m_mode = ORDERED;
 	}
 
 	void setInclusive() {
@@ -488,7 +488,7 @@ private:
 	inline void evaluateRead(const string &rec, vector<unsigned> &hits,
 			double &score, vector<double> &scores) {
 		switch (m_mode) {
-		case COLLAB: {
+		case ORDERED: {
 			evaluateReadOrdered(rec, hits);
 			break;
 		}
@@ -515,7 +515,7 @@ private:
 			vector<unsigned> &hits1, vector<unsigned> &hits2, double &score1,
 			double &score2, vector<double> &scores1, vector<double> &scores2) {
 		switch (m_mode) {
-		case COLLAB: {
+		case ORDERED: {
 			evaluateReadOrderedPair(rec1, rec2, hits1, hits2);
 			break;
 		}
