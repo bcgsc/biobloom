@@ -54,7 +54,20 @@ inline bool evalSingle(const string &rec, const BloomFilter &filter,
 	unsigned antiScore = 0;
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
-	unsigned prevPos = itr.pos();
+	unsigned prevPos = 0;
+	if (filter.contains(*itr)) {
+		if (subtract == NULL || !subtract->contains(*itr))
+			score += 0.5;
+		if (thres <= score) {
+			return true;
+		}
+		++streak;
+	} else {
+		if (antiThres <= ++antiScore)
+			return false;
+	}
+	prevPos = itr.pos();
+	++itr;
 	while (itr != itr.end()) {
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
@@ -69,9 +82,6 @@ inline bool evalSingle(const string &rec, const BloomFilter &filter,
 			if (streak == 0) {
 				if (subtract == NULL || !subtract->contains(*itr))
 					score += 0.5;
-				if (thres <= score) {
-					return true;
-				}
 			} else {
 				if (subtract == NULL || !subtract->contains(*itr))
 					++score;
@@ -80,14 +90,14 @@ inline bool evalSingle(const string &rec, const BloomFilter &filter,
 				return true;
 			}
 			prevPos = itr.pos();
-			itr.next();
+			++itr;
 			++streak;
 		} else {
 			if (streak < opt::streakThreshold) {
 				if (antiThres <= ++antiScore)
 					return false;
 				prevPos = itr.pos();
-				itr.next();
+				++itr;
 			} else {
 				//TODO: Determine if faster to force re-init
 				unsigned skipEnd = itr.pos() + filter.getKmerSize();
@@ -96,7 +106,7 @@ inline bool evalSingle(const string &rec, const BloomFilter &filter,
 					if (antiThres <= ++antiScore)
 						return false;
 					prevPos = itr.pos();
-					itr.next();
+					++itr;
 				}
 			}
 			streak = 0;
@@ -115,7 +125,7 @@ inline bool evalMinMatchLen(const string &rec, const BloomFilter &filter,
 	size_t l = rec.length();
 
 	ntHashIterator itr(rec, filter.getHashNum(), filter.getKmerSize());
-	unsigned prevPos = itr.pos();
+	unsigned prevPos = 0;
 	while (itr != itr.end()) {
 		// quit early if there is no hope
 		if (l - itr.pos() + matchLen < minMatchLen)
@@ -139,6 +149,8 @@ inline bool evalMinMatchLen(const string &rec, const BloomFilter &filter,
 		// if min match length reached
 		if (matchLen >= minMatchLen)
 			return true;
+		prevPos = itr.pos();
+		++itr;
 	}
 	return false;
 }
@@ -171,7 +183,13 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter) {
 	unsigned antiScore = 0;
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getHashNum(), filter.getKmerSize());
-	unsigned prevPos = itr.pos();
+	unsigned prevPos = 0;
+	if (filter.contains(*itr)) {
+		score += 0.5;
+		++streak;
+	}
+	prevPos = itr.pos();
+	++itr;
 	while (itr != itr.end()) {
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
@@ -186,19 +204,19 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter) {
 				++score;
 			}
 			prevPos = itr.pos();
-			itr.next();
+			++itr;
 			++streak;
 		} else {
 			if (streak < opt::streakThreshold) {
 				streak = 0;
 				prevPos = itr.pos();
-				itr.next();
+				++itr;
 			} else {
 				unsigned skipEnd = itr.pos() + filter.getKmerSize();
 				//skip lookups
 				while (itr.pos() < skipEnd) {
 					prevPos = itr.pos();
-					itr.next();
+					++itr;
 				}
 			}
 			streak = 0;
@@ -223,7 +241,17 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 	unsigned antiScore = 0;
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
-	unsigned prevPos = itr.pos();
+	unsigned prevPos = 0;
+	if (filter.contains(*itr)) {
+		if (subtract == NULL || !subtract->contains(*itr))
+			score += 0.5;
+		++streak;
+	} else {
+		if (antiThres <= ++antiScore)
+			return score;
+	}
+	prevPos = itr.pos();
+	++itr;
 	while (itr != itr.end()) {
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
@@ -243,14 +271,14 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 					++score;
 			}
 			prevPos = itr.pos();
-			itr.next();
+			++itr;
 			++streak;
 		} else {
 			if (streak < opt::streakThreshold) {
 				if (antiThres <= ++antiScore)
 					return score;
 				prevPos = itr.pos();
-				itr.next();
+				++itr;
 			} else {
 				//TODO: Determine if faster to force re-init
 				unsigned skipEnd = itr.pos() + filter.getKmerSize();
@@ -259,7 +287,7 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 					if (antiThres <= ++antiScore)
 						return score;
 					prevPos = itr.pos();
-					itr.next();
+					++itr;
 				}
 			}
 			streak = 0;
