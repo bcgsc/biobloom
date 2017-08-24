@@ -159,7 +159,7 @@ private:
 	inline void loadFilter(BloomFilter &bf, const string &str) {
 		size_t tempTotal = 0;
 		for (ntHashIterator itr(str, m_hashNum, m_kmerSize); itr != itr.end(); ++itr) {
-			tempTotal += bf.insertAndCheck(*itr);
+			tempTotal += !bf.insertAndCheck(*itr);
 		}
 #pragma omp atomic
 		m_totalEntries += tempTotal;
