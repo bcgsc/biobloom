@@ -161,6 +161,7 @@ private:
 		for (ntHashIterator itr(str, m_hashNum, m_kmerSize); itr != itr.end(); ++itr) {
 			tempTotal += bf.insertAndCheck(*itr);
 		}
+#pragma omp atomic
 		m_totalEntries += tempTotal;
 	}
 
