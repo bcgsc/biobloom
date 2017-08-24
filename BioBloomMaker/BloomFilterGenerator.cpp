@@ -1062,16 +1062,16 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 					case PROG_INC: {
 						if (numKmers1 > score
 								&& (SeqEval::evalRead(rec1, filter, score))) {
-							loadFilter(filter, seq1->seq.s);
-							loadFilter(filter, seq2->seq.s);
+							loadFilter(filter, rec1);
+							loadFilter(filter, rec2);
 #pragma omp atomic
 							++taggedReads;
 							if (printReads)
 								printReadPair(header1, header2, rec1, rec2);
 						} else if (numKmers2 > score
 								&& (SeqEval::evalRead(rec1, filter, score))) {
-							loadFilter(filter, seq1->seq.s);
-							loadFilter(filter, seq2->seq.s);
+							loadFilter(filter, rec1);
+							loadFilter(filter, rec2);
 #pragma omp atomic
 							++taggedReads;
 							if (printReads)
@@ -1084,8 +1084,8 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 								&& (SeqEval::evalRead(rec1, filter, score))
 								&& numKmers2 > score
 								&& (SeqEval::evalRead(rec1, filter, score))) {
-							loadFilter(filter, seq1->seq.s);
-							loadFilter(filter, seq2->seq.s);
+							loadFilter(filter, rec1);
+							loadFilter(filter, rec2);
 #pragma omp atomic
 							++taggedReads;
 							if (printReads)
