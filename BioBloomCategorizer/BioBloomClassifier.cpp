@@ -29,7 +29,6 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 	}
 	if (m_scoreThreshold == 1) {
 		m_mode = BESTHIT;
-		assert(m_mode == BESTHIT);
 	}
 }
 
@@ -1217,7 +1216,7 @@ double BioBloomClassifier::evaluateReadBestHit(const string &rec,
 	vector<unsigned> bestFilters;
 	double maxScore = 0;
 
-	for (unsigned i = 0; i != m_filters.size(); ++i) {
+	for (unsigned i = 0; i < m_filters.size(); ++i) {
 		double score = SeqEval::evalSingleScore(rec, *m_filters[i]);
 		if (maxScore < score) {
 			maxScore = score;

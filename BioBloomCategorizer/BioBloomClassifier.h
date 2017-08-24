@@ -63,6 +63,10 @@ public:
 			const vector<string> &inputFiles2, const string &outputType);
 
 	void setOrderedFilter() {
+		if(m_mode == BESTHIT){
+			cerr << "Best Hit mode and Ordered mode detected. Not yet supported." << endl;
+			exit(1);
+		}
 		m_mode = ORDERED;
 	}
 
