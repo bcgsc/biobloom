@@ -1,6 +1,5 @@
 SUBDIRS = \
 	Common \
-	DataLayer \
 	BioBloomMaker \
 	BioBloomCategorizer \
 	Tests

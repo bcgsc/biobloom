@@ -7,8 +7,7 @@ biobloomcategorizer_CPPFLAGS = -I$(top_srcdir)/BioBloomCategorizer \
 	-I$(top_srcdir)/DataLayer \
 	-I$(top_srcdir)
 	
-biobloomcategorizer_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
-	$(top_builddir)/Common/libcommon.a -lz
+biobloomcategorizer_LDADD = $(top_builddir)/Common/libcommon.a -lz
 	
 biobloomcategorizer_LDFLAGS = $(OPENMP_CXXFLAGS)
 

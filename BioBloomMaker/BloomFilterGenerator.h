@@ -12,7 +12,7 @@
 #include "btl_bloomfilter/BloomFilter.hpp"
 #include "btl_bloomfilter/ntHashIterator.hpp"
 #include "Common/SeqEval.h"
-#include "DataLayer/kseq.h"
+#include "Common/kseq.h"
 #include <iostream>
 #include <zlib.h>
 #include <omp.h>

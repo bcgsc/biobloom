@@ -16,11 +16,10 @@
 #include "Common/SeqEval.h"
 #include <zlib.h>
 #include <iostream>
-#include "DataLayer/kseq.h"
+#include "Common/kseq.h"
 KSEQ_INIT(gzFile, gzread)
 
 using namespace std;
-using namespace boost;
 
 static const string NO_MATCH = "noMatch";
 static const string MULTI_MATCH = "multiMatch";

@@ -5,24 +5,20 @@ check_PROGRAMS = BloomFilterTests \
 	SeqEvalTests
 	
 
-BloomFilterTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
-	$(top_builddir)/Common/libcommon.a -lz
+BloomFilterTests_LDADD = $(top_builddir)/Common/libcommon.a -lz
 BloomFilterTests_SOURCES = BloomFilterTests.cpp
 
-BloomFilterInfoTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
-	$(top_builddir)/Common/libcommon.a -lz
+BloomFilterInfoTests_LDADD = $(top_builddir)/Common/libcommon.a -lz
 BloomFilterInfoTests_SOURCES = BloomFilterInfoTests.cpp
 
-BloomFilterMakerTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
-	$(top_builddir)/Common/libcommon.a -lz
+BloomFilterMakerTests_LDADD = $(top_builddir)/Common/libcommon.a -lz
 BloomFilterMakerTests_CXXFLAGS = $(AM_CXXFLAGS) $(OPENMP_CXXFLAGS)
 BloomFilterMakerTests_SOURCES = BloomFilterMakerTests.cpp
 BloomFilterMakerTests_CPPFLAGS = -I$(top_srcdir)/BioBloomMaker \
 	-I$(top_srcdir)/Common \
 	-I$(top_srcdir)/DataLayer
 
-BloomFilterCategorizerTests_LDADD = $(top_builddir)/DataLayer/libdatalayer.a \
-	$(top_builddir)/Common/libcommon.a -lz
+BloomFilterCategorizerTests_LDADD = $(top_builddir)/Common/libcommon.a -lz
 BloomFilterCategorizerTests_SOURCES = BloomFilterCategorizerTests.cpp
 BloomFilterCategorizerTests_CPPFLAGS = -I$(top_srcdir)/BioBloomCategorizer \
 	-I$(top_srcdir)/Common \

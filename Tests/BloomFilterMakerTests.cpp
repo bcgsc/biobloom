@@ -3,22 +3,17 @@
  * BloomFilterGenerator Unit tests
  */
 
-//#include "BioBloomMaker/WindowedFileParser.h"
-//#include "BioBloomMaker/WindowedFileParser.cpp"
 #include "BioBloomMaker/BloomFilterGenerator.h"
 #include "BioBloomMaker/BloomFilterGenerator.cpp"
-//#include "Common/BloomFilter.h"
 #include <string>
 #include <assert.h>
 #include <iostream>
 #include <fstream>
-#include <boost/unordered/unordered_map.hpp>
 #include <vector>
 #include <fstream>
 #include "btl_bloomfilter/BloomFilter.hpp"
 #include "btl_bloomfilter/ntHashIterator.hpp"
 #include "omp.h"
-//#include "Common/ReadsProcessor.h"
 
 using namespace std;
 

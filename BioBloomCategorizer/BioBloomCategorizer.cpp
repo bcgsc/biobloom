@@ -8,11 +8,9 @@
 #include <string>
 #include <getopt.h>
 #include <iostream>
-#include "boost/unordered/unordered_map.hpp"
 #include <vector>
 #include <sys/stat.h>
 #include "BioBloomClassifier.h"
-#include "DataLayer/Options.h"
 #include "config.h"
 #include "Common/Options.h"
 #include "Common/SeqEval.h"
@@ -126,9 +124,6 @@ void printHelpDialog()
 
 int main(int argc, char *argv[])
 {
-	opt::chastityFilter = 0;
-	opt::trimMasked = 0;
-
 	//switch statement variable
 	int c;
 
@@ -167,8 +162,6 @@ int main(int argc, char *argv[])
 		"interval",	required_argument, NULL, 'I' }, {
 		"threads", required_argument, NULL, 't' }, {
 		"gz_output", no_argument, NULL, 'g' }, {
-		"chastity", no_argument, &opt::chastityFilter, 1 }, {
-		"no-chastity", no_argument, &opt::chastityFilter, 0 }, {
 		"fq", no_argument, &fastq, 1 }, {
 		"fa", no_argument, &fasta, 1 }, {
 		"file_list", required_argument, NULL, 'l' }, {

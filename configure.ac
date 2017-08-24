@@ -69,7 +69,6 @@ AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
 AC_CONFIG_FILES([
 		Makefile
 		Common/Makefile
-		DataLayer/Makefile
 		BioBloomMaker/Makefile
 		BioBloomCategorizer/Makefile
 		Tests/Makefile

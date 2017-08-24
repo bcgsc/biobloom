@@ -12,7 +12,6 @@
 #include "BloomFilterGenerator.h"
 #include "Common/BloomFilterInfo.h"
 #include "Common/SeqEval.h"
-#include <boost/unordered/unordered_map.hpp>
 #include <getopt.h>
 #include "config.h"
 #include "Common/Options.h"
