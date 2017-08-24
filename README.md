@@ -56,6 +56,11 @@ Table of Contents
 * Autotools (if directly cloning from repo)
 
 ### Compilation:
+If cloning directly from the repository make sure you get the require submodules:
+```bash
+git submodule update --init
+```
+
 If cloning directly from the repository run:
 ```bash
 ./autogen.sh
