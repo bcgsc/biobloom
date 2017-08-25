@@ -72,23 +72,6 @@ size_t BloomFilterGenerator::generate(const string &filename) {
 	return redundancy;
 }
 
-inline void BloomFilterGenerator::printReadPair(const string &header1,
-		const string &header2, const string &rec1, const string &rec2) {
-#pragma omp critical(cout)
-	{
-		cout << ">" << header1 << "\n" << rec1 << "\n";
-		cout << ">" << header2 << "\n" << rec2 << "\n";
-	}
-}
-
-inline void BloomFilterGenerator::printRead(const string &header,
-		const string &rec) {
-#pragma omp critical(cout)
-	{
-		cout << ">" << header << "\n" << rec << "\n";
-	}
-}
-
 /*
  * Generates a bloom filter outputting it to a filename
  * Returns the m_redundancy rate of a Bloom Filter generated from a file.
@@ -112,35 +95,33 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//setup bloom filter
 	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
-	//load other bloom filter info
-	string infoFileName = (subtractFilter).substr(0,
-			(subtractFilter).length() - 2) + "txt";
-	BloomFilterInfo subInfo(infoFileName);
+	BloomFilter* filterSub = NULL;
 
-	//load other bloomfilter
-	BloomFilter filterSub(subtractFilter);
+	if (subtractFilter != "") {
+		filterSub = new BloomFilter(subtractFilter);
+	}
 
-	if (filter.getHashNum() != filterSub.getHashNum()) {
+	if (filter.getHashNum() != filterSub->getHashNum()) {
 		cerr << "Error: Subtraction filter's hash number "
 				<< filter.getHashNum()
 				<< " is a different size from than output filter's hash number "
-				<< filterSub.getHashNum() << endl;
+				<< filterSub->getHashNum() << endl;
 		exit(1);
 	}
 
-	if (filter.getKmerSize() != filterSub.getKmerSize()) {
+	if (filter.getKmerSize() != filterSub->getKmerSize()) {
 		cerr << "Error: Subtraction filter's k-mer size "
 				<< filter.getKmerSize()
 				<< " is a different size from than output filter's k-mer size "
-				<< filterSub.getKmerSize() << endl;
+				<< filterSub->getKmerSize() << endl;
 		exit(1);
 	}
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
 
-	if (opt::noRep) {
-		redundancy += loadFilterSubtract(filter, filterSub, m_totalEntries);
+	if (opt::noRep && filterSub != NULL) {
+		redundancy += loadFilterSubtract(filter, *filterSub, m_totalEntries);
 	} else {
 		redundancy += loadFilter(filter, m_totalEntries);
 	}
@@ -177,31 +158,31 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		kseq_t *seq1 = kseq_init(fp1);
 		kseq_t *seq2 = kseq_init(fp2);
 		int l1;
-		string rec1;
-		string header1;
+		FqRec rec1;
 		int l2;
-		string rec2;
-		string header2;
-#pragma omp parallel private(l1, l2, rec1, header1, rec2, header2)
+		FqRec rec2;
+#pragma omp parallel private(l1, l2, rec1, rec2)
 		for (;;) {
 #pragma omp critical(kseq_read)
 			{
 				l1 = kseq_read(seq1);
 				if (l1 >= 0) {
-					rec1 = string(seq1->seq.s, l1);
-					header1 = string(seq1->name.s, seq1->name.l);
+					rec1.seq = string(seq1->seq.s, l1);
+					rec1.header = string(seq1->name.s, seq1->name.l);
+					rec1.qual = string(seq1->qual.s, seq1->qual.l);
 				}
 				l2 = kseq_read(seq2);
 				if (l2 >= 0) {
-					rec2 = string(seq2->seq.s, l2);
-					header2 = string(seq2->name.s, seq2->name.l);
+					rec2.seq = string(seq2->seq.s, l2);
+					rec2.header = string(seq2->name.s, seq2->name.l);
+					rec2.qual = string(seq2->qual.s, seq2->qual.l);
 				}
 				if (l1 >= 0 && l2 >= 0) {
 					++totalReads;
 					if (totalReads % opt::fileInterval == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
-								<< " ; Unique k-mers Added: " << m_totalEntries
-								<< " ; Reads Used in Tagging: " << taggedReads
+								<< "\tUnique k-mers Added: " << m_totalEntries
+								<< "\tReads Used in Tagging: " << taggedReads
 								<< endl;
 					}
 				}
@@ -209,42 +190,92 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 			if (l1 >= 0 && l2 >= 0 && m_totalEntries < m_expectedEntries) {
 				size_t numKmers1 =
-						rec1.length() > m_kmerSize ? l1 - m_kmerSize + 1 : 0;
+						rec1.seq.length() > m_kmerSize ?
+								l1 - m_kmerSize + 1 : 0;
 				size_t numKmers2 =
-						rec2.length() > m_kmerSize ? l2 - m_kmerSize + 1 : 0;
+						rec2.seq.length() > m_kmerSize ?
+								l2 - m_kmerSize + 1 : 0;
 				switch (mode) {
 				case PROG_INC: {
 					if (numKmers1 > score
-							&& (SeqEval::evalRead(rec1, filter, score,
+							&& (SeqEval::evalRead(rec1.seq, filter, score,
 									filterSub))) {
-						loadFilter(filter, rec1);
-						loadFilter(filter, rec2);
 #pragma omp atomic
 						++taggedReads;
-						if (printReads)
-							printReadPair(header1, header2, rec1, rec2);
+						if (printReads) {
+							unsigned taggedKmers1 = loadFilter(filter,
+									rec1.seq);
+							unsigned taggedKmers2 = loadFilter(filter,
+									rec2.seq);
+							unsigned repCount1 = checkFilter(filterSub,
+									rec1.seq);
+							unsigned repCount2 = checkFilter(filterSub,
+									rec2.seq);
+#pragma omp critical(debugPrint)
+							{
+								printDebug(rec1, taggedKmers1, repCount1,
+										taggedReads, totalReads);
+								printDebug(rec2, taggedKmers2, repCount2,
+										taggedReads, totalReads);
+							}
+						} else {
+							loadFilter(filter, rec1.seq);
+							loadFilter(filter, rec2.seq);
+						}
 					} else if (numKmers2 > score
-							&& (SeqEval::evalRead(rec2, filter, score,
+							&& (SeqEval::evalRead(rec2.seq, filter, score,
 									filterSub))) {
-						loadFilter(filter, rec1);
-						loadFilter(filter, rec2);
 #pragma omp atomic
 						++taggedReads;
-						if (printReads)
-							printReadPair(header1, header2, rec1, rec2);
+						if (printReads) {
+							unsigned taggedKmers1 = loadFilter(filter,
+									rec1.seq);
+							unsigned taggedKmers2 = loadFilter(filter,
+									rec2.seq);
+							unsigned repCount1 = checkFilter(filterSub,
+									rec1.seq);
+							unsigned repCount2 = checkFilter(filterSub,
+									rec2.seq);
+#pragma omp critical(debugPrint)
+							{
+								printDebug(rec1, taggedKmers1, repCount1,
+										taggedReads, totalReads);
+								printDebug(rec2, taggedKmers2, repCount2,
+										taggedReads, totalReads);
+							}
+						} else {
+							loadFilter(filter, rec1.seq);
+							loadFilter(filter, rec2.seq);
+						}
 					}
 					break;
 				}
 				case PROG_STD: {
-					if (SeqEval::evalRead(rec1, filter, score, filterSub)
-							&& SeqEval::evalRead(rec2, filter, score,
+					if (SeqEval::evalRead(rec1.seq, filter, score, filterSub)
+							&& SeqEval::evalRead(rec2.seq, filter, score,
 									filterSub)) {
-						loadFilter(filter, rec1);
-						loadFilter(filter, rec2);
 #pragma omp atomic
 						++taggedReads;
-						if (printReads)
-							printReadPair(header1, header2, rec1, rec2);
+						if (printReads) {
+							unsigned taggedKmers1 = loadFilter(filter,
+									rec1.seq);
+							unsigned taggedKmers2 = loadFilter(filter,
+									rec2.seq);
+							unsigned repCount1 = checkFilter(filterSub,
+									rec1.seq);
+							unsigned repCount2 = checkFilter(filterSub,
+									rec2.seq);
+#pragma omp critical(debugPrint)
+							{
+								printDebug(rec1, taggedKmers1, repCount1,
+										taggedReads, totalReads);
+								printDebug(rec2, taggedKmers2, repCount2,
+										taggedReads, totalReads);
+							}
+						} else {
+							loadFilter(filter, rec1.seq);
+							loadFilter(filter, rec2.seq);
+						}
 					}
 					break;
 				}
@@ -265,6 +296,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	}
 
 	filter.storeFilter(filename);
+	if (filterSub != NULL) {
+		delete (filterSub);
+	}
 	return redundancy;
 }
 
@@ -291,6 +325,12 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	//setup bloom filter
 	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
+	BloomFilter* filterSub = NULL;
+
+	if (subtractFilter != "") {
+		filterSub = new BloomFilter(subtractFilter);
+	}
+
 	size_t baitFilterElements = calcExpectedEntries();
 
 	//secondary bait filter
@@ -301,34 +341,26 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	size_t totalEntriesBait = 0;
 	loadFilter(baitFilter, totalEntriesBait);
 
-	//load other bloom filter info
-	string infoFileName = (subtractFilter).substr(0,
-			(subtractFilter).length() - 2) + "txt";
-	BloomFilterInfo subInfo(infoFileName);
-
-	//load other bloomfilter
-	BloomFilter filterSub(subtractFilter);
-
-	if (filter.getHashNum() != filterSub.getHashNum()) {
+	if (filter.getHashNum() != filterSub->getHashNum()) {
 		cerr << "Error: Subtraction filter's hash number "
 				<< filter.getHashNum()
 				<< " is a different size from than output filter's hash number "
-				<< filterSub.getHashNum() << endl;
+				<< filterSub->getHashNum() << endl;
 		exit(1);
 	}
 
-	if (filter.getKmerSize() != filterSub.getKmerSize()) {
+	if (filter.getKmerSize() != filterSub->getKmerSize()) {
 		cerr << "Error: Subtraction filter's k-mer size "
 				<< filter.getKmerSize()
 				<< " is a different size from than output filter's k-mer size "
-				<< filterSub.getKmerSize() << endl;
+				<< filterSub->getKmerSize() << endl;
 		exit(1);
 	}
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
-	if (opt::noRep) {
-		redundancy += loadFilterSubtract(filter, filterSub, m_totalEntries);
+	if (opt::noRep && filterSub != NULL) {
+		redundancy += loadFilterSubtract(filter, *filterSub, m_totalEntries);
 	} else {
 		redundancy += loadFilter(filter, m_totalEntries);
 	}
@@ -365,31 +397,31 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 		kseq_t *seq1 = kseq_init(fp1);
 		kseq_t *seq2 = kseq_init(fp2);
 		int l1;
-		string rec1;
-		string header1;
+		FqRec rec1;
 		int l2;
-		string rec2;
-		string header2;
-#pragma omp parallel private(l1, l2, rec1, header1, rec2, header2)
+		FqRec rec2;
+#pragma omp parallel private(l1, l2, rec1, rec2)
 		for (;;) {
 #pragma omp critical(kseq_read)
 			{
 				l1 = kseq_read(seq1);
 				if (l1 >= 0) {
-					rec1 = string(seq1->seq.s, l1);
-					header1 = string(seq1->name.s, seq1->name.l);
+					rec1.seq = string(seq1->seq.s, l1);
+					rec1.header = string(seq1->name.s, seq1->name.l);
+					rec1.qual = string(seq1->qual.s, seq1->qual.l);
 				}
 				l2 = kseq_read(seq2);
 				if (l2 >= 0) {
-					rec2 = string(seq2->seq.s, l2);
-					header2 = string(seq2->name.s, seq2->name.l);
+					rec2.seq = string(seq2->seq.s, l2);
+					rec2.header = string(seq2->name.s, seq2->name.l);
+					rec2.qual = string(seq2->qual.s, seq2->qual.l);
 				}
 				if (l1 >= 0 && l2 >= 0) {
 					++totalReads;
 					if (totalReads % opt::fileInterval == 0) {
 						cerr << "Currently Reading Read Number: " << totalReads
-								<< " ; Unique k-mers Added: " << m_totalEntries
-								<< " ; Reads Used in Tagging: " << taggedReads
+								<< "\tUnique k-mers Added: " << m_totalEntries
+								<< "\tReads Used in Tagging: " << taggedReads
 								<< endl;
 					}
 				}
@@ -397,52 +429,100 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 
 			if (l1 >= 0 && l2 >= 0 && m_totalEntries < m_expectedEntries) {
 				size_t numKmers1 =
-						rec1.length() > m_kmerSize ? l1 - m_kmerSize + 1 : 0;
+						rec1.seq.length() > m_kmerSize ?
+								l1 - m_kmerSize + 1 : 0;
 				size_t numKmers2 =
-						rec2.length() > m_kmerSize ? l2 - m_kmerSize + 1 : 0;
+						rec2.seq.length() > m_kmerSize ?
+								l2 - m_kmerSize + 1 : 0;
 				switch (mode) {
 				case PROG_INC: {
 					if (numKmers1 > score
-							&& (SeqEval::evalRead(rec1, filter, score,
+							&& (SeqEval::evalRead(rec1.seq, filter, score,
 									filterSub)
-									|| SeqEval::evalRead(rec1, baitFilter,
+									|| SeqEval::evalRead(rec1.seq, baitFilter,
 											opt::baitThreshold, filterSub))) {
-						//load remaining sequences
-						loadFilter(filter, rec1);
-						loadFilter(filter, rec2);
 #pragma omp atomic
 						++taggedReads;
-						if (printReads)
-							printReadPair(header1, header2, rec1, rec2);
+						if (printReads) {
+							unsigned taggedKmers1 = loadFilter(filter,
+									rec1.seq);
+							unsigned taggedKmers2 = loadFilter(filter,
+									rec2.seq);
+							unsigned repCount1 = checkFilter(filterSub,
+									rec1.seq);
+							unsigned repCount2 = checkFilter(filterSub,
+									rec2.seq);
+#pragma omp critical(debugPrint)
+							{
+								printDebug(rec1, taggedKmers1, repCount1,
+										taggedReads, totalReads);
+								printDebug(rec2, taggedKmers2, repCount2,
+										taggedReads, totalReads);
+							}
+						} else {
+							loadFilter(filter, rec1.seq);
+							loadFilter(filter, rec2.seq);
+						}
 					} else if (numKmers2 > score
-							&& (SeqEval::evalRead(rec2, filter, score,
+							&& (SeqEval::evalRead(rec2.seq, filter, score,
 									filterSub)
-									|| SeqEval::evalRead(rec2, baitFilter,
+									|| SeqEval::evalRead(rec2.seq, baitFilter,
 											opt::baitThreshold, filterSub))) {
-						loadFilter(filter, rec1);
-						loadFilter(filter, rec2);
 #pragma omp atomic
 						++taggedReads;
-						if (printReads)
-							printReadPair(header1, header2, rec1, rec2);
+						if (printReads) {
+							unsigned taggedKmers1 = loadFilter(filter,
+									rec1.seq);
+							unsigned taggedKmers2 = loadFilter(filter,
+									rec2.seq);
+							unsigned repCount1 = checkFilter(filterSub,
+									rec1.seq);
+							unsigned repCount2 = checkFilter(filterSub,
+									rec2.seq);
+#pragma omp critical(debugPrint)
+							{
+								printDebug(rec1, taggedKmers1, repCount1,
+										taggedReads, totalReads);
+								printDebug(rec2, taggedKmers2, repCount2,
+										taggedReads, totalReads);
+							}
+						} else {
+							loadFilter(filter, rec1.seq);
+							loadFilter(filter, rec2.seq);
+						}
 					}
 					break;
 				}
 				case PROG_STD: {
-					if ((SeqEval::evalRead(rec1, filter, score, filterSub)
-							|| SeqEval::evalRead(rec1, baitFilter,
+					if ((SeqEval::evalRead(rec1.seq, filter, score, filterSub)
+							|| SeqEval::evalRead(rec1.seq, baitFilter,
 									opt::baitThreshold, filterSub))
-							&& (SeqEval::evalRead(rec2, filter, score,
+							&& (SeqEval::evalRead(rec2.seq, filter, score,
 									filterSub)
-									|| SeqEval::evalRead(rec2, baitFilter,
+									|| SeqEval::evalRead(rec2.seq, baitFilter,
 											opt::baitThreshold, filterSub))) {
-						//load remaining sequences
-						loadFilter(filter, rec1);
-						loadFilter(filter, rec2);
 #pragma omp atomic
 						++taggedReads;
-						if (printReads)
-							printReadPair(header1, header2, rec1, rec2);
+						if (printReads) {
+							unsigned taggedKmers1 = loadFilter(filter,
+									rec1.seq);
+							unsigned taggedKmers2 = loadFilter(filter,
+									rec2.seq);
+							unsigned repCount1 = checkFilter(filterSub,
+									rec1.seq);
+							unsigned repCount2 = checkFilter(filterSub,
+									rec2.seq);
+#pragma omp critical(debugPrint)
+							{
+								printDebug(rec1, taggedKmers1, repCount1,
+										taggedReads, totalReads);
+								printDebug(rec2, taggedKmers2, repCount2,
+										taggedReads, totalReads);
+							}
+						} else {
+							loadFilter(filter, rec1.seq);
+							loadFilter(filter, rec2.seq);
+						}
 					}
 					break;
 				}
@@ -463,10 +543,12 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	}
 
 	filter.storeFilter(filename);
+	if (filterSub != NULL) {
+		delete (filterSub);
+	}
 	return redundancy;
 }
 
-//TODO REFACTOR to minimize redundant code!
 size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 		double score, const vector<string> &files1,
 		const vector<string> &files2, createMode mode, bool printReads,
@@ -481,10 +563,11 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	//setup bloom filter
 	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
-	//load other bloom filter info
-	string infoFileName = (subtractFilter).substr(0,
-			(subtractFilter).length() - 2) + "txt";
-	BloomFilterInfo subInfo(infoFileName);
+	BloomFilter* filterSub = NULL;
+
+	if (subtractFilter != "") {
+		filterSub = new BloomFilter(subtractFilter);
+	}
 
 	size_t baitFilterElements = calcExpectedEntries();
 
@@ -496,30 +579,26 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	size_t totalEntriesBait = 0;
 	loadFilter(baitFilter, totalEntriesBait);
 
-	//load other bloomfilter
-	BloomFilter filterSub(subtractFilter);
-
-	if (filter.getHashNum() != filterSub.getHashNum()) {
+	if (filter.getHashNum() != filterSub->getHashNum()) {
 		cerr << "Error: Subtraction filter's hash number "
 				<< filter.getHashNum()
 				<< " is a different size from than output filter's hash number "
-				<< filterSub.getHashNum() << endl;
+				<< filterSub->getHashNum() << endl;
 		exit(1);
 	}
 
-	if (filter.getKmerSize() != filterSub.getKmerSize()) {
+	if (filter.getKmerSize() != filterSub->getKmerSize()) {
 		cerr << "Error: Subtraction filter's k-mer size "
 				<< filter.getKmerSize()
 				<< " is a different size from than output filter's k-mer size "
-				<< filterSub.getKmerSize() << endl;
+				<< filterSub->getKmerSize() << endl;
 		exit(1);
 	}
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
 
-	if (opt::noRep) {
-		redundancy += loadFilterSubtract(filter, filterSub, m_totalEntries);
+	if (opt::noRep && filterSub != NULL) {
 	} else {
 		redundancy += loadFilter(filter, m_totalEntries);
 	}
@@ -573,9 +652,9 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 							if (++totalReads % opt::fileInterval == 0) {
 								cerr << "Currently Reading Read Number: "
 										<< totalReads
-										<< " ; Unique k-mers Added: "
+										<< "\tUnique k-mers Added: "
 										<< m_totalEntries
-										<< " ; Reads Used in Tagging: "
+										<< "\tReads Used in Tagging: "
 										<< taggedReads << endl;
 							}
 						}
@@ -598,13 +677,41 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 													baitFilter,
 													opt::baitThreshold,
 													filterSub))) {
-								loadFilter(filter, seq1->seq.s);
-								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
 								++taggedReads;
-								if (printReads)
-									printReadPair(seq1->name.s, seq2->name.s,
-											seq1->seq.s, seq2->seq.s);
+								if (printReads) {
+									unsigned taggedKmers1 = loadFilter(filter,
+											seq1->seq.s);
+									unsigned taggedKmers2 = loadFilter(filter,
+											seq2->seq.s);
+									unsigned repCount1 = checkFilter(filterSub,
+											seq1->seq.s);
+									unsigned repCount2 = checkFilter(filterSub,
+											seq2->seq.s);
+#pragma omp critical(debugPrint)
+									{
+										FqRec rec1, rec2;
+										rec1.seq = string(seq1->seq.s, l1);
+										rec1.header = string(seq1->name.s,
+												seq1->name.l);
+										rec1.qual = string(seq1->qual.s,
+												seq1->qual.l);
+										rec2.seq = string(seq2->seq.s, l2);
+										rec2.header = string(seq2->name.s,
+												seq2->name.l);
+										rec2.qual = string(seq2->qual.s,
+												seq2->qual.l);
+										printDebug(rec1, taggedKmers1,
+												repCount1, taggedReads,
+												totalReads);
+										printDebug(rec2, taggedKmers2,
+												repCount2, taggedReads,
+												totalReads);
+									}
+								} else {
+									loadFilter(filter, seq1->seq.s);
+									loadFilter(filter, seq2->seq.s);
+								}
 							} else if (numKmers2 > score
 									&& (SeqEval::evalRead(seq2->seq.s, filter,
 											score, filterSub)
@@ -612,13 +719,41 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 													baitFilter,
 													opt::baitThreshold,
 													filterSub))) {
-								loadFilter(filter, seq1->seq.s);
-								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
 								++taggedReads;
-								if (printReads)
-									printReadPair(seq1->name.s, seq2->name.s,
-											seq1->seq.s, seq2->seq.s);
+								if (printReads) {
+									unsigned taggedKmers1 = loadFilter(filter,
+											seq1->seq.s);
+									unsigned taggedKmers2 = loadFilter(filter,
+											seq2->seq.s);
+									unsigned repCount1 = checkFilter(filterSub,
+											seq1->seq.s);
+									unsigned repCount2 = checkFilter(filterSub,
+											seq2->seq.s);
+#pragma omp critical(debugPrint)
+									{
+										FqRec rec1, rec2;
+										rec1.seq = string(seq1->seq.s, l1);
+										rec1.header = string(seq1->name.s,
+												seq1->name.l);
+										rec1.qual = string(seq1->qual.s,
+												seq1->qual.l);
+										rec2.seq = string(seq2->seq.s, l2);
+										rec2.header = string(seq2->name.s,
+												seq2->name.l);
+										rec2.qual = string(seq2->qual.s,
+												seq2->qual.l);
+										printDebug(rec1, taggedKmers1,
+												repCount1, taggedReads,
+												totalReads);
+										printDebug(rec2, taggedKmers2,
+												repCount2, taggedReads,
+												totalReads);
+									}
+								} else {
+									loadFilter(filter, seq1->seq.s);
+									loadFilter(filter, seq2->seq.s);
+								}
 							}
 							break;
 						}
@@ -634,13 +769,41 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 													baitFilter,
 													opt::baitThreshold,
 													filterSub))) {
-								loadFilter(filter, seq1->seq.s);
-								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
 								++taggedReads;
-								if (printReads)
-									printReadPair(seq1->name.s, seq2->name.s,
-											seq1->seq.s, seq2->seq.s);
+								if (printReads) {
+									unsigned taggedKmers1 = loadFilter(filter,
+											seq1->seq.s);
+									unsigned taggedKmers2 = loadFilter(filter,
+											seq2->seq.s);
+									unsigned repCount1 = checkFilter(filterSub,
+											seq1->seq.s);
+									unsigned repCount2 = checkFilter(filterSub,
+											seq2->seq.s);
+#pragma omp critical(debugPrint)
+									{
+										FqRec rec1, rec2;
+										rec1.seq = string(seq1->seq.s, l1);
+										rec1.header = string(seq1->name.s,
+												seq1->name.l);
+										rec1.qual = string(seq1->qual.s,
+												seq1->qual.l);
+										rec2.seq = string(seq2->seq.s, l2);
+										rec2.header = string(seq2->name.s,
+												seq2->name.l);
+										rec2.qual = string(seq2->qual.s,
+												seq2->qual.l);
+										printDebug(rec1, taggedKmers1,
+												repCount1, taggedReads,
+												totalReads);
+										printDebug(rec2, taggedKmers2,
+												repCount2, taggedReads,
+												totalReads);
+									}
+								} else {
+									loadFilter(filter, seq1->seq.s);
+									loadFilter(filter, seq2->seq.s);
+								}
 							}
 							break;
 						}
@@ -663,6 +826,9 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	}
 
 	filter.storeFilter(filename);
+	if (filterSub != NULL) {
+		delete (filterSub);
+	}
 	return redundancy;
 }
 
@@ -680,34 +846,32 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//setup bloom filter
 	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
-	//load other bloom filter info
-	string infoFileName = (subtractFilter).substr(0,
-			(subtractFilter).length() - 2) + "txt";
-	BloomFilterInfo subInfo(infoFileName);
+	BloomFilter* filterSub = NULL;
 
-	//load other bloomfilter
-	BloomFilter filterSub(subtractFilter);
+	if (subtractFilter != "") {
+		filterSub = new BloomFilter(subtractFilter);
+	}
 
-	if (filter.getHashNum() != filterSub.getHashNum()) {
+	if (filter.getHashNum() != filterSub->getHashNum()) {
 		cerr << "Error: Subtraction filter's hash number "
 				<< filter.getHashNum()
 				<< " is a different size from than output filter's hash number "
-				<< filterSub.getHashNum() << endl;
+				<< filterSub->getHashNum() << endl;
 		exit(1);
 	}
 
-	if (filter.getKmerSize() != filterSub.getKmerSize()) {
+	if (filter.getKmerSize() != filterSub->getKmerSize()) {
 		cerr << "Error: Subtraction filter's k-mer size "
 				<< filter.getKmerSize()
 				<< " is a different size from than output filter's k-mer size "
-				<< filterSub.getKmerSize() << endl;
+				<< filterSub->getKmerSize() << endl;
 		exit(1);
 	}
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
 	if (opt::noRep) {
-		redundancy += loadFilterSubtract(filter, filterSub, m_totalEntries);
+		redundancy += loadFilterSubtract(filter, *filterSub, m_totalEntries);
 	} else {
 		redundancy += loadFilter(filter, m_totalEntries);
 	}
@@ -761,9 +925,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (++totalReads % opt::fileInterval == 0) {
 								cerr << "Currently Reading Read Number: "
 										<< totalReads
-										<< " ; Unique k-mers Added: "
+										<< "\tUnique k-mers Added: "
 										<< m_totalEntries
-										<< " ; Reads Used in Tagging: "
+										<< "\tReads Used in Tagging: "
 										<< taggedReads << endl;
 							}
 						}
@@ -782,23 +946,79 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 							if (numKmers1 > score
 									&& (SeqEval::evalRead(seq1->seq.s, filter,
 											score, filterSub))) {
-								loadFilter(filter, seq1->seq.s);
-								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
 								++taggedReads;
-								if (printReads)
-									printReadPair(seq1->name.s, seq2->name.s,
-											seq1->seq.s, seq2->seq.s);
+								if (printReads) {
+									unsigned taggedKmers1 = loadFilter(filter,
+											seq1->seq.s);
+									unsigned taggedKmers2 = loadFilter(filter,
+											seq2->seq.s);
+									unsigned repCount1 = checkFilter(filterSub,
+											seq1->seq.s);
+									unsigned repCount2 = checkFilter(filterSub,
+											seq2->seq.s);
+#pragma omp critical(debugPrint)
+									{
+										FqRec rec1, rec2;
+										rec1.seq = string(seq1->seq.s, l1);
+										rec1.header = string(seq1->name.s,
+												seq1->name.l);
+										rec1.qual = string(seq1->qual.s,
+												seq1->qual.l);
+										rec2.seq = string(seq2->seq.s, l2);
+										rec2.header = string(seq2->name.s,
+												seq2->name.l);
+										rec2.qual = string(seq2->qual.s,
+												seq2->qual.l);
+										printDebug(rec1, taggedKmers1,
+												repCount1, taggedReads,
+												totalReads);
+										printDebug(rec2, taggedKmers2,
+												repCount2, taggedReads,
+												totalReads);
+									}
+								} else {
+									loadFilter(filter, seq1->seq.s);
+									loadFilter(filter, seq2->seq.s);
+								}
 							} else if (numKmers2 > score
 									&& (SeqEval::evalRead(seq2->seq.s, filter,
 											score, filterSub))) {
-								loadFilter(filter, seq1->seq.s);
-								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
 								++taggedReads;
-								if (printReads)
-									printReadPair(seq1->name.s, seq2->name.s,
-											seq1->seq.s, seq2->seq.s);
+								if (printReads) {
+									unsigned taggedKmers1 = loadFilter(filter,
+											seq1->seq.s);
+									unsigned taggedKmers2 = loadFilter(filter,
+											seq2->seq.s);
+									unsigned repCount1 = checkFilter(filterSub,
+											seq1->seq.s);
+									unsigned repCount2 = checkFilter(filterSub,
+											seq2->seq.s);
+#pragma omp critical(debugPrint)
+									{
+										FqRec rec1, rec2;
+										rec1.seq = string(seq1->seq.s, l1);
+										rec1.header = string(seq1->name.s,
+												seq1->name.l);
+										rec1.qual = string(seq1->qual.s,
+												seq1->qual.l);
+										rec2.seq = string(seq2->seq.s, l2);
+										rec2.header = string(seq2->name.s,
+												seq2->name.l);
+										rec2.qual = string(seq2->qual.s,
+												seq2->qual.l);
+										printDebug(rec1, taggedKmers1,
+												repCount1, taggedReads,
+												totalReads);
+										printDebug(rec2, taggedKmers2,
+												repCount2, taggedReads,
+												totalReads);
+									}
+								} else {
+									loadFilter(filter, seq1->seq.s);
+									loadFilter(filter, seq2->seq.s);
+								}
 							}
 							break;
 						}
@@ -807,13 +1027,41 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 									filterSub)
 									&& SeqEval::evalRead(seq2->seq.s, filter,
 											score, filterSub)) {
-								loadFilter(filter, seq1->seq.s);
-								loadFilter(filter, seq2->seq.s);
 #pragma omp atomic
 								++taggedReads;
-								if (printReads)
-									printReadPair(seq1->name.s, seq2->name.s,
-											seq1->seq.s, seq2->seq.s);
+								if (printReads) {
+									unsigned taggedKmers1 = loadFilter(filter,
+											seq1->seq.s);
+									unsigned taggedKmers2 = loadFilter(filter,
+											seq2->seq.s);
+									unsigned repCount1 = checkFilter(filterSub,
+											seq1->seq.s);
+									unsigned repCount2 = checkFilter(filterSub,
+											seq2->seq.s);
+#pragma omp critical(debugPrint)
+									{
+										FqRec rec1, rec2;
+										rec1.seq = string(seq1->seq.s, l1);
+										rec1.header = string(seq1->name.s,
+												seq1->name.l);
+										rec1.qual = string(seq1->qual.s,
+												seq1->qual.l);
+										rec2.seq = string(seq2->seq.s, l2);
+										rec2.header = string(seq2->name.s,
+												seq2->name.l);
+										rec2.qual = string(seq2->qual.s,
+												seq2->qual.l);
+										printDebug(rec1, taggedKmers1,
+												repCount1, taggedReads,
+												totalReads);
+										printDebug(rec2, taggedKmers2,
+												repCount2, taggedReads,
+												totalReads);
+									}
+								} else {
+									loadFilter(filter, seq1->seq.s);
+									loadFilter(filter, seq2->seq.s);
+								}
 							}
 							break;
 						}
@@ -836,6 +1084,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	}
 
 	filter.storeFilter(filename);
+	if (filterSub != NULL) {
+		delete (filterSub);
+	}
 	return redundancy;
 }
 
@@ -852,35 +1103,42 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	//setup bloom filter
 	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
 
-	//load other bloom filter info
-	string infoFileName = (subtractFilter).substr(0,
-			(subtractFilter).length() - 2) + "txt";
-	BloomFilterInfo subInfo(infoFileName);
+	BloomFilter* filterSub = NULL;
 
-	//load other bloomfilter
-	BloomFilter filterSub(subtractFilter);
+	if (subtractFilter != "") {
+		filterSub = new BloomFilter(subtractFilter);
+	}
 
-	if (filter.getHashNum() != filterSub.getHashNum()) {
+	size_t baitFilterElements = calcExpectedEntries();
+
+	//secondary bait filter
+	BloomFilter baitFilter(
+			BloomFilterInfo::calcOptimalSize(baitFilterElements, opt::fpr,
+					m_hashNum), m_hashNum, m_kmerSize);
+
+	size_t totalEntriesBait = 0;
+	loadFilter(baitFilter, totalEntriesBait);
+
+	if (filter.getHashNum() != filterSub->getHashNum()) {
 		cerr << "Error: Subtraction filter's hash number "
 				<< filter.getHashNum()
 				<< " is a different size from than output filter's hash number "
-				<< filterSub.getHashNum() << endl;
+				<< filterSub->getHashNum() << endl;
 		exit(1);
 	}
 
-	if (filter.getKmerSize() != filterSub.getKmerSize()) {
+	if (filter.getKmerSize() != filterSub->getKmerSize()) {
 		cerr << "Error: Subtraction filter's k-mer size "
 				<< filter.getKmerSize()
 				<< " is a different size from than output filter's k-mer size "
-				<< filterSub.getKmerSize() << endl;
+				<< filterSub->getKmerSize() << endl;
 		exit(1);
 	}
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
 
-	if (opt::noRep) {
-		redundancy += loadFilterSubtract(filter, filterSub, m_totalEntries);
+	if (opt::noRep && filterSub != NULL) {
 	} else {
 		redundancy += loadFilter(filter, m_totalEntries);
 	}
@@ -920,9 +1178,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 #pragma omp critical(err)
 						if (totalReads % opt::fileInterval == 0) {
 							cerr << "Currently Reading Read Number: "
-									<< totalReads << " ; Unique k-mers Added: "
+									<< totalReads << "\tUnique k-mers Added: "
 									<< m_totalEntries
-									<< " ; Reads Used in Tagging: "
+									<< "\tReads Used in Tagging: "
 									<< taggedReads << endl;
 						}
 						size_t numKmers =
@@ -931,12 +1189,26 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 						if (numKmers > score
 								&& (SeqEval::evalRead(seq->seq.s, filter, score,
 										filterSub))) {
-							//load remaining sequences
-							loadFilter(filter, seq->seq.s);
 #pragma omp atomic
 							++taggedReads;
-							if (printReads)
-								printRead(seq->name.s, seq->seq.s);
+							if (printReads) {
+								unsigned taggedKmers = loadFilter(filter,
+										seq->seq.s);
+								unsigned repCount = checkFilter(filterSub,
+										seq->seq.s);
+#pragma omp critical(debugPrint)
+								{
+									FqRec rec;
+									rec.seq = string(seq->seq.s, l);
+									rec.header = string(seq->name.s,
+											seq->name.l);
+									rec.qual = string(seq->qual.s, seq->qual.l);
+									printDebug(rec, taggedKmers, repCount,
+											taggedReads, totalReads);
+								}
+							} else {
+								loadFilter(filter, seq->seq.s);
+							}
 						}
 					} else
 						break;
@@ -954,159 +1226,9 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	}
 
 	filter.storeFilter(filename);
-	return redundancy;
-}
-
-/*
- * Generates a bloom filter outputting it to a filename
- * Returns the m_redundancy rate of a Bloom Filter generated from a file.
- * Currently only supports fasta files for initial seeding
- *
- * Uses fastq files to stream in additional sequence
- * Stops after m_expectedEntries of entries
- *
- * Outputs to fileName path
- */
-size_t BloomFilterGenerator::generateProgressive(const string &filename,
-		double score, const string &file1, const string &file2, createMode mode,
-		bool printReads) {
-
-	//need the number of hash functions used to be greater than 0
-	assert(m_hashNum > 0);
-
-//need the filter to be greater than the size of the number of expected entries
-	assert(m_filterSize > m_expectedEntries);
-
-	//setup bloom filter
-	BloomFilter filter(m_filterSize, m_hashNum, m_kmerSize);
-
-	//for each file loop over all headers and obtain seq
-	//load input file + make filter
-	size_t redundancy = 0;
-
-	redundancy += loadFilter(filter, m_totalEntries);
-	cerr
-			<< "Approximated (due to false positives) total unique k-mers in reference files "
-			<< m_totalEntries << endl;
-
-	size_t totalReads = 0;
-	size_t taggedReads = 0;
-	for (unsigned i = 0; i < opt::progItrns; ++i) {
-		cerr << "Iteration " << i + 1 << endl;
-
-		gzFile fp1;
-		gzFile fp2;
-
-		fp1 = gzopen(file1.c_str(), "r");
-		if (fp1 == Z_NULL) {
-#pragma omp critical(cerr)
-			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
-			exit(1);
-		} else {
-#pragma omp critical(cerr)
-			cerr << "Reading file " << file1.c_str() << endl;
-		}
-		fp2 = gzopen(file2.c_str(), "r");
-		if (fp2 == Z_NULL) {
-#pragma omp critical(cerr)
-			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
-			exit(1);
-		} else {
-#pragma omp critical(cerr)
-			cerr << "Reading file " << file2.c_str() << endl;
-		}
-		kseq_t *seq1 = kseq_init(fp1);
-		kseq_t *seq2 = kseq_init(fp2);
-		int l1;
-		string rec1;
-		string header1;
-		int l2;
-		string rec2;
-		string header2;
-
-		if (m_totalEntries < m_expectedEntries) {
-#pragma omp parallel private(l1, l2, rec1, header1, rec2, header2)
-			for (;;) {
-#pragma omp critical(kseq_read)
-				{
-					l1 = kseq_read(seq1);
-					if (l1 >= 0) {
-						rec1 = string(seq1->seq.s, l1);
-						header1 = string(seq1->name.s, seq1->name.l);
-					}
-					l2 = kseq_read(seq2);
-					if (l2 >= 0) {
-						rec2 = string(seq2->seq.s, l2);
-						header2 = string(seq2->name.s, seq2->name.l);
-					}
-					if (l1 >= 0 && l2 >= 0) {
-						++totalReads;
-						if (totalReads % opt::fileInterval == 0) {
-							cerr << "Currently Reading Read Number: "
-									<< totalReads << " ; Unique k-mers Added: "
-									<< m_totalEntries
-									<< " ; Reads Used in Tagging: "
-									<< taggedReads << endl;
-						}
-					}
-				}
-
-				if (l1 >= 0 && l2 >= 0 && m_totalEntries < m_expectedEntries) {
-					size_t numKmers1 =
-							rec1.length() > m_kmerSize ?
-									rec1.length() - m_kmerSize + 1 : 0;
-					size_t numKmers2 =
-							rec2.length() > m_kmerSize ?
-									rec2.length() - m_kmerSize + 1 : 0;
-					switch (mode) {
-					case PROG_INC: {
-						if (numKmers1 > score
-								&& (SeqEval::evalRead(rec1, filter, score))) {
-							loadFilter(filter, rec1);
-							loadFilter(filter, rec2);
-#pragma omp atomic
-							++taggedReads;
-							if (printReads)
-								printReadPair(header1, header2, rec1, rec2);
-						} else if (numKmers2 > score
-								&& (SeqEval::evalRead(rec1, filter, score))) {
-							loadFilter(filter, rec1);
-							loadFilter(filter, rec2);
-#pragma omp atomic
-							++taggedReads;
-							if (printReads)
-								printReadPair(header1, header2, rec1, rec2);
-						}
-						break;
-					}
-					case PROG_STD: {
-						if (numKmers1 > score
-								&& (SeqEval::evalRead(rec1, filter, score))
-								&& numKmers2 > score
-								&& (SeqEval::evalRead(rec1, filter, score))) {
-							loadFilter(filter, rec1);
-							loadFilter(filter, rec2);
-#pragma omp atomic
-							++taggedReads;
-							if (printReads)
-								printReadPair(header1, header2, rec1, rec2);
-						}
-						break;
-					}
-					}
-				} else
-					break;
-			}
-		}
-		if (m_totalEntries >= m_expectedEntries) {
-			cerr << "K-mer threshold reached at read " << totalReads << endl;
-		} else {
-			cerr << "K-mer threshold not reached, number of k-mers: "
-					<< m_totalEntries << endl;
-		}
+	if (filterSub != NULL) {
+		delete (filterSub);
 	}
-
-	filter.storeFilter(filename);
 	return redundancy;
 }
 

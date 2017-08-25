@@ -37,30 +37,25 @@ public:
 	size_t generate(const string &filename, const string &subtractFilter);
 	size_t generateProgressive(const string &filename, double score,
 			const string &file1, const string &file2, createMode mode,
-			bool printReads);
-	size_t generateProgressive(const string &filename, double score,
-			const string &file1, const string &file2, createMode mode,
-			bool printReads, const string &subtractFilter);
+			bool printReads, const string &subtractFilter = "");
 	size_t generateProgressiveBait(const string &filename, double score,
 			const string &file1, const string &file2, createMode mode,
-			bool printReads, const string &subtractFilter);
+			bool printReads, const string &subtractFilter = "");
 
 	size_t generateProgressive(const string &filename, double score,
 			const vector<string> &files1, const vector<string> &files2,
-			createMode mode, bool printReads, const string &subtractFilter);
+			createMode mode, bool printReads,
+			const string &subtractFilter = "");
 	size_t generateProgressiveBait(const string &filename, double score,
 			const vector<string> &files1, const vector<string> &files2,
-			createMode mode, bool printReads, const string &subtractFilter);
+			createMode mode, bool printReads,
+			const string &subtractFilter = "");
 
 	size_t generateProgressive(const string &filename, double score,
 			const vector<string> &files, bool printReads,
-			const string &subtractFilter);
+			const string &subtractFilter = "");
 
 	void setFilterSize(size_t bits);
-
-	inline void printReadPair(const string &rec1, const string &header1,
-			const string &rec2, const string &header2);
-	inline void printRead(const string &rec, const string &header);
 	void setHashFuncs(unsigned numFunc);
 	size_t getTotalEntries() const;
 	size_t getExpectedEntries() const;
@@ -73,6 +68,20 @@ private:
 	size_t m_expectedEntries;
 	size_t m_filterSize;
 	size_t m_totalEntries;
+
+	//TODO a similar struct exists in BBC -> refactor to use same struct?
+	struct FqRec {
+		string header;
+		string seq;
+		string qual;
+	};
+
+	inline void printDebug(const FqRec &rec, unsigned taggedKmers,
+			unsigned repeatKmers, size_t taggedReadIndex, size_t totalReads) {
+		cout << "@" << rec.header << " " << taggedKmers << " " << m_totalEntries
+				<< " " << repeatKmers << " " << taggedReadIndex << " "
+				<< totalReads << "\n" << rec.seq << "\n+\n" << rec.qual << "\n";
+	}
 
 	inline size_t calcExpectedEntries() {
 		size_t expectedEntries = 0;
@@ -156,13 +165,33 @@ private:
 		return redundancy;
 	}
 
-	inline void loadFilter(BloomFilter &bf, const string &str) {
+	inline unsigned loadFilter(BloomFilter &bf, const string &str) {
 		size_t tempTotal = 0;
 		for (ntHashIterator itr(str, m_hashNum, m_kmerSize); itr != itr.end(); ++itr) {
 			tempTotal += !bf.insertAndCheck(*itr);
 		}
 #pragma omp atomic
 		m_totalEntries += tempTotal;
+		return tempTotal;
+	}
+
+//	inline unsigned checkFilter(BloomFilter &bf, const string &str) {
+//		size_t tempTotal = 0;
+//		for (ntHashIterator itr(str, m_hashNum, m_kmerSize); itr != itr.end(); ++itr) {
+//			tempTotal += !bf.contains(*itr);
+//		}
+//		return tempTotal;
+//	}
+
+	inline unsigned checkFilter(BloomFilter *bf, const string &str) {
+		size_t tempTotal = 0;
+		if (bf != NULL) {
+			for (ntHashIterator itr(str, m_hashNum, m_kmerSize);
+					itr != itr.end(); ++itr) {
+				tempTotal += !bf->contains(*itr);
+			}
+		}
+		return tempTotal;
 	}
 
 	inline size_t loadFilterSubtract(BloomFilter &bf, BloomFilter &bfsub,
@@ -233,19 +262,6 @@ private:
 		}
 		cerr << "Total Number of K-mers not added: " << kmerRemoved << endl;
 		return redundancy;
-	}
-
-	inline void insertKmer(const size_t precomputed[], BloomFilter &filter) {
-#pragma omp atomic
-		m_totalEntries += !filter.insertAndCheck(precomputed);
-	}
-
-	inline void insertKmer(const size_t precomputed[], BloomFilter &filter,
-			const BloomFilter &filterSub) {
-		if (!opt::noRep || !filterSub.contains(precomputed)) {
-#pragma omp atomic
-			m_totalEntries += !filter.insertAndCheck(precomputed);
-		}
 	}
 };
 
