@@ -400,7 +400,7 @@ int main(int argc, char *argv[]) {
 
 	size_t redundNum = 0;
 	//output filter
-	if (!subtractFilter.empty() && progressive != -1) {
+	if (progressive != -1) {
 		createMode mode = PROG_STD;
 		if (inclusive) {
 			mode = PROG_INC;
@@ -482,21 +482,6 @@ int main(int argc, char *argv[]) {
 	} else if (!subtractFilter.empty()) {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf",
 				subtractFilter);
-	} else if (progressive != -1) {
-		createMode mode = PROG_STD;
-		if (inclusive) {
-			mode = PROG_INC;
-		}
-		if (opt::baitThreshold == progressive) {
-			redundNum = filterGen.generateProgressive(
-					outputDir + filterPrefix + ".bf", progressive, file1, file2,
-					mode, printReads);
-		} else {
-			cerr
-					<< "Bait mode without subtractive filter not implemented. If needed feature request cjustin@bcgsc.ca."
-					<< endl;
-			exit(1);
-		}
 	} else {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
 	}
