@@ -491,6 +491,11 @@ int main(int argc, char *argv[]) {
 			redundNum = filterGen.generateProgressive(
 					outputDir + filterPrefix + ".bf", progressive, file1, file2,
 					mode, printReads);
+		} else {
+			cerr
+					<< "Bait mode without subtractive filter not implemented. If needed feature request cjustin@bcgsc.ca."
+					<< endl;
+			exit(1);
 		}
 	} else {
 		redundNum = filterGen.generate(outputDir + filterPrefix + ".bf");
