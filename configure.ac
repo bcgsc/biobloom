@@ -30,13 +30,20 @@ if test "$with_boost" -a -d "$with_boost"; then
 	boost_cppflags="-isystem$with_boost"
 fi
 
+AC_ARG_WITH(sparsehash, AS_HELP_STRING([--with-sparsehash=PATH],
+			[specify directory for the boost header files]))
+if test "$with_sparsehash" -a -d "$with_sparsehash"; then
+	sparsehash_cppflags="-isystem$with_sparsehash"
+fi
+
+
 # Find the absolute paths.
 srcdir=$(cd $srcdir; pwd)
 
 # Set compiler flags.
 boost_ver=1.58.0
 boost_ver_dir=1_58_0
-AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $CPPFLAGS -isystem$srcdir/$boost_ver_dir")
+AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $sparsehash_cppflags $CPPFLAGS -isystem$srcdir/$boost_ver_dir")
 
 # Checks for header files.
 AC_LANG([C++])	#sets the auto conf to look for c++ headers
