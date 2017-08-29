@@ -76,6 +76,24 @@ private:
 		string qual;
 	};
 
+	inline void checkFilters(const BloomFilter &f1, const BloomFilter &f2){
+		if (f1.getHashNum() != f2.getHashNum()) {
+			cerr << "Error: Subtraction filter's hash number "
+					<< f2.getHashNum()
+					<< " is a different size than output filter's hash number "
+					<< f1.getHashNum() << endl;
+			exit(1);
+		}
+
+		if (f1.getKmerSize() != f2.getKmerSize()) {
+			cerr << "Error: Subtraction filter's k-mer size "
+					<< f2.getKmerSize()
+					<< " is a different size than output filter's k-mer size "
+					<< f1.getKmerSize() << endl;
+			exit(1);
+		}
+	}
+
 	inline void printDebug(const FqRec &rec, unsigned taggedKmers,
 			unsigned repeatKmers, size_t taggedReadIndex, size_t totalReads) {
 		cout << "@" << rec.header << " " << taggedKmers << " " << m_totalEntries

@@ -99,21 +99,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 	if (subtractFilter != "") {
 		filterSub = new BloomFilter(subtractFilter);
-		if (filter.getHashNum() != filterSub->getHashNum()) {
-			cerr << "Error: Subtraction filter's hash number "
-					<< filter.getHashNum()
-					<< " is a different size from than output filter's hash number "
-					<< filterSub->getHashNum() << endl;
-			exit(1);
-		}
-
-		if (filter.getKmerSize() != filterSub->getKmerSize()) {
-			cerr << "Error: Subtraction filter's k-mer size "
-					<< filter.getKmerSize()
-					<< " is a different size from than output filter's k-mer size "
-					<< filterSub->getKmerSize() << endl;
-			exit(1);
-		}
+		checkFilters(filter, *filterSub);
 	}
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
@@ -328,21 +314,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 
 	if (subtractFilter != "") {
 		filterSub = new BloomFilter(subtractFilter);
-		if (filter.getHashNum() != filterSub->getHashNum()) {
-			cerr << "Error: Subtraction filter's hash number "
-					<< filter.getHashNum()
-					<< " is a different size from than output filter's hash number "
-					<< filterSub->getHashNum() << endl;
-			exit(1);
-		}
-
-		if (filter.getKmerSize() != filterSub->getKmerSize()) {
-			cerr << "Error: Subtraction filter's k-mer size "
-					<< filter.getKmerSize()
-					<< " is a different size from than output filter's k-mer size "
-					<< filterSub->getKmerSize() << endl;
-			exit(1);
-		}
+		checkFilters(filter, *filterSub);
 	}
 
 	size_t baitFilterElements = calcExpectedEntries();
@@ -566,21 +538,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 
 	if (subtractFilter != "") {
 		filterSub = new BloomFilter(subtractFilter);
-		if (filter.getHashNum() != filterSub->getHashNum()) {
-			cerr << "Error: Subtraction filter's hash number "
-					<< filter.getHashNum()
-					<< " is a different size from than output filter's hash number "
-					<< filterSub->getHashNum() << endl;
-			exit(1);
-		}
-
-		if (filter.getKmerSize() != filterSub->getKmerSize()) {
-			cerr << "Error: Subtraction filter's k-mer size "
-					<< filter.getKmerSize()
-					<< " is a different size from than output filter's k-mer size "
-					<< filterSub->getKmerSize() << endl;
-			exit(1);
-		}
+		checkFilters(filter, *filterSub);
 	}
 
 	size_t baitFilterElements = calcExpectedEntries();
@@ -849,21 +807,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 	if (subtractFilter != "") {
 		filterSub = new BloomFilter(subtractFilter);
-		if (filter.getHashNum() != filterSub->getHashNum()) {
-			cerr << "Error: Subtraction filter's hash number "
-					<< filter.getHashNum()
-					<< " is a different size from than output filter's hash number "
-					<< filterSub->getHashNum() << endl;
-			exit(1);
-		}
-
-		if (filter.getKmerSize() != filterSub->getKmerSize()) {
-			cerr << "Error: Subtraction filter's k-mer size "
-					<< filter.getKmerSize()
-					<< " is a different size from than output filter's k-mer size "
-					<< filterSub->getKmerSize() << endl;
-			exit(1);
-		}
+		checkFilters(filter, *filterSub);
 	}
 
 	//for each file loop over all headers and obtain seq
@@ -1106,21 +1050,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 
 	if (subtractFilter != "") {
 		filterSub = new BloomFilter(subtractFilter);
-		if (filter.getHashNum() != filterSub->getHashNum()) {
-			cerr << "Error: Subtraction filter's hash number "
-					<< filter.getHashNum()
-					<< " is a different size from than output filter's hash number "
-					<< filterSub->getHashNum() << endl;
-			exit(1);
-		}
-
-		if (filter.getKmerSize() != filterSub->getKmerSize()) {
-			cerr << "Error: Subtraction filter's k-mer size "
-					<< filter.getKmerSize()
-					<< " is a different size from than output filter's k-mer size "
-					<< filterSub->getKmerSize() << endl;
-			exit(1);
-		}
+		checkFilters(filter, *filterSub);
 	}
 
 	size_t baitFilterElements = calcExpectedEntries();
