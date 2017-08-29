@@ -5,12 +5,12 @@
  *      Author: cjustin
  */
 
+#include <ResultsManager.hpp>
 #include "BioBloomClassifier.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
-#include "ResultsManager.h"
 #include "Common/Options.h"
 #include <map>
 #if _OPENMP
@@ -38,7 +38,7 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 void BioBloomClassifier::filter(const vector<string> &inputFiles) {
 
 	//results summary object
-	ResultsManager resSummary(m_filterOrder, m_inclusive);
+	ResultsManager<unsigned> resSummary(m_filterOrder, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -113,7 +113,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 		const string &outputType) {
 
 	//results summary object
-	ResultsManager resSummary(m_filterOrder, m_inclusive);
+	ResultsManager<unsigned> resSummary(m_filterOrder, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -220,7 +220,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 
 	//results summary object
-	ResultsManager resSummary(m_filterOrder, m_inclusive);
+	ResultsManager<unsigned> resSummary(m_filterOrder, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -313,7 +313,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 		const string &file2, const string &outputType) {
 
 	//results summary object
-	ResultsManager resSummary(m_filterOrder, m_inclusive);
+	ResultsManager<unsigned> resSummary(m_filterOrder, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -465,7 +465,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 void BioBloomClassifier::filterPair(const string &file) {
 
 	//results summary object
-	ResultsManager resSummary(m_filterOrder, m_inclusive);
+	ResultsManager<unsigned> resSummary(m_filterOrder, m_inclusive);
 
 	google::dense_hash_map<string, FaRec> unPairedReads;
 	unPairedReads.set_empty_key("");
@@ -572,7 +572,7 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 		const string &outputType) {
 
 	//results summary object
-	ResultsManager resSummary(m_filterOrder, m_inclusive);
+	ResultsManager<unsigned> resSummary(m_filterOrder, m_inclusive);
 
 	google::dense_hash_map<string, FaRec> unPairedReads;
 	unPairedReads.set_empty_key("");
@@ -732,7 +732,7 @@ void BioBloomClassifier::filterPair(const vector<string> &inputFiles1,
 		const vector<string> &inputFiles2) {
 
 	//results summary object
-	ResultsManager resSummary(m_filterOrder, m_inclusive);
+	ResultsManager<unsigned> resSummary(m_filterOrder, m_inclusive);
 
 	size_t totalReads = 0;
 
@@ -812,7 +812,7 @@ void BioBloomClassifier::filterPairPrint(const vector<string> &inputFiles1,
 		const vector<string> &inputFiles2, const string &outputType) {
 
 	//results summary object
-	ResultsManager resSummary(m_filterOrder, m_inclusive);
+	ResultsManager<unsigned> resSummary(m_filterOrder, m_inclusive);
 
 	size_t totalReads = 0;
 

@@ -11,18 +11,15 @@
 #include <string>
 #include "google/dense_hash_map"
 #include "Common/BloomFilterInfo.h"
-#include "ResultsManager.h"
 #include "Common/Dynamicofstream.h"
 #include "Common/SeqEval.h"
 #include <zlib.h>
 #include <iostream>
 #include "Common/kseq.h"
+#include "ResultsManager.hpp"
 KSEQ_INIT(gzFile, gzread)
 
 using namespace std;
-
-static const string NO_MATCH = "noMatch";
-static const string MULTI_MATCH = "multiMatch";
 
 /** for modes of filtering */
 enum mode {

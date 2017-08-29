@@ -19,6 +19,7 @@
 #if _OPENMP
 # include <omp.h>
 #endif
+#include "BloomMapGenerator.h"
 
 using namespace std;
 
@@ -32,6 +33,21 @@ void printVersion() {
 	"Copyright 2013 Canada's Michael Smith Genome Science Centre\n";
 	cerr << VERSION_MESSAGE << endl;
 	exit(EXIT_SUCCESS);
+}
+
+/*
+ * Parses input string into separate strings, returning a vector.
+ */
+vector<string> convertInputString(const string &inputString)
+{
+	vector<string> currentString;
+	string temp;
+	stringstream converter(inputString);
+	while (converter >> temp) {
+		currentString.push_back(temp);
+	}
+	assert(currentString.size() > 0);
+	return currentString;
 }
 
 void printHelpDialog() {
@@ -48,6 +64,13 @@ void printHelpDialog() {
 		"  -v  --version          Display version information.\n"
 		"  -t, --threads=N        The number of threads to use.\n"
 		"\nAdvanced options:\n"
+		"  -m, --map=N            Generates a miBF, expects list of seeds\n"
+		"                         1s & 0s separated by spaces. -k is ignored.\n"
+		"  -T, --id_type=N        For Bloom maps, assign IDs by file rather than by\n"
+		"                         fasta header [header]. Possible options header,\n"
+		"						  filename, chromium.\n"
+		"  -c, --colli_id         Compute collision ID for Bloom Map [false].\n"
+		"  -C, --colli_analysis   Compute collision matrix.\n"
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]\n"
 		"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
 		"                         of automatically using calculated optimal number of\n"
@@ -95,8 +118,6 @@ int main(int argc, char *argv[]) {
 	//command line variables
 	string filterPrefix = "";
 	string outputDir = "";
-	unsigned kmerSize = 25;
-	unsigned hashNum = 0;
 	string subtractFilter = "";
 	size_t entryNum = 0;
 	bool printReads = false;
@@ -105,27 +126,35 @@ int main(int argc, char *argv[]) {
 	string fileListFilename = "";
 
 	//long form arguments
-	static struct option long_options[] = { { "fal_pos_rate", required_argument,
-	NULL, 'f' }, { "file_prefix", required_argument, NULL, 'p' }, {
-			"output_dir", required_argument, NULL, 'o' }, { "threads",
-	required_argument, NULL, 't' }, { "inclusive", no_argument, NULL, 'i' }, {
-			"version", no_argument, NULL, 'v' }, { "hash_num",
-	required_argument, NULL, 'g' }, { "kmer_size", required_argument,
-	NULL, 'k' }, { "subtract", required_argument, NULL, 's' }, { "num_ele",
-	required_argument, NULL, 'n' }, { "interval",
-	required_argument, NULL, 'I' }, { "file_list",
-	required_argument, NULL, 'l' }, { "help", no_argument, NULL, 'h' }, {
-			"print_reads", no_argument, NULL, 'P' }, { "progressive",
-	required_argument, NULL, 'r' }, { "baitScore",
-	required_argument, NULL, 'b' }, { "streak",
-	required_argument, NULL, 'e' }, { "iterations",
-	required_argument, NULL, 'a' }, { "no_rep_kmer",
-	no_argument, NULL, 'd' }, {
-	NULL, 0, NULL, 0 } };
-
+	static struct option long_options[] = {
+		{
+			"fal_pos_rate", required_argument, NULL, 'f' }, {
+			"file_prefix", required_argument, NULL, 'p' }, {
+			"output_dir", required_argument, NULL, 'o' }, {
+			"threads", required_argument, NULL, 't' }, {
+			"map", required_argument, NULL, 'm' }, {
+			"id_by_file", no_argument, NULL, 'I' }, {
+			"colli_analysis", no_argument, NULL, 'C' }, {
+			"colli_id", no_argument, NULL, 'c' }, {
+			"inclusive", no_argument, NULL, 'i' }, {
+			"version", no_argument, NULL, 'v' }, {
+			"hash_num", required_argument, NULL, 'g' }, {
+			"kmer_size", required_argument, NULL, 'k' }, {
+			"subtract",	required_argument, NULL, 's' }, {
+			"num_ele", required_argument, NULL, 'n' }, {
+			"interval",	required_argument, NULL, 'I' }, {
+			"file_list", required_argument, NULL, 'l' }, {
+			"help", no_argument, NULL, 'h' }, {
+			"print_reads", no_argument, NULL, 'P' }, {
+			"progressive", required_argument, NULL, 'r' }, {
+			"baitScore", required_argument, NULL, 'b' }, {
+			"iterations", required_argument, NULL, 'e' }, {
+			"no_rep_kmer", no_argument, NULL, 'd' }, {
+			NULL, 0, NULL, 0 } };
+			
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:daI:",
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:daI:T:cC",
 			long_options, &option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -160,13 +189,40 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		}
+		case 'm': {
+			if (string(optarg) == "BARCODE") {
+				opt::idType = BARCODE;
+			}
+			opt::sseeds = convertInputString(optarg);
+			//TODO:CHECK IF all seed are the same length here
+			opt::kmerSize = opt::sseeds[0].size();
+			opt::filterType = BLOOMMAP;
+			break;
+		}
+		case 'T': {
+			if(string(optarg) == "filename"){
+				opt::idType = FILENAME;
+			}
+			else if(string(optarg) == "chromium"){
+				opt::idType = BARCODE;
+			}
+			break;
+		}
+		case 'c': {
+			opt::colliIDs = true;
+			break;
+		}
+		case 'C': {
+			opt::colliAnalysis = true;
+			break;
+		}
 		case 'i': {
 			inclusive = true;
 			break;
 		}
 		case 'k': {
 			stringstream convert(optarg);
-			if (!(convert >> kmerSize)) {
+			if (!(convert >> opt::kmerSize)) {
 				cerr << "Error - Invalid set of bloom filter parameters! k: "
 						<< optarg << endl;
 				return 0;
@@ -175,7 +231,7 @@ int main(int argc, char *argv[]) {
 		}
 		case 'g': {
 			stringstream convert(optarg);
-			if (!(convert >> hashNum)) {
+			if (!(convert >> opt::hashNum)) {
 				cerr << "Error - Invalid set of bloom filter parameters! g: "
 						<< optarg << endl;
 				return 0;
@@ -336,9 +392,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	//set number of hash functions used
-	if (hashNum == 0) {
+	if (opt::hashNum == 0) {
 		//get optimal number of hash functions
-		hashNum = BloomFilterInfo::calcOptimalHashNum(opt::fpr);
+		opt::hashNum = BloomFilterInfo::calcOptimalHashNum(opt::fpr);
 	}
 
 	string file1 = "";
@@ -380,15 +436,22 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	if (opt::filterType == BLOOMMAP) {
+		BloomMapGenerator filterGen(inputFiles, opt::kmerSize, entryNum);
+		filterGen.generate(outputDir + filterPrefix, opt::fpr);
+		cerr << "Bloom Map Creation Complete." << endl;
+		return 0;
+	}
+
 	//create filter
-	BloomFilterGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
+	BloomFilterGenerator filterGen(inputFiles, opt::kmerSize, opt::hashNum, entryNum);
 
 	if (entryNum == 0) {
-		filterGen = BloomFilterGenerator(inputFiles, kmerSize, hashNum);
+		filterGen = BloomFilterGenerator(inputFiles, opt::kmerSize, opt::hashNum);
 		entryNum = filterGen.getExpectedEntries();
 	}
 
-	BloomFilterInfo info(filterPrefix, kmerSize, hashNum, opt::fpr, entryNum,
+	BloomFilterInfo info(filterPrefix, opt::kmerSize, opt::hashNum, opt::fpr, entryNum,
 			inputFiles);
 
 	//get calculated size of Filter
