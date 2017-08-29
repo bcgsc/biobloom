@@ -423,7 +423,7 @@ int main(int argc, char *argv[]) {
 					<< endl;
 			exit(1);
 		}
-		cerr << "Building Bloom filter in progessive mode. ";
+		cerr << "Building Bloom filter in progressive mode. ";
 		switch (SeqEval::evalMode) {
 		case SeqEval::EVAL_MIN_MATCH_LEN:
 			cerr << "Min match length = " << (unsigned) round(progressive)

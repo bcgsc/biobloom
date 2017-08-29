@@ -102,7 +102,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		if (filter.getHashNum() != filterSub->getHashNum()) {
 			cerr << "Error: Subtraction filter's hash number "
 					<< filter.getHashNum()
-					<< " is a different size from than output filter's hash number "
+					<< " is a different size than output filter's hash number "
 					<< filterSub->getHashNum() << endl;
 			exit(1);
 		}
@@ -110,7 +110,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		if (filter.getKmerSize() != filterSub->getKmerSize()) {
 			cerr << "Error: Subtraction filter's k-mer size "
 					<< filter.getKmerSize()
-					<< " is a different size from than output filter's k-mer size "
+					<< " is a different size than output filter's k-mer size "
 					<< filterSub->getKmerSize() << endl;
 			exit(1);
 		}
@@ -331,7 +331,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 		if (filter.getHashNum() != filterSub->getHashNum()) {
 			cerr << "Error: Subtraction filter's hash number "
 					<< filter.getHashNum()
-					<< " is a different size from than output filter's hash number "
+					<< " is a different size than output filter's hash number "
 					<< filterSub->getHashNum() << endl;
 			exit(1);
 		}
@@ -339,7 +339,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 		if (filter.getKmerSize() != filterSub->getKmerSize()) {
 			cerr << "Error: Subtraction filter's k-mer size "
 					<< filter.getKmerSize()
-					<< " is a different size from than output filter's k-mer size "
+					<< " is a different size than output filter's k-mer size "
 					<< filterSub->getKmerSize() << endl;
 			exit(1);
 		}
@@ -569,7 +569,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 		if (filter.getHashNum() != filterSub->getHashNum()) {
 			cerr << "Error: Subtraction filter's hash number "
 					<< filter.getHashNum()
-					<< " is a different size from than output filter's hash number "
+					<< " is a different size than output filter's hash number "
 					<< filterSub->getHashNum() << endl;
 			exit(1);
 		}
@@ -577,7 +577,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 		if (filter.getKmerSize() != filterSub->getKmerSize()) {
 			cerr << "Error: Subtraction filter's k-mer size "
 					<< filter.getKmerSize()
-					<< " is a different size from than output filter's k-mer size "
+					<< " is a different size than output filter's k-mer size "
 					<< filterSub->getKmerSize() << endl;
 			exit(1);
 		}
@@ -852,7 +852,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		if (filter.getHashNum() != filterSub->getHashNum()) {
 			cerr << "Error: Subtraction filter's hash number "
 					<< filter.getHashNum()
-					<< " is a different size from than output filter's hash number "
+					<< " is a different size than output filter's hash number "
 					<< filterSub->getHashNum() << endl;
 			exit(1);
 		}
@@ -860,7 +860,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		if (filter.getKmerSize() != filterSub->getKmerSize()) {
 			cerr << "Error: Subtraction filter's k-mer size "
 					<< filter.getKmerSize()
-					<< " is a different size from than output filter's k-mer size "
+					<< " is a different size than output filter's k-mer size "
 					<< filterSub->getKmerSize() << endl;
 			exit(1);
 		}
@@ -1109,7 +1109,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		if (filter.getHashNum() != filterSub->getHashNum()) {
 			cerr << "Error: Subtraction filter's hash number "
 					<< filter.getHashNum()
-					<< " is a different size from than output filter's hash number "
+					<< " is a different size than output filter's hash number "
 					<< filterSub->getHashNum() << endl;
 			exit(1);
 		}
@@ -1117,7 +1117,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 		if (filter.getKmerSize() != filterSub->getKmerSize()) {
 			cerr << "Error: Subtraction filter's k-mer size "
 					<< filter.getKmerSize()
-					<< " is a different size from than output filter's k-mer size "
+					<< " is a different size than output filter's k-mer size "
 					<< filterSub->getKmerSize() << endl;
 			exit(1);
 		}
