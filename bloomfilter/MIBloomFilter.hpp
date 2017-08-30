@@ -23,10 +23,7 @@
 #include <google/dense_hash_map>
 #include <sdsl/bit_vector_il.hpp>
 #include <sdsl/rank_support.hpp>
-#include <boost/shared_ptr.hpp>
 #include <omp.h>
-#include <boost/numeric/ublas/matrix.hpp>
-#include <boost/numeric/ublas/io.hpp>
 
 using namespace std;
 template<typename T>
@@ -58,27 +55,6 @@ public:
 		uint32_t nhash;
 		uint32_t kmer;
 	};
-
-//	/*
-//	 * Constructor using an existing bloomMap
-//	 */
-//	MIBloomFilter<T>(BloomMapSS<T> &bloomMap) :
-//			m_dSize(bloomMap.getPop()), m_dFPR(bloomMap.getDesiredFPR()), m_nEntry(
-//					bloomMap.getUniqueEntries()), m_tEntry(bloomMap.getTotalEntries()), m_sseeds(
-//					bloomMap.getSeedStrings()), m_kmerSize(
-//					bloomMap.getKmerSize()), m_ssVal(bloomMap.getSeedValues()) {
-//		m_data = new T[m_dSize]();
-//		sdsl::bit_vector tmpBV(bloomMap.size());
-//		size_t idx = 0;
-//		for (size_t i = 0; i < tmpBV.size(); ++i) {
-//			if (bloomMap.m_array[i] != 0) {
-//				tmpBV[i] = true;
-//				m_data[idx++] = bloomMap.m_array[i];
-//			}
-//		}
-//		m_bv = sdsl::bit_vector_il<BLOCKSIZE>(tmpBV);
-//		m_rankSupport = sdsl::rank_support_il<1>(&m_bv);
-//	}
 
 	/*
 	 * Constructor using a prebuilt bitvector
@@ -170,19 +146,6 @@ public:
 				m_rankSupport = sdsl::rank_support_il<1>(&m_bv);
 			}
 		}
-//		size_t colliCount = 0;
-//		//debug
-//		for(size_t i = 0; i < m_dSize; ++i){
-//			if(m_data[i] == std::numeric_limits<T>::max()){
-//				++colliCount;
-//			}
-//			if(m_data[i] == 0){
-//				cerr << "Empty Element at location " << i << endl;
-//				cerr << "Something is probably wrong with the filter!" <<endl;
-//				exit(1);
-//			}
-//		}
-//		cerr << "colliCount: " << colliCount << endl;
 
 		cerr << "Bit Vector Size: " << m_bv.size() << endl;
 		cerr << "Popcount: " << getPop() << endl;
