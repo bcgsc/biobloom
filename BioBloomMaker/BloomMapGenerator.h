@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <google/dense_hash_map>
 #include <google/dense_hash_set>
-#include "bloomfilter/BloomMapSSBitVec.hpp"
+#include "bloomfilter/MIBloomFilter.hpp"
 #include "bloomfilter/RollingHashIterator.h"
 #include "Common/Options.h"
 #include <sdsl/int_vector.hpp>
@@ -50,17 +50,17 @@ private:
 	google::dense_hash_map<string, ID> m_headerIDs;
 	vector<boost::shared_ptr<IDMap > > m_colliIDs;
 
-//	//TODO MAKE INTO OPTION
+	//TODO MAKE INTO OPTION
 	double m_colliThresh = 0.15;
 
-	inline BloomMapSSBitVec<ID> generateBV(double fpr,
+	inline MIBloomFilter<ID> generateBV(double fpr,
 			const vector<vector<unsigned> > &ssVal);
 
 	inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > generateGroups(
 			std::ofstream &file);
 
 	//helper methods
-	inline void loadSeq(BloomMapSSBitVec<ID> &bloomMap, const string& seq,
+	inline void loadSeq(MIBloomFilter<ID> &bloomMap, const string& seq,
 			ID value) {
 		/* init rolling hash state and compute hash values for first k-mer */
 		//TODO FIX -> NEED TO VALIDATE THREAD SAFETY!
@@ -78,7 +78,7 @@ private:
 	}
 
 	//helper methods
-	inline void loadSeq(BloomMapSSBitVec<ID> &bloomMap, const string& seq,
+	inline void loadSeq(MIBloomFilter<ID> &bloomMap, const string& seq,
 			ID value, Matrix &mat ) {
 		/* init rolling hash state and compute hash values for first k-mer */
 		for (RollingHashIterator itr(seq, m_kmerSize,

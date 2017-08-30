@@ -132,7 +132,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	}
 	idFile.close();
 
-	BloomMapSSBitVec<ID> bloomMapBV = generateBV(fpr, ssVal);
+	MIBloomFilter<ID> bloomMapBV = generateBV(fpr, ssVal);
 	//free memory of old bv
 
 	cerr << "Populating values of bloom map" << endl;
@@ -235,7 +235,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 /*
  * Populates bit vector and returns a compressed bloom map without values set
  */
-inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
+inline MIBloomFilter<ID> BloomMapGenerator::generateBV(double fpr,
 		const vector<vector<unsigned> > &ssVal) {
 	size_t filterSize = calcOptimalSize(m_expectedEntries, opt::sseeds.size(),
 			fpr);
@@ -298,8 +298,8 @@ inline BloomMapSSBitVec<ID> BloomMapGenerator::generateBV(double fpr,
 	}
 	cerr << "Approximate number of unique entries in filter: " << uniqueCounts
 			<< endl;
-	return BloomMapSSBitVec<ID>(m_expectedEntries, fpr, opt::sseeds, bv,
-			uniqueCounts);
+	return MIBloomFilter<ID>(m_expectedEntries, fpr, opt::sseeds.size(), opt::sseeds[0].size(), bv,
+			uniqueCounts, opt::sseeds);
 }
 
 inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > BloomMapGenerator::generateGroups(

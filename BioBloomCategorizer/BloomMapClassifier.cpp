@@ -16,7 +16,7 @@
 //KSEQ_INIT(gzFile, gzread)
 
 BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
-		m_filter(BloomMapSSBitVec<ID>(filterFile)) {
+		m_filter(MIBloomFilter<ID>(filterFile)) {
 	cerr << "FPR given allowed misses: "
 			<< m_filter.getFPR(opt::allowMisses)
 			<< endl;

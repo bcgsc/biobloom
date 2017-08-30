@@ -17,7 +17,7 @@
 #include "Common/Dynamicofstream.h"
 #include <vector>
 #include "BioBloomClassifier.h"
-#include "bloomfilter/BloomMapSSBitVec.hpp"
+#include "bloomfilter/MIBloomFilter.hpp"
 #include "bloomfilter/RollingHashIterator.h"
 
 using namespace std;
@@ -31,7 +31,7 @@ public:
 
 	virtual ~BloomMapClassifier();
 private:
-	BloomMapSSBitVec<ID> m_filter;
+	MIBloomFilter<ID> m_filter;
 	vector<string> m_fullIDs;
 	vector<boost::shared_ptr<vector<ID> > > m_colliIDs;
 

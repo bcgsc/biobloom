@@ -1,5 +1,7 @@
 /*
- * MultiIndexBloom.hpp
+ * MIBloomFilter.hpp
+ *
+ * Agnostic of hash function used -> cannot call contains without an array of hash values
  *
  *  Created on: Jan 14, 2016
  *      Author: cjustin
@@ -23,26 +25,41 @@
 #include <google/dense_hash_map>
 #include <sdsl/bit_vector_il.hpp>
 #include <sdsl/rank_support.hpp>
+#include <boost/shared_ptr.hpp>
 #include <omp.h>
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/io.hpp>
 
 using namespace std;
-template<typename T>
-class BloomMapSS;
-
 static const unsigned BLOCKSIZE = 512;
+
+/*
+ * Parses spaced seed string (string consisting of 1s and 0s) to vector
+ */
+static vector< vector<unsigned> > parseSeedString(const vector<string> &spacedSeeds) {
+	vector< vector<unsigned> > seeds(spacedSeeds.size(), vector<unsigned>() );
+	for(unsigned i = 0; i < spacedSeeds.size(); ++i){
+		const string ss = spacedSeeds.at(i);
+		for(unsigned j = 0; j < ss.size(); ++j){
+			if(ss.at(j) == '0'){
+				seeds[i].push_back(j);
+			}
+		}
+	}
+	return seeds;
+}
+
+/*
+ * Returns an a filter size large enough to maintain an occupancy specified
+ */
+inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double occupancy) {
+	assert(hashNum > 0);
+	return size_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
+}
 
 template<typename T>
 class MIBloomFilter {
 public:
-
-	/*
-	 * Returns an a filter size large enough to maintain an occupancy specified
-	 */
-	static inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double occupancy) {
-		assert(hashNum > 0);
-		return size_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
-	}
-
 
 #pragma pack(1) //to maintain consistent values across platforms
 	struct FileHeader {
@@ -59,9 +76,9 @@ public:
 	/*
 	 * Constructor using a prebuilt bitvector
 	 */
-	MIBloomFilter<T>(size_t expectedElemNum, double fpr,  unsigned hashNum,
-			unsigned kmerSize,
-			sdsl::bit_vector &bv, size_t unique) :
+	MIBloomFilter<T>(size_t expectedElemNum, double fpr, unsigned hashNum,
+			unsigned kmerSize, sdsl::bit_vector &bv, size_t unique,
+			const vector<string> seeds = vector<string>(0)) :
 			m_dSize(0), m_dFPR(fpr), m_nEntry(unique), m_tEntry(
 					expectedElemNum), m_hashNum(hashNum), m_kmerSize(kmerSize) {
 		cerr << "Converting bit vector to rank interleaved form" << endl;
@@ -71,6 +88,15 @@ public:
 		double time = omp_get_wtime() - start_time;
 		cerr << "Converted bit vector to rank interleaved form " << time << "s"
 				<< endl;
+		if(!seeds.empty()){
+			m_ssVal = parseSeedString(m_sseeds);
+			assert(m_sseeds[0].size() == kmerSize);
+			for (vector<string>::const_iterator itr = m_sseeds.begin();
+				itr != m_sseeds.end(); ++itr) {
+				//check if spaced seeds are all the same length
+				assert(m_kmerSize == itr->size());
+			}
+		}
 		m_rankSupport = sdsl::rank_support_il<1>(&m_bv);
 		m_dSize = getPop();
 		m_data = new T[m_dSize]();
@@ -108,12 +134,37 @@ public:
 						<< " tEntry: " << header.tEntry << endl;
 
 				assert(strcmp(MAGIC, magic) == 0);
+
+				//load seeds
+				for (unsigned i = 0; i < header.nhash; ++i) {
+					char temp[header.kmer];
+
+					if (fread(temp, header.kmer, 1, file) != 1) {
+						cerr << "Failed to load spaced seed string" << endl;
+						exit(1);
+					} else {
+						cerr << "Spaced Seed " << i << ": "
+								<< string(temp, header.kmer) << endl;
+					}
+					m_sseeds.push_back(string(temp, header.kmer));
+				}
 				m_dFPR = header.dFPR;
 				m_nEntry = header.nEntry;
+				m_hashNum = header.nhash;
 				m_tEntry = header.tEntry;
 				m_kmerSize = header.kmer;
 				m_dSize = header.size;
 				m_data = new T[m_dSize]();
+				
+				if(!m_sseeds.empty()){
+					m_ssVal = parseSeedString(m_sseeds);
+					assert(m_sseeds[0].size() == m_kmerSize);
+					for (vector<string>::const_iterator itr = m_sseeds.begin();
+					itr != m_sseeds.end(); ++itr) {
+					//check if spaced seeds are all the same length
+					assert(m_kmerSize == itr->size());
+					}
+				}
 
 #pragma omp critical(stderr)
 				cerr << "Loading data vector" << endl;
@@ -201,10 +252,10 @@ public:
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
 	 * ONLY REPLACE VALUE if it is larger than current value (deterministic)
 	 */
-	void insert(const size_t* hashes, T value) {
+	void insert(std::vector<size_t> const &hashes, T value) {
 		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < m_hashNum; ++i) {
-			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
+		for (size_t i = 0; i < hashes.size(); ++i) {
+			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
 			setIfGreater(&m_data[pos], value);
 		}
 	}
@@ -214,11 +265,11 @@ public:
 	 * ALWAYS SETS VALUE
 	 * NOT DETERMINSTIC
 	 */
-	void insert(const size_t* hashes, T value,
+	void insert(std::vector<size_t> const &hashes, T value,
 			boost::numeric::ublas::matrix<unsigned> &mat) {
 		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < m_hashNum; ++i) {
-			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
+		for (size_t i = 0; i < hashes.size(); ++i) {
+			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
 			setVal(&m_data[pos], value, mat);
 		}
 	}
@@ -227,11 +278,11 @@ public:
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
 	 * Replaces values according to collisionID hashtable (for thread safety)
 	 */
-	void insert(const size_t* hashes, T value,
+	void insert(std::vector<size_t> const &hashes, T value,
 			const vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
 		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < m_hashNum; ++i) {
-			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
+		for (size_t i = 0; i < hashes.size(); ++i) {
+			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
 			setVal(&m_data[pos], value, colliIDs);
 		}
 	}
@@ -370,10 +421,6 @@ public:
 		return m_nEntry;
 	}
 
-//	void setUnique(size_t count){
-//		m_nEntry = count;
-//	}
-
 	~MIBloomFilter() {
 		delete[] m_data;
 	}
@@ -390,7 +437,7 @@ private:
 		strncpy(magic, header.magic, 8);
 		magic[8] = '\0';
 
-		header.hlen = sizeof(struct FileHeader);
+		header.hlen = sizeof(struct FileHeader) + m_kmerSize * m_sseeds.size();
 		header.kmer = m_kmerSize;
 		header.size = m_dSize;
 		header.nhash = m_hashNum;
@@ -404,22 +451,11 @@ private:
 				<< endl;
 
 		out.write(reinterpret_cast<char*>(&header), sizeof(struct FileHeader));
-	}
 
-	/*
-	 * Parses spaced seed string (string consisting of 1s and 0s) to vector
-	 */
-	inline vector< vector<unsigned> > parseSeedString(const vector<string> &spacedSeeds) {
-		vector< vector<unsigned> > seeds(spacedSeeds.size(), vector<unsigned>() );
-		for(unsigned i = 0; i < spacedSeeds.size(); ++i){
-			const string ss = spacedSeeds.at(i);
-			for(unsigned j = 0; j < ss.size(); ++j){
-				if(ss.at(j) == '0'){
-					seeds[i].push_back(j);
-				}
-			}
+		for (vector<string>::const_iterator itr = m_sseeds.begin();
+				itr != m_sseeds.end(); ++itr) {
+			out.write(itr->c_str(), m_kmerSize);
 		}
-		return seeds;
 	}
 
 	/*
@@ -450,8 +486,6 @@ private:
 	 * Lock free cas value setting for larger element
 	 */
 	inline void setIfGreater(T *val, T newVal) {
-//		assert(newVal);
-//		__sync_or_and_fetch(val, 1);
 		T oldValue;
 		do {
 			oldValue = *val;
@@ -533,6 +567,7 @@ private:
 	double m_dFPR;
 	uint64_t m_nEntry;
 	uint64_t m_tEntry;
+	vector<string> m_sseeds;
 	unsigned m_hashNum;
 	unsigned m_kmerSize;
 
