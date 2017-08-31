@@ -330,6 +330,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	//for each file loop over all headers and obtain seq
 	//load input file + make filter
 	size_t redundancy = 0;
+
 	if (opt::noRep && filterSub != NULL) {
 		redundancy += loadFilterSubtract(filter, *filterSub, m_totalEntries);
 	} else {
@@ -556,6 +557,7 @@ size_t BloomFilterGenerator::generateProgressiveBait(const string &filename,
 	size_t redundancy = 0;
 
 	if (opt::noRep && filterSub != NULL) {
+		redundancy += loadFilterSubtract(filter, *filterSub, m_totalEntries);
 	} else {
 		redundancy += loadFilter(filter, m_totalEntries);
 	}
@@ -1068,6 +1070,7 @@ size_t BloomFilterGenerator::generateProgressive(const string &filename,
 	size_t redundancy = 0;
 
 	if (opt::noRep && filterSub != NULL) {
+		redundancy += loadFilterSubtract(filter, *filterSub, m_totalEntries);
 	} else {
 		redundancy += loadFilter(filter, m_totalEntries);
 	}
