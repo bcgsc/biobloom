@@ -101,8 +101,6 @@ private:
 	};
 
 	void loadFilters(const vector<string> &filterFilePaths);
-	bool fexists(const string &filename) const;
-
 	void evaluateReadStd(const string &rec, vector<unsigned> &hits);
 //	void evaluateReadMin(const string &rec, vector<unsigned> &hits);
 //	void evaluateReadCollab(const string &rec, vector<unsigned> &hits);

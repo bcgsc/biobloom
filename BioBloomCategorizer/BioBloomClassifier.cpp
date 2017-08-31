@@ -956,19 +956,7 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths) {
 	//load up files
 	for (vector<string>::const_iterator it = filterFilePaths.begin();
 			it != filterFilePaths.end(); ++it) {
-		//check if files exist
-		if (!fexists(*it)) {
-			cerr << "Error: " + (*it) + " File cannot be opened" << endl;
-			exit(1);
-		}
 		string infoFileName = (*it).substr(0, (*it).length() - 2) + "txt";
-		if (!fexists(infoFileName)) {
-			cerr
-					<< "Error: " + (infoFileName)
-							+ " File cannot be opened. A corresponding info file is needed."
-					<< endl;
-			exit(1);
-		}
 
 		//TODO check if all k-mer length and hash nums are the same
 		BloomFilterInfo *temp = new BloomFilterInfo(infoFileName);
@@ -979,14 +967,6 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths) {
 		cerr << "Loaded Filter: " + temp->getFilterID() << endl;
 	}
 	cerr << "Filter Loading Complete." << endl;
-}
-
-/*
- * checks if file exists
- */
-bool BioBloomClassifier::fexists(const string &filename) const {
-	ifstream ifile(filename.c_str());
-	return ifile.good();
 }
 
 ///*

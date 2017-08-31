@@ -32,7 +32,8 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 			gzFile fp;
 			fp = gzopen(m_fileNames[i].c_str(), "r");
 			if (fp == NULL) {
-				cerr << "file " << m_fileNames[i] << " cannot be opened" << endl;
+				cerr << "file " << m_fileNames[i] << " cannot be opened"
+						<< endl;
 				exit(1);
 			}
 			kseq_t *seq = kseq_init(fp);
@@ -81,13 +82,10 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 /* Generate the bloom filter to the output filename
  */
 void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
-	vector<vector<unsigned> > ssVal = parseSeedString(opt::sseeds);
 
 	std::ofstream idFile;
 	idFile.open((filePrefix + "_ids.txt").c_str());
 	cerr << "Outputting IDs file: " << filePrefix + "_ids.txt" << endl;
-	writeIDs(idFile, m_headerIDs);
-
 	if (opt::colliIDs) {
 		//if using prebuilt tree
 		//load in newick file
@@ -110,8 +108,9 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			cerr << "Loading ordered list of collision pairs" << endl;
 			assert(fexists(filePrefix + "_orderedIDs.txt"));
 			std::ifstream orderedIDFile;
-			orderedIDFile.open((filePrefix + "_orderedIDs.txt").c_str(), ifstream::in);
-			vector<pair<ID,ID> > orderedPairs;
+			orderedIDFile.open((filePrefix + "_orderedIDs.txt").c_str(),
+					ifstream::in);
+			vector<pair<ID, ID> > orderedPairs;
 			string line;
 			getline(orderedIDFile, line);
 			while (orderedIDFile.good()) {
@@ -132,10 +131,17 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	}
 	idFile.close();
 
-	MIBloomFilter<ID> bloomMapBV = generateBV(fpr, ssVal);
-	//free memory of old bv
+	MIBloomFilter<ID> * bloomMapBV;
 
-	cerr << "Populating values of bloom map" << endl;
+	writeIDs(idFile, m_headerIDs);
+	if (opt::sseeds.empty()) {
+		bloomMapBV = generateBV(fpr);
+	} else {
+		vector<vector<unsigned> > ssVal = parseSeedString(opt::sseeds);
+		bloomMapBV = generateBV(fpr, &ssVal);
+	}
+
+	cerr << "Populating values of multi index Bloom filter" << endl;
 
 	//populate values in bitvector (bloomFilter)
 	if (opt::idByFile) {
@@ -153,8 +159,8 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 				for (;;) {
 					l = kseq_read(seq);
 					if (l >= 0) {
-						//k-merize with rolling hash insert into bloom map
-						loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
+						//k-merize with rolling hash insert into multi index Bloom filter
+						loadSeq(*bloomMapBV, string(seq->seq.s, seq->seq.l),
 								m_headerIDs[m_fileNames[i].substr(
 										m_fileNames[i].find_last_of("/") + 1)],
 								colliMat);
@@ -181,8 +187,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			}
 			matFile.close();
 			exit(0);
-		}
-		else {
+		} else {
 #pragma omp parallel for
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 				gzFile fp;
@@ -192,8 +197,8 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 				for (;;) {
 					l = kseq_read(seq);
 					if (l >= 0) {
-						//k-merize with rolling hash insert into bloom map
-						loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
+						//k-merize with rolling hash insert into multi index Bloom filter
+						loadSeq(*bloomMapBV, string(seq->seq.s, seq->seq.l),
 								m_headerIDs[m_fileNames[i].substr(
 										m_fileNames[i].find_last_of("/") + 1)]);
 					} else {
@@ -214,8 +219,8 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			for (;;) {
 				l = kseq_read(seq);
 				if (l >= 0) {
-					//k-merize with rolling hash insert into bloom map
-					loadSeq(bloomMapBV, string(seq->seq.s, seq->seq.l),
+					//k-merize with rolling hash insert into multi index Bloom filter
+					loadSeq(*bloomMapBV, string(seq->seq.s, seq->seq.l),
 							m_headerIDs[seq->name.s]);
 				} else {
 					break;
@@ -229,14 +234,15 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	cerr << "Storing filter" << endl;
 
 	//save filter
-	bloomMapBV.store(filePrefix + ".bf");
+	bloomMapBV->store(filePrefix + ".bf");
+	delete (bloomMapBV);
 }
 
 /*
- * Populates bit vector and returns a compressed bloom map without values set
+ * Populates bit vector and returns a compressed multi index Bloom filter without values set
  */
-inline MIBloomFilter<ID> BloomMapGenerator::generateBV(double fpr,
-		const vector<vector<unsigned> > &ssVal) {
+inline MIBloomFilter<ID> * BloomMapGenerator::generateBV(double fpr,
+		const vector<vector<unsigned> > * ssVal) {
 	size_t filterSize = calcOptimalSize(m_expectedEntries, opt::sseeds.size(),
 			fpr);
 
@@ -261,8 +267,11 @@ inline MIBloomFilter<ID> BloomMapGenerator::generateBV(double fpr,
 				l = kseq_read(seq);
 				if (l >= 0) {
 					const string &seqStr = string(seq->seq.s, seq->seq.l);
-					//k-merize with rolling hash insert into bloom map
-					colliCounts += loadSeq(bv, seqStr, ssVal);
+					//k-merize with rolling hash insert into multi index Bloom filter
+					if (ssVal != NULL)
+						colliCounts += loadSeq(bv, seqStr);
+					else
+						colliCounts += loadSeq(bv, seqStr, *ssVal);
 					totalCount += seq->seq.l - m_kmerSize + 1;
 				} else {
 					break;
@@ -284,8 +293,12 @@ inline MIBloomFilter<ID> BloomMapGenerator::generateBV(double fpr,
 				l = kseq_read(seq);
 				if (l >= 0) {
 					const string &seqStr = string(seq->seq.s, seq->seq.l);
-					//k-merize with rolling hash insert into bloom map
-					size_t colliCounts = loadSeq(bv, seqStr, ssVal);
+					//k-merize with rolling hash insert into multi index Bloom filter
+					size_t colliCounts = 0;
+					if (ssVal != NULL)
+						colliCounts += loadSeq(bv, seqStr);
+					else
+						colliCounts += loadSeq(bv, seqStr, *ssVal);
 #pragma omp atomic
 					uniqueCounts += seq->seq.l - m_kmerSize + 1 - colliCounts;
 				} else {
@@ -298,8 +311,8 @@ inline MIBloomFilter<ID> BloomMapGenerator::generateBV(double fpr,
 	}
 	cerr << "Approximate number of unique entries in filter: " << uniqueCounts
 			<< endl;
-	return MIBloomFilter<ID>(m_expectedEntries, fpr, opt::sseeds.size(), opt::sseeds[0].size(), bv,
-			uniqueCounts, opt::sseeds);
+	return new MIBloomFilter<ID>(m_expectedEntries, fpr, opt::hashNum,
+			opt::kmerSize, bv, uniqueCounts, opt::sseeds);
 }
 
 inline vector<boost::shared_ptr<google::dense_hash_map<ID, ID> > > BloomMapGenerator::generateGroups(

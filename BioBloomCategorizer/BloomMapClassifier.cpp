@@ -10,7 +10,6 @@
 #include "Common/Options.h"
 #include "Options.h"
 #include <iostream>
-//#include "Common/Dynamicofstream.h"
 #include <zlib.h>
 #include "Common/kseq.h"
 //KSEQ_INIT(gzFile, gzread)

@@ -19,6 +19,7 @@
 #include "BioBloomClassifier.h"
 #include "bloomfilter/MIBloomFilter.hpp"
 #include "bloomfilter/RollingHashIterator.h"
+#include "btl_bloomfilter/ntHashIterator.hpp"
 
 using namespace std;
 
@@ -91,23 +92,44 @@ private:
 	 */
 	inline unsigned evaluateRead(const string &seq,
 			google::dense_hash_map<ID, unsigned> &hitCounts) {
-		RollingHashIterator itr(seq, m_filter.getKmerSize(),
-				m_filter.getSeedValues());
 		unsigned nonZeroCount = 0;
-		while (itr != itr.end()) {
-			unsigned misses = 0;
-			vector<ID> ids = m_filter.at(*itr, m_colliIDs, opt::allowMisses, misses);
-			nonZeroCount += ids.size() > 0;
-			nonZeroCount += misses == 0 * opt::allowMisses;
-			for (unsigned i = 0; i < ids.size(); ++i) {
-				ID id = ids[i];
-				if (hitCounts.find(id) == hitCounts.end()) {
-					hitCounts[id] = 0;
+		if (m_filter.getSeedValues().empty()) {
+			for (ntHashIterator itr(seq, m_filter.getHashNum(),
+					m_filter.getKmerSize()); itr != itr.end(); ++itr) {
+				unsigned misses = 0;
+				vector<ID> ids = m_filter.at(*itr, m_colliIDs, opt::allowMisses,
+						misses);
+				nonZeroCount += ids.size() > 0;
+				nonZeroCount += misses == 0 * opt::allowMisses;
+				for (unsigned i = 0; i < ids.size(); ++i) {
+					ID id = ids[i];
+					if (hitCounts.find(id) == hitCounts.end()) {
+						hitCounts[id] = 0;
+					}
+					hitCounts[id] += ids.size() > 0;
+					hitCounts[id] += misses == 0 * opt::allowMisses;
 				}
-				hitCounts[id] += ids.size() > 0;
-				hitCounts[id] += misses == 0 * opt::allowMisses;
+
 			}
-			++itr;
+		} else {
+			RollingHashIterator itr(seq, m_filter.getKmerSize(),
+					m_filter.getSeedValues());
+			while (itr != itr.end()) {
+				unsigned misses = 0;
+				vector<ID> ids = m_filter.at(*itr, m_colliIDs, opt::allowMisses,
+						misses);
+				nonZeroCount += ids.size() > 0;
+				nonZeroCount += misses == 0 * opt::allowMisses;
+				for (unsigned i = 0; i < ids.size(); ++i) {
+					ID id = ids[i];
+					if (hitCounts.find(id) == hitCounts.end()) {
+						hitCounts[id] = 0;
+					}
+					hitCounts[id] += ids.size() > 0;
+					hitCounts[id] += misses == 0 * opt::allowMisses;
+				}
+				++itr;
+			}
 		}
 		return nonZeroCount;
 	}
