@@ -86,6 +86,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	std::ofstream idFile;
 	idFile.open((filePrefix + "_ids.txt").c_str());
 	cerr << "Outputting IDs file: " << filePrefix + "_ids.txt" << endl;
+	writeIDs(idFile, m_headerIDs);
 	if (opt::colliIDs) {
 		//if using prebuilt tree
 		//load in newick file
@@ -133,10 +134,10 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 
 	MIBloomFilter<ID> * bloomMapBV;
 
-	writeIDs(idFile, m_headerIDs);
 	if (opt::sseeds.empty()) {
 		bloomMapBV = generateBV(fpr);
 	} else {
+		cerr << "Spaced Seeds Detected" << endl;
 		vector<vector<unsigned> > ssVal = parseSeedString(opt::sseeds);
 		bloomMapBV = generateBV(fpr, &ssVal);
 	}
@@ -243,10 +244,14 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
  */
 inline MIBloomFilter<ID> * BloomMapGenerator::generateBV(double fpr,
 		const vector<vector<unsigned> > * ssVal) {
-	size_t filterSize = calcOptimalSize(m_expectedEntries, opt::sseeds.size(),
-			fpr);
+	size_t filterSize = 0;
+	if (ssVal != NULL)
+		filterSize = calcOptimalSize(m_expectedEntries, opt::sseeds.size(),
+				fpr);
+	else
+		filterSize = calcOptimalSize(m_expectedEntries, opt::hashNum, fpr);
 
-	cerr << "bitVector Size: " << filterSize << endl;
+	cerr << "Bit vector Size: " << filterSize << endl;
 	size_t uniqueCounts = 0;
 
 	sdsl::bit_vector bv(filterSize);
@@ -269,9 +274,9 @@ inline MIBloomFilter<ID> * BloomMapGenerator::generateBV(double fpr,
 					const string &seqStr = string(seq->seq.s, seq->seq.l);
 					//k-merize with rolling hash insert into multi index Bloom filter
 					if (ssVal != NULL)
-						colliCounts += loadSeq(bv, seqStr);
-					else
 						colliCounts += loadSeq(bv, seqStr, *ssVal);
+					else
+						colliCounts += loadSeq(bv, seqStr);
 					totalCount += seq->seq.l - m_kmerSize + 1;
 				} else {
 					break;
@@ -296,9 +301,9 @@ inline MIBloomFilter<ID> * BloomMapGenerator::generateBV(double fpr,
 					//k-merize with rolling hash insert into multi index Bloom filter
 					size_t colliCounts = 0;
 					if (ssVal != NULL)
-						colliCounts += loadSeq(bv, seqStr);
-					else
 						colliCounts += loadSeq(bv, seqStr, *ssVal);
+					else
+						colliCounts += loadSeq(bv, seqStr);
 #pragma omp atomic
 					uniqueCounts += seq->seq.l - m_kmerSize + 1 - colliCounts;
 				} else {

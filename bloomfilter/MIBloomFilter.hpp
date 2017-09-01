@@ -50,13 +50,28 @@ static vector<vector<unsigned> > parseSeedString(
 	return seeds;
 }
 
+///*
+// * Returns an a filter size large enough to maintain an occupancy specified
+// */
+//inline size_t calcOptimalSize(size_t entries, unsigned hashNum,
+//		double occupancy) {
+//	assert(hashNum > 0);
+//	return size_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
+//}
+
 /*
- * Returns an a filter size large enough to maintain an occupancy specified
+ * Only returns multiples of 64 for filter building purposes
+ * Is an estimated size using approximations of FPR formula
+ * given the number of hash functions
+ * see http://en.wikipedia.org/wiki/Bloom_filter
  */
-inline size_t calcOptimalSize(size_t entries, unsigned hashNum,
-		double occupancy) {
-	assert(hashNum > 0);
-	return size_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
+inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double fpr)
+{
+	size_t non64ApproxVal = size_t(
+			-double(entries) * double(hashNum)
+					/ log(1.0 - pow(fpr, double(1 / (double(hashNum))))));
+
+	return non64ApproxVal + (64 - non64ApproxVal % 64);
 }
 
 template<typename T>
@@ -82,7 +97,8 @@ public:
 			unsigned kmerSize, sdsl::bit_vector &bv, size_t unique,
 			const vector<string> seeds = vector<string>(0)) :
 			m_dSize(0), m_dFPR(fpr), m_nEntry(unique), m_tEntry(
-					expectedElemNum), m_hashNum(hashNum), m_kmerSize(kmerSize) {
+					expectedElemNum), m_hashNum(hashNum), m_kmerSize(kmerSize), m_sseeds(
+					seeds) {
 		cerr << "Converting bit vector to rank interleaved form" << endl;
 		double start_time = omp_get_wtime();
 		m_bv = sdsl::bit_vector_il<BLOCKSIZE>(bv);
@@ -95,6 +111,7 @@ public:
 			assert(m_sseeds[0].size() == kmerSize);
 			for (vector<string>::const_iterator itr = m_sseeds.begin();
 					itr != m_sseeds.end(); ++itr) {
+//				cerr << *itr << endl;
 				//check if spaced seeds are all the same length
 				assert(m_kmerSize == itr->size());
 			}
@@ -219,7 +236,7 @@ public:
 				writeHeader(myFile);
 
 				cerr << "Storing filter. Filter is " << m_dSize * sizeof(T)
-						<< "bytes." << endl;
+						<< " bytes." << endl;
 
 				//write out each block
 				myFile.write(reinterpret_cast<char*>(m_data),
@@ -244,7 +261,7 @@ public:
 						<< endl;
 				cerr << "Uncompressed bit vector size is "
 						<< (m_bv.size() + m_bv.size() * 64 / BLOCKSIZE) / 8
-						<< "bytes" << endl;
+						<< " bytes" << endl;
 			}
 		}
 	}
@@ -572,9 +589,9 @@ private:
 		header.tEntry = m_tEntry;
 
 		cerr << "Writing header... magic: " << magic << " hlen: " << header.hlen
-				<< " size: " << header.size << " dFPR: " << header.dFPR
-				<< " nEntry: " << header.nEntry << " tEntry: " << header.tEntry
-				<< endl;
+				<< " nhash: " << header.nhash << " size: " << header.size
+				<< " dFPR: " << header.dFPR << " nEntry: " << header.nEntry
+				<< " tEntry: " << header.tEntry << endl;
 
 		out.write(reinterpret_cast<char*>(&header), sizeof(struct FileHeader));
 
@@ -618,8 +635,9 @@ private:
 		T oldValue;
 		do {
 			oldValue = *val;
-			if (oldValue >= newVal)
+			if (oldValue >= newVal) {
 				break;
+			}
 		} while (!__sync_bool_compare_and_swap(val, oldValue, newVal));
 	}
 
@@ -698,11 +716,11 @@ private:
 	double m_dFPR;
 	uint64_t m_nEntry;
 	uint64_t m_tEntry;
-	vector<string> m_sseeds;
 	unsigned m_hashNum;
 	unsigned m_kmerSize;
 
 	typedef vector<vector<unsigned> > SeedVal;
+	vector<string> m_sseeds;
 	SeedVal m_ssVal;
 	const char* MAGIC = "MIBLOOMF";
 };

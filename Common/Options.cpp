@@ -16,7 +16,6 @@ namespace opt {
 	std::vector<std::string> sseeds;
 	unsigned allowMisses = 0;
 
-	IDType idType = HEADER;
 	bool colliIDs = false;
 	bool colliAnalysis = false;
 	bool idByFile = false;

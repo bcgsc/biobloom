@@ -8,8 +8,6 @@
 
 enum FilterType {BLOOMFILTER, BLOOMMAP};
 
-enum IDType {HEADER, FILENAME, BARCODE};
-
 typedef uint16_t ID;
 
 /**
@@ -36,7 +34,6 @@ namespace opt {
 	
 	//options of BBM only
 	//TODO: move to own header file
-	extern IDType idType;
 	extern bool colliIDs;
 	extern bool colliAnalysis;
 	extern bool idByFile;
