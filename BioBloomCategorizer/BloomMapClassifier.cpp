@@ -235,6 +235,8 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 				cerr << "Currently Reading Read Number: " << totalReads << endl;
 			}
 
+			cerr << name1 << endl;
+
 			google::dense_hash_map<ID, unsigned> hitCounts1;
 			google::dense_hash_map<ID, unsigned> hitCounts2;
 			hitCounts1.set_empty_key(opt::EMPTY);

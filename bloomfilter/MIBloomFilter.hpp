@@ -154,19 +154,6 @@ public:
 
 				assert(strcmp(MAGIC, magic) == 0);
 
-				//load seeds
-				for (unsigned i = 0; i < header.nhash; ++i) {
-					char temp[header.kmer];
-
-					if (fread(temp, header.kmer, 1, file) != 1) {
-						cerr << "Failed to load spaced seed string" << endl;
-						exit(1);
-					} else {
-						cerr << "Spaced Seed " << i << ": "
-								<< string(temp, header.kmer) << endl;
-					}
-					m_sseeds.push_back(string(temp, header.kmer));
-				}
 				m_dFPR = header.dFPR;
 				m_nEntry = header.nEntry;
 				m_hashNum = header.nhash;
@@ -176,6 +163,20 @@ public:
 				m_data = new T[m_dSize]();
 
 				if (!m_sseeds.empty()) {
+					//load seeds
+					for (unsigned i = 0; i < header.nhash; ++i) {
+						char temp[header.kmer];
+
+						if (fread(temp, header.kmer, 1, file) != 1) {
+							cerr << "Failed to load spaced seed string" << endl;
+							exit(1);
+						} else {
+							cerr << "Spaced Seed " << i << ": "
+									<< string(temp, header.kmer) << endl;
+						}
+						m_sseeds.push_back(string(temp, header.kmer));
+					}
+
 					m_ssVal = parseSeedString(m_sseeds);
 					assert(m_sseeds[0].size() == m_kmerSize);
 					for (vector<string>::const_iterator itr = m_sseeds.begin();
@@ -525,21 +526,22 @@ public:
 	 */
 	inline double getFPR() const {
 		return pow(double(getPop()) / double(m_bv.size()),
-				double(m_ssVal.size()));
+				double(m_hashNum));
 	}
 
 	/*
 	 * Return FPR based on popcount and minimum number of matches for a hit
 	 */
 	inline double getFPR(unsigned allowedMiss) const {
-		assert(allowedMiss <= m_ssVal.size());
+		assert(allowedMiss <= m_hashNum);
 		double cumulativeProb = 0;
 		double popCount = getPop();
 		double p = popCount / double(m_bv.size());
-		for (unsigned i = m_ssVal.size() - allowedMiss; i <= m_ssVal.size();
+		cerr << p << endl;
+		for (unsigned i = m_hashNum - allowedMiss; i <= m_hashNum;
 				++i) {
-			cumulativeProb += double(nChoosek(m_ssVal.size(), i)) * pow(p, i)
-					* pow(1.0 - p, (m_ssVal.size() - i));
+			cumulativeProb += double(nChoosek(m_hashNum, i)) * pow(p, i)
+					* pow(1.0 - p, (m_hashNum - i));
 		}
 		return (cumulativeProb);
 	}
@@ -617,8 +619,8 @@ private:
 		return pow(
 				1.0
 						- pow(1.0 - 1.0 / double(m_bv.size()),
-								double(numEntr) * double(m_ssVal.size())),
-				double(m_ssVal.size()));
+								double(numEntr) * double(m_hashNum)),
+				double(m_hashNum));
 	}
 
 	/*

@@ -109,7 +109,6 @@ private:
 					hitCounts[id] += ids.size() > 0;
 					hitCounts[id] += misses == 0 * opt::allowMisses;
 				}
-
 			}
 		} else {
 			RollingHashIterator itr(seq, m_filter.getKmerSize(),
