@@ -183,6 +183,9 @@ private:
 		return redundancy;
 	}
 
+	/*
+	 * Return the count of new k-mers in the filter
+	 */
 	inline unsigned loadFilter(BloomFilter &bf, const string &str) {
 		size_t tempTotal = 0;
 		for (ntHashIterator itr(str, m_hashNum, m_kmerSize); itr != itr.end(); ++itr) {
@@ -193,20 +196,15 @@ private:
 		return tempTotal;
 	}
 
-//	inline unsigned checkFilter(BloomFilter &bf, const string &str) {
-//		size_t tempTotal = 0;
-//		for (ntHashIterator itr(str, m_hashNum, m_kmerSize); itr != itr.end(); ++itr) {
-//			tempTotal += !bf.contains(*itr);
-//		}
-//		return tempTotal;
-//	}
-
+	/*
+	 * Returns count of k-mers found in filter
+	 */
 	inline unsigned checkFilter(BloomFilter *bf, const string &str) {
 		size_t tempTotal = 0;
 		if (bf != NULL) {
 			for (ntHashIterator itr(str, m_hashNum, m_kmerSize);
 					itr != itr.end(); ++itr) {
-				tempTotal += !bf->contains(*itr);
+				tempTotal += bf->contains(*itr);
 			}
 		}
 		return tempTotal;
