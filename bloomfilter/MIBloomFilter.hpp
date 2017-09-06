@@ -78,6 +78,8 @@ template<typename T>
 class MIBloomFilter {
 public:
 
+enum Type {MIBFMVAL, MIBFCOLL};
+
 #pragma pack(1) //to maintain consistent values across platforms
 	struct FileHeader {
 		char magic[8];
@@ -98,7 +100,7 @@ public:
 			const vector<string> seeds = vector<string>(0)) :
 			m_dSize(0), m_dFPR(fpr), m_nEntry(unique), m_tEntry(
 					expectedElemNum), m_hashNum(hashNum), m_kmerSize(kmerSize), m_sseeds(
-					seeds) {
+					seeds), m_miBFType(MIBFMVAL) {
 		cerr << "Converting bit vector to rank interleaved form" << endl;
 		double start_time = omp_get_wtime();
 		m_bv = sdsl::bit_vector_il<BLOCKSIZE>(bv);
@@ -152,7 +154,11 @@ public:
 						<< header.dFPR << " nEntry: " << header.nEntry
 						<< " tEntry: " << header.tEntry << endl;
 
-				assert(strcmp(MAGIC, magic) == 0);
+				if (strcmp(magic, MAGICSTR1) == 0) {
+					m_miBFType = MIBFMVAL;
+				} else {
+					m_miBFType = MIBFCOLL;
+				}
 
 				m_dFPR = header.dFPR;
 				m_nEntry = header.nEntry;
@@ -219,6 +225,10 @@ public:
 
 		cerr << "Bit Vector Size: " << m_bv.size() << endl;
 		cerr << "Popcount: " << getPop() << endl;
+	}
+
+	inline void setType(Type miBFType){
+		m_miBFType = miBFType;
 	}
 
 	/*
@@ -376,6 +386,63 @@ public:
 		}
 	}
 
+	/*
+	 * Returns the smallest possible id assigned in set of IDs
+	 * or 0 is it does not match anything
+	 */
+	inline T at(const size_t *hashes, unsigned maxMiss, unsigned &misses) {
+		T result = numeric_limits<T>::max();
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
+			if (m_bv[pos] == 0) {
+				++misses;
+				if (misses > maxMiss) {
+					return 0;
+				}
+			}
+			else {
+				size_t rankPos = m_rankSupport(pos);
+				T currID = m_data[rankPos];
+				if (currID < result) {
+					result = currID;
+				}
+			}
+		}
+		return result;
+	}
+
+	/*
+	 * Returns the smallest possible id assigned in set of IDs
+	 * or 0 is it does not match anything
+	 */
+	inline T at(const vector<size_t> &hashes, unsigned maxMiss, unsigned &misses) {
+		T result = numeric_limits<T>::max();
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes.at(i) % m_bv.size();
+			if (m_bv[pos] == 0) {
+				++misses;
+				if (misses > maxMiss) {
+					return 0;
+				}
+			}
+			else {
+				size_t rankPos = m_rankSupport(pos);
+				T currID = m_data[rankPos];
+				if (currID < result) {
+					result = currID;
+				}
+			}
+		}
+		return result;
+	}
+
+	/*
+	 * Returns unambiguous hit to object
+	 * Returns best hit on ambiguous collisions
+	 * Returns numeric_limits<T>::max() on completely ambiguous collision
+	 * Returns 0 on if missing element
+	 * Uses colliIDs to resolve ambiguities
+	 */
 	//TODO optimize
 	inline vector<T> at(const size_t *hashes,
 			const vector<boost::shared_ptr<vector<T> > > &colliIDs,
@@ -566,6 +633,10 @@ public:
 		return m_nEntry;
 	}
 
+	inline Type getType() const{
+		return m_miBFType;
+	}
+
 	~MIBloomFilter() {
 		delete[] m_data;
 	}
@@ -577,10 +648,14 @@ private:
 	 */
 	inline void writeHeader(ofstream &out) const {
 		FileHeader header;
-		strncpy(header.magic, MAGIC, 8);
 		char magic[9];
-		strncpy(magic, header.magic, 8);
+		if (m_miBFType == MIBFMVAL) {
+			strncpy(magic, MAGICSTR1, 8);
+		} else {
+			strncpy(magic, MAGICSTR2, 8);
+		}
 		magic[8] = '\0';
+		strncpy(header.magic, magic, 8);
 
 		header.hlen = sizeof(struct FileHeader) + m_kmerSize * m_sseeds.size();
 		header.kmer = m_kmerSize;
@@ -724,7 +799,9 @@ private:
 	typedef vector<vector<unsigned> > SeedVal;
 	vector<string> m_sseeds;
 	SeedVal m_ssVal;
-	const char* MAGIC = "MIBLOOMF";
+	const char* MAGICSTR1 = "MIBFMVAL";
+	const char* MAGICSTR2 = "MIBFCOLL";
+	Type m_miBFType;
 };
 
 #endif /* MIBLOOMFILTER_HPP_ */

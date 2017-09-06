@@ -39,8 +39,8 @@ public:
 
 	T updateSummaryData(const vector<T> &hits) {
 		unsigned filterIndex = m_noMatchIndex;
-		for (typename vector<T>::const_iterator i = hits.begin(); i != hits.end();
-				++i) {
+		for (typename vector<T>::const_iterator i = hits.begin();
+				i != hits.end(); ++i) {
 #pragma omp atomic
 			++m_aboveThreshold[*i];
 			if (filterIndex == m_noMatchIndex) {
@@ -210,6 +210,14 @@ public:
 		return summaryOutput.str();
 	}
 
+	T getNoMatchIndex() const {
+		return m_noMatchIndex;
+	}
+
+	T getMultiMatchIndex() const {
+		return m_multiMatchIndex;
+	}
+
 	virtual ~ResultsManager() {
 	}
 
@@ -217,8 +225,8 @@ private:
 	//Variables owned by biobloomcategorizer
 	const vector<string> &m_filterOrder;
 
-	const unsigned m_noMatchIndex;
-	const unsigned m_multiMatchIndex;
+	const T m_noMatchIndex;
+	const T m_multiMatchIndex;
 
 	vector<size_t> m_aboveThreshold;
 	vector<size_t> m_unique;

@@ -22,7 +22,7 @@ BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		const string &outputPostFix, bool withScore) :
 		m_scoreThreshold(scoreThreshold), m_filterNum(filterFilePaths.size()), m_prefix(
 				prefix), m_postfix(outputPostFix), m_mode(STD), m_stdout(false), m_inclusive(
-				false), m_multiMatchIndex(filterFilePaths.size() + 1) {
+				false) {
 	loadFilters(filterFilePaths);
 	if (withScore) {
 		m_mode = SCORES;
@@ -47,7 +47,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles) {
 	cerr << "Filtering Start" << endl;
 
 	FaRec rec;
-	vector<double> scores(m_filterNum);
+	vector<double> scores(m_filterNum, 0);
 	vector<unsigned> hits;
 	hits.reserve(m_filterNum);
 	double score = 0;
@@ -117,13 +117,13 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 
 	size_t totalReads = 0;
 
-	vector<Dynamicofstream*> outputFiles(m_filterOrder.size() + 2);
+	vector<Dynamicofstream*> outputFiles(m_filterOrder.size() + 2, 0);
 	//initialize variables
 	unsigned index = 0;
 	for (vector<string>::const_iterator i = m_filterOrder.begin();
 			i != m_filterOrder.end(); ++i) {
 		outputFiles[index++] = new Dynamicofstream(
-						m_prefix + "_" + *i + "." + outputType + m_postfix);
+				m_prefix + "_" + *i + "." + outputType + m_postfix);
 	}
 	outputFiles[index++] = new Dynamicofstream(
 			m_prefix + "_" + NO_MATCH + "." + outputType + m_postfix);
@@ -135,7 +135,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	cerr << "Filtering Start" << endl;
 
 	FaRec rec;
-	vector<double> scores(m_filterNum);
+	vector<double> scores(m_filterNum, 0);
 	vector<unsigned> hits;
 	hits.reserve(m_filterNum);
 	double score = 0;
@@ -177,7 +177,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 				unsigned outputFileName = resSummary.updateSummaryData(hits);
 				printSingle(rec, score, outputFileName);
 				printSingleToFile(outputFileName, rec, outputFiles, outputType,
-						score, scores);
+						score, scores, resSummary);
 
 			} else
 				break;
@@ -189,17 +189,17 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 	//close sorting files
 	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
 		outputFiles[i]->close();
-		delete(outputFiles[i]);
+		delete (outputFiles[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "." + outputType
 						+ m_postfix << endl;
 	}
 	outputFiles[m_filterOrder.size()]->close();
-	delete(outputFiles[m_filterOrder.size()]);
+	delete (outputFiles[m_filterOrder.size()]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + NO_MATCH + "." + outputType + m_postfix << endl;
 	outputFiles[m_filterOrder.size() + 1]->close();
-	delete(outputFiles[m_filterOrder.size() + 1]);
+	delete (outputFiles[m_filterOrder.size() + 1]);
 	cerr << "File written to: "
 			<< m_prefix + "_" + MULTI_MATCH + "." + outputType + m_postfix
 			<< endl;
@@ -317,17 +317,15 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 
 	size_t totalReads = 0;
 
-	vector<Dynamicofstream*> outputFiles1(m_filterOrder.size() + 2);
-	vector<Dynamicofstream*> outputFiles2(m_filterOrder.size() + 2);
+	vector<Dynamicofstream*> outputFiles1(m_filterOrder.size() + 2, 0);
+	vector<Dynamicofstream*> outputFiles2(m_filterOrder.size() + 2, 0);
 	//initialize variables
 	unsigned index = 0;
 	for (vector<string>::const_iterator i = m_filterOrder.begin();
 			i != m_filterOrder.end(); ++i) {
-		outputFiles1[index] = new
-				Dynamicofstream(
-						m_prefix + "_" + *i + "_1." + outputType + m_postfix);
-		outputFiles2[index++] = new
-				Dynamicofstream(
+		outputFiles1[index] = new Dynamicofstream(
+				m_prefix + "_" + *i + "_1." + outputType + m_postfix);
+		outputFiles2[index++] = new Dynamicofstream(
 				m_prefix + "_" + *i + "_2." + outputType + m_postfix);
 	}
 	outputFiles1[index] = new Dynamicofstream(
@@ -408,7 +406,7 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 			//Evaluate hit data and record for summary
 			printPair(rec1, rec2, score1, score2, outputFileIndex);
 			printPairToFile(outputFileIndex, rec1, rec2, outputFiles1,
-					outputFiles2, outputType, score1, score2, scores1, scores2);
+					outputFiles2, outputType, score1, score2, scores1, scores2, resSummary);
 		} else
 			break;
 	}
@@ -418,12 +416,12 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 	//close sorting files
 	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
 		outputFiles1[i]->close();
-		delete(outputFiles1[i]);
+		delete (outputFiles1[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_1." + outputType
 						+ m_postfix << endl;
 		outputFiles2[i]->close();
-		delete(outputFiles2[i]);
+		delete (outputFiles2[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_2." + outputType
 						+ m_postfix << endl;
@@ -579,17 +577,15 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 
 	size_t totalReads = 0;
 
-	vector<Dynamicofstream*> outputFiles1(m_filterOrder.size() + 2);
-	vector<Dynamicofstream*> outputFiles2(m_filterOrder.size() + 2);
+	vector<Dynamicofstream*> outputFiles1(m_filterOrder.size() + 2, 0);
+	vector<Dynamicofstream*> outputFiles2(m_filterOrder.size() + 2, 0);
 	//initialize variables
 	unsigned index = 0;
 	for (vector<string>::const_iterator i = m_filterOrder.begin();
 			i != m_filterOrder.end(); ++i) {
-		outputFiles1[index] = new
-				Dynamicofstream(
-						m_prefix + "_" + *i + "_1." + outputType + m_postfix);
-		outputFiles2[index++] = new
-				Dynamicofstream(
+		outputFiles1[index] = new Dynamicofstream(
+				m_prefix + "_" + *i + "_1." + outputType + m_postfix);
+		outputFiles2[index++] = new Dynamicofstream(
 				m_prefix + "_" + *i + "_2." + outputType + m_postfix);
 	}
 	outputFiles1[index] = new Dynamicofstream(
@@ -677,7 +673,7 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 				printPair(rec1, rec2, score1, score2, outputFileIndex);
 				printPairToFile(outputFileIndex, rec1, rec2, outputFiles1,
 						outputFiles2, outputType, score1, score2, scores1,
-						scores2);
+						scores2, resSummary);
 			}
 		} else
 			break;
@@ -686,12 +682,12 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 	//close sorting files
 	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
 		outputFiles1[i]->close();
-		delete(outputFiles1[i]);
+		delete (outputFiles1[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_1." + outputType
 						+ m_postfix << endl;
 		outputFiles2[i]->close();
-		delete(outputFiles2[i]);
+		delete (outputFiles2[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_2." + outputType
 						+ m_postfix << endl;
@@ -824,11 +820,9 @@ void BioBloomClassifier::filterPairPrint(const vector<string> &inputFiles1,
 	unsigned index = 0;
 	for (vector<string>::const_iterator i = m_filterOrder.begin();
 			i != m_filterOrder.end(); ++i) {
-		outputFiles1[index] = new
-				Dynamicofstream(
-						m_prefix + "_" + *i + "_1." + outputType + m_postfix);
-		outputFiles2[index++] = new
-				Dynamicofstream(
+		outputFiles1[index] = new Dynamicofstream(
+				m_prefix + "_" + *i + "_1." + outputType + m_postfix);
+		outputFiles2[index++] = new Dynamicofstream(
 				m_prefix + "_" + *i + "_2." + outputType + m_postfix);
 	}
 	outputFiles1[index] = new Dynamicofstream(
@@ -895,7 +889,7 @@ void BioBloomClassifier::filterPairPrint(const vector<string> &inputFiles1,
 				printPair(kseq1, kseq2, score1, score2, outputFileIndex);
 				printPairToFile(outputFileIndex, kseq1, kseq2, outputFiles1,
 						outputFiles2, outputType, score1, score2, scores1,
-						scores2);
+						scores2, resSummary);
 			} else
 				break;
 		}
@@ -904,12 +898,12 @@ void BioBloomClassifier::filterPairPrint(const vector<string> &inputFiles1,
 	}
 	for (unsigned i = 0; i < m_filterOrder.size(); ++i) {
 		outputFiles1[i]->close();
-		delete(outputFiles1[i]);
+		delete (outputFiles1[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_1." + outputType
 						+ m_postfix << endl;
 		outputFiles2[i]->close();
-		delete(outputFiles2[i]);
+		delete (outputFiles2[i]);
 		cerr << "File written to: "
 				<< m_prefix + "_" + m_filterOrder[i] + "_2." + outputType
 						+ m_postfix << endl;

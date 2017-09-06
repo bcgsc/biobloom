@@ -92,8 +92,6 @@ private:
 	bool m_stdout;
 	bool m_inclusive;
 
-	const unsigned m_multiMatchIndex;
-
 	struct FaRec {
 		string header;
 		string seq;
@@ -135,9 +133,9 @@ private:
 
 	inline void printSingleToFile(unsigned outputFileName, const FaRec &rec,
 			vector<Dynamicofstream*> &outputFiles, string const &outputType,
-			double score, vector<double> &scores) {
+			double score, vector<double> &scores, const ResultsManager<unsigned> &rm) {
 		if (outputType == "fa") {
-			if (m_mode == SCORES && outputFileName == m_multiMatchIndex) {
+			if (m_mode == SCORES && outputFileName == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles[outputFileName]) << ">" << rec.header;
@@ -148,7 +146,7 @@ private:
 					(*outputFiles[outputFileName]) << "\n" << rec.seq << "\n";
 				}
 			} else if (m_mode == BESTHIT) {
-				if (outputFileName == m_multiMatchIndex)
+				if (outputFileName == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
 					(*outputFiles[outputFileName]) << ">" << rec.header;
@@ -171,7 +169,7 @@ private:
 				}
 			}
 		} else {
-			if (m_mode == SCORES && outputFileName == m_multiMatchIndex) {
+			if (m_mode == SCORES && outputFileName == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles[outputFileName]) << "@" << rec.header;
@@ -249,9 +247,9 @@ private:
 			const FaRec &rec2, vector<Dynamicofstream*> &outputFiles1,
 			vector<Dynamicofstream*> &outputFiles2, string const &outputType,
 			double score1, double score2, vector<double> &scores1,
-			vector<double> &scores2) {
+			vector<double> &scores2, const ResultsManager<unsigned> &rm) {
 		if (outputType == "fa") {
-			if (m_mode == SCORES && outputFileIndex == m_multiMatchIndex) {
+			if (m_mode == SCORES && outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles1[outputFileIndex]) << ">" << rec1.header;
@@ -270,7 +268,7 @@ private:
 							<< "\n";
 				}
 			} else if (m_mode == BESTHIT) {
-				if (outputFileIndex == m_multiMatchIndex)
+				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
 					(*outputFiles1[outputFileIndex]) << ">" << rec1.header;
@@ -305,7 +303,7 @@ private:
 				}
 			}
 		} else {
-			if (m_mode == SCORES && outputFileIndex == m_multiMatchIndex) {
+			if (m_mode == SCORES && outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles1[outputFileIndex]) << "@" << rec1.header;
@@ -324,7 +322,7 @@ private:
 							<< "\n+\n" << rec2.qual << "\n";
 				}
 			} else if (m_mode == BESTHIT) {
-				if (outputFileIndex == m_multiMatchIndex)
+				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
 					(*outputFiles1[outputFileIndex]) << "@" << rec1.header;
@@ -367,9 +365,9 @@ private:
 			const kseq_t * rec2, vector<Dynamicofstream*> &outputFiles1,
 			vector<Dynamicofstream*> &outputFiles2, string const &outputType,
 			double score1, double score2, vector<double> &scores1,
-			vector<double> &scores2) {
+			vector<double> &scores2, const ResultsManager<unsigned> &rm) {
 		if (outputType == "fa") {
-			if (m_mode == SCORES && outputFileIndex == m_multiMatchIndex) {
+			if (m_mode == SCORES && outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles1[outputFileIndex]) << ">" << rec1->name.s;
@@ -388,7 +386,7 @@ private:
 							<< "\n";
 				}
 			} else if (m_mode == BESTHIT) {
-				if (outputFileIndex == m_multiMatchIndex)
+				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
 					(*outputFiles1[outputFileIndex]) << ">" << rec1->name.s;
@@ -423,7 +421,7 @@ private:
 				}
 			}
 		} else {
-			if (m_mode == SCORES && outputFileIndex == m_multiMatchIndex) {
+			if (m_mode == SCORES && outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles1[outputFileIndex]) << "@" << rec1->name.s;
@@ -442,7 +440,7 @@ private:
 							<< "\n+\n" << rec2->qual.s << "\n";
 				}
 			} else if (m_mode == BESTHIT) {
-				if (outputFileIndex == m_multiMatchIndex)
+				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
 					(*outputFiles1[outputFileIndex]) << "@" << rec1->name.s;

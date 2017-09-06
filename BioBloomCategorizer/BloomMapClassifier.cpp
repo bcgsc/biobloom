@@ -59,7 +59,7 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		getline(idFH, line);
 	}
 	m_fullIDs = vector<string>(ids.size() + 1); //first element will be empty
-	m_fullIDs[0] = "missing"; //set first element to missing
+	m_fullIDs[0] = "unknown"; //set first element to unknown
 	for (google::dense_hash_map<ID, string>::const_iterator itr = ids.begin();
 			itr != ids.end(); ++itr) {
 		m_fullIDs[itr->first] = itr->second;
@@ -117,7 +117,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 #pragma omp atomic
 				++totalReads;
 #pragma omp critical(totalReads)
-				if (totalReads % 1000000 == 0) {
+				if (totalReads % opt::fileInterval == 0) {
 					cerr << "Currently Reading Read Number: " << totalReads
 							<< endl;
 				}
@@ -231,28 +231,25 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 #pragma omp atomic
 			++totalReads;
 #pragma omp critical(totalReads)
-			if (totalReads % 1000000 == 0) {
+			if (totalReads % opt::fileInterval == 0) {
 				cerr << "Currently Reading Read Number: " << totalReads << endl;
 			}
-
-			cerr << name1 << endl;
 
 			google::dense_hash_map<ID, unsigned> hitCounts1;
 			google::dense_hash_map<ID, unsigned> hitCounts2;
 			hitCounts1.set_empty_key(opt::EMPTY);
 			hitCounts2.set_empty_key(opt::EMPTY);
 
-			unsigned score1 = evaluateRead(sequence1, hitCounts1);
-			unsigned score2 = evaluateRead(sequence2, hitCounts2);
 			unsigned threshold1 = opt::score > 1 ? opt::score : opt::score
 					* ((l1 - m_filter.getKmerSize() + 1)
 							* (opt::allowMisses + 1));
 			unsigned threshold2 = opt::score > 1 ? opt::score : opt::score
 					* ((l2 - m_filter.getKmerSize() + 1)
 							* (opt::allowMisses + 1));
+			unsigned score1 = evaluateRead(sequence1, hitCounts1);
+			unsigned score2 = evaluateRead(sequence2, hitCounts2);
 
 			vector<ID> hits;
-			vector<ID> solidHits;
 			bool aboveThreshold = false;
 			if (opt::inclusive) {
 				aboveThreshold = score1 + score2 >= threshold1 + threshold2;
@@ -267,10 +264,13 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 			ID idIndex = opt::EMPTY;
 
 			idIndex = resSummary.updateSummaryData(hits);
-
 			if (idIndex != opt::EMPTY) {
+				//TODO: possible to optimize by putting alternative is vector
 				const string &fullID =
-						idIndex == opt::COLLI ? UNKNOWN : m_fullIDs.at(idIndex);
+						idIndex == opt::COLLI ? UNKNOWN :
+						idIndex == resSummary.getMultiMatchIndex() ? MULTI_MATCH :
+						idIndex == resSummary.getNoMatchIndex() ? NO_MATCH :
+						m_fullIDs.at(idIndex);
 				if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
 					{

@@ -141,6 +141,9 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 		vector<vector<unsigned> > ssVal = parseSeedString(opt::sseeds);
 		bloomMapBV = generateBV(fpr, &ssVal);
 	}
+	if(opt::colliIDs){
+		bloomMapBV->setType(MIBloomFilter<ID>::MIBFCOLL);
+	}
 
 	cerr << "Populating values of multi index Bloom filter" << endl;
 

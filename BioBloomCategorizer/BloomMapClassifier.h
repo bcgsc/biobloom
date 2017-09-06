@@ -41,52 +41,6 @@ private:
 		return ifile.good();
 	}
 
-//	/*
-//	 * Returns the number of hits
-//	 */
-//	inline unsigned evaluateRead(const string &seq,
-//			google::dense_hash_map<ID, unsigned> &hitCounts,
-//			google::dense_hash_map<ID, unsigned> &solidHitCounts,
-//			unsigned &solidCounts) {
-//		RollingHashIterator itr(seq, m_filter.getKmerSize(),
-//				m_filter.getSeedValues());
-//		unsigned nonZeroCount = 0;
-//
-//		while (itr != itr.end()) {
-//			unsigned missCount = 0;
-//			vector<ID> ids = m_filter.at(*itr, m_colliIDs, missCount);
-//			if (missCount == 0) {
-//				for (unsigned i = 0; i < ids.size(); ++i) {
-//					ID id = ids[i];
-//					if (solidHitCounts.find(id) != solidHitCounts.end()) {
-//						++solidHitCounts[id];
-//					} else {
-//						solidHitCounts[id] = 1;
-//					}
-//					if (hitCounts.find(id) != hitCounts.end()) {
-//						++hitCounts[id];
-//					} else {
-//						hitCounts[id] = 1;
-//					}
-//				}
-//				++solidCounts;
-//				++nonZeroCount;
-//			} else if (missCount <= opt::allowMisses) {
-//				for (unsigned i = 0; i < ids.size(); ++i) {
-//					ID id = ids[i];
-//					if (hitCounts.find(id) != hitCounts.end()) {
-//						++hitCounts[id];
-//					} else {
-//						hitCounts[id] = 1;
-//					}
-//				}
-//				++nonZeroCount;
-//			}
-//			++itr;
-//		}
-//		return nonZeroCount;
-//	}
-
 	/*
 	 * Returns the number of hits
 	 */
@@ -94,47 +48,85 @@ private:
 			google::dense_hash_map<ID, unsigned> &hitCounts) {
 		unsigned nonZeroCount = 0;
 		if (m_filter.getSeedValues().empty()) {
-			for (ntHashIterator itr(seq, m_filter.getHashNum(),
-					m_filter.getKmerSize()); itr != itr.end(); ++itr) {
-				unsigned misses = 0;
-				vector<ID> ids = m_filter.at(*itr, m_colliIDs, opt::allowMisses,
-						misses);
-				nonZeroCount += ids.size() > 0;
-				nonZeroCount += misses == 0 * opt::allowMisses;
-				for (unsigned i = 0; i < ids.size(); ++i) {
-					ID id = ids[i];
-					if (hitCounts.find(id) == hitCounts.end()) {
-						hitCounts[id] = 0;
+			if (m_filter.getType() == MIBloomFilter<ID>::MIBFMVAL) {
+				for (ntHashIterator itr(seq, m_filter.getHashNum(),
+						m_filter.getKmerSize()); itr != itr.end(); ++itr) {
+					unsigned misses = 0;
+					ID id = m_filter.at(*itr, opt::allowMisses, misses);
+					nonZeroCount += misses == 0 * opt::allowMisses;
+					if (id != 0) {
+						if (id != opt::COLLI) {
+							if (hitCounts.find(id) != hitCounts.end()) {
+								++hitCounts[id];
+							} else {
+								hitCounts[id] = 1;
+							}
+						}
+						++nonZeroCount;
 					}
-					hitCounts[id] += ids.size() > 0;
-					hitCounts[id] += misses == 0 * opt::allowMisses;
+				}
+			} else {
+				for (ntHashIterator itr(seq, m_filter.getHashNum(),
+						m_filter.getKmerSize()); itr != itr.end(); ++itr) {
+					unsigned misses = 0;
+					vector<ID> ids = m_filter.at(*itr, m_colliIDs,
+							opt::allowMisses, misses);
+					nonZeroCount += ids.size() > 0;
+					nonZeroCount += misses == 0 * opt::allowMisses;
+					for (unsigned i = 0; i < ids.size(); ++i) {
+						ID id = ids[i];
+						if (hitCounts.find(id) == hitCounts.end()) {
+							hitCounts[id] = 0;
+						}
+						hitCounts[id] += ids.size() > 0;
+						hitCounts[id] += misses == 0 * opt::allowMisses;
+					}
 				}
 			}
 		} else {
 			RollingHashIterator itr(seq, m_filter.getKmerSize(),
 					m_filter.getSeedValues());
-			while (itr != itr.end()) {
-				unsigned misses = 0;
-				vector<ID> ids = m_filter.at(*itr, m_colliIDs, opt::allowMisses,
-						misses);
-				nonZeroCount += ids.size() > 0;
-				nonZeroCount += misses == 0 * opt::allowMisses;
-				for (unsigned i = 0; i < ids.size(); ++i) {
-					ID id = ids[i];
-					if (hitCounts.find(id) == hitCounts.end()) {
-						hitCounts[id] = 0;
+			if (m_filter.getType() == MIBloomFilter<ID>::MIBFMVAL) {
+				while (itr != itr.end()) {
+					unsigned misses = 0;
+					ID id = m_filter.at(*itr, opt::allowMisses, misses);
+					nonZeroCount += misses == 0 * opt::allowMisses;
+					if (id != 0) {
+						if (id != opt::COLLI) {
+							if (hitCounts.find(id) != hitCounts.end()) {
+								++hitCounts[id];
+							} else {
+								hitCounts[id] = 1;
+							}
+						}
+						++nonZeroCount;
 					}
-					hitCounts[id] += ids.size() > 0;
-					hitCounts[id] += misses == 0 * opt::allowMisses;
+					++itr;
 				}
-				++itr;
+			} else {
+				while (itr != itr.end()) {
+					unsigned misses = 0;
+					vector<ID> ids = m_filter.at(*itr, m_colliIDs,
+							opt::allowMisses, misses);
+					nonZeroCount += ids.size() > 0;
+					nonZeroCount += misses == 0 * opt::allowMisses;
+					for (unsigned i = 0; i < ids.size(); ++i) {
+						ID id = ids[i];
+						if (hitCounts.find(id) == hitCounts.end()) {
+							hitCounts[id] = 0;
+						}
+						hitCounts[id] += ids.size() > 0;
+						hitCounts[id] += misses == 0 * opt::allowMisses;
+					}
+					++itr;
+				}
 			}
 		}
 		return nonZeroCount;
 	}
 
 	/*
-	 * Returns a vector of hits to a specific ID, favoring smaller IDs
+	 * Returns a vector of hits to a specific ID
 	 */
 	void convertToHits(const google::dense_hash_map<ID, unsigned> &hitCounts,
 			vector<ID> &hits) {
