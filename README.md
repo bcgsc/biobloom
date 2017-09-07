@@ -54,6 +54,8 @@ Table of Contents
 * Boost (tested on 1.54)
 * zlibdev
 * Autotools (if directly cloning from repo)
+* [Google Sparsehash](https://github.com/sparsehash/sparsehash)
+* [sdsl-lite](https://github.com/simongog/sdsl-lite)
 
 ### Compilation:
 If cloning directly from the repository make sure you get the require submodules:
