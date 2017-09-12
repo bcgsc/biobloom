@@ -58,7 +58,7 @@ Table of Contents
 * [sdsl-lite](https://github.com/simongog/sdsl-lite)
 
 ### Compilation:
-If cloning directly from the repository make sure you get the require submodules:
+If cloning directly from the repository make sure you get the required submodules:
 ```bash
 git submodule update --init
 ```

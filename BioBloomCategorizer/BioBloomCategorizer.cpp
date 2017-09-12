@@ -131,7 +131,7 @@ void printHelpDialog()
 	"Options for multi index bloom filters:\n"
 	"  -D, --delta            Max Number of matches between second best hit and best\n"
 	"                         hit before it is considered significantly matching to\n"
-	"                         best hit (not a multimatch). [2]\n"
+	"                         best hit (not a multimatch). [0]\n"
 	"  -G, --max_group        Max groups size when using collision ids. [inf]\n"
 	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
 	"                         miBFs.[0]\n"

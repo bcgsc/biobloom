@@ -114,10 +114,8 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 				qual = string(seq->qual.s, seq->qual.l);
 			}
 			if (l >= 0) {
-#pragma omp atomic
-				++totalReads;
 #pragma omp critical(totalReads)
-				if (totalReads % opt::fileInterval == 0) {
+				if (++totalReads % opt::fileInterval == 0) {
 					cerr << "Currently Reading Read Number: " << totalReads
 							<< endl;
 				}
@@ -135,8 +133,11 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 				ID idIndex = resSummary.updateSummaryData(hits);
 				if (idIndex != opt::EMPTY) {
 					const string &fullID =
-							idIndex == opt::COLLI ?
-									UNKNOWN : m_fullIDs.at(idIndex);
+							idIndex == opt::COLLI ? UNKNOWN :
+							idIndex == resSummary.getMultiMatchIndex() ?
+									MULTI_MATCH :
+							idIndex == opt::EMPTY ?
+									NO_MATCH : m_fullIDs.at(idIndex);
 					if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
 						{
@@ -228,10 +229,8 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 			qual2 = string(seq2->qual.s, seq2->qual.l);
 		}
 		if (l1 >= 0 && l2 >= 0) {
-#pragma omp atomic
-			++totalReads;
 #pragma omp critical(totalReads)
-			if (totalReads % opt::fileInterval == 0) {
+			if (++totalReads % opt::fileInterval == 0) {
 				cerr << "Currently Reading Read Number: " << totalReads << endl;
 			}
 
@@ -248,17 +247,15 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 							* (opt::allowMisses + 1));
 			unsigned score1 = evaluateRead(sequence1, hitCounts1);
 			unsigned score2 = evaluateRead(sequence2, hitCounts2);
+			unsigned bestHit = 0;
 
 			vector<ID> hits;
-			bool aboveThreshold = false;
 			if (opt::inclusive) {
-				aboveThreshold = score1 + score2 >= threshold1 + threshold2;
-				if(aboveThreshold)
-					convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
+				if(score1 >= threshold1 || score2 >= threshold2)
+					bestHit = convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
 			} else {
-				aboveThreshold = score1 >= threshold1 && score2 >= threshold2;
-				if(aboveThreshold)
-					convertToHitsBoth(hitCounts1, hitCounts2, hits);
+				if(score1 >= threshold1 && score2 >= threshold2)
+					bestHit = convertToHitsBoth(hitCounts1, hitCounts2, hits);
 			}
 
 			ID idIndex = opt::EMPTY;
@@ -266,24 +263,28 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 			idIndex = resSummary.updateSummaryData(hits);
 			if (idIndex != opt::EMPTY) {
 				//TODO: possible to optimize by putting alternative is vector
-				const string &fullID =
-						idIndex == opt::COLLI ? UNKNOWN :
-						idIndex == resSummary.getMultiMatchIndex() ? MULTI_MATCH :
-						idIndex == resSummary.getNoMatchIndex() ? NO_MATCH :
-						m_fullIDs.at(idIndex);
-				if (opt::outputType == "fq") {
+				if (idIndex != resSummary.getNoMatchIndex()) {
+					const string &fullID =
+							idIndex == opt::COLLI ? UNKNOWN :
+							idIndex == resSummary.getMultiMatchIndex() ?
+									MULTI_MATCH :
+							idIndex == opt::EMPTY ?
+									NO_MATCH : m_fullIDs.at(idIndex);
+					if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
-					{
-						readsOutput << "@" << name1 << " " << fullID << "\n"
-								<< sequence1 << "\n+\n" << qual1 << "\n" << "@"
-								<< name2 << " " << fullID << "\n" << sequence2
-								<< "\n+\n" << qual2 << "\n";
-					}
-				} else {
+						{
+							readsOutput << "@" << name1 << " " << fullID << "\n"
+									<< sequence1 << "\n+\n" << qual1 << "\n"
+									<< "@" << name2 << " " << fullID << "\n"
+									<< sequence2 << "\n+\n" << qual2 << "\n";
+						}
+					} else {
 #pragma omp critical(outputFiles)
-					{
-						readsOutput << fullID << "\t" << name1 << "\t" << score1
-								<< "\t" << score2 << "\n";
+						{
+							readsOutput << fullID << "\t" << name1 << "\t"
+									<< score1 << "\t" << score2 << "\t"
+									<< bestHit << "\n";
+						}
 					}
 				}
 			}

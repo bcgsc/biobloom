@@ -18,7 +18,7 @@ string filePostfix = "";
 string outputType = "";
 bool minHitOnly = false;
 unsigned minHit = 0;
-unsigned delta = 2;
+unsigned delta = 0;
 unsigned maxGroupSize = std::numeric_limits<unsigned>::max();
 }
 
