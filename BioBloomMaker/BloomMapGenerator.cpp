@@ -250,7 +250,7 @@ inline MIBloomFilter<ID> * BloomMapGenerator::generateBV(double fpr,
 	size_t filterSize = 0;
 	if (ssVal != NULL)
 		filterSize = calcOptimalSize(m_expectedEntries, opt::sseeds.size(),
-				fpr);
+				fpr, opt::allowMisses);
 	else
 		filterSize = calcOptimalSize(m_expectedEntries, opt::hashNum, fpr);
 

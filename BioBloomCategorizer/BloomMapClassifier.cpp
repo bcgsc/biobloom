@@ -189,6 +189,10 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	//print out header info and initialize variables
 	ResultsManager<ID> resSummary(m_fullIDs, false);
 
+	if(!m_filter.getSeedValues().empty()){
+		cerr << "Spaced Seed Mode" << endl;
+	}
+
 	cerr << "Filtering Start" << endl;
 
 	gzFile fp1;

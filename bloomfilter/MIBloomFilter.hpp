@@ -74,6 +74,16 @@ inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double fpr)
 	return non64ApproxVal + (64 - non64ApproxVal % 64);
 }
 
+inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double fpr,
+		unsigned allowedMiss) {
+	size_t non64ApproxVal = size_t(
+			-double(entries) * double(hashNum)
+					/ log(1.0 - pow(fpr, double(1 / (double(hashNum-allowedMiss))))));
+	return non64ApproxVal + (64 - non64ApproxVal % 64);
+}
+
+//TODO: include allowed miss in header
+
 template<typename T>
 class MIBloomFilter {
 public:
@@ -90,6 +100,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 		double dFPR;
 		uint32_t nhash;
 		uint32_t kmer;
+//		uint8_t allowedMiss;
 	};
 
 	/*
@@ -168,7 +179,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 				m_dSize = header.size;
 				m_data = new T[m_dSize]();
 
-				if (!m_sseeds.empty()) {
+				if (header.hlen > sizeof(struct FileHeader)) {
 					//load seeds
 					for (unsigned i = 0; i < header.nhash; ++i) {
 						char temp[header.kmer];

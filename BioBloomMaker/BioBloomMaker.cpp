@@ -344,7 +344,7 @@ int main(int argc, char *argv[]) {
 		}
 		case 'a': {
 			stringstream convert(optarg);
-			if (!(convert >> opt::streakThreshold)) {
+			if (!(convert >> opt::allowMisses)) {
 				cerr << "Error - Invalid parameter! a: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
@@ -434,6 +434,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (opt::filterType == BLOOMMAP) {
+		if(!opt::sseeds.empty()){
+			opt::hashNum = opt::sseeds.size();
+		}
 		BloomMapGenerator filterGen(inputFiles, opt::kmerSize, entryNum);
 		filterGen.generate(outputDir + filterPrefix, opt::fpr);
 		cerr << "Bloom Map Creation Complete." << endl;
