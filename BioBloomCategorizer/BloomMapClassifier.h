@@ -53,7 +53,6 @@ private:
 						m_filter.getKmerSize()); itr != itr.end(); ++itr) {
 					unsigned misses = 0;
 					ID id = m_filter.at(*itr, opt::allowMisses, misses);
-					nonZeroCount += misses == 0 * opt::allowMisses;
 					if (id != 0) {
 						if (id != opt::COLLI) {
 							if (hitCounts.find(id) != hitCounts.end()) {
@@ -72,14 +71,12 @@ private:
 					vector<ID> ids = m_filter.at(*itr, m_colliIDs,
 							opt::allowMisses, misses);
 					nonZeroCount += ids.size() > 0;
-					nonZeroCount += misses == 0 * opt::allowMisses;
 					for (unsigned i = 0; i < ids.size(); ++i) {
 						ID id = ids[i];
 						if (hitCounts.find(id) == hitCounts.end()) {
 							hitCounts[id] = 0;
 						}
 						hitCounts[id] += ids.size() > 0;
-						hitCounts[id] += misses == 0 * opt::allowMisses;
 					}
 				}
 			}
@@ -90,36 +87,38 @@ private:
 				while (itr != itr.end()) {
 					unsigned misses = 0;
 					ID id = m_filter.at(*itr, opt::allowMisses, misses);
-					nonZeroCount += misses == 0 * opt::allowMisses;
 					if (id != 0) {
 						if (id != opt::COLLI) {
-							if (hitCounts.find(id) != hitCounts.end()) {
-								++hitCounts[id];
-							} else {
-								hitCounts[id] = 1;
+							if (hitCounts.find(id) == hitCounts.end()) {
+								hitCounts[id] = 0;
 							}
+							++hitCounts[id];
+							hitCounts[id] += misses == 0;
 						}
+						nonZeroCount += misses == 0;
 						++nonZeroCount;
 					}
 					++itr;
 				}
+				nonZeroCount /= 2;
 			} else {
 				while (itr != itr.end()) {
 					unsigned misses = 0;
 					vector<ID> ids = m_filter.at(*itr, m_colliIDs,
 							opt::allowMisses, misses);
+					nonZeroCount += misses == 0;
 					nonZeroCount += ids.size() > 0;
-					nonZeroCount += misses == 0 * opt::allowMisses;
 					for (unsigned i = 0; i < ids.size(); ++i) {
 						ID id = ids[i];
 						if (hitCounts.find(id) == hitCounts.end()) {
 							hitCounts[id] = 0;
 						}
-						hitCounts[id] += ids.size() > 0;
-						hitCounts[id] += misses == 0 * opt::allowMisses;
+						++hitCounts[id];
+						hitCounts[id] += misses == 0;
 					}
 					++itr;
 				}
+				nonZeroCount /= 2;
 			}
 		}
 		return nonZeroCount;

@@ -16,14 +16,13 @@
 
 BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		m_filter(MIBloomFilter<ID>(filterFile)) {
-	cerr << "FPR given allowed misses: "
-			<< m_filter.getFPR(opt::allowMisses)
+	cerr << "FPR given allowed misses: " << m_filter.getFPR(opt::allowMisses)
 			<< endl;
 	//load in ID file
 	string idFile = (filterFile).substr(0, (filterFile).length() - 3)
 			+ "_ids.txt";
 	google::dense_hash_map<ID, string> ids;
-	google::dense_hash_map<ID, boost::shared_ptr< vector<ID> > > colliIDs;
+	google::dense_hash_map<ID, boost::shared_ptr<vector<ID> > > colliIDs;
 	colliIDs.set_empty_key(opt::EMPTY);
 	ids.set_empty_key(opt::EMPTY);
 	if (!fexists(idFile)) {
@@ -31,8 +30,7 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 				<< " File cannot be opened. A corresponding id file is needed."
 				<< endl;
 		exit(1);
-	}
-	else{
+	} else {
 		cerr << "Loading ID file: " << idFile.c_str() << endl;
 	}
 
@@ -47,7 +45,7 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		colliIDs[id] = boost::shared_ptr<vector<ID> >(new vector<ID>());
 		string fullID;
 		unsigned idCount = 0;
-		for (;converter >> fullID; ++idCount) {
+		for (; converter >> fullID; ++idCount) {
 			ID tempID = atoi(fullID.c_str());
 			colliIDs[id]->push_back(tempID);
 		}
@@ -64,10 +62,10 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 			itr != ids.end(); ++itr) {
 		m_fullIDs[itr->first] = itr->second;
 	}
-	m_colliIDs = vector< boost::shared_ptr<vector<ID> > >(colliIDs.size() + 1);
-	for (google::dense_hash_map<ID, boost::shared_ptr< vector<ID> > >::const_iterator itr =
+	m_colliIDs = vector<boost::shared_ptr<vector<ID> > >(colliIDs.size() + 1);
+	for (google::dense_hash_map<ID, boost::shared_ptr<vector<ID> > >::const_iterator itr =
 			colliIDs.begin(); itr != colliIDs.end(); ++itr) {
-		if(itr->second->size() <= opt::maxGroupSize)
+		if (itr->second->size() <= opt::maxGroupSize)
 			m_colliIDs[itr->first] = itr->second;
 		else
 			m_colliIDs[itr->first] = NULL;
@@ -81,7 +79,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 	string outputName = opt::outputPrefix + "_reads.tsv";
 
 	//TODO output fasta?
-	if(opt::outputType == "fq"){
+	if (opt::outputType == "fq") {
 		outputName = opt::outputPrefix + "_reads.fq";
 	}
 
@@ -124,7 +122,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 				hitCounts.set_empty_key(opt::EMPTY);
 				unsigned score = evaluateRead(sequence, hitCounts);
 				unsigned threshold = opt::score
-						* ((l - m_filter.getKmerSize() + 1) * (opt::allowMisses + 1));
+						* (l - m_filter.getKmerSize() + 1);
 				vector<ID> hits;
 				bool aboveThreshold = score > threshold;
 				if (aboveThreshold) {
@@ -144,7 +142,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 							readsOutput << "@" << name << " " << fullID << "\n"
 									<< sequence << "\n+\n" << qual << "\n";
 						}
-					}else {
+					} else {
 #pragma omp critical(outputFiles)
 						{
 							readsOutput << fullID << "\t" << name << "\t"
@@ -168,7 +166,8 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 	}
 
 	cerr << "Total Reads:" << totalReads << endl;
-	cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv" << endl;
+	cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
+			<< endl;
 
 	Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
@@ -181,7 +180,7 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	string outputName = opt::outputPrefix + "_reads.tsv";
 
 	//TODO output fasta?
-	if(opt::outputType == "fq"){
+	if (opt::outputType == "fq") {
 		outputName = opt::outputPrefix + "_reads.fq";
 	}
 
@@ -239,22 +238,25 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 			hitCounts1.set_empty_key(opt::EMPTY);
 			hitCounts2.set_empty_key(opt::EMPTY);
 
-			unsigned threshold1 = opt::score > 1 ? opt::score : opt::score
-					* ((l1 - m_filter.getKmerSize() + 1)
-							* (opt::allowMisses + 1));
-			unsigned threshold2 = opt::score > 1 ? opt::score : opt::score
-					* ((l2 - m_filter.getKmerSize() + 1)
-							* (opt::allowMisses + 1));
+			unsigned threshold1 =
+					opt::score > 1 ?
+							opt::score :
+							opt::score * (l1 - m_filter.getKmerSize() + 1);
+			unsigned threshold2 =
+					opt::score > 1 ?
+							opt::score :
+							opt::score * (l2 - m_filter.getKmerSize() + 1);
 			unsigned score1 = evaluateRead(sequence1, hitCounts1);
 			unsigned score2 = evaluateRead(sequence2, hitCounts2);
 			unsigned bestHit = 0;
 
 			vector<ID> hits;
 			if (opt::inclusive) {
-				if(score1 >= threshold1 || score2 >= threshold2)
-					bestHit = convertToHitsOnlyOne(hitCounts1, hitCounts2, hits);
+				if (score1 >= threshold1 || score2 >= threshold2)
+					bestHit = convertToHitsOnlyOne(hitCounts1, hitCounts2,
+							hits);
 			} else {
-				if(score1 >= threshold1 && score2 >= threshold2)
+				if (score1 >= threshold1 && score2 >= threshold2)
 					bestHit = convertToHitsBoth(hitCounts1, hitCounts2, hits);
 			}
 
@@ -303,7 +305,8 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	gzclose(fp2);
 
 	cerr << "Total Reads:" << totalReads << endl;
-	cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv" << endl;
+	cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
+			<< endl;
 
 	Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
 	summaryOutput << resSummary.getResultsSummary(totalReads);
