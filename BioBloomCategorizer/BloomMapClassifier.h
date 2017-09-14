@@ -85,22 +85,19 @@ private:
 					m_filter.getSeedValues());
 			if (m_filter.getType() == MIBloomFilter<ID>::MIBFMVAL) {
 				while (itr != itr.end()) {
-					unsigned misses = 0;
-					ID id = m_filter.at(*itr, opt::allowMisses, misses);
+					ID id = m_filter.atBest(*itr, opt::allowMisses);
 					if (id != 0) {
 						if (id != opt::COLLI) {
-							if (hitCounts.find(id) == hitCounts.end()) {
-								hitCounts[id] = 0;
+							if (hitCounts.find(id) != hitCounts.end()) {
+								++hitCounts[id];
+							} else {
+								hitCounts[id] = 1;
 							}
-							++hitCounts[id];
-							hitCounts[id] += misses == 0;
 						}
-						nonZeroCount += misses == 0;
 						++nonZeroCount;
 					}
 					++itr;
 				}
-				nonZeroCount /= 2;
 			} else {
 				while (itr != itr.end()) {
 					unsigned misses = 0;
@@ -114,11 +111,11 @@ private:
 							hitCounts[id] = 0;
 						}
 						++hitCounts[id];
-						hitCounts[id] += misses == 0;
+//						hitCounts[id] += misses == 0;
 					}
 					++itr;
 				}
-				nonZeroCount /= 2;
+//				nonZeroCount /= 2;
 			}
 		}
 		return nonZeroCount;
@@ -211,7 +208,6 @@ private:
 	 * Only one read needs to match
 	 * outputs additional score based on results
 	 */
-	//TODO: possible to optimize more!
 	unsigned convertToHitsOnlyOne(
 			const google::dense_hash_map<ID, unsigned> &hitCounts1,
 			const google::dense_hash_map<ID, unsigned> &hitCounts2,
