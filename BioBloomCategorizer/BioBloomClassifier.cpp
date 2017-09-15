@@ -970,7 +970,6 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths) {
 			exit(1);
 		}
 
-		//TODO check if all k-mer length and hash nums are the same
 		BloomFilterInfo *temp = new BloomFilterInfo(infoFileName);
 
 		m_infoFiles.push_back(temp);
