@@ -55,19 +55,21 @@ inline bool evalSingle(const string &rec, const BloomFilter &filter,
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
 	unsigned prevPos = 0;
-	if (filter.contains(*itr)) {
-		if (subtract == NULL || !subtract->contains(*itr))
-			score += 0.5;
-		if (thres <= score) {
-			return true;
+	while (itr != itr.end()) {
+		if (filter.contains(*itr)) {
+			if (subtract == NULL || !subtract->contains(*itr))
+				score += 0.5;
+			if (thres <= score) {
+				return true;
+			}
+			++streak;
+		} else {
+			if (antiThres <= ++antiScore)
+				return false;
 		}
-		++streak;
-	} else {
-		if (antiThres <= ++antiScore)
-			return false;
+		prevPos = itr.pos();
+		++itr;
 	}
-	prevPos = itr.pos();
-	++itr;
 	while (itr != itr.end()) {
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
