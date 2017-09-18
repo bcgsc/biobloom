@@ -55,7 +55,7 @@ inline bool evalSingle(const string &rec, const BloomFilter &filter,
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
 	unsigned prevPos = 0;
-	while (itr != itr.end()) {
+	if (itr != itr.end()) {
 		if (filter.contains(*itr)) {
 			if (subtract == NULL || !subtract->contains(*itr))
 				score += 0.5;
