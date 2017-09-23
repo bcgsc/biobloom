@@ -59,28 +59,36 @@ static vector<vector<unsigned> > parseSeedString(
 //	return size_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
 //}
 
+///*
+// * Only returns multiples of 64 for filter building purposes
+// * Is an estimated size using approximations of FPR formula
+// * given the number of hash functions
+// * see http://en.wikipedia.org/wiki/Bloom_filter
+// */
+//inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double fpr)
+//{
+//	size_t non64ApproxVal = size_t(
+//			-double(entries) * double(hashNum)
+//					/ log(1.0 - pow(fpr, double(1 / (double(hashNum))))));
+//
+//	return non64ApproxVal + (64 - non64ApproxVal % 64);
+//}
+
 /*
- * Only returns multiples of 64 for filter building purposes
- * Is an estimated size using approximations of FPR formula
- * given the number of hash functions
- * see http://en.wikipedia.org/wiki/Bloom_filter
+ * Returns an a filter size large enough to maintain an occupancy specified
  */
-inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double fpr)
-{
-	size_t non64ApproxVal = size_t(
-			-double(entries) * double(hashNum)
-					/ log(1.0 - pow(fpr, double(1 / (double(hashNum))))));
-
-	return non64ApproxVal + (64 - non64ApproxVal % 64);
+inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double occupancy) {
+	assert(hashNum > 0);
+	return size_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
 }
 
-inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double fpr,
-		unsigned allowedMiss) {
-	size_t non64ApproxVal = size_t(
-			-double(entries) * double(hashNum)
-					/ log(1.0 - pow(fpr, double(1 / (double(hashNum-allowedMiss))))));
-	return non64ApproxVal + (64 - non64ApproxVal % 64);
-}
+//inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double fpr,
+//		unsigned allowedMiss) {
+//	size_t non64ApproxVal = size_t(
+//			-double(entries) * double(hashNum)
+//					/ log(1.0 - pow(fpr, double(1 / (double(hashNum-allowedMiss))))));
+//	return non64ApproxVal + (64 - non64ApproxVal % 64);
+//}
 
 //TODO: include allowed miss in header
 
