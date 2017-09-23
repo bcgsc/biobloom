@@ -256,11 +256,11 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 
 			vector<ID> hits;
 			if (opt::inclusive) {
-				if (score1 >= threshold1 || score2 >= threshold2)
+				if (score1 > threshold1 || score2 > threshold2)
 					bestHit = convertToHitsOnlyOne(hitCounts1, hitCounts2,
 							hits);
 			} else {
-				if (score1 >= threshold1 && score2 >= threshold2)
+				if (score1 > threshold1 && score2 > threshold2)
 					bestHit = convertToHitsBoth(hitCounts1, hitCounts2, hits);
 			}
 
