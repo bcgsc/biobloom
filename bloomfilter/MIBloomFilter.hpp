@@ -663,7 +663,6 @@ enum Type {MIBFMVAL, MIBFCOLL};
 		double cumulativeProb = 0;
 		double popCount = getPop();
 		double p = popCount / double(m_bv.size());
-		cerr << p << endl;
 		for (unsigned i = m_hashNum - allowedMiss; i <= m_hashNum;
 				++i) {
 			cumulativeProb += double(nChoosek(m_hashNum, i)) * pow(p, i)
