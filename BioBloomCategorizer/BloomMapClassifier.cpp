@@ -129,7 +129,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 					convertToHits(hitCounts, hits);
 				}
 				ID idIndex = resSummary.updateSummaryData(hits);
-				if (idIndex != opt::EMPTY) {
+				if (idIndex != resSummary.getNoMatchIndex()) {
 					const string &fullID =
 							idIndex == opt::COLLI ? UNKNOWN :
 							idIndex == resSummary.getMultiMatchIndex() ?
