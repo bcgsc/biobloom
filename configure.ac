@@ -53,6 +53,7 @@ AC_LANG([C++])	#sets the auto conf to look for c++ headers
 AC_CHECK_HEADERS([boost/property_tree/ptree.hpp])
 AC_CHECK_HEADERS([boost/property_tree/ini_parser.hpp])
 AC_CHECK_HEADERS([google/dense_hash_map])
+AC_CHECK_HEADERS([btl_bloomfilter/BloomFilter.hpp])
 AC_CHECK_HEADERS([zlib.h])
 
 # Check for Boost.
@@ -84,6 +85,7 @@ AC_CONFIG_FILES([
 		Common/Makefile
 		BioBloomMaker/Makefile
 		BioBloomCategorizer/Makefile
+		bloomfilter/Makefile
 		Tests/Makefile
 ])
 AC_OUTPUT
