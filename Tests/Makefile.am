@@ -3,7 +3,6 @@ check_PROGRAMS = BloomFilterTests \
 	BloomFilterMakerTests \
 	BloomFilterInfoTests \
 	SeqEvalTests
-	
 
 BloomFilterTests_LDADD = $(top_builddir)/Common/libcommon.a -lz
 BloomFilterTests_SOURCES = BloomFilterTests.cpp

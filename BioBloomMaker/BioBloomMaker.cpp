@@ -19,6 +19,7 @@
 #if _OPENMP
 # include <omp.h>
 #endif
+#include "BloomMapGenerator.h"
 
 using namespace std;
 
@@ -34,6 +35,21 @@ void printVersion() {
 	exit(EXIT_SUCCESS);
 }
 
+/*
+ * Parses input string into separate strings, returning a vector.
+ */
+vector<string> convertInputString(const string &inputString)
+{
+	vector<string> currentString;
+	string temp;
+	stringstream converter(inputString);
+	while (converter >> temp) {
+		currentString.push_back(temp);
+	}
+	assert(currentString.size() > 0);
+	return currentString;
+}
+
 void printHelpDialog() {
 	static const char dialog[] =
 		"Usage: biobloommaker -p [FILTERID] [OPTION]... [FILE]...\n"
@@ -47,31 +63,36 @@ void printHelpDialog() {
 		"  -h, --help             Display this dialog.\n"
 		"  -v  --version          Display version information.\n"
 		"  -t, --threads=N        The number of threads to use.\n"
-		"\nAdvanced options:\n"
+		"\nBloom filter options:\n"
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]\n"
 		"  -g, --hash_num=N       Set number of hash functions to use in filter instead\n"
 		"                         of automatically using calculated optimal number of\n"
 		"                         functions.\n"
 		"  -k, --kmer_size=N      K-mer size to use to create filter. [25]\n"
-		"  -s, --subtract=N       Path to filter that you want to uses to prevent the\n"
-		"                         addition of k-mers contained into new filter. You may\n"
-		"                         only use filters with k-mer sizes equal the one you\n"
-		"                         wish to create. Use this to minimize repeat propagation\n"
-		"                         when generating progressive filters.\n"
 		"  -d, --no_rep_kmer      Remove all repeat k-mers from the resulting filter in\n"
 		"                         progressive mode.\n"
 		"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 		"                         is determined from sequences sizes within files. [0]\n"
-		"  -I, --interval         the interval to report file processing status [10000000]\n"
+		"\nMultiIndex Bloom filter options\n"
+		"  -m, --multi_index      Generate a MultiIndex Bloom Filter. Experimental\n"
+		"  -S, --seed_str=N       Generate a miBF using multiple spaced seeds instead of\n"
+		"                         kmers. Expects list of seed 1s & 0s separated by spaces.\n"
+		"  -F, --by_file          For miBF, assign IDs by file rather than by fasta header\n"
+		"  -c, --colli_id         Compute k-mer collision IDs for miBF. Experimental\n"
+		"  -C, --colli_analysis   Compute k-mer collision matrix. Experimental\n"
 		"\nOptions for progressive filters:\n"
-		"  -P, --print_reads      During progressive filter creation, print tagged reads\n"
-		"                         to STDOUT in FASTQ format [disabled]\n"
 		"  -r, --progressive=N    Progressive filter creation. The score threshold is\n"
 		"                         specified by N, which may be either a floating point\n"
 		"                         score between 0 and 1 or a positive integer.  If N is a\n"
 		"                         positive integer, it is interpreted as the minimum\n"
 		"                         number of contiguous matching bases required for a\n"
 		"                         match.\n"
+		"  -s, --subtract=N       Path to filter that you want to uses to minimize repeat\n"
+		"                         propagation of k-mers inserted into new filter. You may\n"
+		"                         only use filters with k-mer sizes equal the one you\n"
+		"                         wish to create.\n"
+		"  -d, --no_rep_kmer      Remove all repeat k-mers from the resulting filter in\n"
+		"                         progressive mode.\n"
 		"  -a, --streak=N         The number of hits tiling in second pass needed to jump\n"
 		"                         Several tiles upon a miss. Progressive mode only. [3]\n"
 		"  -l, --file_list=N      A file of list of file pairs to run in parallel.\n"
@@ -79,6 +100,9 @@ void printHelpDialog() {
 		"  -e, --iterations=N     Pass through files N times if threshold is not met.\n"
 		"  -i, --inclusive        If one paired read matches, both reads will be included\n"
 		"                         in the filter. Only active with the (-r) option.\n"
+		"  -I, --interval         the interval to report file processing status [10000000]\n"
+		"  -P, --print_reads      During progressive filter creation, print tagged reads\n"
+		"                         to STDOUT in FASTQ format for debugging [disabled]\n"
 		"\n"
 		"Report bugs to <cjustin@bcgsc.ca>.";
 	cerr << dialog << endl;
@@ -95,8 +119,6 @@ int main(int argc, char *argv[]) {
 	//command line variables
 	string filterPrefix = "";
 	string outputDir = "";
-	unsigned kmerSize = 25;
-	unsigned hashNum = 0;
 	string subtractFilter = "";
 	size_t entryNum = 0;
 	bool printReads = false;
@@ -105,27 +127,37 @@ int main(int argc, char *argv[]) {
 	string fileListFilename = "";
 
 	//long form arguments
-	static struct option long_options[] = { { "fal_pos_rate", required_argument,
-	NULL, 'f' }, { "file_prefix", required_argument, NULL, 'p' }, {
-			"output_dir", required_argument, NULL, 'o' }, { "threads",
-	required_argument, NULL, 't' }, { "inclusive", no_argument, NULL, 'i' }, {
-			"version", no_argument, NULL, 'v' }, { "hash_num",
-	required_argument, NULL, 'g' }, { "kmer_size", required_argument,
-	NULL, 'k' }, { "subtract", required_argument, NULL, 's' }, { "num_ele",
-	required_argument, NULL, 'n' }, { "interval",
-	required_argument, NULL, 'I' }, { "file_list",
-	required_argument, NULL, 'l' }, { "help", no_argument, NULL, 'h' }, {
-			"print_reads", no_argument, NULL, 'P' }, { "progressive",
-	required_argument, NULL, 'r' }, { "baitScore",
-	required_argument, NULL, 'b' }, { "streak",
-	required_argument, NULL, 'e' }, { "iterations",
-	required_argument, NULL, 'a' }, { "no_rep_kmer",
-	no_argument, NULL, 'd' }, {
-	NULL, 0, NULL, 0 } };
-
+	static struct option long_options[] = {
+		{
+			"file_prefix", required_argument, NULL, 'p' }, {
+			"output_dir", required_argument, NULL, 'o' }, {
+			"help", no_argument, NULL, 'h' }, {
+			"version", no_argument, NULL, 'v' }, {
+			"threads", required_argument, NULL, 't' }, {
+			"fal_pos_rate", required_argument, NULL, 'f' }, {
+			"multi_index", no_argument, NULL, 'm' }, {
+			"seed_str", required_argument, NULL, 'S' }, {
+			"hash_num", required_argument, NULL, 'g' }, {
+			"kmer_size", required_argument, NULL, 'k' }, {
+			"num_ele", required_argument, NULL, 'n' }, {
+			"by_file", no_argument, NULL, 'F' }, {
+			"colli_id", no_argument, NULL, 'c' }, {
+			"colli_analysis", no_argument, NULL, 'C' }, {
+			"progressive", required_argument, NULL, 'r' }, {
+			"subtract",	required_argument, NULL, 's' }, {
+			"no_rep_kmer", no_argument, NULL, 'd' }, {
+			"streak", required_argument, NULL, 'a' }, {
+			"file_list", required_argument, NULL, 'l' }, {
+			"baitScore", required_argument, NULL, 'b' }, {
+			"iterations", required_argument, NULL, 'e' }, {
+			"inclusive", no_argument, NULL, 'i' }, {
+			"print_reads", no_argument, NULL, 'P' }, {
+			"interval",	required_argument, NULL, 'I' }, {
+			NULL, 0, NULL, 0 } };
+			
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:daI:",
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:da:I:FcCS:m",
 			long_options, &option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -160,13 +192,34 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		}
+		case 'm': {
+			opt::filterType = BLOOMMAP;
+			break;
+		}
+		case 'S': {
+			opt::sseeds = convertInputString(optarg);
+			opt::kmerSize = opt::sseeds[0].size();
+			break;
+		}
+		case 'F': {
+			opt::idByFile = true;
+			break;
+		}
+		case 'c': {
+			opt::colliIDs = true;
+			break;
+		}
+		case 'C': {
+			opt::colliAnalysis = true;
+			break;
+		}
 		case 'i': {
 			inclusive = true;
 			break;
 		}
 		case 'k': {
 			stringstream convert(optarg);
-			if (!(convert >> kmerSize)) {
+			if (!(convert >> opt::kmerSize)) {
 				cerr << "Error - Invalid set of bloom filter parameters! k: "
 						<< optarg << endl;
 				return 0;
@@ -175,7 +228,7 @@ int main(int argc, char *argv[]) {
 		}
 		case 'g': {
 			stringstream convert(optarg);
-			if (!(convert >> hashNum)) {
+			if (!(convert >> opt::hashNum)) {
 				cerr << "Error - Invalid set of bloom filter parameters! g: "
 						<< optarg << endl;
 				return 0;
@@ -291,7 +344,7 @@ int main(int argc, char *argv[]) {
 		}
 		case 'a': {
 			stringstream convert(optarg);
-			if (!(convert >> opt::streakThreshold)) {
+			if (!(convert >> opt::allowMisses)) {
 				cerr << "Error - Invalid parameter! a: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
@@ -336,9 +389,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	//set number of hash functions used
-	if (hashNum == 0) {
+	if (opt::hashNum == 0) {
 		//get optimal number of hash functions
-		hashNum = BloomFilterInfo::calcOptimalHashNum(opt::fpr);
+		opt::hashNum = BloomFilterInfo::calcOptimalHashNum(opt::fpr);
 	}
 
 	string file1 = "";
@@ -380,15 +433,30 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	if (opt::filterType == BLOOMMAP) {
+		if(!opt::sseeds.empty()){
+			opt::hashNum = opt::sseeds.size();
+		}
+		BloomMapGenerator filterGen(inputFiles, opt::kmerSize, entryNum);
+		filterGen.generate(outputDir + filterPrefix, opt::fpr);
+		cerr << "Bloom Map Creation Complete." << endl;
+		return 0;
+	}
+
+	if(!opt::sseeds.empty()){
+		cerr << "Multi spaced seeds not yet supported for normal Bloom filters." << endl;
+		exit(0);
+	}
+
 	//create filter
-	BloomFilterGenerator filterGen(inputFiles, kmerSize, hashNum, entryNum);
+	BloomFilterGenerator filterGen(inputFiles, opt::kmerSize, opt::hashNum, entryNum);
 
 	if (entryNum == 0) {
-		filterGen = BloomFilterGenerator(inputFiles, kmerSize, hashNum);
+		filterGen = BloomFilterGenerator(inputFiles, opt::kmerSize, opt::hashNum);
 		entryNum = filterGen.getExpectedEntries();
 	}
 
-	BloomFilterInfo info(filterPrefix, kmerSize, hashNum, opt::fpr, entryNum,
+	BloomFilterInfo info(filterPrefix, opt::kmerSize, opt::hashNum, opt::fpr, entryNum,
 			inputFiles);
 
 	//get calculated size of Filter

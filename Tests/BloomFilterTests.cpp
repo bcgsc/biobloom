@@ -96,11 +96,11 @@ int main() {
 	assert(!filter2.contains(*ntHashIterator("ATCGGGTCATCAACCAATTA", filter2.getHashNum(), filter2.getKmerSize())));
 	assert(!filter2.contains(*ntHashIterator("ATCGGGTCATCAACCAATTC", filter2.getHashNum(), filter2.getKmerSize())));
 	cout << "premade bf tests done" << endl;
-
+	
 	//memory leak tests
 	BloomFilter* filter3 = new BloomFilter(filterSize, 5, 20);
 
-	size_t tempMem = memory_usage() - memUsage;
+	int tempMem = memory_usage() - memUsage;
 
 	cout << memory_usage() - memUsage << "kb" << endl;
 	delete(filter3);
