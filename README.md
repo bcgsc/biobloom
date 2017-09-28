@@ -50,10 +50,12 @@ Table of Contents
 ## 1. Compiling and Installing BioBloomTools
 
 ### Dependencies:
-* GCC (tested on 4.8.4)
-* Boost (tested on 1.54)
+* GCC
+* Boost
 * zlibdev
 * Autotools (if directly cloning from repo)
+* Google SparseHash
+* sdsl-lite
 
 ### Compilation:
 If cloning directly from the repository make sure you get the require submodules:
