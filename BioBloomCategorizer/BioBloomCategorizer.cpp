@@ -11,6 +11,7 @@
 #include <vector>
 #include <sys/stat.h>
 #include "BioBloomClassifier.h"
+#include "BloomMapClassifier.h"
 #include "config.h"
 #include "Common/Options.h"
 #include "Common/SeqEval.h"
@@ -64,6 +65,17 @@ void folderCheck(const string &path)
 	}
 }
 
+/*
+ * checks if file exists
+ */
+bool fexists(const string &filename) {
+	ifstream ifile(filename.c_str());
+	bool good = ifile.good();
+	ifile.close();
+	return good;
+}
+
+
 void printHelpDialog()
 {
 	const char dialog[] =
@@ -116,6 +128,13 @@ void printHelpDialog()
 	"  -d, --stdout_filter    Outputs all matching reads to stdout for the first\n"
 	"                         filter listed by -f. Reads are outputed in fastq,\n"
 	"                         and if paired will output will be interlaced.\n"
+	"Options for multi index bloom filters:\n"
+	"  -D, --delta            Max Number of matches between second best hit and best\n"
+	"                         hit before it is considered significantly matching to\n"
+	"                         best hit (not a multimatch). [0]\n"
+	"  -G, --max_group        Max groups size when using collision ids. [inf]\n"
+	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
+	"                         miBFs.[0]\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
 	cerr << dialog << endl;
@@ -132,21 +151,15 @@ int main(int argc, char *argv[])
 
 	//command line variables
 	string rawInputFiles = "";
-	string outputPrefix = "";
 	string filtersFile = "";
-	string outputReadType = "";
 	bool paired = false;
-	bool inclusive = false;
 
 	int fastq = 0;
 	int fasta = 0;
-	string filePostfix = "";
-	double score = 0.15;
 	bool withScore = false;
 	bool stdout = false;
 
 	//advanced options
-	unsigned minHit = 0;
 	bool collab = false;
 
 	string fileListFilename = "";
@@ -161,6 +174,9 @@ int main(int argc, char *argv[])
 		"help", no_argument, NULL, 'h' }, {
 		"interval",	required_argument, NULL, 'I' }, {
 		"threads", required_argument, NULL, 't' }, {
+		"allowed_miss", required_argument, NULL, 'a' }, {
+		"delta", required_argument, NULL, 'D' }, {
+		"max_group", required_argument, NULL, 'G' }, {
 		"gz_output", no_argument, NULL, 'g' }, {
 		"fq", no_argument, &fastq, 1 }, {
 		"fa", no_argument, &fasta, 1 }, {
@@ -177,14 +193,14 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:r:t:cdiwI:", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:r:t:cdiwI:a:D:G:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
 		switch (c) {
 		case 'm': {
 			stringstream convert(optarg);
-			if (!(convert >> minHit)) {
+			if (!(convert >> opt::minHit)) {
 				cerr << "Error - Invalid parameter! m: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
@@ -196,7 +212,7 @@ int main(int argc, char *argv[])
 			// if arg is a positive integer > 1, interpret as minimum match
 			// length in bases
 			if ((convert >> matchLen) && matchLen > 1) {
-				score = (unsigned)matchLen;
+				opt::score = (unsigned)matchLen;
 				SeqEval::evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
 				cerr << "Min match length threshold: " << matchLen
 					<<" bp" << endl;
@@ -204,23 +220,23 @@ int main(int argc, char *argv[])
 				// not a positive integer > 1, so interpret as floating
 				// point score between 0 and 1
 				stringstream convert2(optarg);
-				if (!(convert2 >> score)) {
+				if (!(convert2 >> opt::score)) {
 					cerr << "Error - Invalid set of bloom filter parameters! s: "
 						<< optarg << endl;
 					exit(EXIT_FAILURE);
 				}
-				if (score < 0 || score > 1) {
+				if (opt::score < 0 || opt::score > 1) {
 					cerr << "Error - s must be a positive integer or a floating "
 						<< "point between 0 and 1. Input given:"
 						<< optarg << endl;
 					exit(EXIT_FAILURE);
 				}
 				SeqEval::evalMode = SeqEval::EVAL_STANDARD;
-				if (score == 1)
+				if (opt::score == 1)
 					cerr << "Running in 'best match' mode (no score threshold)"
 						<< endl;
 				else
-					cerr << "Min score threshold: " << score << endl;
+					cerr << "Min score threshold: " << opt::score << endl;
 			}
 			break;
 		}
@@ -229,7 +245,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'p': {
-			outputPrefix = optarg;
+			opt::outputPrefix = optarg;
 			break;
 		}
 		case 'h': {
@@ -249,7 +265,31 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'i': {
-			inclusive = true;
+			opt::inclusive = true;
+			break;
+		}
+		case 'a': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::allowMisses)) {
+				cerr << "Error - Invalid parameter! a: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
+		case 'D': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::delta)) {
+				cerr << "Error - Invalid parameter! D: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
+		case 'G': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::maxGroupSize)) {
+				cerr << "Error - Invalid parameter! G: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
 			break;
 		}
 		case 't': {
@@ -261,7 +301,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'g': {
-			filePostfix = ".gz";
+			opt::filePostfix = ".gz";
 			break;
 		}
 		case 'l': {
@@ -357,8 +397,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	//check if output folder exists
-	if (outputPrefix.find('/') != string::npos) {
-		string tempStr = outputPrefix.substr(0, outputPrefix.find_last_of("/"));
+	if (opt::outputPrefix.find('/') != string::npos) {
+		string tempStr = opt::outputPrefix.substr(0, opt::outputPrefix.find_last_of("/"));
 		folderCheck(tempStr);
 	}
 
@@ -369,13 +409,13 @@ int main(int argc, char *argv[])
 				<< endl;
 		exit(1);
 	} else if (fastq) {
-		outputReadType = "fq";
+		opt::outputType = "fq";
 	} else if (fasta) {
-		outputReadType = "fa";
+		opt::outputType = "fa";
 	}
 
 	//-w option cannot be used without output method
-	if (withScore && (outputReadType == "")) {
+	if (withScore && opt::outputType == "") {
 		cerr << "Error: -w option cannot be used without output method" << endl;
 		exit(1);
 	}
@@ -388,15 +428,46 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	//check filters
+	for (vector<string>::const_iterator it = filterFilePaths.begin();
+			it != filterFilePaths.end(); ++it)
+	{
+		//check if files exist
+		if (!fexists(*it)) {
+			cerr << "Error: " + (*it) + " File cannot be opened" << endl;
+			exit(1);
+		}
+		string infoFileName = (*it).substr(0, (*it).length() - 2) + "txt";
+		//TODO: error if filter types are mixed
+		if (!fexists(infoFileName) && opt::filterType != BLOOMMAP) {
+			cerr << "Multi Index Mode detected from lack of filter.txt files" << endl;
+			opt::filterType = BLOOMMAP;
+		}
+	}
+
+	if(opt::filterType == BLOOMMAP){
+		if(opt::outputType == ""){
+			opt::outputType = "fa";
+		}
+		BloomMapClassifier BMC(filterFilePaths[0]);
+		if (paired) {
+			BMC.filterPair(inputFiles[0], inputFiles[1]);
+		} else {
+			BMC.filter(inputFiles);
+		}
+		//load filters
+		return 0;
+	}
+
 	//load filters
-	BioBloomClassifier bbc(filterFilePaths, score, outputPrefix, filePostfix,
+	BioBloomClassifier bbc(filterFilePaths, opt::score, opt::outputPrefix, opt::filePostfix,
 			withScore);
 
 	if (stdout) {
 		bbc.setStdout();
 	}
 
-	if (collab && minHit) {
+	if (collab && opt::minHit) {
 		cerr << "Error: -m -c outputs types cannot be both set" << endl;
 		exit(1);
 	} else if (collab) {
@@ -406,15 +477,15 @@ int main(int argc, char *argv[])
 	//filtering step
 	//create directory structure if it does not exist
 	if (paired) {
-		if (inclusive) {
+		if (opt::inclusive) {
 			bbc.setInclusive();
 		}
-		if (outputReadType != "") {
+		if (opt::outputType != "") {
 			if (pairedBAMSAM) {
-				bbc.filterPairPrint(inputFiles[0], outputReadType);
+				bbc.filterPairPrint(inputFiles[0], opt::outputType);
 			} else {
 				bbc.filterPairPrint(inputFiles[0], inputFiles[1],
-						outputReadType);
+						opt::outputType);
 			}
 		} else {
 			if (pairedBAMSAM) {
@@ -443,8 +514,8 @@ int main(int argc, char *argv[])
 			}
 		}
 	} else {
-		if (outputReadType != "") {
-			bbc.filterPrint(inputFiles, outputReadType);
+		if (opt::outputType != "") {
+			bbc.filterPrint(inputFiles, opt::outputType);
 		} else {
 			bbc.filter(inputFiles);
 		}

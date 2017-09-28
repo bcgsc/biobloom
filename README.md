@@ -54,11 +54,11 @@ Table of Contents
 * Boost
 * zlibdev
 * Autotools (if directly cloning from repo)
-* Google SparseHash
-* sdsl-lite
+* [Google Sparsehash](https://github.com/sparsehash/sparsehash)
+* [sdsl-lite](https://github.com/simongog/sdsl-lite)
 
 ### Compilation:
-If cloning directly from the repository make sure you get the require submodules:
+If cloning directly from the repository make sure you get the required submodules:
 ```bash
 git submodule update --init
 ```

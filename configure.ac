@@ -14,6 +14,9 @@ AC_DEFINE([GIT_REVISION], "[m4_esyscmd([./tools/configure.commit])]", [git revis
 AC_PROG_RANLIB
 
 # Checks for programs.
+# make sure -O3 by default for speed
+AC_SUBST(CPPFLAGS,"-O3 -std=c++0x $CPPFLAGS")
+
 AC_PROG_CXX
 
 # Checks for libraries.
@@ -62,6 +65,8 @@ if test $ac_cv_header_boost_property_tree_ptree_hpp != yes; then
 	tar jxf $boost_ver_dir.tar.bz2
 	cd -])
 fi
+
+# TODO: CHECK FOR SDSL Headers
 
 # Check for OpenMP.
 AC_OPENMP
