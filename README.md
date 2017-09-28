@@ -225,28 +225,48 @@ into a bloom filter.
   -v  --version          Display version information.
   -t, --threads=N        The number of threads to use.
 
-Advanced options:
+Bloom filter options:
   -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]
   -g, --hash_num=N       Set number of hash functions to use in filter instead
                          of automatically using calculated optimal number of
                          functions.
   -k, --kmer_size=N      K-mer size to use to create filter. [25]
-  -s, --subtract=N       Path to filter that you want to uses to prevent the
-                         addition of k-mers contained into new filter. You may
-                         only use filters with k-mer sizes equal the one you
-                         wish to create.
+  -d, --no_rep_kmer      Remove all repeat k-mers from the resulting filter in
+                         progressive mode.
   -n, --num_ele=N        Set the number of expected elements. If set to 0 number
                          is determined from sequences sizes within files. [0]
-  -P, --print_reads      During progressive filter creation, print tagged reads
-                         to STDOUT in FASTQ format [disabled]
+
+MultiIndex Bloom filter options
+  -m, --multi_index      Generate a MultiIndex Bloom Filter. Experimental
+  -S, --seed_str=N       Generate a miBF using multiple spaced seeds instead of
+                         kmers. Expects list of seed 1s & 0s separated by spaces.
+  -F, --by_file          For miBF, assign IDs by file rather than by fasta header
+  -c, --colli_id         Compute k-mer collision IDs for miBF. Experimental
+  -C, --colli_analysis   Compute k-mer collision matrix. Experimental
+
+Options for progressive filters:
   -r, --progressive=N    Progressive filter creation. The score threshold is
-                         specified by N, which may be either a floating point score
-                         between 0 and 1 or a positive integer.  If N is a
+                         specified by N, which may be either a floating point
+                         score between 0 and 1 or a positive integer.  If N is a
                          positive integer, it is interpreted as the minimum
                          number of contiguous matching bases required for a
                          match.
+  -s, --subtract=N       Path to filter that you want to uses to minimize repeat
+                         propagation of k-mers inserted into new filter. You may
+                         only use filters with k-mer sizes equal the one you
+                         wish to create.
+  -d, --no_rep_kmer      Remove all repeat k-mers from the resulting filter in
+                         progressive mode.
+  -a, --streak=N         The number of hits tiling in second pass needed to jump
+                         Several tiles upon a miss. Progressive mode only. [3]
+  -l, --file_list=N      A file of list of file pairs to run in parallel.
+  -b, --baitScore=N      Score threshold when considering only bait. [r]
+  -e, --iterations=N     Pass through files N times if threshold is not met.
   -i, --inclusive        If one paired read matches, both reads will be included
                          in the filter. Only active with the (-r) option.
+  -I, --interval         the interval to report file processing status [10000000]
+  -P, --print_reads      During progressive filter creation, print tagged reads
+                         to STDOUT in FASTQ format for debugging [disabled]
 
 Report bugs to <cjustin@bcgsc.ca>.
 ```
@@ -282,26 +302,29 @@ BAM format and compressed with gz, bz2 or xz and may be tarred.
       --fq               Output categorized reads in Fastq files.
       --chastity         Discard and do not evaluate unchaste reads.
       --no-chastity      Do not discard unchaste reads. [default]
-  -l  --length_cutoff=N  Discard reads shorter that the cutoff N. [0]
+  -l, --file_list=N      A file of list of file pairs to run in parallel.
   -v  --version          Display version information.
   -h, --help             Display this dialog.
+  -I, --interval         the interval to report file processing status [10000000]
 Advanced options:
-  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number
-                         needed over initial tiling of read to continue. Higher
-                         values decrease runtime but lower sensitivity.[0]
-  -r, --streak=N         The number of hit tiling in second pass needed to jump
+  -r, --streak=N         The number of hits tiling in second pass needed to jump
                          Several tiles upon a miss. Small values decrease
                          runtime but decrease sensitivity. [3]
-  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast
-                         but low specificity, use only on long reads (>100bp).
   -c, --ordered          Use ordered filtering. Order of filters matters
                          (filters listed first have higher priority). Only taken
                          advantage of when k-mer sizes and number of hash
                          functions are the same.
-  -d, --stdout_filter=N  Outputs all matching reads to stdout for the specified
-                         filter. N is the filter ID without file extension.
-                         Reads are outputed in fastq, and if paired will output
-                         will be interlaced.
+  -d, --stdout_filter    Outputs all matching reads to stdout for the first
+                         filter listed by -f. Reads are outputed in fastq,
+                         and if paired will output will be interlaced.
+Options for multi index bloom filters:
+  -D, --delta            Max Number of matches between second best hit and best
+                         hit before it is considered significantly matching to
+                         best hit (not a multimatch). [0]
+  -G, --max_group        Max groups size when using collision ids. [inf]
+  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for
+                         miBFs.[0]
+Report bugs to <cjustin@bcgsc.ca>.
 ```
 
 ### A. How can distinguish between organisms that share lots of k-mer content?
