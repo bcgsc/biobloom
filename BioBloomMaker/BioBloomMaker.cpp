@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
 			"print_reads", no_argument, NULL, 'P' }, {
 			"interval",	required_argument, NULL, 'I' }, {
 			NULL, 0, NULL, 0 } };
-			
+
 	//actual checking step
 	int option_index = 0;
 	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:da:I:FcCS:m",
@@ -390,8 +390,17 @@ int main(int argc, char *argv[]) {
 
 	//set number of hash functions used
 	if (opt::hashNum == 0) {
-		//get optimal number of hash functions
-		opt::hashNum = BloomFilterInfo::calcOptimalHashNum(opt::fpr);
+		if (opt::filterType == BLOOMMAP) {
+			if (!opt::sseeds.empty()) {
+				opt::hashNum = opt::sseeds.size();
+			} else {
+				cerr << "Please pick number of hash values (-g)\n";
+				exit(1);
+			}
+		} else {
+			//get optimal number of hash functions
+			opt::hashNum = BloomFilterInfo::calcOptimalHashNum(opt::fpr);
+		}
 	}
 
 	string file1 = "";
@@ -434,9 +443,6 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (opt::filterType == BLOOMMAP) {
-		if(!opt::sseeds.empty()){
-			opt::hashNum = opt::sseeds.size();
-		}
 		BloomMapGenerator filterGen(inputFiles, opt::kmerSize, entryNum);
 		filterGen.generate(outputDir + filterPrefix, opt::fpr);
 		cerr << "Bloom Map Creation Complete." << endl;

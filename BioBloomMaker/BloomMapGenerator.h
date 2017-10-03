@@ -93,25 +93,32 @@ private:
 
 	//helper methods
 	inline void loadSeq(MIBloomFilter<ID> &bloomMap, const string& seq,
-			ID value, Matrix &mat, vector<size_t> &indexCount, BloomFilter &temp,
-			unsigned max = 1) {
-//		if (bloomMap.getSeedValues().empty()) {
-//			for (ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
-//					itr != itr.end(); ++itr) {
-////				bloomMap.insert(*itr, value);
-//			}
-//		} else {
+			ID value, Matrix &mat, vector<size_t> &indexCount,
+			BloomFilter &temp, unsigned max = 1) {
+		if (bloomMap.getSeedValues().empty()) {
+			for (ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
+					itr != itr.end(); ++itr) {
+				if (max == opt::hashNum && !temp.insertAndCheck(*itr)
+						&& !bloomMap.insert(*itr, value, indexCount, max,
+								&mat)) {
+					++m_failedInsert;
+				} else {
+					bloomMap.insert(*itr, value, indexCount, max);
+				}
+			}
+		} else {
 
-		for (RollingHashIterator itr(seq, m_kmerSize, bloomMap.getSeedValues());
-				itr != itr.end(); ++itr) {
-			if (max == opt::hashNum && !temp.insertAndCheck(*itr)
-					&& !bloomMap.insert(*itr, value, indexCount, max, &mat)) {
-				++m_failedInsert;
-			} else {
-				bloomMap.insert(*itr, value, indexCount, max);
+			for (RollingHashIterator itr(seq, m_kmerSize,
+					bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
+				if (max == opt::hashNum && !temp.insertAndCheck(*itr)
+						&& !bloomMap.insert(*itr, value, indexCount, max,
+								&mat)) {
+					++m_failedInsert;
+				} else {
+					bloomMap.insert(*itr, value, indexCount, max);
+				}
 			}
 		}
-//		}
 	}
 
 	/*
