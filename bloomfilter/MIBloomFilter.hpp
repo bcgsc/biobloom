@@ -350,6 +350,32 @@ public:
 		return someValueSet;
 	}
 
+	inline bool insert(const size_t *hashes, T value,
+			vector<size_t> &indexCount, unsigned max,
+			boost::numeric::ublas::matrix<unsigned> *mat = NULL) {
+		bool someValueSet = false;
+		unsigned count = 0;
+		for (size_t i = 0; i < m_hashNum; ++i) {
+			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
+
+			T oldVal = setVal(&m_data[pos], value);
+			if (oldVal == 0) {
+				someValueSet = true;
+				++count;
+				++indexCount[value - 1];
+			} else if (oldVal == value) {
+				someValueSet = true;
+				++count;
+			} else if (mat != NULL) {
+				++(*mat)(oldVal - 1, value - 1);
+			}
+			if (count >= max) {
+				break;
+			}
+		}
+		return someValueSet;
+	}
+
 	/*
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
 	 * Replaces values according to collisionID hashtable (for thread safety)
