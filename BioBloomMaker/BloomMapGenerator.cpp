@@ -20,7 +20,7 @@ KSEQ_INIT(gzFile, gzread)
 BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 		unsigned kmerSize, size_t numElements = 0) :
 		m_kmerSize(kmerSize), m_expectedEntries(numElements), m_totalEntries(0), m_fileNames(
-				filenames) {
+				filenames), m_failedInsert(0) {
 	//Instantiate dense hash map
 	m_headerIDs.set_empty_key("");
 
@@ -79,7 +79,8 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 	cerr << "Expected number of elements: " << m_expectedEntries << endl;
 }
 
-/* Generate the bloom filter to the output filename
+/*
+ * Generate the bloom filter to the output filename
  */
 void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 
@@ -151,29 +152,33 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 	if (opt::idByFile) {
 		//overwrite thread usage
 		if (opt::colliAnalysis) {
-			cerr << "Setting thread number to: " << m_fileNames.size() << endl;
-			omp_set_num_threads(m_fileNames.size());
+			vector<size_t> indexCounts(m_fileNames.size(), 0);
 			Matrix colliMat(m_fileNames.size(), m_fileNames.size(), 0);
+			for (unsigned j = 1; j <= opt::hashNum; ++j) {
 #pragma omp parallel for
-			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-				gzFile fp;
-				fp = gzopen(m_fileNames[i].c_str(), "r");
-				kseq_t *seq = kseq_init(fp);
-				int l;
-				for (;;) {
-					l = kseq_read(seq);
-					if (l >= 0) {
-						//k-merize with rolling hash insert into multi index Bloom filter
-						loadSeq(*bloomMapBV, string(seq->seq.s, seq->seq.l),
-								m_headerIDs[m_fileNames[i].substr(
-										m_fileNames[i].find_last_of("/") + 1)],
-								colliMat);
-					} else {
-						break;
+				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+					BloomFilter tempBF(bloomMapBV->size(), opt::hashNum,
+							opt::kmerSize);
+					gzFile fp;
+					fp = gzopen(m_fileNames[i].c_str(), "r");
+					kseq_t *seq = kseq_init(fp);
+					int l;
+					for (;;) {
+						l = kseq_read(seq);
+						if (l >= 0) {
+							//k-merize with rolling hash insert into multi index Bloom filter
+							loadSeq(*bloomMapBV, string(seq->seq.s, seq->seq.l),
+									m_headerIDs[m_fileNames[i].substr(
+											m_fileNames[i].find_last_of("/")
+													+ 1)], colliMat,
+									indexCounts, tempBF, j);
+						} else {
+							break;
+						}
 					}
+					kseq_destroy(seq);
+					gzclose(fp);
 				}
-				kseq_destroy(seq);
-				gzclose(fp);
 			}
 			omp_set_num_threads(opt::threads);
 			cerr << "Outputting matrix" << endl;
@@ -190,7 +195,16 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 				matFile << endl;
 			}
 			matFile.close();
-			exit(0);
+			cerr << "Outputting index freqTable" << endl;
+			std::ofstream indexCountFH;
+			indexCountFH.open((filePrefix + "_indexCount.tsv").c_str());
+			for (unsigned i = 0; i < indexCounts.size(); i++) {
+				indexCountFH << m_fileNames[i] << "\t" << indexCounts[i] << endl;
+			}
+			indexCountFH.close();
+			cerr << "Failed to insert for set of multi-spaced seeds: " << m_failedInsert << endl;
+			cerr << "PopCount: " << bloomMapBV->getPop() << endl;
+			cerr << "PopNonZero: " << bloomMapBV->getPopNonZero() << endl;
 		} else {
 #pragma omp parallel for
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {

@@ -77,9 +77,11 @@ static vector<vector<unsigned> > parseSeedString(
 /*
  * Returns an a filter size large enough to maintain an occupancy specified
  */
-inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double occupancy) {
-	assert(hashNum > 0);
-	return size_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
+inline size_t calcOptimalSize(size_t entries, unsigned hashNum,
+		double occupancy) {
+	size_t non64ApproxVal = size_t(
+			-double(entries) * double(hashNum) / log(1.0 - occupancy));
+	return non64ApproxVal + (64 - non64ApproxVal % 64);
 }
 
 //inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double fpr,
@@ -96,7 +98,9 @@ template<typename T>
 class MIBloomFilter {
 public:
 
-enum Type {MIBFMVAL, MIBFCOLL};
+	enum Type {
+		MIBFMVAL, MIBFCOLL
+	};
 
 #pragma pack(1) //to maintain consistent values across platforms
 	struct FileHeader {
@@ -246,7 +250,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 		cerr << "Popcount: " << getPop() << endl;
 	}
 
-	inline void setType(Type miBFType){
+	inline void setType(Type miBFType) {
 		m_miBFType = miBFType;
 	}
 
@@ -320,32 +324,30 @@ enum Type {MIBFMVAL, MIBFCOLL};
 		}
 	}
 
-	/*
-	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
-	 * ALWAYS SETS VALUE
-	 * NOT DETERMINSTIC
-	 */
-	inline void insert(std::vector<size_t> const &hashes, T value,
-			boost::numeric::ublas::matrix<unsigned> &mat) {
-		//iterates through hashed values adding it to the filter
+	inline bool insert(std::vector<size_t> const &hashes, T value,
+			vector<size_t> &indexCount, unsigned max,
+			boost::numeric::ublas::matrix<unsigned> *mat = NULL) {
+		bool someValueSet = false;
+		unsigned count = 0;
 		for (size_t i = 0; i < hashes.size(); ++i) {
 			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
-			setVal(&m_data[pos], value, mat);
-		}
-	}
 
-	/*
-	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
-	 * ALWAYS SETS VALUE
-	 * NOT DETERMINSTIC
-	 */
-	inline void insert(const size_t *hashes, T value,
-			boost::numeric::ublas::matrix<unsigned> &mat) {
-		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < m_hashNum; ++i) {
-			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
-			setVal(&m_data[pos], value, mat);
+			T oldVal = setVal(&m_data[pos], value);
+			if (oldVal == 0) {
+				someValueSet = true;
+				++count;
+				++indexCount[value - 1];
+			} else if (oldVal == value) {
+				someValueSet = true;
+				++count;
+			} else if (mat != NULL) {
+				++(*mat)(oldVal - 1, value - 1);
+			}
+			if (count >= max) {
+				break;
+			}
 		}
+		return someValueSet;
 	}
 
 	/*
@@ -418,8 +420,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 				if (misses > maxMiss) {
 					return 0;
 				}
-			}
-			else {
+			} else {
 				size_t rankPos = m_rankSupport(pos);
 				T currID = m_data[rankPos];
 				if (currID < result) {
@@ -434,7 +435,8 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Returns the smallest possible id assigned in set of IDs
 	 * or 0 is it does not match anything
 	 */
-	inline T at(const vector<size_t> &hashes, unsigned maxMiss, unsigned &misses) {
+	inline T at(const vector<size_t> &hashes, unsigned maxMiss,
+			unsigned &misses) {
 		T result = numeric_limits<T>::max();
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes.at(i) % m_bv.size();
@@ -443,8 +445,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 				if (misses > maxMiss) {
 					return 0;
 				}
-			}
-			else {
+			} else {
 				size_t rankPos = m_rankSupport(pos);
 				T currID = m_data[rankPos];
 				if (currID < result) {
@@ -470,7 +471,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 
 		for (unsigned i = 0; i < hashes.size(); ++i) {
 			size_t pos = hashes.at(i) % m_bv.size();
-			if(m_bv[pos] == 0){
+			if (m_bv[pos] == 0) {
 				++miss;
 				continue;
 			}
@@ -480,10 +481,9 @@ enum Type {MIBFMVAL, MIBFCOLL};
 			} else {
 				tmpHash[m_data[rankPos]] = 1;
 			}
-			if(maxCount == tmpHash[m_data[rankPos]]) {
+			if (maxCount == tmpHash[m_data[rankPos]]) {
 				value = m_data[rankPos] < value ? m_data[rankPos] : value;
-			}
-			else if ( maxCount < tmpHash[m_data[rankPos]] ){
+			} else if (maxCount < tmpHash[m_data[rankPos]]) {
 				value = m_data[rankPos];
 				maxCount = tmpHash[m_data[rankPos]];
 			}
@@ -651,8 +651,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Return FPR based on popcount
 	 */
 	inline double getFPR() const {
-		return pow(double(getPop()) / double(m_bv.size()),
-				double(m_hashNum));
+		return pow(double(getPop()) / double(m_bv.size()), double(m_hashNum));
 	}
 
 	/*
@@ -663,8 +662,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 		double cumulativeProb = 0;
 		double popCount = getPop();
 		double p = popCount / double(m_bv.size());
-		for (unsigned i = m_hashNum - allowedMiss; i <= m_hashNum;
-				++i) {
+		for (unsigned i = m_hashNum - allowedMiss; i <= m_hashNum; ++i) {
 			cumulativeProb += double(nChoosek(m_hashNum, i)) * pow(p, i)
 					* pow(1.0 - p, (m_hashNum - i));
 		}
@@ -687,12 +685,26 @@ enum Type {MIBFMVAL, MIBFCOLL};
 		return m_rankSupport(index - 1) + 1;
 	}
 
+	inline size_t getPopNonZero() const {
+		size_t count = 0;
+		for (size_t i = 0; i < m_dSize; ++i) {
+			if (m_data[i] != 0) {
+				++count;
+			}
+		}
+		return count;
+	}
+
 	inline size_t getUniqueEntries() const {
 		return m_nEntry;
 	}
 
-	inline Type getType() const{
+	inline Type getType() const {
 		return m_miBFType;
+	}
+
+	inline size_t size() {
+		return m_bv.size();
 	}
 
 	~MIBloomFilter() {
@@ -776,18 +788,17 @@ private:
 		} while (!__sync_bool_compare_and_swap(val, oldValue, newVal));
 	}
 
-	inline void setVal(T *val, T newVal,
-			boost::numeric::ublas::matrix<unsigned> &mat) {
+	/*
+	 * Returns old value that was inside
+	 */
+	inline T setVal(T *val, T newVal) {
 		T oldValue;
 		do {
 			oldValue = *val;
-			if (oldValue == newVal)
+			if (oldValue != 0)
 				break;
 		} while (!__sync_bool_compare_and_swap(val, oldValue, newVal));
-		if (oldValue != 0 && oldValue != newVal) {
-#pragma omp atomic
-			++mat(oldValue - 1, newVal - 1);
-		}
+		return oldValue;
 	}
 
 	/*

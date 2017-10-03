@@ -34,12 +34,10 @@ class BloomMapGenerator {
 public:
 	explicit BloomMapGenerator(vector<string> const &filenames,
 			unsigned kmerSize, size_t numElements);
-
 	void generate(const string &filePrefix, double fpr);
-
 	virtual ~BloomMapGenerator();
-private:
 
+private:
 	typedef typename google::dense_hash_set<ID> IDSet;
 	typedef typename google::dense_hash_map<ID, ID> IDMap;
 	typedef typename boost::numeric::ublas::matrix<unsigned> Matrix;
@@ -49,10 +47,12 @@ private:
 	size_t m_totalEntries;
 	vector<string> m_fileNames;
 	google::dense_hash_map<string, ID> m_headerIDs;
-	vector<boost::shared_ptr<IDMap > > m_colliIDs;
+	vector<boost::shared_ptr<IDMap> > m_colliIDs;
 
 	//TODO MAKE INTO OPTION
 	double m_colliThresh = 0.15;
+
+	size_t m_failedInsert;
 
 	inline MIBloomFilter<ID> * generateBV(double fpr,
 			const vector<vector<unsigned> > *ssVal = NULL);
@@ -67,12 +67,12 @@ private:
 		if (bloomMap.getSeedValues().empty()) {
 			if (opt::colliIDs) {
 				for (ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
-									itr != itr.end(); ++itr) {
+						itr != itr.end(); ++itr) {
 					bloomMap.insert(*itr, value, m_colliIDs);
 				}
 			} else {
 				for (ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
-									itr != itr.end(); ++itr) {
+						itr != itr.end(); ++itr) {
 					bloomMap.insert(*itr, value);
 				}
 			}
@@ -93,26 +93,33 @@ private:
 
 	//helper methods
 	inline void loadSeq(MIBloomFilter<ID> &bloomMap, const string& seq,
-			ID value, Matrix &mat) {
-		if (bloomMap.getSeedValues().empty()) {
-			for (ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
-					itr != itr.end(); ++itr) {
-				bloomMap.insert(*itr, value, mat);
-			}
-		} else {
-			/* init rolling hash state and compute hash values for first k-mer */
-			for (RollingHashIterator itr(seq, m_kmerSize,
-					bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
-				bloomMap.insert(*itr, value, mat);
+			ID value, Matrix &mat, vector<size_t> &indexCount, BloomFilter &temp,
+			unsigned max = 1) {
+//		if (bloomMap.getSeedValues().empty()) {
+//			for (ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
+//					itr != itr.end(); ++itr) {
+////				bloomMap.insert(*itr, value);
+//			}
+//		} else {
+
+		for (RollingHashIterator itr(seq, m_kmerSize, bloomMap.getSeedValues());
+				itr != itr.end(); ++itr) {
+			if (max == opt::hashNum && !temp.insertAndCheck(*itr)
+					&& !bloomMap.insert(*itr, value, indexCount, max, &mat)) {
+				++m_failedInsert;
+			} else {
+				bloomMap.insert(*itr, value, indexCount, max);
 			}
 		}
+//		}
 	}
 
 	/*
 	 * Returns count of collisions (counts unique k-mers)
 	 */
 	inline size_t loadSeq(sdsl::bit_vector &bv, const string& seq,
-			const vector< vector<unsigned> > &seedVal = vector< vector<unsigned> >(0)) {
+			const vector<vector<unsigned> > &seedVal =
+					vector<vector<unsigned> >(0)) {
 		size_t count = 0;
 		if (seq.size() < m_kmerSize)
 			return count;
@@ -152,7 +159,8 @@ private:
 		return count;
 	}
 
-	inline void writeIDs(std::ofstream &file, google::dense_hash_map<string,ID> headerIDs) {
+	inline void writeIDs(std::ofstream &file,
+			google::dense_hash_map<string, ID> headerIDs) {
 		assert(file);
 		for (google::dense_hash_map<string, ID>::iterator itr =
 				headerIDs.begin(); itr != headerIDs.end(); ++itr) {
@@ -197,7 +205,7 @@ private:
 		colliIDs.set_empty_key(opt::EMPTY);
 		m_colliIDs.resize(numNodes);
 
-		ID numLeaf = (numNodes + 1)/2;
+		ID numLeaf = (numNodes + 1) / 2;
 
 		//TODO RENAME readID to something else that makes more sense
 		for (ID readID = 0; readID < numNodes; ++readID) {
@@ -234,7 +242,7 @@ private:
 			file << itr->first;
 			for (typename IDSet::iterator idItr = idSet.begin();
 					idItr != idSet.end(); ++idItr) {
-				if(*idItr <= numLeaf)
+				if (*idItr <= numLeaf)
 					file << "\t" << *idItr;
 			}
 			file << endl;
@@ -246,14 +254,15 @@ private:
 	 * Assumes collisionIDs based on tree have already been assigned
 	 */
 	void setPairs(const BiRC::treelib::Tree &tree,
-			const vector<pair<ID, ID> > &orderedPairs, ID firstID, std::ofstream &file) {
+			const vector<pair<ID, ID> > &orderedPairs, ID firstID,
+			std::ofstream &file) {
 
-		google::dense_hash_map<ID,pair<ID,ID > > newIDs;
+		google::dense_hash_map<ID, pair<ID, ID> > newIDs;
 		newIDs.set_empty_key(opt::EMPTY);
 
 		size_t pairIdx = 0;
 		ID currentID = firstID;
-		for ( ; currentID < opt::COLLI && pairIdx < orderedPairs.size();
+		for (; currentID < opt::COLLI && pairIdx < orderedPairs.size();
 				++pairIdx) {
 			ID i = orderedPairs[pairIdx].first;
 			ID j = orderedPairs[pairIdx].second;
@@ -268,7 +277,7 @@ private:
 			//create new collisionID
 			m_colliIDs.push_back(boost::shared_ptr<IDMap>(new IDMap()));
 			m_colliIDs[currentID]->set_empty_key(opt::EMPTY);
-			newIDs[currentID] = pair<ID,ID>(i,j);
+			newIDs[currentID] = pair<ID, ID>(i, j);
 			currentID++;
 		}
 
@@ -293,8 +302,8 @@ private:
 			}
 		}
 		//replace old collisionIDs
-		for(google::dense_hash_map<ID,pair<ID,ID > >::iterator itr = newIDs.begin();
-				itr != newIDs.end(); ++itr){
+		for (google::dense_hash_map<ID, pair<ID, ID> >::iterator itr =
+				newIDs.begin(); itr != newIDs.end(); ++itr) {
 			(*m_colliIDs[itr->second.first])[itr->second.second] = itr->first;
 			(*m_colliIDs[itr->second.second])[itr->second.first] = itr->first;
 		}
@@ -315,13 +324,13 @@ private:
 		google::dense_hash_set<string> foundIDs;
 		foundIDs.set_empty_key("");
 		int currParentID = tree.parent(nodeID1);
-		while(currParentID != -1){
+		while (currParentID != -1) {
 			foundIDs.insert(tree.label(currParentID));
 			currParentID = tree.parent(currParentID);
 		}
 		currParentID = tree.parent(nodeID2);
-		while(currParentID != -1){
-			if(foundIDs.find(tree.label(currParentID)) != foundIDs.end()){
+		while (currParentID != -1) {
+			if (foundIDs.find(tree.label(currParentID)) != foundIDs.end()) {
 				return stoi(tree.label(currParentID));
 			}
 			currParentID = tree.parent(currParentID);
@@ -348,8 +357,7 @@ private:
 	/*
 	 * checks if file exists
 	 */
-	inline bool fexists(const string &filename)
-	{
+	inline bool fexists(const string &filename) {
 		ifstream ifile(filename.c_str());
 		return ifile.good();
 	}
