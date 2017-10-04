@@ -152,7 +152,7 @@ private:
 					itr != itr.end(); ++itr) {
 				unsigned colliCount = 0;
 				for (size_t i = 0; i < seedVal.size(); ++i) {
-					size_t pos = itr->at(i) % bv.size();
+					size_t pos = (*itr)[i] % bv.size();
 					uint64_t *dataIndex = bv.data() + (pos >> 6);
 					uint64_t bitMaskValue = (uint64_t) 1 << (pos & 0x3F);
 					colliCount += __sync_fetch_and_or(dataIndex, bitMaskValue)
