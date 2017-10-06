@@ -54,6 +54,7 @@ AC_CHECK_HEADERS([boost/property_tree/ptree.hpp])
 AC_CHECK_HEADERS([boost/property_tree/ini_parser.hpp])
 AC_CHECK_HEADERS([google/dense_hash_map])
 AC_CHECK_HEADERS([btl_bloomfilter/BloomFilter.hpp])
+AC_CHECK_HEADERS([sdsl/bit_vector_il.hpp])
 AC_CHECK_HEADERS([zlib.h])
 
 # Check for Boost.
