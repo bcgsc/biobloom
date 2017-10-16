@@ -205,6 +205,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			cerr << "Failed to insert for set of multi-spaced seeds: " << m_failedInsert << endl;
 			cerr << "PopCount: " << bloomMapBV->getPop() << endl;
 			cerr << "PopNonZero: " << bloomMapBV->getPopNonZero() << endl;
+			cerr << "PopCount Ratio: " << double(bloomMapBV->getPop())/double(bloomMapBV->size()) << endl;
 		} else {
 #pragma omp parallel for
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {

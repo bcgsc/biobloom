@@ -95,17 +95,10 @@ public:
 	}
 
 	/** get reference to hash values for current k-mer */
-	const std::vector<size_t>& operator*() const
+	const uint64_t* operator*() const
 	{
 		assert(m_pos + m_k <= m_seq.length());
 		return m_rollingHash.getHash();
-	}
-
-	/** get pointer to hash values for current k-mer */
-	const std::vector<size_t>* operator->() const
-	{
-		assert(m_pos + m_k <= m_seq.length());
-		return &(m_rollingHash.getHash());
 	}
 
 	/** test equality with another iterator */
@@ -123,7 +116,6 @@ public:
 	/** pre-increment operator */
 	RollingHashIterator& operator++()
 	{
-
 		++m_pos;
 		next();
 		return *this;
@@ -140,30 +132,22 @@ public:
 	/** increments and get reference to hash values for current k-mer
 	 *	Returns empty hash when after last element
 	 **/
-	const std::vector<size_t> * getNext()
-	{
+	const uint64_t* getNext() {
 		if (m_pos >= m_seq.length() - m_k) {
 			return NULL;
 		}
 		if (m_start) {
 			m_start = false;
-			return &m_rollingHash.getHash();
+			return m_rollingHash.getHash();
 		}
 		++m_pos;
 		next();
-		return &m_rollingHash.getHash();
+		return m_rollingHash.getHash();
 	}
 
-    /** iterator pointing to one past last element */
-	static const RollingHashIterator end()
-	{
+	/** iterator pointing to one past last element */
+	static const RollingHashIterator end() {
 		return RollingHashIterator();
-	}
-
-	/** return position of current k-mer */
-	unsigned pos() const
-	{
-		return m_pos;
 	}
 
 	/** return k-mer at current position */
@@ -171,6 +155,11 @@ public:
 	{
 		return std::string(m_seq, m_pos, m_k);
 	}
+
+	/** return position of current k-mer */
+    size_t pos() const{
+    	return m_pos;
+    }
 
 private:
 

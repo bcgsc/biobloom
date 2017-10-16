@@ -304,18 +304,6 @@ public:
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
 	 * ONLY REPLACE VALUE if it is larger than current value (deterministic)
 	 */
-	inline void insert(std::vector<size_t> const &hashes, T value) {
-		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < hashes.size(); ++i) {
-			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
-			setIfGreater(&m_data[pos], value);
-		}
-	}
-
-	/*
-	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
-	 * ONLY REPLACE VALUE if it is larger than current value (deterministic)
-	 */
 	inline void insert(const size_t *hashes, T value) {
 		//iterates through hashed values adding it to the filter
 		for (size_t i = 0; i < m_hashNum; ++i) {
@@ -324,13 +312,13 @@ public:
 		}
 	}
 
-	inline bool insert(std::vector<size_t> const &hashes, T value,
+	inline bool insert(const size_t *hashes, T value,
 			vector<size_t> &indexCount, unsigned max,
 			boost::numeric::ublas::matrix<unsigned> *mat = NULL) {
 		bool someValueSet = false;
 		unsigned count = 0;
-		for (size_t i = 0; i < hashes.size(); ++i) {
-			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
+		for (size_t i = 0; i < m_hashNum; ++i) {
+			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
 
 			T oldVal = setVal(&m_data[pos], value);
 			if (oldVal == 0) {
@@ -354,41 +342,12 @@ public:
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
 	 * Replaces values according to collisionID hashtable (for thread safety)
 	 */
-	inline void insert(std::vector<size_t> const &hashes, T value,
-			const vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
-		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < hashes.size(); ++i) {
-			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
-			setVal(&m_data[pos], value, colliIDs);
-		}
-	}
-
-	/*
-	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
-	 * Replaces values according to collisionID hashtable (for thread safety)
-	 */
 	inline void insert(const size_t *hashes, T value,
 			const vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
 		//iterates through hashed values adding it to the filter
 		for (size_t i = 0; i < m_hashNum; ++i) {
 			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
 			setVal(&m_data[pos], value, colliIDs);
-		}
-	}
-
-	/*
-	 * Mutates value vector to contain values in bloom map
-	 * Assumes vector is the size of hashes
-	 */
-	inline void query(std::vector<size_t> const &hashes,
-			vector<T> &values) const {
-		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
-			if (m_bv[pos] == 0) {
-				values[i] = 0;
-				continue;
-			}
-			values[i] = m_data[m_rankSupport(pos)];
 		}
 	}
 
@@ -431,30 +390,29 @@ public:
 		return result;
 	}
 
-	/*
-	 * Returns the smallest possible id assigned in set of IDs
-	 * or 0 is it does not match anything
-	 */
-	inline T at(const vector<size_t> &hashes, unsigned maxMiss,
-			unsigned &misses) {
-		T result = numeric_limits<T>::max();
-		for (unsigned i = 0; i < m_hashNum; ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
-			if (m_bv[pos] == 0) {
-				++misses;
-				if (misses > maxMiss) {
-					return 0;
-				}
-			} else {
-				size_t rankPos = m_rankSupport(pos);
-				T currID = m_data[rankPos];
-				if (currID < result) {
-					result = currID;
-				}
-			}
-		}
-		return result;
-	}
+//	/*
+//	 * Updates list of hits for various matches
+//	 * If k-mer list
+//	 */
+//	inline void update(const size_t *hashes, unsigned maxMiss, unsigned &misses) {
+//		T result = numeric_limits<T>::max();
+//		for (unsigned i = 0; i < m_hashNum; ++i) {
+//			size_t pos = hashes[i] % m_bv.size();
+//			if (m_bv[pos] == 0) {
+//				++misses;
+//				if (misses > maxMiss) {
+//					return 0;
+//				}
+//			} else {
+//				size_t rankPos = m_rankSupport(pos);
+//				T currID = m_data[rankPos];
+//				if (currID < result) {
+//					result = currID;
+//				}
+//			}
+//		}
+//		return result;
+//	}
 
 	/*
 	 * Returns unambiguous hit to object
@@ -462,15 +420,15 @@ public:
 	 * Returns numeric_limits<T>::max() on completely ambiguous collision
 	 * Returns 0 on if missing element
 	 */
-	T atBest(std::vector<size_t> const &hashes, unsigned missMin) const {
+	T atBest(const size_t *hashes, unsigned missMin) const {
 		google::dense_hash_map<T, unsigned> tmpHash;
 		tmpHash.set_empty_key(0);
 		unsigned maxCount = 0;
 		unsigned miss = 0;
 		T value = 0;
 
-		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
 			if (m_bv[pos] == 0) {
 				++miss;
 				continue;
@@ -522,76 +480,6 @@ public:
 		tmpHash.set_empty_key(0);
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes[i] % m_bv.size();
-			if (m_bv[pos] != 0) {
-				size_t rankPos = m_rankSupport(pos);
-				T currID = m_data[rankPos];
-				if (currID
-						!= std::numeric_limits<T>::max() && colliIDs[currID] != NULL) {
-					if (tmpHash.find(currID) != tmpHash.end()) {
-						++tmpHash[currID];
-					} else {
-						tmpHash[currID] = 1;
-					}
-				}
-			}
-		}
-
-		google::dense_hash_map<T, unsigned> tmpHash2;
-		tmpHash2.set_empty_key(0);
-		unsigned maxCount = 0;
-		for (typename google::dense_hash_map<T, unsigned>::iterator itr =
-				tmpHash.begin(); itr != tmpHash.end(); ++itr) {
-			for (unsigned i = 0; i < colliIDs[itr->first]->size(); ++i) {
-				T id = colliIDs[itr->first]->at(i);
-				if (tmpHash2.find(id) != tmpHash2.end()) {
-					tmpHash2[id] += itr->second;
-					if (maxCount < tmpHash2[id]) {
-						maxCount = tmpHash2[id];
-					}
-				} else {
-					tmpHash2[id] = itr->second;
-					if (maxCount < tmpHash2[id]) {
-						maxCount = tmpHash2[id];
-					}
-				}
-			}
-		}
-		for (typename google::dense_hash_map<T, unsigned>::iterator itr =
-				tmpHash2.begin(); itr != tmpHash2.end(); ++itr) {
-			if (maxCount == itr->second) {
-				results.push_back(itr->first);
-			}
-		}
-		return results;
-	}
-
-	/*
-	 * Returns unambiguous hit to object
-	 * Returns best hit on ambiguous collisions
-	 * Returns numeric_limits<T>::max() on completely ambiguous collision
-	 * Returns 0 on if missing element
-	 * Uses colliIDs to resolve ambiguities
-	 */
-	//TODO optimize
-	inline vector<T> at(std::vector<size_t> const &hashes,
-			const vector<boost::shared_ptr<vector<T> > > &colliIDs,
-			unsigned maxMiss, unsigned &misses) const {
-		vector<T> results;
-		results.reserve(hashes.size());
-		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
-			if (m_bv[pos] == 0) {
-				++misses;
-				if (misses > maxMiss) {
-					return results;
-				}
-			}
-		}
-
-		google::dense_hash_map<T, unsigned> tmpHash;
-		tmpHash.set_empty_key(0);
-		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
 			if (m_bv[pos] != 0) {
 				size_t rankPos = m_rankSupport(pos);
 				T currID = m_data[rankPos];
