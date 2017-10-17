@@ -15,7 +15,7 @@
 //KSEQ_INIT(gzFile, gzread)
 
 BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
-		m_filter(MIBloomFilter<ID>(filterFile)) {
+		m_filter(MIBloomFilter<ID>(filterFile)), m_numRead(0) {
 	cerr << "FPR given allowed misses: " << m_filter.getFPR(opt::allowMisses)
 			<< endl;
 	//load in ID file
@@ -176,7 +176,6 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 }
 
 void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
-	size_t totalReads = 0;
 	string outputName = opt::outputPrefix + "_reads.tsv";
 
 	//TODO output fasta?
@@ -233,8 +232,8 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 		}
 		if (l1 >= 0 && l2 >= 0) {
 #pragma omp critical(totalReads)
-			if (++totalReads % opt::fileInterval == 0) {
-				cerr << "Currently Reading Read Number: " << totalReads << endl;
+			if (++m_numRead % opt::fileInterval == 0) {
+				cerr << "Currently Reading Read Number: " << m_numRead << endl;
 			}
 
 			google::dense_hash_map<ID, unsigned> hitCounts1;
@@ -250,6 +249,23 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 					opt::score > 1 ?
 							opt::score :
 							opt::score * (l2 - m_filter.getKmerSize() + 1);
+			unsigned evaluatedSeeds = 0;
+			unsigned rmCount = 0;
+			double probFP = 0.0;
+			vector<vector<ID> > hitsPattern;
+			vector<unsigned> sig = getMatchSignature(sequence1, evaluatedSeeds,
+					hitsPattern);
+			vector<unsigned> rmMatch = calcProb(sig, rmCount, evaluatedSeeds,
+					probFP);
+			if (rmMatch.size() > 0) {
+				printVerbose(name1, sequence1, sig, evaluatedSeeds, rmCount,
+						rmMatch, probFP);
+			}
+
+			if(m_numRead > opt::fileInterval){
+				exit(1);
+			}
+
 			unsigned score1 = evaluateRead(sequence1, hitCounts1);
 			unsigned score2 = evaluateRead(sequence2, hitCounts2);
 			unsigned bestHit = 0;
@@ -297,7 +313,7 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 		} else {
 			if (l1 != -1 || l2 != -1) {
 				cerr << "Terminated without getting to eof at read "
-						<< totalReads << endl;
+						<< m_numRead << endl;
 				exit(1);
 			}
 			break;
@@ -308,12 +324,12 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 	gzclose(fp1);
 	gzclose(fp2);
 
-	cerr << "Total Reads:" << totalReads << endl;
+	cerr << "Total Reads:" << m_numRead << endl;
 	cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
 			<< endl;
 
 	Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
-	summaryOutput << resSummary.getResultsSummary(totalReads);
+	summaryOutput << resSummary.getResultsSummary(m_numRead);
 	summaryOutput.close();
 	cout.flush();
 }

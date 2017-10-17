@@ -351,20 +351,15 @@ public:
 		}
 	}
 
-	/*
-	 * Mutates value vector to contain values in bloom map
-	 * Assumes vector is the size of hashes
-	 */
-	inline void query(const size_t *hashes, vector<T> &values) const {
-		for (unsigned i = 0; i < m_hashNum; ++i) {
-			size_t pos = hashes[i] % m_bv.size();
-			if (m_bv[pos] == 0) {
-				values[i] = 0;
-				continue;
-			}
-			values[i] = m_data[m_rankSupport(pos)];
-		}
-	}
+//	inline bool contains(const size_t *hashes) const {
+//		for (unsigned i = 0; i < m_hashNum; ++i) {
+//			size_t pos = hashes[i] % m_bv.size();
+//			if (m_bv[pos] == 0) {
+//				return false;
+//			}
+//		}
+//		return true;
+//	}
 
 	/*
 	 * Returns the smallest possible id assigned in set of IDs
@@ -388,6 +383,24 @@ public:
 			}
 		}
 		return result;
+	}
+
+	/*
+	 * Returns the smallest possible id assigned in set of IDs
+	 * or 0 is it does not match anything
+	 */
+	inline vector<T> at(const size_t *hashes) {
+		vector<T> results(m_hashNum);
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
+			if (m_bv[pos] == 0) {
+				return vector<T>();
+			} else {
+				size_t rankPos = m_rankSupport(pos);
+				results[i] = m_data[rankPos];
+			}
+		}
+		return results;
 	}
 
 //	/*
