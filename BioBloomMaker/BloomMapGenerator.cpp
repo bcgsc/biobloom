@@ -199,7 +199,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 			std::ofstream indexCountFH;
 			indexCountFH.open((filePrefix + "_indexCount.tsv").c_str());
 			for (unsigned i = 0; i < indexCounts.size(); i++) {
-				indexCountFH << m_fileNames[i] << "\t" << indexCounts[i] << endl;
+				indexCountFH << (i+1) << "\t" << indexCounts[i] << endl;
 			}
 			indexCountFH.close();
 			cerr << "Failed to insert for set of multi-spaced seeds: " << m_failedInsert << endl;
