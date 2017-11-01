@@ -20,8 +20,16 @@
 #include "bloomfilter/MIBloomFilter.hpp"
 #include "bloomfilter/RollingHashIterator.h"
 #include "btl_bloomfilter/ntHashIterator.hpp"
+#include <iostream>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <functional>
 
 using namespace std;
+
+static const std::string base64_chars =
+             "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 
 class BloomMapClassifier {
 public:
@@ -36,6 +44,10 @@ private:
 	vector<string> m_fullIDs;
 	vector<boost::shared_ptr<vector<ID> > > m_colliIDs;
 	size_t m_numRead;
+
+	vector<size_t> m_countTable;
+	vector<double> m_freqTable;
+	google::dense_hash_map<string, ID> m_idToIndex;
 
 	bool fexists(const string &filename) const {
 		ifstream ifile(filename.c_str());
@@ -82,6 +94,119 @@ private:
 			++evaluatedSeeds;
 		}
 		return matchPos;
+	}
+
+	/*
+	 * Takes match signature and number of hits and computes:
+	 * Chance of pattern due to random chance
+	 * Expected number of false positives
+	 * Removed false positives assuming sequence linearity
+	 */
+	//TODO proof of concept not yet optimized
+	//TODO turn into streaming algorithm to terminate early
+	inline vector<unsigned> calcProb(const vector<unsigned> &hitsVector,
+			unsigned &rmCount, unsigned evaluatedSeeds, double &probFP, ID id,
+			const vector<vector<ID> > &hitsPattern) {
+
+		if (!m_filter.getSeedValues().empty()) {
+			cerr << "SS not yet supported" << endl;
+			exit(1);
+		}
+
+		if (hitsVector.size() == 0) {
+			return vector<unsigned>();
+		}
+
+		//algorithm overview
+		//1) flag cluster of overlapping segments
+		//2) within cluster flag run that is the worst section (least part of id)
+		//3) using the last start and end point seen, prune reads of that run that contradict
+		//4) repeat from step 1 until all conflicting segments are removed
+
+		//index of start of cluster (to hitsVector) and runlength
+		vector<unsigned> startIndex;
+		startIndex.reserve(hitsVector.size());
+		vector<unsigned> starts;
+		starts.reserve(hitsVector.size());
+		vector<unsigned> counts;
+		counts.reserve(hitsVector.size());
+
+		unsigned prevPos = hitsVector[0];
+		bool ovlpPresent = false;
+
+		//construct vectors for evaluation
+		for (unsigned i = 0; i < hitsVector.size(); ++i) {
+			//is part of the same chain
+			if ( hitsVector[i] == prevPos + 1) {
+				++counts.back();
+			}
+			//part of new chain
+			else {
+				//does not overlap
+				if ( hitsVector[i]  > prevPos + m_filter.getKmerSize()) {
+					if (!ovlpPresent) {
+						startIndex.pop_back();
+						starts.pop_back();
+						counts.pop_back();
+					}
+					ovlpPresent = false;
+				}
+				//new chain but overlaps with previous chain (aside from first case)
+				else if (prevPos !=  hitsVector[i] ) {
+					ovlpPresent = true;
+				}
+
+				startIndex.push_back(i);
+				starts.push_back(hitsVector[i]);
+				counts.push_back(1);
+			}
+			prevPos =  hitsVector[i];
+		}
+		if (!ovlpPresent) {
+			startIndex.pop_back();
+			counts.pop_back();
+			starts.pop_back();
+		}
+		//for tracking changes
+		vector<unsigned> countsOld = vector<unsigned>(counts);
+		vector<unsigned> startOld = vector<unsigned>(starts);
+
+		for(unsigned i = 0 ; i < startIndex.size(); ++i){
+			startOld.push_back(hitsVector[i]);
+		}
+
+		if (startIndex.size()) {
+			unsigned removedAmount = 1;
+			while (removedAmount) {
+				removedAmount = rmWorstConflict(startIndex, id, hitsPattern,
+						starts, counts);
+				rmCount += removedAmount;
+			}
+		}
+
+		//reconsititute new vector (for debugging purposes)
+		vector<unsigned> removedVect;
+
+		for (unsigned i = 0; i < starts.size(); ++i) {
+			if (counts[i] != countsOld[i]) {
+				for (unsigned j = 0; j < countsOld[i]; ++j) {
+					if (starts[i] > (startOld[i] + j)
+							|| (starts[i] + counts[i]) <= startOld[i] + j) {
+						removedVect.push_back(startOld[i] + j);
+					}
+				}
+			}
+		}
+
+		//		//computer final probablity
+		double bfFPR = m_filter.getFPR();
+		//binomial
+		probFP = nChoosek(evaluatedSeeds, hitsVector.size() - rmCount)
+				* pow(bfFPR, hitsVector.size() - rmCount)
+				* pow((1.0 - bfFPR),
+						evaluatedSeeds - (hitsVector.size() - rmCount));
+		return removedVect;
+
 	}
 
 	/*
@@ -199,18 +324,18 @@ private:
 	/*
 	 * verbose output for debugging purposes
 	 * Read Seq
-	 Seed match pattern
-	 Expected false positives
-	 Removed match pattern
-	 Number of removed matches
-	 Probability of false positive due to random chance
-	 Expected false positives
-	 Match pattern index
-	 *
+	 * Seed match pattern
+	 * Expected false positives
+	 * Removed match pattern
+	 * Number of removed matches
+	 * Probability of false positive due to random chance
+	 * Expected false positives
+	 * Match pattern index
 	 */
 	inline void printVerbose(const string &header, const string &seq,
 			const vector<unsigned> &hitsVector, unsigned evaluatedKmers,
-			unsigned rmCount, const vector<unsigned> &rmMatch, double probFP) {
+			unsigned rmCount, const vector<unsigned> &rmMatch, double probFP,
+			const vector< vector<ID> > &hitsPattern) {
 		cerr << header << ' ' << evaluatedKmers << ' ' << rmCount
 				<< ' ' << rmMatch.size() << ' '
 				<< (evaluatedKmers * m_filter.getFPR()) << ' ' << probFP
@@ -218,7 +343,95 @@ private:
 		cerr << seq << endl;
 		cerr << vectToStr(hitsVector, seq) << endl;
 		cerr << vectToStr(rmMatch, seq) << endl;
+		cerr << vectToStr(hitsVector, hitsPattern, seq);
 	}
+
+	inline void printVerbose(const string &header, const string &seq) {
+		unsigned evaluatedSeeds = 0;
+		unsigned rmCount = 0;
+		double probFP = 0.0;
+		vector<vector<ID> > hitsPattern;
+		vector<unsigned> sig = getMatchSignature(seq, evaluatedSeeds,
+								hitsPattern);
+
+		//compute counts
+		google::dense_hash_map<ID, unsigned> counts;
+		counts.set_empty_key(opt::EMPTY);
+		for (vector<vector<ID> >::iterator i = hitsPattern.begin();
+				i != hitsPattern.end(); i++) {
+			for (vector<ID>::iterator j = i->begin(); j != i->end();
+					j++) {
+				google::dense_hash_map<ID, unsigned>::iterator tempItr =
+						counts.find(*j);
+				if (tempItr == counts.end()) {
+					counts[*j] = 1;
+				} else {
+					++(tempItr->second);
+				}
+			}
+		}
+
+		//using the hitsPattern find highest ranking hits
+		ID bestID = opt::EMPTY;
+		unsigned bestCount = 0;
+
+		for (google::dense_hash_map<ID, unsigned>::const_iterator itr = counts.begin();
+				itr != counts.end(); itr++) {
+			if(itr->second > bestCount){
+				bestID = itr->first;
+				bestCount = itr->second;
+			}
+		}
+//
+//		//compute match vector that prioritizes current best value
+//		vector<unsigned> rmMatch = calcProb(sig, rmCount, evaluatedSeeds,
+//				probFP, bestID, hitsPattern);
+//		cerr << header << ' ' << evaluatedSeeds << ' ' << rmCount
+//				<< ' ' << rmMatch.size() << ' '
+//				<< (evaluatedSeeds * m_filter.getFPR()) << ' ' << probFP
+//				<< endl;
+
+		cout << header << ' ' << evaluatedSeeds << ' ' << rmCount << ' '
+				<< (evaluatedSeeds * m_filter.getFPR()) << ' ' << probFP
+				<< ' ' << base64_chars[bestID % 64] << ' ' << bestID << endl;
+		cout << seq << endl;
+		cout << vectToStr(sig, seq) << endl;
+//		cerr << vectToStr(rmMatch, seq) << endl;
+		cout << vectToStr(sig, hitsPattern, seq);
+	}
+
+	inline string vectToStr(const vector<unsigned> &hitsVector,
+			const vector<vector<ID> > &hitsPattern, const string &seq) {
+		stringstream ss;
+		for (unsigned hVal = 0; hVal < m_filter.getHashNum(); ++hVal) {
+			unsigned prevIndex = 1;
+			unsigned index = 0;
+			//print first stretch of zeros
+			if (hitsVector.size()) {
+				for (unsigned i = prevIndex; i <= hitsVector[index]; ++i) {
+					ss << " ";
+				}
+				prevIndex = hitsVector[index] + 1;
+				for (; index < hitsVector.size(); index++) {
+					//print 0s
+					for (unsigned i = prevIndex; i < hitsVector[index]; ++i) {
+						ss <<  " ";
+					}
+					//print 1s
+					ss << base64_chars[hitsPattern[index][hVal] % 64];
+					prevIndex = hitsVector[index] + 1;
+				}
+				++prevIndex;
+			}
+			for (unsigned i = prevIndex;
+					i <= (seq.size() - m_filter.getKmerSize() + 1); ++i) {
+				ss << " ";
+			}
+			ss << "\n";
+		}
+		return ss.str();
+	}
+
 
 	inline string vectToStr(const vector<unsigned> &hitsVector,
 			const string &seq) {
@@ -247,6 +460,92 @@ private:
 			ss << 0;
 		}
 		return ss.str();
+	}
+
+	/*
+	 * return count of elements in region that contain ID
+	 */
+	inline unsigned countID(ID id, const vector<vector<ID> > &hitsPattern,
+			unsigned indexStart, unsigned indexEnd) {
+		unsigned count = 0;
+		for (unsigned i = indexStart; i < indexEnd; ++i) {
+			bool noID = false;
+			for (unsigned j = 0; j < m_filter.getKmerSize(); ++j) {
+				if(hitsPattern[i][j] == id){
+					noID = true;
+					break;
+				}
+			}
+			count += noID;
+		}
+		return count;
+	}
+
+	/*
+	 * mutates worst conflict, shift the start and reducing the tail
+	 * ie. Highest number of conflicts and that is very short
+	 * Returns the amount removed
+	 */
+	inline unsigned rmWorstConflict(const vector<unsigned> &startIndex, ID id,
+			const vector<vector<ID> > &hitsPattern,
+			vector<unsigned> &startValues, vector<unsigned> &counts) {
+		//index, conflict count
+		vector<unsigned> conflicts(startIndex.size(), 0);
+		vector<unsigned> rmLeft(startIndex.size(), 0);
+		vector<unsigned> rmRight(startIndex.size(), 0);
+		unsigned maxCount = 0;
+		unsigned worstConfict = 0;
+		//Find elements with most collisions external to its run
+		for (unsigned i = 0; i < startIndex.size(); ++i) {
+			if (counts[i] > 0) {
+				for (unsigned j = i + 1; j < startIndex.size(); ++j) {
+					if (counts[j]) {
+						unsigned lastPos = startValues[i] + counts[i] - 1
+								+ m_filter.getKmerSize();
+						if (lastPos <= startValues[j]) {
+							break;
+						}
+						//compute overlap
+						unsigned overlap = lastPos - startValues[j];
+
+						//if overlaps are contributed by bestID
+						//k-mers overlapping
+						conflicts[i] += countID(id, hitsPattern, startIndex[j],
+								startIndex[j] + min(overlap, counts[j]));
+						conflicts[j] += countID(id, hitsPattern, startIndex[i],
+								startIndex[i] + min(overlap, counts[i]));
+						rmRight[i] = min(overlap, counts[i]);
+						rmLeft[j] = min(overlap, counts[j]);
+						if ((conflicts[i] == maxCount
+								&& counts[worstConfict] > counts[i])
+								|| conflicts[i] > maxCount) {
+							maxCount = conflicts[i];
+							worstConfict = i;
+						}
+						if ((conflicts[j] == maxCount
+								&& counts[worstConfict] > counts[j])
+								|| conflicts[j] > maxCount) {
+							maxCount = conflicts[j];
+							worstConfict = j;
+						}
+					}
+				}
+			}
+		}
+		unsigned oldCount = counts[worstConfict];
+		//shift based on conflict
+		startValues[worstConfict] += rmLeft[worstConfict];
+		//cut off conflict
+		counts[worstConfict] -= rmRight[worstConfict];
+		if (counts[worstConfict] < rmLeft[worstConfict]) {
+			//completely obliterated
+			counts[worstConfict] = 0;
+			return oldCount;
+		} else {
+			counts[worstConfict] -= rmLeft[worstConfict];
+			//			cerr << (rmLeft[worstConfict] + rmRight[worstConfict]) << endl;
+			return rmLeft[worstConfict] + rmRight[worstConfict];
+		}
 	}
 
 	/*

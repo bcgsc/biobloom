@@ -206,7 +206,7 @@ public:
 		summaryOutput << "\t" << 0.0;
 		summaryOutput << "\n";
 
-		cerr << summaryOutput.str() << endl;
+//		cerr << summaryOutput.str() << endl;
 		return summaryOutput.str();
 	}
 

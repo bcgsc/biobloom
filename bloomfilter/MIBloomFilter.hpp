@@ -389,6 +389,7 @@ public:
 	 * Returns the smallest possible id assigned in set of IDs
 	 * or 0 is it does not match anything
 	 */
+	//TODO possible to optimize by not looking up results until we are sure element exists
 	inline vector<T> at(const size_t *hashes) {
 		vector<T> results(m_hashNum);
 		for (unsigned i = 0; i < m_hashNum; ++i) {

@@ -21,8 +21,8 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 	//load in ID file
 	string idFile = (filterFile).substr(0, (filterFile).length() - 3)
 			+ "_ids.txt";
-	google::dense_hash_map<ID, string> ids;
 	google::dense_hash_map<ID, boost::shared_ptr<vector<ID> > > colliIDs;
+	google::dense_hash_map<ID, string> ids;
 	colliIDs.set_empty_key(opt::EMPTY);
 	ids.set_empty_key(opt::EMPTY);
 	if (!fexists(idFile)) {
@@ -33,7 +33,6 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 	} else {
 		cerr << "Loading ID file: " << idFile.c_str() << endl;
 	}
-
 	ifstream idFH(idFile.c_str(), ifstream::in);
 	string line;
 	getline(idFH, line);
@@ -56,11 +55,14 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		}
 		getline(idFH, line);
 	}
-	m_fullIDs = vector<string>(ids.size() + 1); //first element will be empty
+	m_fullIDs = vector<string>(ids.size() + 3); //first element will be empty
 	m_fullIDs[0] = "unknown"; //set first element to unknown
+	m_idToIndex.set_empty_key("");
 	for (google::dense_hash_map<ID, string>::const_iterator itr = ids.begin();
 			itr != ids.end(); ++itr) {
+//		cerr << itr->first << itr->second << endl;
 		m_fullIDs[itr->first] = itr->second;
+		m_idToIndex[itr->second] = itr->first;
 	}
 	m_colliIDs = vector<boost::shared_ptr<vector<ID> > >(colliIDs.size() + 1);
 	for (google::dense_hash_map<ID, boost::shared_ptr<vector<ID> > >::const_iterator itr =
@@ -71,11 +73,37 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 			m_colliIDs[itr->first] = NULL;
 	}
 	idFH.close();
+
+	m_countTable = vector<size_t>(m_fullIDs.size(), 0.0);
+
+	//load in freqTable of seeds
+	ifstream freqFH(idFile.c_str(), ifstream::in);
+	getline(freqFH, line);
+	while (freqFH.good()) {
+		ID id;
+		stringstream converter(line);
+		converter >> id;
+		size_t count;
+		converter >> count;
+		m_countTable[id] = count;
+		getline(freqFH, line);
+	}
+	freqFH.close();
+
+	size_t sum = 0;
+
+	for (vector<size_t>::const_iterator itr = m_countTable.begin();
+			itr != m_countTable.end(); ++itr) {
+		sum += *itr;
+	}
+	m_freqTable = vector<double>(m_fullIDs.size(), 0.0);
+	for (size_t i = 0;
+			i < m_countTable.size(); ++i) {
+		m_freqTable[i] = double(m_countTable[i])/double(sum);
+	}
 }
 
 void BloomMapClassifier::filter(const vector<string> &inputFiles) {
-	size_t totalReads = 0;
-
 	string outputName = opt::outputPrefix + "_reads.tsv";
 
 	//TODO output fasta?
@@ -113,11 +141,10 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 			}
 			if (l >= 0) {
 #pragma omp critical(totalReads)
-				if (++totalReads % opt::fileInterval == 0) {
-					cerr << "Currently Reading Read Number: " << totalReads
+				if (++m_numRead % opt::fileInterval == 0) {
+					cerr << "Currently Reading Read Number: " << m_numRead
 							<< endl;
 				}
-
 				google::dense_hash_map<ID, unsigned> hitCounts;
 				hitCounts.set_empty_key(opt::EMPTY);
 				unsigned score = evaluateRead(sequence, hitCounts);
@@ -129,13 +156,19 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 					convertToHits(hitCounts, hits);
 				}
 				ID idIndex = resSummary.updateSummaryData(hits);
+				const string &fullID =
+						idIndex == opt::COLLI ? UNKNOWN :
+						idIndex == resSummary.getMultiMatchIndex() ?
+								MULTI_MATCH :
+						idIndex == resSummary.getNoMatchIndex() ?
+								NO_MATCH : m_fullIDs.at(idIndex);
+				if (name != fullID) {
+					cout << m_numRead << "\t" << m_idToIndex[name] << "\t"
+							<< name << "\t" << fullID << "\t" << endl;
+					printVerbose(name, sequence);
+				}
+
 				if (idIndex != resSummary.getNoMatchIndex()) {
-					const string &fullID =
-							idIndex == opt::COLLI ? UNKNOWN :
-							idIndex == resSummary.getMultiMatchIndex() ?
-									MULTI_MATCH :
-							idIndex == opt::EMPTY ?
-									NO_MATCH : m_fullIDs.at(idIndex);
 					if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
 						{
@@ -165,12 +198,12 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 		gzclose(fp);
 	}
 
-	cerr << "Total Reads:" << totalReads << endl;
+	cerr << "Total Reads:" << m_numRead << endl;
 	cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
 			<< endl;
 
 	Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
-	summaryOutput << resSummary.getResultsSummary(totalReads);
+	summaryOutput << resSummary.getResultsSummary(m_numRead);
 	summaryOutput.close();
 	cout.flush();
 }
@@ -259,7 +292,7 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 					probFP);
 			if (rmMatch.size() > 0) {
 				printVerbose(name1, sequence1, sig, evaluatedSeeds, rmCount,
-						rmMatch, probFP);
+						rmMatch, probFP, hitsPattern);
 			}
 
 			if(m_numRead > opt::fileInterval){
