@@ -351,38 +351,62 @@ public:
 		}
 	}
 
-//	inline bool contains(const size_t *hashes) const {
-//		for (unsigned i = 0; i < m_hashNum; ++i) {
-//			size_t pos = hashes[i] % m_bv.size();
-//			if (m_bv[pos] == 0) {
-//				return false;
-//			}
-//		}
-//		return true;
-//	}
 
 	/*
-	 * Returns the smallest possible id assigned in set of IDs
-	 * or 0 is it does not match anything
+	 * Traditional BF checking
 	 */
-	inline T at(const size_t *hashes, unsigned maxMiss, unsigned &misses) {
-		T result = numeric_limits<T>::max();
+	inline bool contains(const size_t *hashes) const {
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
+			if (m_bv[pos] == 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/*
+	 * For fast first pass matching
+	 */
+	inline vector<bool> contains(const size_t *hashes, unsigned maxMiss,
+			unsigned &misses) {
+		vector<bool> results(m_hashNum, false);
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes[i] % m_bv.size();
 			if (m_bv[pos] == 0) {
 				++misses;
 				if (misses > maxMiss) {
-					return 0;
+					return vector<bool>();
+				}
+			}
+			else{
+				results[i] = true;
+			}
+		}
+		return results;
+	}
+
+	/*
+	 * Returns the smallest possible id assigned in set of IDs
+	 * or 0 is it does not match anything
+	 */
+	inline vector<T> at(const size_t *hashes, unsigned maxMiss,
+			unsigned &misses) {
+		vector<T> results(m_hashNum);
+		misses = 0;
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
+			if (m_bv[pos] == 0) {
+				++misses;
+				if (misses > maxMiss) {
+					return vector<T>();
 				}
 			} else {
 				size_t rankPos = m_rankSupport(pos);
-				T currID = m_data[rankPos];
-				if (currID < result) {
-					result = currID;
-				}
+				results[i] = m_data[rankPos];
 			}
 		}
-		return result;
+		return results;
 	}
 
 	/*

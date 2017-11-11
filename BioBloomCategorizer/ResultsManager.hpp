@@ -21,15 +21,13 @@ using namespace std;
 
 static const string NO_MATCH = "noMatch";
 static const string MULTI_MATCH = "multiMatch";
-static const string UNKNOWN = "unknown";
 
 template<typename T>
 class ResultsManager {
 public:
 	explicit ResultsManager<T>(const vector<string> &filterOrderRef,
 			bool inclusive) :
-			m_filterOrder(filterOrderRef), m_noMatchIndex(
-					filterOrderRef.size()), m_multiMatchIndex(
+			m_filterOrder(filterOrderRef), m_multiMatchIndex(
 					filterOrderRef.size() + 1), m_aboveThreshold(
 					filterOrderRef.size() + 2, 0), m_unique(
 					filterOrderRef.size() + 2, 0), m_multiMatch(0), m_noMatch(
@@ -37,19 +35,31 @@ public:
 
 	}
 
+	void updateSummaryData(T hit) {
+		if (hit == 0) {
+#pragma omp atomic
+			++m_noMatch;
+		} else {
+#pragma omp atomic
+			++m_aboveThreshold[hit];
+#pragma omp atomic
+			++m_unique[hit];
+		}
+	}
+
 	T updateSummaryData(const vector<T> &hits) {
-		unsigned filterIndex = m_noMatchIndex;
+		T filterIndex = 0;
 		for (typename vector<T>::const_iterator i = hits.begin();
 				i != hits.end(); ++i) {
 #pragma omp atomic
 			++m_aboveThreshold[*i];
-			if (filterIndex == m_noMatchIndex) {
+			if (filterIndex == 0) {
 				filterIndex = *i;
 			} else {
 				filterIndex = m_multiMatchIndex;
 			}
 		}
-		if (filterIndex == m_noMatchIndex) {
+		if (filterIndex == 0) {
 #pragma omp atomic
 			++m_noMatch;
 		} else if (filterIndex == m_multiMatchIndex) {
@@ -63,7 +73,7 @@ public:
 	}
 
 	T updateSummaryData(const vector<T> &hits1, const vector<T> &hits2) {
-		unsigned filterIndex = m_noMatchIndex;
+		unsigned filterIndex = 0;
 		typename vector<T>::const_iterator i1 = hits1.begin();
 		typename vector<T>::const_iterator i2 = hits2.begin();
 		if (m_inclusive) {
@@ -74,7 +84,7 @@ public:
 #pragma omp atomic
 					++m_aboveThreshold[*i1];
 					//increment both indexes
-					if (filterIndex == m_noMatchIndex) {
+					if (filterIndex == 0) {
 						filterIndex = *i1;
 					} else {
 						filterIndex = m_multiMatchIndex;
@@ -86,7 +96,7 @@ public:
 				else if (*i1 < *i2) {
 #pragma omp atomic
 					++m_aboveThreshold[*i1];
-					if (filterIndex == m_noMatchIndex) {
+					if (filterIndex == 0) {
 						filterIndex = *i1;
 					} else {
 						filterIndex = m_multiMatchIndex;
@@ -95,7 +105,7 @@ public:
 				} else {
 #pragma omp atomic
 					++m_aboveThreshold[*i2];
-					if (filterIndex == m_noMatchIndex) {
+					if (filterIndex == 0) {
 						filterIndex = *i2;
 					} else {
 						filterIndex = m_multiMatchIndex;
@@ -107,7 +117,7 @@ public:
 			while (i1 != hits1.end()) {
 #pragma omp atomic
 				++m_aboveThreshold[*i1];
-				if (filterIndex == m_noMatchIndex) {
+				if (filterIndex == 0) {
 					filterIndex = *i1;
 				} else {
 					filterIndex = m_multiMatchIndex;
@@ -117,7 +127,7 @@ public:
 			while (i2 != hits2.end()) {
 #pragma omp atomic
 				++m_aboveThreshold[*i2];
-				if (filterIndex == m_noMatchIndex) {
+				if (filterIndex == 0) {
 					filterIndex = *i2;
 				} else {
 					filterIndex = m_multiMatchIndex;
@@ -132,7 +142,7 @@ public:
 #pragma omp atomic
 					++m_aboveThreshold[*i1];
 					//increment both indexes
-					if (filterIndex == m_noMatchIndex) {
+					if (filterIndex == 0) {
 						filterIndex = *i1;
 					} else {
 						filterIndex = m_multiMatchIndex;
@@ -149,7 +159,7 @@ public:
 			}
 		}
 
-		if (filterIndex == m_noMatchIndex) {
+		if (filterIndex == 0) {
 #pragma omp atomic
 			++m_noMatch;
 		} else if (filterIndex == m_multiMatchIndex) {
@@ -210,10 +220,6 @@ public:
 		return summaryOutput.str();
 	}
 
-	T getNoMatchIndex() const {
-		return m_noMatchIndex;
-	}
-
 	T getMultiMatchIndex() const {
 		return m_multiMatchIndex;
 	}
@@ -224,8 +230,6 @@ public:
 private:
 	//Variables owned by biobloomcategorizer
 	const vector<string> &m_filterOrder;
-
-	const T m_noMatchIndex;
 	const T m_multiMatchIndex;
 
 	vector<size_t> m_aboveThreshold;

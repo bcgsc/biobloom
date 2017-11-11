@@ -76,8 +76,11 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 
 	m_countTable = vector<size_t>(m_fullIDs.size(), 0.0);
 
+	string countsFilename = (filterFile).substr(0, (filterFile).length() - 3)
+			+ "_indexCount.tsv";
+
 	//load in freqTable of seeds
-	ifstream freqFH(idFile.c_str(), ifstream::in);
+	ifstream freqFH(countsFilename.c_str(), ifstream::in);
 	getline(freqFH, line);
 	while (freqFH.good()) {
 		ID id;
@@ -101,6 +104,12 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 			i < m_countTable.size(); ++i) {
 		m_freqTable[i] = double(m_countTable[i])/double(sum);
 	}
+	if(opt::allowMisses > 0 && m_filter.getSeedValues().size()  == 0)
+	{
+		cerr << "Allowed miss (-a) should not be used with k-mers" << endl;
+		exit(1);
+	}
+	m_baseProb = m_filter.getFPR(opt::allowMisses);
 }
 
 void BloomMapClassifier::filter(const vector<string> &inputFiles) {
@@ -145,30 +154,37 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 					cerr << "Currently Reading Read Number: " << m_numRead
 							<< endl;
 				}
-				google::dense_hash_map<ID, unsigned> hitCounts;
-				hitCounts.set_empty_key(opt::EMPTY);
-				unsigned score = evaluateRead(sequence, hitCounts);
-				unsigned threshold = opt::score
-						* (l - m_filter.getKmerSize() + 1);
-				vector<ID> hits;
-				bool aboveThreshold = score > threshold;
-				if (aboveThreshold) {
-					convertToHits(hitCounts, hits);
-				}
-				ID idIndex = resSummary.updateSummaryData(hits);
+				//first pass filtering - Determine if it is a match
+//				bool firstPass = fastEval(sequence);
+//				if(firstPass){
+//					//Second pass filtering - If it seems like a match determine best hit
+//					//TODO:Optimize
+//					vector<vector<ID> > hitsPattern;
+//					unsigned evaluatedSeeds = 0;
+//					getMatchSignature(sequence, evaluatedSeeds, hitsPattern);
+//					idIndex = getBest(hitsPattern);
+//					resSummary.updateSummaryData(idIndex);
+//				}
+				vector<vector<ID> > hitsPattern;
+				unsigned evaluatedSeeds = 0;
+				getMatchSignature(sequence, evaluatedSeeds, hitsPattern);
+				double pVal = 1.0;
+				ID idIndex = evalRead(hitsPattern, evaluatedSeeds, pVal);
+				resSummary.updateSummaryData(idIndex);
 				const string &fullID =
-						idIndex == opt::COLLI ? UNKNOWN :
+						idIndex == opt::EMPTY ? NO_MATCH :
 						idIndex == resSummary.getMultiMatchIndex() ?
-								MULTI_MATCH :
-						idIndex == resSummary.getNoMatchIndex() ?
-								NO_MATCH : m_fullIDs.at(idIndex);
+								MULTI_MATCH : m_fullIDs.at(idIndex);
+				cout << pVal << endl;
 				if (name != fullID) {
-					cout << m_numRead << "\t" << m_idToIndex[name] << "\t"
-							<< name << "\t" << fullID << "\t" << endl;
-					printVerbose(name, sequence);
+//					cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
+//							<< "\tCorrectName:" << name << "\tPredictedID:"
+//							<< m_idToIndex[fullID] << "\tPredictedName:" << fullID
+//							<< "\tCorrectID:" << base64_chars[m_idToIndex[name] % 64] << endl;
+//					printVerbose(name, sequence, idIndex);
 				}
 
-				if (idIndex != resSummary.getNoMatchIndex()) {
+				if (idIndex != opt::EMPTY) {
 					if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
 						{
@@ -178,14 +194,7 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 					} else {
 #pragma omp critical(outputFiles)
 						{
-							readsOutput << fullID << "\t" << name << "\t"
-									<< score;
-							for (google::dense_hash_map<ID, unsigned>::iterator itr =
-									hitCounts.begin(); itr != hitCounts.end();
-									++itr) {
-								readsOutput << "\t" << m_fullIDs.at(itr->first)
-										<< ":" << itr->second;
-							}
+							readsOutput << fullID << "\t" << name << "\t";
 							readsOutput << "\n";
 						}
 					}
@@ -274,14 +283,6 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 			hitCounts1.set_empty_key(opt::EMPTY);
 			hitCounts2.set_empty_key(opt::EMPTY);
 
-			unsigned threshold1 =
-					opt::score > 1 ?
-							opt::score :
-							opt::score * (l1 - m_filter.getKmerSize() + 1);
-			unsigned threshold2 =
-					opt::score > 1 ?
-							opt::score :
-							opt::score * (l2 - m_filter.getKmerSize() + 1);
 			unsigned evaluatedSeeds = 0;
 			unsigned rmCount = 0;
 			double probFP = 0.0;
@@ -299,47 +300,41 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 				exit(1);
 			}
 
-			unsigned score1 = evaluateRead(sequence1, hitCounts1);
-			unsigned score2 = evaluateRead(sequence2, hitCounts2);
+//			unsigned score1 = evaluateRead(sequence1, hitCounts1);
+//			unsigned score2 = evaluateRead(sequence2, hitCounts2);
 			unsigned bestHit = 0;
 
 			vector<ID> hits;
-			if (opt::inclusive) {
-				if (score1 > threshold1 || score2 > threshold2)
-					bestHit = convertToHitsOnlyOne(hitCounts1, hitCounts2,
-							hits);
-			} else {
-				if (score1 > threshold1 && score2 > threshold2)
-					bestHit = convertToHitsBoth(hitCounts1, hitCounts2, hits);
-			}
+//			if (opt::inclusive) {
+//				if (score1 > threshold1 || score2 > threshold2)
+//					bestHit = convertToHitsOnlyOne(hitCounts1, hitCounts2,
+//							hits);
+//			} else {
+//				if (score1 > threshold1 && score2 > threshold2)
+//					bestHit = convertToHitsBoth(hitCounts1, hitCounts2, hits);
+//			}
 
 			ID idIndex = opt::EMPTY;
 
 			idIndex = resSummary.updateSummaryData(hits);
 			if (idIndex != opt::EMPTY) {
-				//TODO: possible to optimize by putting alternative is vector
-				if (idIndex != resSummary.getNoMatchIndex()) {
-					const string &fullID =
-							idIndex == opt::COLLI ? UNKNOWN :
-							idIndex == resSummary.getMultiMatchIndex() ?
-									MULTI_MATCH :
-							idIndex == opt::EMPTY ?
-									NO_MATCH : m_fullIDs.at(idIndex);
-					if (opt::outputType == "fq") {
+				const string &fullID =
+						idIndex == opt::EMPTY ? NO_MATCH :
+						idIndex == resSummary.getMultiMatchIndex() ?
+								MULTI_MATCH : m_fullIDs.at(idIndex);
+				if (opt::outputType == "fq") {
 #pragma omp critical(outputFiles)
-						{
-							readsOutput << "@" << name1 << " " << fullID << "\n"
-									<< sequence1 << "\n+\n" << qual1 << "\n"
-									<< "@" << name2 << " " << fullID << "\n"
-									<< sequence2 << "\n+\n" << qual2 << "\n";
-						}
-					} else {
+					{
+						readsOutput << "@" << name1 << " " << fullID << "\n"
+								<< sequence1 << "\n+\n" << qual1 << "\n" << "@"
+								<< name2 << " " << fullID << "\n" << sequence2
+								<< "\n+\n" << qual2 << "\n";
+					}
+				} else {
 #pragma omp critical(outputFiles)
-						{
-							readsOutput << fullID << "\t" << name1 << "\t"
-									<< score1 << "\t" << score2 << "\t"
-									<< bestHit << "\n";
-						}
+					{
+						readsOutput << fullID << "\t" << name1 << "\t"
+								<< bestHit << "\n";
 					}
 				}
 			}

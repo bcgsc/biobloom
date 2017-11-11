@@ -25,11 +25,13 @@
 #include <set>
 #include <algorithm>
 #include <functional>
+#include <boost/math/distributions/binomial.hpp>
 
 using namespace std;
+using boost::math::binomial;
 
 static const std::string base64_chars =
-             "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+		"!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 
 class BloomMapClassifier {
 public:
@@ -48,6 +50,8 @@ private:
 	vector<size_t> m_countTable;
 	vector<double> m_freqTable;
 	google::dense_hash_map<string, ID> m_idToIndex;
+
+	double m_baseProb;
 
 	bool fexists(const string &filename) const {
 		ifstream ifile(filename.c_str());
@@ -83,15 +87,33 @@ private:
 			unsigned &evaluatedSeeds, vector<vector<ID> > &hitsPattern) {
 		vector<unsigned> matchPos;
 		matchPos.reserve(seq.size() - m_filter.getKmerSize());
-		ntHashIterator itr(seq, m_filter.getHashNum(), m_filter.getKmerSize());
-		while (itr != itr.end()) {
-			vector<ID> results = m_filter.at(*itr);
-			if (results.size() > 0) {
-				matchPos.push_back(itr.pos());
-				hitsPattern.push_back(results);
+
+		if (m_filter.getSeedValues().empty()) {
+			ntHashIterator itr(seq, m_filter.getHashNum(),
+					m_filter.getKmerSize());
+			while (itr != itr.end()) {
+				vector<ID> results = m_filter.at(*itr);
+				if (results.size() > 0) {
+					matchPos.push_back(itr.pos());
+					hitsPattern.push_back(results);
+				}
+				++itr;
+				++evaluatedSeeds;
 			}
-			++itr;
-			++evaluatedSeeds;
+		} else {
+			RollingHashIterator itr(seq, m_filter.getKmerSize(),
+					m_filter.getSeedValues());
+			while (itr != itr.end()) {
+				unsigned misses;
+				vector<ID> results = m_filter.at(*itr, opt::allowMisses,
+						misses);
+				if (results.size() > 0) {
+					matchPos.push_back(itr.pos());
+					hitsPattern.push_back(results);
+				}
+				++itr;
+				++evaluatedSeeds;
+			}
 		}
 		return matchPos;
 	}
@@ -137,13 +159,13 @@ private:
 		//construct vectors for evaluation
 		for (unsigned i = 0; i < hitsVector.size(); ++i) {
 			//is part of the same chain
-			if ( hitsVector[i] == prevPos + 1) {
+			if (hitsVector[i] == prevPos + 1) {
 				++counts.back();
 			}
 			//part of new chain
 			else {
 				//does not overlap
-				if ( hitsVector[i]  > prevPos + m_filter.getKmerSize()) {
+				if (hitsVector[i] > prevPos + m_filter.getKmerSize()) {
 					if (!ovlpPresent) {
 						startIndex.pop_back();
 						starts.pop_back();
@@ -152,7 +174,7 @@ private:
 					ovlpPresent = false;
 				}
 				//new chain but overlaps with previous chain (aside from first case)
-				else if (prevPos !=  hitsVector[i] ) {
+				else if (prevPos != hitsVector[i]) {
 					ovlpPresent = true;
 				}
 
@@ -160,7 +182,7 @@ private:
 				starts.push_back(hitsVector[i]);
 				counts.push_back(1);
 			}
-			prevPos =  hitsVector[i];
+			prevPos = hitsVector[i];
 		}
 		if (!ovlpPresent) {
 			startIndex.pop_back();
@@ -171,7 +193,7 @@ private:
 		vector<unsigned> countsOld = vector<unsigned>(counts);
 		vector<unsigned> startOld = vector<unsigned>(starts);
 
-		for(unsigned i = 0 ; i < startIndex.size(); ++i){
+		for (unsigned i = 0; i < startIndex.size(); ++i) {
 			startOld.push_back(hitsVector[i]);
 		}
 
@@ -198,7 +220,7 @@ private:
 			}
 		}
 
-		//		//computer final probablity
+		//computer final probablity
 		double bfFPR = m_filter.getFPR();
 		//binomial
 		probFP = nChoosek(evaluatedSeeds, hitsVector.size() - rmCount)
@@ -225,7 +247,7 @@ private:
 			exit(1);
 		}
 
-		if(hitsVector.size() == 0){
+		if (hitsVector.size() == 0) {
 			return vector<unsigned>();
 		}
 
@@ -335,38 +357,182 @@ private:
 	inline void printVerbose(const string &header, const string &seq,
 			const vector<unsigned> &hitsVector, unsigned evaluatedKmers,
 			unsigned rmCount, const vector<unsigned> &rmMatch, double probFP,
-			const vector< vector<ID> > &hitsPattern) {
-		cerr << header << ' ' << evaluatedKmers << ' ' << rmCount
-				<< ' ' << rmMatch.size() << ' '
-				<< (evaluatedKmers * m_filter.getFPR()) << ' ' << probFP
-				<< endl;
+			const vector<vector<ID> > &hitsPattern) {
+		cerr << header << ' ' << evaluatedKmers << ' ' << rmCount << ' '
+				<< rmMatch.size() << ' ' << (evaluatedKmers * m_filter.getFPR())
+				<< ' ' << probFP << endl;
 		cerr << seq << endl;
 		cerr << vectToStr(hitsVector, seq) << endl;
 		cerr << vectToStr(rmMatch, seq) << endl;
 		cerr << vectToStr(hitsVector, hitsPattern, seq);
 	}
 
-	inline void printVerbose(const string &header, const string &seq) {
-		unsigned evaluatedSeeds = 0;
-		unsigned rmCount = 0;
-		double probFP = 0.0;
-		vector<vector<ID> > hitsPattern;
-		vector<unsigned> sig = getMatchSignature(seq, evaluatedSeeds,
-								hitsPattern);
+	inline ID evalRead(vector<vector<ID> > hitsPattern, unsigned evaluatedSeeds,
+			double &pVal) {
+		google::dense_hash_map<ID, unsigned> counts;
+		counts.set_empty_key(opt::EMPTY);
+		google::dense_hash_map<ID, unsigned> countsTotal;
+		countsTotal.set_empty_key(opt::EMPTY);
+		for (vector<vector<ID> >::iterator i = hitsPattern.begin();
+				i != hitsPattern.end(); i++) {
+			//to determine if fixed
+			google::dense_hash_set<ID> tempIDs;
+			tempIDs.set_empty_key(opt::EMPTY);
+			for (vector<ID>::iterator j = i->begin(); j != i->end(); j++) {
+				if (*j != opt::EMPTY) {
+					google::dense_hash_map<ID, unsigned>::iterator tempItrTotal =
+							countsTotal.find(*j);
+					if (tempItrTotal == countsTotal.end()) {
+						countsTotal[*j] = 1;
+					} else {
+						++(tempItrTotal->second);
+					}
+					if (tempIDs.find(*j) == tempIDs.end()) {
+						google::dense_hash_map<ID, unsigned>::iterator tempItr =
+								counts.find(*j);
+						if (tempItr == counts.end()) {
+							counts[*j] = 1;
+						} else {
+							++(tempItr->second);
+						}
+						tempIDs.insert(*j);
+					}
+				}
+			}
+		}
 
+		ID maxID = opt::EMPTY;
+		unsigned maxCount = 0;
+		double cumPVal = 1.0;
+		//compute cdf for each
+		for (google::dense_hash_map<ID, unsigned>::const_iterator itr =
+				counts.begin(); itr != counts.end(); itr++) {
+			double prob = calcProbSingleFrame(m_freqTable[itr->first]);
+//			cout << prob << endl;
+			binomial bin(evaluatedSeeds, prob);
+			double cumProb = cdf(bin, itr->second);
+//			cout << cumProb << endl;
+//			double tempVal = 1.0 - cumProb;
+			if (countsTotal[itr->first] > maxCount) {
+				maxCount = countsTotal[itr->first];
+				maxID = itr->first;
+			}
+			cumPVal *= cumProb;
+		}
+		pVal = cumPVal;
+		if (pVal < opt::score) {
+			return maxID;
+		}
+		return opt::EMPTY;
+	}
+
+	//TODO not optimized
+	inline double calcProbSingleFrame(double freq) {
+//		cout << "start" << opt::allowMisses << endl;
+		double occupancy = double(m_filter.getPop()) / double(m_filter.size());
+		double probTotal = 0.0;
+		for (unsigned i = 0; i <= opt::allowMisses; i++) {
+			for (unsigned j = 0; j <= i; j++) {
+//				cout << "start" << i << ' ' << j << endl;
+				double prob = nChoosek(m_filter.getHashNum(), j);
+//				cout << prob << endl;
+				prob *= pow(occupancy, m_filter.getHashNum() - j);
+//				cout << prob << endl;
+				prob *= pow(1.0 - occupancy, j);
+//				cout << prob << endl;
+				prob *= 1.0 - pow(1.0 - freq, m_filter.getHashNum() - j);
+//				cout << prob << endl;
+				probTotal += prob;
+//				cout << probTotal << endl;
+			}
+		}
+//		cout << "~" << endl;
+		return probTotal;
+	}
+
+	//TODO NOT OPTIMIZED
+	inline ID evalOld(vector<vector<ID> > hitsPattern,
+			unsigned evaluatedSeeds, double &pVal) {
+		google::dense_hash_map<ID, unsigned> counts;
+		counts.set_empty_key(opt::EMPTY);
+		google::dense_hash_map<ID, unsigned> countsTotal;
+		countsTotal.set_empty_key(opt::EMPTY);
+		for (vector<vector<ID> >::iterator i = hitsPattern.begin();
+				i != hitsPattern.end(); i++) {
+			//to determine if fixed
+			google::dense_hash_set<ID> tempIDs;
+			tempIDs.set_empty_key(opt::EMPTY);
+			for (vector<ID>::iterator j = i->begin(); j != i->end(); j++) {
+				if (*j != opt::EMPTY) {
+					google::dense_hash_map<ID, unsigned>::iterator tempItrTotal =
+							countsTotal.find(*j);
+					if (tempItrTotal == countsTotal.end()) {
+						countsTotal[*j] = 1;
+					} else {
+						++(tempItrTotal->second);
+					}
+					if (tempIDs.find(*j) == tempIDs.end()) {
+						google::dense_hash_map<ID, unsigned>::iterator tempItr =
+								counts.find(*j);
+						if (tempItr == counts.end()) {
+							counts[*j] = 1;
+						} else {
+							++(tempItr->second);
+						}
+						tempIDs.insert(*j);
+					}
+				}
+			}
+		}
+//		double maxProb = 0;
+		ID maxID = opt::EMPTY;
+		unsigned maxCount = 0;
+		binomial bin2(evaluatedSeeds, m_baseProb);
+		double cumProb2 = cdf(bin2, hitsPattern.size());
+		//compute cdf for each
+		for (google::dense_hash_map<ID, unsigned>::const_iterator itr =
+				counts.begin(); itr != counts.end(); itr++) {
+			double prob = 1.0
+					- pow(1.0 - m_freqTable[itr->first], m_filter.getHashNum());
+//			prob *= m_baseProb;
+//			cerr << itr->first << " " << m_countTable[itr->first] << " " << m_freqTable[itr->first] << endl;
+			binomial bin(hitsPattern.size(), prob);
+			double cumProb = cdf(bin, itr->second);
+//			cout << itr->first << "\t" << itr->second << "\t" << prob << "\t" << m_baseProb << "\t"
+//					<< m_freqTable[itr->first] << "\t" << cumProb << endl;
+//			cout << prob << " " << itr->second << " " << 1.0 - m_freqTable[itr->first] << " "
+//					<< pow(1.0 - m_freqTable[itr->first], m_filter.getHashNum())
+//					<< endl;
+			double tempVal = 1.0 - cumProb * cumProb2;
+			if (tempVal < opt::score) {
+//				maxProb = prob;
+				if(countsTotal[itr->first] > maxCount) {
+					maxCount = countsTotal[itr->first];
+					maxID = itr->first;
+				}
+			}
+			if(pVal > tempVal){
+				pVal = tempVal;
+			}
+		}
+		return maxID;
+	}
+
+	inline ID getBest(vector<vector<ID> > hitsPattern) {
 		//compute counts
 		google::dense_hash_map<ID, unsigned> counts;
 		counts.set_empty_key(opt::EMPTY);
 		for (vector<vector<ID> >::iterator i = hitsPattern.begin();
 				i != hitsPattern.end(); i++) {
-			for (vector<ID>::iterator j = i->begin(); j != i->end();
-					j++) {
-				google::dense_hash_map<ID, unsigned>::iterator tempItr =
-						counts.find(*j);
-				if (tempItr == counts.end()) {
-					counts[*j] = 1;
-				} else {
-					++(tempItr->second);
+			for (vector<ID>::iterator j = i->begin(); j != i->end(); j++) {
+				if (*j != opt::EMPTY) {
+					google::dense_hash_map<ID, unsigned>::iterator tempItr =
+							counts.find(*j);
+					if (tempItr == counts.end()) {
+						counts[*j] = 1;
+					} else {
+						++(tempItr->second);
+					}
 				}
 			}
 		}
@@ -375,28 +541,28 @@ private:
 		ID bestID = opt::EMPTY;
 		unsigned bestCount = 0;
 
-		for (google::dense_hash_map<ID, unsigned>::const_iterator itr = counts.begin();
-				itr != counts.end(); itr++) {
-			if(itr->second > bestCount){
+		for (google::dense_hash_map<ID, unsigned>::const_iterator itr =
+				counts.begin(); itr != counts.end(); itr++) {
+			if (itr->second > bestCount) {
 				bestID = itr->first;
 				bestCount = itr->second;
 			}
 		}
-//
-//		//compute match vector that prioritizes current best value
-//		vector<unsigned> rmMatch = calcProb(sig, rmCount, evaluatedSeeds,
-//				probFP, bestID, hitsPattern);
-//		cerr << header << ' ' << evaluatedSeeds << ' ' << rmCount
-//				<< ' ' << rmMatch.size() << ' '
-//				<< (evaluatedSeeds * m_filter.getFPR()) << ' ' << probFP
-//				<< endl;
+		return bestID;
+	}
 
+	inline void printVerbose(const string &header, const string &seq, ID value) {
+		unsigned evaluatedSeeds = 0;
+		unsigned rmCount = 0;
+		double probFP = 0.0;
+		vector<vector<ID> > hitsPattern;
+		vector<unsigned> sig = getMatchSignature(seq, evaluatedSeeds,
+				hitsPattern);
 		cout << header << ' ' << evaluatedSeeds << ' ' << rmCount << ' '
-				<< (evaluatedSeeds * m_filter.getFPR()) << ' ' << probFP
-				<< ' ' << base64_chars[bestID % 64] << ' ' << bestID << endl;
+				<< (evaluatedSeeds * m_filter.getFPR()) << ' ' << probFP << ' '
+				<< base64_chars[value % 64] << ' ' << value << endl;
 		cout << seq << endl;
 		cout << vectToStr(sig, seq) << endl;
-//		cerr << vectToStr(rmMatch, seq) << endl;
 		cout << vectToStr(sig, hitsPattern, seq);
 	}
 
@@ -415,10 +581,13 @@ private:
 				for (; index < hitsVector.size(); index++) {
 					//print 0s
 					for (unsigned i = prevIndex; i < hitsVector[index]; ++i) {
-						ss <<  " ";
+						ss << " ";
 					}
-					//print 1s
-					ss << base64_chars[hitsPattern[index][hVal] % 64];
+					if (hitsPattern[index][hVal] == opt::EMPTY) {
+						ss << " ";
+					} else {
+						ss << base64_chars[hitsPattern[index][hVal] % 64];
+					}
 					prevIndex = hitsVector[index] + 1;
 				}
 				++prevIndex;
@@ -431,7 +600,6 @@ private:
 		}
 		return ss.str();
 	}
-
 
 	inline string vectToStr(const vector<unsigned> &hitsVector,
 			const string &seq) {
@@ -455,8 +623,8 @@ private:
 			}
 			++prevIndex;
 		}
-		for (unsigned i = prevIndex; i <= (seq.size() - m_filter.getKmerSize() + 1);
-				++i) {
+		for (unsigned i = prevIndex;
+				i <= (seq.size() - m_filter.getKmerSize() + 1); ++i) {
 			ss << 0;
 		}
 		return ss.str();
@@ -471,7 +639,7 @@ private:
 		for (unsigned i = indexStart; i < indexEnd; ++i) {
 			bool noID = false;
 			for (unsigned j = 0; j < m_filter.getKmerSize(); ++j) {
-				if(hitsPattern[i][j] == id){
+				if (hitsPattern[i][j] == id) {
 					noID = true;
 					break;
 				}
@@ -610,85 +778,148 @@ private:
 		}
 	}
 
+	unsigned getThreshold(double confidence, unsigned trials, double p) {
+		unsigned threshold = 0;
+		binomial quiz(trials, p);
+		double probFP = pdf(quiz, threshold);
+		while (probFP < confidence) {
+			threshold++;
+			probFP += pdf(quiz, threshold);
+			cerr << probFP << " " << threshold << endl;
+		}
+		return threshold;
+	}
+
 	/*
-	 * Returns the number of hits
+	 * First-pass evaluation algorithm, checks to see if it is viable candidate,
+	 * fills part of vector for later ID lookup for ID rank in data vector
 	 */
-	inline unsigned evaluateRead(const string &seq,
-			google::dense_hash_map<ID, unsigned> &hitCounts) {
-		unsigned nonZeroCount = 0;
+	//TODO add ID rank vector
+	inline bool fastEval(const string &seq) {
+		//look through reads increasing count until threshold
+		unsigned count = 0;
+		unsigned antiCount = 0;
+		unsigned threshold = opt::score
+				* (seq.length() - m_filter.getKmerSize() + 1);
+		unsigned antiThreshold = (1.0 - opt::score)
+				* (seq.length() - m_filter.getKmerSize() + 1);
 		if (m_filter.getSeedValues().empty()) {
-			if (m_filter.getType() == MIBloomFilter<ID>::MIBFMVAL) {
-				for (ntHashIterator itr(seq, m_filter.getHashNum(),
-						m_filter.getKmerSize()); itr != itr.end(); ++itr) {
-					unsigned misses = 0;
-					ID id = m_filter.at(*itr, opt::allowMisses, misses);
-					if (id != 0) {
-						if (id != opt::COLLI) {
-							if (hitCounts.find(id) != hitCounts.end()) {
-								++hitCounts[id];
-							} else {
-								hitCounts[id] = 1;
-							}
-						}
-						++nonZeroCount;
+			for (ntHashIterator itr(seq, m_filter.getHashNum(),
+					m_filter.getKmerSize()); itr != itr.end(); ++itr) {
+				if (m_filter.contains(*itr)) {
+					++count;
+					if (count >= threshold) {
+						return true;
+					}
+				} else {
+					++antiCount;
+					if (antiThreshold < antiCount) {
+						return false;
 					}
 				}
-			} else {
-				for (ntHashIterator itr(seq, m_filter.getHashNum(),
-						m_filter.getKmerSize()); itr != itr.end(); ++itr) {
-					unsigned misses = 0;
-					vector<ID> ids = m_filter.at(*itr, m_colliIDs,
-							opt::allowMisses, misses);
-					nonZeroCount += ids.size() > 0;
-					for (unsigned i = 0; i < ids.size(); ++i) {
-						ID id = ids[i];
-						if (hitCounts.find(id) == hitCounts.end()) {
-							hitCounts[id] = 0;
-						}
-						hitCounts[id] += ids.size() > 0;
-					}
-				}
+
 			}
 		} else {
 			RollingHashIterator itr(seq, m_filter.getKmerSize(),
 					m_filter.getSeedValues());
-			if (m_filter.getType() == MIBloomFilter<ID>::MIBFMVAL) {
-				while (itr != itr.end()) {
-					ID id = m_filter.atBest(*itr, opt::allowMisses);
-					if (id != 0) {
-						if (id != opt::COLLI) {
-							if (hitCounts.find(id) != hitCounts.end()) {
-								++hitCounts[id];
-							} else {
-								hitCounts[id] = 1;
-							}
-						}
-						++nonZeroCount;
+			while (itr != itr.end()) {
+				unsigned misses = 0;
+				if (m_filter.contains(*itr, opt::allowMisses, misses).size()) {
+					++count;
+					if (count >= threshold) {
+						return true;
 					}
-					++itr;
-				}
-			} else {
-				while (itr != itr.end()) {
-					unsigned misses = 0;
-					vector<ID> ids = m_filter.at(*itr, m_colliIDs,
-							opt::allowMisses, misses);
-					nonZeroCount += misses == 0;
-					nonZeroCount += ids.size() > 0;
-					for (unsigned i = 0; i < ids.size(); ++i) {
-						ID id = ids[i];
-						if (hitCounts.find(id) == hitCounts.end()) {
-							hitCounts[id] = 0;
-						}
-						++hitCounts[id];
-//						hitCounts[id] += misses == 0;
+				} else {
+					++antiCount;
+					if (antiThreshold < antiCount) {
+						return false;
 					}
-					++itr;
 				}
-//				nonZeroCount /= 2;
+				++itr;
 			}
 		}
-		return nonZeroCount;
+		return false;
 	}
+
+//	/*
+//	 * Returns the number of hits
+//	 */
+//	inline unsigned evaluateRead(const string &seq,
+//			google::dense_hash_map<ID, unsigned> &hitCounts) {
+//		unsigned nonZeroCount = 0;
+//		if (m_filter.getSeedValues().empty()) {
+//			if (m_filter.getType() == MIBloomFilter<ID>::MIBFMVAL) {
+//				for (ntHashIterator itr(seq, m_filter.getHashNum(),
+//						m_filter.getKmerSize()); itr != itr.end(); ++itr) {
+//					unsigned misses = 0;
+//					ID id = m_filter.at(*itr, opt::allowMisses, misses);
+//					if (id != 0) {
+//						if (id != opt::COLLI) {
+//							if (hitCounts.find(id) != hitCounts.end()) {
+//								++hitCounts[id];
+//							} else {
+//								hitCounts[id] = 1;
+//							}
+//						}
+//						++nonZeroCount;
+//					}
+//				}
+//			} else {
+//				for (ntHashIterator itr(seq, m_filter.getHashNum(),
+//						m_filter.getKmerSize()); itr != itr.end(); ++itr) {
+//					unsigned misses = 0;
+//					vector<ID> ids = m_filter.at(*itr, m_colliIDs,
+//							opt::allowMisses, misses);
+//					nonZeroCount += ids.size() > 0;
+//					for (unsigned i = 0; i < ids.size(); ++i) {
+//						ID id = ids[i];
+//						if (hitCounts.find(id) == hitCounts.end()) {
+//							hitCounts[id] = 0;
+//						}
+//						hitCounts[id] += ids.size() > 0;
+//					}
+//				}
+//			}
+//		} else {
+//			RollingHashIterator itr(seq, m_filter.getKmerSize(),
+//					m_filter.getSeedValues());
+//			if (m_filter.getType() == MIBloomFilter<ID>::MIBFMVAL) {
+//				while (itr != itr.end()) {
+//					ID id = m_filter.atBest(*itr, opt::allowMisses);
+//					if (id != 0) {
+//						if (id != opt::COLLI) {
+//							if (hitCounts.find(id) != hitCounts.end()) {
+//								++hitCounts[id];
+//							} else {
+//								hitCounts[id] = 1;
+//							}
+//						}
+//						++nonZeroCount;
+//					}
+//					++itr;
+//				}
+//			} else {
+//				while (itr != itr.end()) {
+//					unsigned misses = 0;
+//					vector<ID> ids = m_filter.at(*itr, m_colliIDs,
+//							opt::allowMisses, misses);
+//					nonZeroCount += misses == 0;
+//					nonZeroCount += ids.size() > 0;
+//					for (unsigned i = 0; i < ids.size(); ++i) {
+//						ID id = ids[i];
+//						if (hitCounts.find(id) == hitCounts.end()) {
+//							hitCounts[id] = 0;
+//						}
+//						++hitCounts[id];
+////						hitCounts[id] += misses == 0;
+//					}
+//					++itr;
+//				}
+////				nonZeroCount /= 2;
+//			}
+//		}
+//		return nonZeroCount;
+//	}
 
 	/*
 	 * Returns a vector of hits to a specific ID
