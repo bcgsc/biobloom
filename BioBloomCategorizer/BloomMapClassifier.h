@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <functional>
 #include <boost/math/distributions/binomial.hpp>
+#include <algorithm>
 
 using namespace std;
 using boost::math::binomial;
@@ -50,6 +51,8 @@ private:
 	vector<size_t> m_countTable;
 	vector<double> m_freqTable;
 	google::dense_hash_map<string, ID> m_idToIndex;
+
+	vector<double> m_perFrameProb;
 
 	double m_baseProb;
 
@@ -367,26 +370,18 @@ private:
 		cerr << vectToStr(hitsVector, hitsPattern, seq);
 	}
 
-	inline ID evalRead(vector<vector<ID> > hitsPattern, unsigned evaluatedSeeds,
-			double &pVal) {
+	inline ID evalRead(const vector<vector<ID> > &hitsPattern,
+			unsigned evaluatedSeeds, double &pVal, vector<ID> &signifResults,
+			vector<double> &signifVal) {
 		google::dense_hash_map<ID, unsigned> counts;
 		counts.set_empty_key(opt::EMPTY);
-		google::dense_hash_map<ID, unsigned> countsTotal;
-		countsTotal.set_empty_key(opt::EMPTY);
-		for (vector<vector<ID> >::iterator i = hitsPattern.begin();
+		for (vector<vector<ID> >::const_iterator i = hitsPattern.begin();
 				i != hitsPattern.end(); i++) {
-			//to determine if fixed
+			//to determine if already added for this frame
 			google::dense_hash_set<ID> tempIDs;
 			tempIDs.set_empty_key(opt::EMPTY);
-			for (vector<ID>::iterator j = i->begin(); j != i->end(); j++) {
+			for (vector<ID>::const_iterator j = i->begin(); j != i->end(); j++) {
 				if (*j != opt::EMPTY) {
-					google::dense_hash_map<ID, unsigned>::iterator tempItrTotal =
-							countsTotal.find(*j);
-					if (tempItrTotal == countsTotal.end()) {
-						countsTotal[*j] = 1;
-					} else {
-						++(tempItrTotal->second);
-					}
 					if (tempIDs.find(*j) == tempIDs.end()) {
 						google::dense_hash_map<ID, unsigned>::iterator tempItr =
 								counts.find(*j);
@@ -403,119 +398,89 @@ private:
 
 		ID maxID = opt::EMPTY;
 		unsigned maxCount = 0;
-		double cumPVal = 1.0;
-		//compute cdf for each
+		double minVal = 1.0;
+		double adjustedPValThreshold = 1.0
+				- pow(1.0 - opt::score, 1.0 / double(m_fullIDs.size() - 1));
+		pVal = 1.0;
 		for (google::dense_hash_map<ID, unsigned>::const_iterator itr =
-				counts.begin(); itr != counts.end(); itr++) {
-			double prob = calcProbSingleFrame(m_freqTable[itr->first]);
-//			cout << prob << endl;
-			binomial bin(evaluatedSeeds, prob);
-			double cumProb = cdf(bin, itr->second);
-//			cout << cumProb << endl;
-//			double tempVal = 1.0 - cumProb;
-			if (countsTotal[itr->first] > maxCount) {
-				maxCount = countsTotal[itr->first];
+				counts.begin(); itr != counts.end(); itr++){
+			//TODO use complement cdf? so I don't have to subtract?
+			//TODO check maximum numerical precision on perFrameProb
+			binomial bin(evaluatedSeeds, 1.0 - m_perFrameProb[itr->first]);
+			double cumProb = cdf(bin, evaluatedSeeds - itr->second);
+			if (adjustedPValThreshold > cumProb) {
+				signifVal.push_back(cumProb*(m_fullIDs.size() - 1));
+				signifResults.push_back(itr->first);
+			}
+			if(minVal == cumProb && counts[itr->first] > maxCount) {
+				maxCount = counts[itr->first];
 				maxID = itr->first;
 			}
-			cumPVal *= cumProb;
+			if (minVal > cumProb) {
+				maxCount = counts[itr->first];
+				maxID = itr->first;
+				minVal = cumProb;
+			}
 		}
-		pVal = cumPVal;
-		if (pVal < opt::score) {
+		//sidak method - TODO - leads to precision errors
+//		pVal = 1.0 - pow(1.0-minVal, m_fullIDs.size() - 1);
+		//bonferroni
+		pVal = minVal*(m_fullIDs.size() - 1);
+		pVal = pVal > 1 ? 1.0 : pVal;
+
+		if (pVal <= opt::score) {
 			return maxID;
 		}
 		return opt::EMPTY;
 	}
 
+//	//taken from here: https://gasstationwithoutpumps.wordpress.com/2014/05/06/sum-of-probabilities-in-log-prob-space/
+//	inline double log1pexp(double x) {
+//		return x < -709.089565713 ? 0. : log1p(exp(x));
+//	}
+//	inline double sum_log_prob(double a, double b) {
+//		return a > b ? a + log1pexp(b - a) : b + log1pexp(a - b);
+//	}
+
 	//TODO not optimized
 	inline double calcProbSingleFrame(double freq) {
-//		cout << "start" << opt::allowMisses << endl;
 		double occupancy = double(m_filter.getPop()) / double(m_filter.size());
 		double probTotal = 0.0;
 		for (unsigned i = 0; i <= opt::allowMisses; i++) {
-			for (unsigned j = 0; j <= i; j++) {
-//				cout << "start" << i << ' ' << j << endl;
-				double prob = nChoosek(m_filter.getHashNum(), j);
-//				cout << prob << endl;
-				prob *= pow(occupancy, m_filter.getHashNum() - j);
-//				cout << prob << endl;
-				prob *= pow(1.0 - occupancy, j);
-//				cout << prob << endl;
-				prob *= 1.0 - pow(1.0 - freq, m_filter.getHashNum() - j);
-//				cout << prob << endl;
+				double prob = nChoosek(m_filter.getHashNum(), i);
+				prob *= pow(occupancy, m_filter.getHashNum() - i);
+				prob *= pow(1.0 - occupancy, i);
+				prob *= (1.0 - pow(1.0 - freq, m_filter.getHashNum() - i));
 				probTotal += prob;
-//				cout << probTotal << endl;
-			}
 		}
-//		cout << "~" << endl;
 		return probTotal;
 	}
 
+	inline unsigned getMinCount(unsigned length, double eventProb) {
+		binomial bin(length, 1.0 - eventProb);
+		double criticalScore = 1.0
+				- pow(1.0 - opt::score, 1.0 / double(m_fullIDs.size() - 1));
+		unsigned i = 0;
+		for (; i < length; ++i) {
+			double cumProb = cdf(bin, length - i);
+			if (criticalScore >= cumProb) {
+				break;
+			}
+		}
+		return(i);
+	}
+
 	//TODO NOT OPTIMIZED
-	inline ID evalOld(vector<vector<ID> > hitsPattern,
+	inline ID evalReadOld(const vector<vector<ID> > &hitsPattern,
 			unsigned evaluatedSeeds, double &pVal) {
-		google::dense_hash_map<ID, unsigned> counts;
-		counts.set_empty_key(opt::EMPTY);
-		google::dense_hash_map<ID, unsigned> countsTotal;
-		countsTotal.set_empty_key(opt::EMPTY);
-		for (vector<vector<ID> >::iterator i = hitsPattern.begin();
-				i != hitsPattern.end(); i++) {
-			//to determine if fixed
-			google::dense_hash_set<ID> tempIDs;
-			tempIDs.set_empty_key(opt::EMPTY);
-			for (vector<ID>::iterator j = i->begin(); j != i->end(); j++) {
-				if (*j != opt::EMPTY) {
-					google::dense_hash_map<ID, unsigned>::iterator tempItrTotal =
-							countsTotal.find(*j);
-					if (tempItrTotal == countsTotal.end()) {
-						countsTotal[*j] = 1;
-					} else {
-						++(tempItrTotal->second);
-					}
-					if (tempIDs.find(*j) == tempIDs.end()) {
-						google::dense_hash_map<ID, unsigned>::iterator tempItr =
-								counts.find(*j);
-						if (tempItr == counts.end()) {
-							counts[*j] = 1;
-						} else {
-							++(tempItr->second);
-						}
-						tempIDs.insert(*j);
-					}
-				}
-			}
+		if (hitsPattern.size() > 0) {
+			binomial bin(evaluatedSeeds, m_baseProb);
+			double cumProb = cdf(bin, hitsPattern.size());
+			pVal = 1.0 - cumProb;
+		} else {
+			pVal = 1.0;
 		}
-//		double maxProb = 0;
-		ID maxID = opt::EMPTY;
-		unsigned maxCount = 0;
-		binomial bin2(evaluatedSeeds, m_baseProb);
-		double cumProb2 = cdf(bin2, hitsPattern.size());
-		//compute cdf for each
-		for (google::dense_hash_map<ID, unsigned>::const_iterator itr =
-				counts.begin(); itr != counts.end(); itr++) {
-			double prob = 1.0
-					- pow(1.0 - m_freqTable[itr->first], m_filter.getHashNum());
-//			prob *= m_baseProb;
-//			cerr << itr->first << " " << m_countTable[itr->first] << " " << m_freqTable[itr->first] << endl;
-			binomial bin(hitsPattern.size(), prob);
-			double cumProb = cdf(bin, itr->second);
-//			cout << itr->first << "\t" << itr->second << "\t" << prob << "\t" << m_baseProb << "\t"
-//					<< m_freqTable[itr->first] << "\t" << cumProb << endl;
-//			cout << prob << " " << itr->second << " " << 1.0 - m_freqTable[itr->first] << " "
-//					<< pow(1.0 - m_freqTable[itr->first], m_filter.getHashNum())
-//					<< endl;
-			double tempVal = 1.0 - cumProb * cumProb2;
-			if (tempVal < opt::score) {
-//				maxProb = prob;
-				if(countsTotal[itr->first] > maxCount) {
-					maxCount = countsTotal[itr->first];
-					maxID = itr->first;
-				}
-			}
-			if(pVal > tempVal){
-				pVal = tempVal;
-			}
-		}
-		return maxID;
+		return opt::EMPTY;
 	}
 
 	inline ID getBest(vector<vector<ID> > hitsPattern) {
@@ -553,13 +518,10 @@ private:
 
 	inline void printVerbose(const string &header, const string &seq, ID value) {
 		unsigned evaluatedSeeds = 0;
-		unsigned rmCount = 0;
-		double probFP = 0.0;
 		vector<vector<ID> > hitsPattern;
 		vector<unsigned> sig = getMatchSignature(seq, evaluatedSeeds,
 				hitsPattern);
-		cout << header << ' ' << evaluatedSeeds << ' ' << rmCount << ' '
-				<< (evaluatedSeeds * m_filter.getFPR()) << ' ' << probFP << ' '
+		cout << header << ' ' << evaluatedSeeds << ' '
 				<< base64_chars[value % 64] << ' ' << value << endl;
 		cout << seq << endl;
 		cout << vectToStr(sig, seq) << endl;

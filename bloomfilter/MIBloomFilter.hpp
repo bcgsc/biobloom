@@ -573,6 +573,16 @@ public:
 		return m_hashNum;
 	}
 
+//	/*
+//	 * computes id frequency based on
+//	 */
+//	inline vector<double> getFreqTable(){
+//		vector<double> freqTable;
+//		for(size_t i = 0; i<m_dSize; ++i){
+//			if(m_dSize)
+//		}
+//	}
+
 	/*
 	 * Return FPR based on popcount
 	 */

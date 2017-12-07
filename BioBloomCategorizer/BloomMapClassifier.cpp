@@ -12,6 +12,7 @@
 #include <iostream>
 #include <zlib.h>
 #include "Common/kseq.h"
+#include <boost/math/distributions/chi_squared.hpp>
 //KSEQ_INIT(gzFile, gzread)
 
 BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
@@ -55,7 +56,7 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		}
 		getline(idFH, line);
 	}
-	m_fullIDs = vector<string>(ids.size() + 3); //first element will be empty
+	m_fullIDs = vector<string>(ids.size() + 1); //first element will be empty
 	m_fullIDs[0] = "unknown"; //set first element to unknown
 	m_idToIndex.set_empty_key("");
 	for (google::dense_hash_map<ID, string>::const_iterator itr = ids.begin();
@@ -100,9 +101,13 @@ BloomMapClassifier::BloomMapClassifier(const string &filterFile) :
 		sum += *itr;
 	}
 	m_freqTable = vector<double>(m_fullIDs.size(), 0.0);
+	m_perFrameProb = vector<double>(m_fullIDs.size(), 0.0);
 	for (size_t i = 0;
 			i < m_countTable.size(); ++i) {
 		m_freqTable[i] = double(m_countTable[i])/double(sum);
+		m_perFrameProb[i] = calcProbSingleFrame(m_freqTable[i]);
+//		cerr << i << "\t" << m_freqTable[i] << "\t" << m_perFrameProb[i] << "\t"
+//				<< getMinCount(91, m_perFrameProb[i]) << endl;
 	}
 	if(opt::allowMisses > 0 && m_filter.getSeedValues().size()  == 0)
 	{
@@ -154,34 +159,76 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 					cerr << "Currently Reading Read Number: " << m_numRead
 							<< endl;
 				}
-				//first pass filtering - Determine if it is a match
-//				bool firstPass = fastEval(sequence);
-//				if(firstPass){
-//					//Second pass filtering - If it seems like a match determine best hit
-//					//TODO:Optimize
-//					vector<vector<ID> > hitsPattern;
-//					unsigned evaluatedSeeds = 0;
-//					getMatchSignature(sequence, evaluatedSeeds, hitsPattern);
-//					idIndex = getBest(hitsPattern);
-//					resSummary.updateSummaryData(idIndex);
-//				}
 				vector<vector<ID> > hitsPattern;
 				unsigned evaluatedSeeds = 0;
 				getMatchSignature(sequence, evaluatedSeeds, hitsPattern);
 				double pVal = 1.0;
-				ID idIndex = evalRead(hitsPattern, evaluatedSeeds, pVal);
+				vector<ID> signifResults;
+				vector<double> signifValues;
+				ID idIndex = evalRead(hitsPattern, evaluatedSeeds, pVal,
+						signifResults, signifValues);
 				resSummary.updateSummaryData(idIndex);
 				const string &fullID =
 						idIndex == opt::EMPTY ? NO_MATCH :
 						idIndex == resSummary.getMultiMatchIndex() ?
 								MULTI_MATCH : m_fullIDs.at(idIndex);
-				cout << pVal << endl;
-				if (name != fullID) {
-//					cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
-//							<< "\tCorrectName:" << name << "\tPredictedID:"
-//							<< m_idToIndex[fullID] << "\tPredictedName:" << fullID
-//							<< "\tCorrectID:" << base64_chars[m_idToIndex[name] % 64] << endl;
-//					printVerbose(name, sequence, idIndex);
+				//debugging
+//#pragma omp critical(cout)
+//				if (name == "noMatch") {
+//					cout << pVal << "\t" << "F" << "\t" << name << "\t"
+//							<< fullID << "\t" << probMulti << endl;
+//				} else {
+//					cout << pVal << "\t" << "T" << "\t" << name << "\t"
+//							<< fullID << "\t" << probMulti << endl;
+//				}
+				//TODO make into parameter
+				double threshold = 0.05;
+				bool match = false;
+				unsigned count = 0;
+				boost::math::chi_squared dist(evaluatedSeeds - 1);
+				for (unsigned i = 0; i < signifResults.size(); ++i) {
+					//TODO resolve precision error better
+					if (pVal == 0) {
+						if (name == m_fullIDs.at(signifResults[i])) {
+							match = true;
+						}
+						++count;
+						continue;
+					}
+					if (2 * (log(signifValues[i]) - log(pVal)) < 0) {
+						cout << log(signifValues[i]) << "\t" << log(pVal)
+								<< endl;
+					}
+					double prob = cdf(dist,
+							(2 * (log(signifValues[i]) - log(pVal))));
+					if (prob < threshold) {
+						if(name == m_fullIDs.at(signifResults[i])) {
+							match = true;
+						}
+						++count;
+					}
+				}
+#pragma omp critical(cout)
+				if (!match) {
+					cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
+							<< "\tCorrectName:" << name << "\tPredictedID:"
+							<< m_idToIndex[fullID] << "\tPredictedName:"
+							<< fullID << "\tCorrectID:"
+							<< base64_chars[m_idToIndex[name] % 64] << "\tpVal:"
+							<< log10(pVal) * (-10.0) << "\t" << endl;
+					if (pVal != 0) {
+						for (unsigned i = 0; i < signifResults.size(); ++i) {
+							double prob = cdf(dist,
+									(2 * (log(signifValues[i]) - log(pVal))));
+								cout << signifResults[i] << ","
+										<< m_fullIDs[signifResults[i]] << ","
+										<< base64_chars[signifResults[i] % 64]
+										<< "," << prob << ","
+										<< log10(signifValues[i]) * (-10.0) << "\t";
+						}
+					}
+					cout << endl;
+					printVerbose(name, sequence, idIndex);
 				}
 
 				if (idIndex != opt::EMPTY) {
