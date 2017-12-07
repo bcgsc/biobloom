@@ -182,54 +182,54 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 //							<< fullID << "\t" << probMulti << endl;
 //				}
 				//TODO make into parameter
-				double threshold = 0.05;
-				bool match = false;
-				unsigned count = 0;
-				boost::math::chi_squared dist(evaluatedSeeds - 1);
-				for (unsigned i = 0; i < signifResults.size(); ++i) {
-					//TODO resolve precision error better
-					if (pVal == 0) {
-						if (name == m_fullIDs.at(signifResults[i])) {
-							match = true;
-						}
-						++count;
-						continue;
-					}
-					if (2 * (log(signifValues[i]) - log(pVal)) < 0) {
-						cout << log(signifValues[i]) << "\t" << log(pVal)
-								<< endl;
-					}
-					double prob = cdf(dist,
-							(2 * (log(signifValues[i]) - log(pVal))));
-					if (prob < threshold) {
-						if(name == m_fullIDs.at(signifResults[i])) {
-							match = true;
-						}
-						++count;
-					}
-				}
-#pragma omp critical(cout)
-				if (!match) {
-					cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
-							<< "\tCorrectName:" << name << "\tPredictedID:"
-							<< m_idToIndex[fullID] << "\tPredictedName:"
-							<< fullID << "\tCorrectID:"
-							<< base64_chars[m_idToIndex[name] % 64] << "\tpVal:"
-							<< log10(pVal) * (-10.0) << "\t" << endl;
-					if (pVal != 0) {
-						for (unsigned i = 0; i < signifResults.size(); ++i) {
-							double prob = cdf(dist,
-									(2 * (log(signifValues[i]) - log(pVal))));
-								cout << signifResults[i] << ","
-										<< m_fullIDs[signifResults[i]] << ","
-										<< base64_chars[signifResults[i] % 64]
-										<< "," << prob << ","
-										<< log10(signifValues[i]) * (-10.0) << "\t";
-						}
-					}
-					cout << endl;
-					printVerbose(name, sequence, idIndex);
-				}
+//				double threshold = 0.05;
+//				bool match = false;
+//				unsigned count = 0;
+//				boost::math::chi_squared dist(evaluatedSeeds - 1);
+//				for (unsigned i = 0; i < signifResults.size(); ++i) {
+//					//TODO resolve precision error better
+//					if (pVal == 0) {
+//						if (name == m_fullIDs.at(signifResults[i])) {
+//							match = true;
+//						}
+//						++count;
+//						continue;
+//					}
+//					if (2 * (log(signifValues[i]) - log(pVal)) < 0) {
+//						cout << log(signifValues[i]) << "\t" << log(pVal)
+//								<< endl;
+//					}
+//					double prob = cdf(dist,
+//							(2 * (log(signifValues[i]) - log(pVal))));
+//					if (prob < threshold) {
+//						if(name == m_fullIDs.at(signifResults[i])) {
+//							match = true;
+//						}
+//						++count;
+//					}
+//				}
+//#pragma omp critical(cout)
+//				if (!match) {
+//					cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
+//							<< "\tCorrectName:" << name << "\tPredictedID:"
+//							<< m_idToIndex[fullID] << "\tPredictedName:"
+//							<< fullID << "\tCorrectID:"
+//							<< base64_chars[m_idToIndex[name] % 64] << "\tpVal:"
+//							<< log10(pVal) * (-10.0) << "\t" << endl;
+//					if (pVal != 0) {
+//						for (unsigned i = 0; i < signifResults.size(); ++i) {
+//							double prob = cdf(dist,
+//									(2 * (log(signifValues[i]) - log(pVal))));
+//								cout << signifResults[i] << ","
+//										<< m_fullIDs[signifResults[i]] << ","
+//										<< base64_chars[signifResults[i] % 64]
+//										<< "," << prob << ","
+//										<< log10(signifValues[i]) * (-10.0) << "\t";
+//						}
+//					}
+//					cout << endl;
+//					printVerbose(name, sequence, idIndex);
+//				}
 
 				if (idIndex != opt::EMPTY) {
 					if (opt::outputType == "fq") {
