@@ -98,24 +98,33 @@ private:
 		if (bloomMap.getSeedValues().empty()) {
 			for (ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
 					itr != itr.end(); ++itr) {
-				if (max == opt::hashNum && !temp.insertAndCheck(*itr)
-						&& !bloomMap.insert(*itr, value, indexCount, max,
+				//check if already inserted at some point in time
+				if (!temp.insertAndCheck(*itr)) {
+					if (max == opt::hashNum) {
+						//Last iteration check if value was obliterated
+						if (!bloomMap.insert(*itr, value, indexCount, max,
 								&mat)) {
-					++m_failedInsert;
-				} else {
-					bloomMap.insert(*itr, value, indexCount, max);
+							++m_failedInsert;
+						}
+					} else {
+						bloomMap.insert(*itr, value, indexCount, max);
+					}
 				}
 			}
 		} else {
-
 			for (RollingHashIterator itr(seq, m_kmerSize,
 					bloomMap.getSeedValues()); itr != itr.end(); ++itr) {
-				if (max == opt::hashNum && !temp.insertAndCheck(*itr)
-						&& !bloomMap.insert(*itr, value, indexCount, max,
+				//check if already inserted at some point in time
+				if (!temp.insertAndCheck(*itr)) {
+					if (max == opt::hashNum) {
+						//Last iteration check if value was obliterated
+						if (!bloomMap.insert(*itr, value, indexCount, max,
 								&mat)) {
-					++m_failedInsert;
-				} else {
-					bloomMap.insert(*itr, value, indexCount, max);
+							++m_failedInsert;
+						}
+					} else {
+						bloomMap.insert(*itr, value, indexCount, max);
+					}
 				}
 			}
 		}

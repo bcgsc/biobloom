@@ -154,9 +154,11 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 		if (opt::colliAnalysis) {
 			vector<size_t> indexCounts(m_fileNames.size(), 0);
 			Matrix colliMat(m_fileNames.size(), m_fileNames.size(), 0);
+			//j is the number of matches for that iteration possible
 			for (unsigned j = 1; j <= opt::hashNum; ++j) {
 #pragma omp parallel for
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+					//keeps track if sequence was already added
 					BloomFilter tempBF(bloomMapBV->size(), opt::hashNum,
 							opt::kmerSize);
 					gzFile fp;
