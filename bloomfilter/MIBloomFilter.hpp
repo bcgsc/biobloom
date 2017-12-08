@@ -325,9 +325,15 @@ public:
 				someValueSet = true;
 				++count;
 				++indexCount[value - 1];
+				if (mat != NULL) {
+					++(*mat)(value - 1, value - 1);
+				}
 			} else if (oldVal == value) {
 				someValueSet = true;
 				++count;
+				if (mat != NULL) {
+					++(*mat)(value - 1, value - 1);
+				}
 			} else if (mat != NULL) {
 				++(*mat)(oldVal - 1, value - 1);
 			}
