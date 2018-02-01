@@ -109,7 +109,7 @@ void printHelpDialog()
 	"      --chastity         Discard and do not evaluate unchaste reads.\n"
 	"      --no-chastity      Do not discard unchaste reads. [default]\n"
 	"  -l, --file_list=N      A file of list of file pairs to run in parallel.\n"
-	"  -v  --version          Display version information.\n"
+	"  -v, --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
 	"  -I, --interval         the interval to report file processing status [10000000]\n"
 	"Advanced options:\n"
@@ -128,6 +128,7 @@ void printHelpDialog()
 	"  -d, --stdout_filter    Outputs all matching reads to stdout for the first\n"
 	"                         filter listed by -f. Reads are outputed in fastq,\n"
 	"                         and if paired will output will be interlaced.\n"
+	"  -n, --inverse          Inverts the output of -d (everything but first filter).\n"
 	"Options for multi index bloom filters:\n"
 	"  -D, --delta            Max Number of matches between second best hit and best\n"
 	"                         hit before it is considered significantly matching to\n"
@@ -187,13 +188,14 @@ int main(int argc, char *argv[])
 		"min_hit_only", no_argument, NULL, 'o' }, {
 		"ordered", no_argument, NULL, 'c' }, {
 		"stdout_filter", required_argument, NULL, 'd' }, {
+		"inverse", required_argument, NULL, 'n' }, {
 		"with_score", no_argument, NULL, 'w' }, {
 		NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:r:t:cdiwI:a:D:G:", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:r:t:cdiwI:a:D:G:n:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -335,6 +337,10 @@ int main(int argc, char *argv[])
 		}
 		case 'd': {
 			stdout = true;
+			break;
+		}
+		case 'n': {
+			opt::inverse = true;
 			break;
 		}
 		case 'w': {

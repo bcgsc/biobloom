@@ -59,8 +59,10 @@ public:
 			const vector<string> &inputFiles2, const string &outputType);
 
 	void setOrderedFilter() {
-		if(m_mode == BESTHIT){
-			cerr << "Best Hit mode and Ordered mode detected. Not yet supported." << endl;
+		if (m_mode == BESTHIT) {
+			cerr
+					<< "Best Hit mode and Ordered mode detected. Not yet supported."
+					<< endl;
 			exit(1);
 		}
 		m_mode = ORDERED;
@@ -114,14 +116,22 @@ private:
 			vector<unsigned> &hits1, vector<unsigned> &hits2);
 
 	inline void printSingle(const FaRec &rec, double score, unsigned filterID) {
-		if (m_stdout && filterID == 0) {
-			if (m_mode == BESTHIT) {
+		if (m_stdout) {
+			if (filterID == 0) {
+				if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
-				{
-					cout << "@" << rec.header << " " << score << "\n" << rec.seq
-							<< "\n+\n" << rec.qual << "\n";
+					{
+						cout << "@" << rec.header << " " << score << "\n"
+								<< rec.seq << "\n+\n" << rec.qual << "\n";
+					}
+				} else {
+#pragma omp critical(cout)
+					{
+						cout << "@" << rec.header << "\n" << rec.seq << "\n+\n"
+								<< rec.qual << "\n";
+					}
 				}
-			} else {
+			} else if (opt::inverse) {
 #pragma omp critical(cout)
 				{
 					cout << "@" << rec.header << "\n" << rec.seq << "\n+\n"
@@ -133,7 +143,8 @@ private:
 
 	inline void printSingleToFile(unsigned outputFileName, const FaRec &rec,
 			vector<Dynamicofstream*> &outputFiles, string const &outputType,
-			double score, vector<double> &scores, const ResultsManager<unsigned> &rm) {
+			double score, vector<double> &scores,
+			const ResultsManager<unsigned> &rm) {
 		if (outputType == "fa") {
 			if (m_mode == SCORES && outputFileName == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
@@ -199,22 +210,32 @@ private:
 
 	inline void printPair(const FaRec &rec1, const FaRec &rec2, double score1,
 			double score2, unsigned filterID) {
-		if (m_stdout && filterID == 0) {
-			if (m_mode == BESTHIT) {
+		if (m_stdout) {
+			if (filterID == 0) {
+				if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
-				{
-					cout << "@" << rec1.header << " " << score1 << "\n"
-							<< rec1.seq << "\n+\n" << rec1.qual << "\n";
-					cout << "@" << rec2.header << " " << score2 << "\n"
-							<< rec2.seq << "\n+\n" << rec2.qual << "\n";
+					{
+						cout << "@" << rec1.header << " " << score1 << "\n"
+								<< rec1.seq << "\n+\n" << rec1.qual << "\n";
+						cout << "@" << rec2.header << " " << score2 << "\n"
+								<< rec2.seq << "\n+\n" << rec2.qual << "\n";
+					}
+				} else {
+#pragma omp critical(cout)
+					{
+						cout << "@" << rec1.header << "\n" << rec1.seq
+								<< "\n+\n" << rec1.qual << "\n";
+						cout << "@" << rec2.header << "\n" << rec2.seq
+								<< "\n+\n" << rec2.qual << "\n";
+					}
 				}
-			} else {
+			} else if (opt::inverse) {
 #pragma omp critical(cout)
 				{
-					cout << "@" << rec1.header << "\n" << rec1.seq << "\n+\n"
-							<< rec1.qual << "\n";
-					cout << "@" << rec2.header << "\n" << rec2.seq << "\n+\n"
-							<< rec2.qual << "\n";
+					cout << "@" << rec1.header << "\n" << rec1.seq
+							<< "\n+\n" << rec1.qual << "\n";
+					cout << "@" << rec2.header << "\n" << rec2.seq
+							<< "\n+\n" << rec2.qual << "\n";
 				}
 			}
 		}
@@ -222,16 +243,28 @@ private:
 
 	inline void printPair(const kseq_t * rec1, const kseq_t * rec2,
 			double score1, double score2, unsigned filterID) {
-		if (m_stdout && filterID == 0) {
-			if (m_mode == BESTHIT) {
+		if (m_stdout) {
+			if (filterID == 0) {
+				if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
-				{
-					cout << "@" << rec1->name.s << " " << score1 << "\n"
-							<< rec1->seq.s << "\n+\n" << rec1->qual.s << "\n";
-					cout << "@" << rec2->name.s << " " << score2 << "\n"
-							<< rec2->seq.s << "\n+\n" << rec2->qual.s << "\n";
+					{
+						cout << "@" << rec1->name.s << " " << score1 << "\n"
+								<< rec1->seq.s << "\n+\n" << rec1->qual.s
+								<< "\n";
+						cout << "@" << rec2->name.s << " " << score2 << "\n"
+								<< rec2->seq.s << "\n+\n" << rec2->qual.s
+								<< "\n";
+					}
+				} else {
+#pragma omp critical(cout)
+					{
+						cout << "@" << rec1->name.s << "\n" << rec1->seq.s
+								<< "\n+\n" << rec1->qual.s << "\n";
+						cout << "@" << rec2->name.s << "\n" << rec2->seq.s
+								<< "\n+\n" << rec2->qual.s << "\n";
+					}
 				}
-			} else {
+			} else if (opt::inverse) {
 #pragma omp critical(cout)
 				{
 					cout << "@" << rec1->name.s << "\n" << rec1->seq.s
@@ -249,7 +282,8 @@ private:
 			double score1, double score2, vector<double> &scores1,
 			vector<double> &scores2, const ResultsManager<unsigned> &rm) {
 		if (outputType == "fa") {
-			if (m_mode == SCORES && outputFileIndex == rm.getMultiMatchIndex()) {
+			if (m_mode == SCORES
+					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles1[outputFileIndex]) << ">" << rec1.header;
@@ -303,7 +337,8 @@ private:
 				}
 			}
 		} else {
-			if (m_mode == SCORES && outputFileIndex == rm.getMultiMatchIndex()) {
+			if (m_mode == SCORES
+					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles1[outputFileIndex]) << "@" << rec1.header;
@@ -367,7 +402,8 @@ private:
 			double score1, double score2, vector<double> &scores1,
 			vector<double> &scores2, const ResultsManager<unsigned> &rm) {
 		if (outputType == "fa") {
-			if (m_mode == SCORES && outputFileIndex == rm.getMultiMatchIndex()) {
+			if (m_mode == SCORES
+					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles1[outputFileIndex]) << ">" << rec1->name.s;
@@ -421,7 +457,8 @@ private:
 				}
 			}
 		} else {
-			if (m_mode == SCORES && outputFileIndex == rm.getMultiMatchIndex()) {
+			if (m_mode == SCORES
+					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles1[outputFileIndex]) << "@" << rec1->name.s;

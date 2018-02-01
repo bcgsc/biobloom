@@ -25,5 +25,6 @@ extern bool minHitOnly;
 extern unsigned minHit;
 extern unsigned delta;
 extern unsigned maxGroupSize;
+extern bool inverse;
 }
 #endif
