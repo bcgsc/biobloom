@@ -71,6 +71,9 @@ BloomMapGenerator::BloomMapGenerator(vector<string> const &filenames,
 		}
 	}
 
+	//make saturation bit is not exceeded
+	assert(value < (1 << (sizeof(ID)*8 - 1)));
+
 	//estimate number of k-mers
 	if (m_expectedEntries == 0) {
 		m_expectedEntries = counts;
@@ -159,6 +162,7 @@ void BloomMapGenerator::generate(const string &filePrefix, double fpr) {
 #pragma omp parallel for
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 					//keeps track if sequence was already added
+					//TODO could be a performance bottleneck
 					BloomFilter tempBF(bloomMapBV->size(), opt::hashNum,
 							opt::kmerSize);
 					gzFile fp;

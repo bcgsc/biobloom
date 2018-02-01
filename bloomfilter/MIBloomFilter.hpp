@@ -98,6 +98,9 @@ template<typename T>
 class MIBloomFilter {
 public:
 
+	T mask = 1 << (sizeof(T)*8 - 1);
+	T antiMask = ~mask;
+
 	enum Type {
 		MIBFMVAL, MIBFCOLL
 	};
@@ -313,14 +316,21 @@ public:
 	}
 
 	inline bool insert(const size_t *hashes, T value,
-			vector<size_t> &indexCount, unsigned max,
+			vector<size_t> &indexCount, unsigned max, bool &saturated,
 			boost::numeric::ublas::matrix<unsigned> *mat = NULL) {
 		bool someValueSet = false;
 		unsigned count = 0;
 		for (size_t i = 0; i < m_hashNum; ++i) {
 			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
 
+			//antimask is to make saturation bit altered values look the same
+			//check for saturation
 			T oldVal = setVal(&m_data[pos], value);
+			if (oldVal < mask) {
+				saturated = false;
+			} else {
+				oldVal = oldVal & antiMask;
+			}
 			if (oldVal == 0) {
 				someValueSet = true;
 				++count;
@@ -341,7 +351,18 @@ public:
 				break;
 			}
 		}
+		//TODO call manually?
+		if(!someValueSet){
+			saturate(hashes);
+		}
 		return someValueSet;
+	}
+
+	inline void saturate(const size_t *hashes){
+		for (size_t i = 0; i < m_hashNum; ++i) {
+			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
+			__sync_or_and_fetch(&m_data[pos], mask);
+		}
 	}
 
 	/*
@@ -409,7 +430,7 @@ public:
 				}
 			} else {
 				size_t rankPos = m_rankSupport(pos);
-				results[i] = m_data[rankPos];
+				results[i] = m_data[rankPos] & antiMask;
 			}
 		}
 		return results;
@@ -428,10 +449,52 @@ public:
 				return vector<T>();
 			} else {
 				size_t rankPos = m_rankSupport(pos);
-				results[i] = m_data[rankPos];
+				results[i] = m_data[rankPos] & antiMask;
 			}
 		}
 		return results;
+	}
+
+	/*
+	 * Returns the smallest possible id assigned in set of IDs
+	 * or 0 is it does not match anything
+	 */
+	inline vector<T> at(const size_t *hashes, bool &saturated, unsigned maxMiss = 0) {
+		vector<T> results(m_hashNum);
+		unsigned misses = 0;
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
+			if (m_bv[pos] == 0) {
+				++misses;
+				saturated = false;
+				if (misses > maxMiss) {
+					return vector<T>();
+				}
+			} else {
+				size_t rankPos = m_rankSupport(pos);
+				T tempResult = m_data[rankPos];
+				if (tempResult > mask) {
+					results[i] = m_data[rankPos] & antiMask;
+				}
+				else{
+					results[i] = m_data[rankPos];
+					saturated = false;
+				}
+			}
+		}
+		return results;
+	}
+
+
+	//TODO using this is less efficient than determining if saturated at for each at() call
+	inline bool isSaturated(const size_t *hashes) {
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
+			if (m_bv[pos] != 0 && m_data[m_rankSupport(pos)] > mask) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 //	/*
