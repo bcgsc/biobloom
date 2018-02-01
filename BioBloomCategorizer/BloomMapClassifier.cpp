@@ -132,6 +132,10 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 
 	cerr << "Filtering Start" << endl;
 
+	//debugging
+	size_t multiCount = 0;
+	size_t incorrectCount = 0;
+
 	for (vector<string>::const_iterator it = inputFiles.begin();
 			it != inputFiles.end(); ++it) {
 		gzFile fp;
@@ -146,12 +150,14 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 		for (string sequence;;) {
 			string name;
 			string qual;
+			string comment;
 #pragma omp critical(sequence)
 			{
 				l = kseq_read(seq);
 				sequence = string(seq->seq.s, seq->seq.l);
 				name = string(seq->name.s, seq->name.l);
 				qual = string(seq->qual.s, seq->qual.l);
+				comment = string(seq->comment.s, seq->comment.l);
 			}
 			if (l >= 0) {
 #pragma omp critical(totalReads)
@@ -160,13 +166,17 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 							<< endl;
 				}
 				vector<vector<ID> > hitsPattern;
+				vector<unsigned> saturation;
 				unsigned evaluatedSeeds = 0;
-				getMatchSignature(sequence, evaluatedSeeds, hitsPattern);
+				vector<unsigned> sig = getMatchSignature(sequence,
+						evaluatedSeeds, hitsPattern, saturation);
 				double pVal = 1.0;
+				unsigned maxCount = 0;
 				vector<ID> signifResults;
-				vector<double> signifValues;
+				vector<unsigned> signifValues;
+				vector<unsigned> fullSignifCounts;
 				ID idIndex = evalRead(hitsPattern, evaluatedSeeds, pVal,
-						signifResults, signifValues);
+						maxCount, signifResults, signifValues, fullSignifCounts);
 				resSummary.updateSummaryData(idIndex);
 				const string &fullID =
 						idIndex == opt::EMPTY ? NO_MATCH :
@@ -181,55 +191,53 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 //					cout << pVal << "\t" << "T" << "\t" << name << "\t"
 //							<< fullID << "\t" << probMulti << endl;
 //				}
-				//TODO make into parameter
-//				double threshold = 0.05;
-//				bool match = false;
-//				unsigned count = 0;
-//				boost::math::chi_squared dist(evaluatedSeeds - 1);
-//				for (unsigned i = 0; i < signifResults.size(); ++i) {
-//					//TODO resolve precision error better
-//					if (pVal == 0) {
-//						if (name == m_fullIDs.at(signifResults[i])) {
-//							match = true;
-//						}
-//						++count;
-//						continue;
-//					}
-//					if (2 * (log(signifValues[i]) - log(pVal)) < 0) {
-//						cout << log(signifValues[i]) << "\t" << log(pVal)
-//								<< endl;
-//					}
-//					double prob = cdf(dist,
-//							(2 * (log(signifValues[i]) - log(pVal))));
-//					if (prob < threshold) {
-//						if(name == m_fullIDs.at(signifResults[i])) {
-//							match = true;
-//						}
-//						++count;
-//					}
-//				}
-//#pragma omp critical(cout)
-//				if (!match) {
-//					cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
-//							<< "\tCorrectName:" << name << "\tPredictedID:"
-//							<< m_idToIndex[fullID] << "\tPredictedName:"
-//							<< fullID << "\tCorrectID:"
-//							<< base64_chars[m_idToIndex[name] % 64] << "\tpVal:"
-//							<< log10(pVal) * (-10.0) << "\t" << endl;
-//					if (pVal != 0) {
-//						for (unsigned i = 0; i < signifResults.size(); ++i) {
-//							double prob = cdf(dist,
-//									(2 * (log(signifValues[i]) - log(pVal))));
-//								cout << signifResults[i] << ","
-//										<< m_fullIDs[signifResults[i]] << ","
-//										<< base64_chars[signifResults[i] % 64]
-//										<< "," << prob << ","
-//										<< log10(signifValues[i]) * (-10.0) << "\t";
+				bool match = false;
+				unsigned tempCount = 0;
+				for (unsigned i = 0; i < signifResults.size(); ++i) {
+					//TODO resolve precision error better
+					if (fullSignifCounts[i] + 3 >= maxCount) {
+						if (name == m_fullIDs.at(signifResults[i])) {
+							match = true;
+						}
+						++tempCount;
+					}
+				}
+				if(tempCount > 1){
+#pragma omp atomic
+					++multiCount;
+				}
+
+#pragma omp critical(cout)
+				if (!match) {
+#pragma omp atomic
+					++incorrectCount;
+//				if (name != fullID) {
+//					unsigned correctCount = 0;
+//					for (unsigned i = 0; i < signifResults.size(); ++i) {
+//						if(  signifResults[i] == m_idToIndex[name]){
+//							correctCount = signifValues[i];
+//							break;
 //						}
 //					}
-//					cout << endl;
-//					printVerbose(name, sequence, idIndex);
-//				}
+//					cout << maxCount - correctCount << endl;
+					cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
+							<< "\tCorrectName:" << name << "\tPredictedID:"
+							<< m_idToIndex[fullID] << "\tPredictedName:"
+							<< fullID << "\tCorrectID:"
+							<< base64_chars[m_idToIndex[name] % 64] << "\tpVal:"
+							<< log10(pVal) * (-10.0) << "\t" << endl;
+
+					for (unsigned i = 0; i < signifResults.size(); ++i) {
+						cout << signifResults[i] << ","
+								<< m_fullIDs[signifResults[i]] << ","
+								<< base64_chars[signifResults[i] % 64] << ","
+								<< signifValues[i] << "," << fullSignifCounts[i]
+								<< "," << m_freqTable[signifResults[i]] << "\t";
+					}
+					cout << endl;
+					printVerbose(name, comment, sequence, hitsPattern, sig,
+							saturation, idIndex);
+				}
 
 				if (idIndex != opt::EMPTY) {
 					if (opt::outputType == "fq") {
@@ -253,6 +261,9 @@ void BloomMapClassifier::filter(const vector<string> &inputFiles) {
 		kseq_destroy(seq);
 		gzclose(fp);
 	}
+
+	cerr << "Multiple Map Count:" << multiCount << endl;
+	cerr << incorrectCount << endl;
 
 	cerr << "Total Reads:" << m_numRead << endl;
 	cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
@@ -330,18 +341,18 @@ void BloomMapClassifier::filterPair(const string &file1, const string &file2) {
 			hitCounts1.set_empty_key(opt::EMPTY);
 			hitCounts2.set_empty_key(opt::EMPTY);
 
-			unsigned evaluatedSeeds = 0;
-			unsigned rmCount = 0;
-			double probFP = 0.0;
-			vector<vector<ID> > hitsPattern;
-			vector<unsigned> sig = getMatchSignature(sequence1, evaluatedSeeds,
-					hitsPattern);
-			vector<unsigned> rmMatch = calcProb(sig, rmCount, evaluatedSeeds,
-					probFP);
-			if (rmMatch.size() > 0) {
-				printVerbose(name1, sequence1, sig, evaluatedSeeds, rmCount,
-						rmMatch, probFP, hitsPattern);
-			}
+//			unsigned evaluatedSeeds = 0;
+//			unsigned rmCount = 0;
+//			double probFP = 0.0;
+//			vector<vector<ID> > hitsPattern;
+//			vector<unsigned> sig = getMatchSignature(sequence1, evaluatedSeeds,
+//					hitsPattern);
+//			vector<unsigned> rmMatch = calcProb(sig, rmCount, evaluatedSeeds,
+//					probFP);
+//			if (rmMatch.size() > 0) {
+//				printVerbose(name1, sequence1, sig, evaluatedSeeds, rmCount,
+//						rmMatch, probFP, hitsPattern);
+//			}
 
 			if(m_numRead > opt::fileInterval){
 				exit(1);

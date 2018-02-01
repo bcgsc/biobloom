@@ -78,6 +78,8 @@ private:
 		return result;
 	}
 
+
+
 	/*
 	 * Computes criteria used for judging a read consisting of:
 	 * Position of matches
@@ -87,7 +89,8 @@ private:
 	//TODO proof of concept not yet optimized
 	//TODO turn into streaming algorithm to terminate early
 	inline vector<unsigned> getMatchSignature(const string &seq,
-			unsigned &evaluatedSeeds, vector<vector<ID> > &hitsPattern) {
+			unsigned &evaluatedSeeds, vector<vector<ID> > &hitsPattern,
+			vector<unsigned> &saturation) {
 		vector<unsigned> matchPos;
 		matchPos.reserve(seq.size() - m_filter.getKmerSize());
 
@@ -95,10 +98,14 @@ private:
 			ntHashIterator itr(seq, m_filter.getHashNum(),
 					m_filter.getKmerSize());
 			while (itr != itr.end()) {
-				vector<ID> results = m_filter.at(*itr);
+				bool saturated = true;
+				vector<ID> results = m_filter.at(*itr, saturated);
 				if (results.size() > 0) {
 					matchPos.push_back(itr.pos());
 					hitsPattern.push_back(results);
+				}
+				if(saturated){
+					saturation.push_back(itr.pos());
 				}
 				++itr;
 				++evaluatedSeeds;
@@ -107,12 +114,14 @@ private:
 			RollingHashIterator itr(seq, m_filter.getKmerSize(),
 					m_filter.getSeedValues());
 			while (itr != itr.end()) {
-				unsigned misses;
-				vector<ID> results = m_filter.at(*itr, opt::allowMisses,
-						misses);
+				bool saturated = true;
+				vector<ID> results = m_filter.at(*itr, saturated, opt::allowMisses);
 				if (results.size() > 0) {
 					matchPos.push_back(itr.pos());
 					hitsPattern.push_back(results);
+				}
+				if (saturated) {
+					saturation.push_back(itr.pos());
 				}
 				++itr;
 				++evaluatedSeeds;
@@ -357,13 +366,14 @@ private:
 	 * Expected false positives
 	 * Match pattern index
 	 */
-	inline void printVerbose(const string &header, const string &seq,
+	inline void printVerbose(const string &header, const string &comment, const string &seq,
 			const vector<unsigned> &hitsVector, unsigned evaluatedKmers,
 			unsigned rmCount, const vector<unsigned> &rmMatch, double probFP,
 			const vector<vector<ID> > &hitsPattern) {
-		cerr << header << ' ' << evaluatedKmers << ' ' << rmCount << ' '
-				<< rmMatch.size() << ' ' << (evaluatedKmers * m_filter.getFPR())
-				<< ' ' << probFP << endl;
+		cerr << header << ' ' << comment << ' ' << evaluatedKmers << ' '
+				<< rmCount << ' ' << rmMatch.size() << ' '
+				<< (evaluatedKmers * m_filter.getFPR()) << ' ' << probFP
+				<< endl;
 		cerr << seq << endl;
 		cerr << vectToStr(hitsVector, seq) << endl;
 		cerr << vectToStr(rmMatch, seq) << endl;
@@ -371,15 +381,19 @@ private:
 	}
 
 	inline ID evalRead(const vector<vector<ID> > &hitsPattern,
-			unsigned evaluatedSeeds, double &pVal, vector<ID> &signifResults,
-			vector<double> &signifVal) {
+			unsigned evaluatedSeeds, double &pVal, unsigned &maxCount,
+			vector<ID> &signifResults, vector<unsigned> &signifCounts,
+			vector<unsigned> &fullSignifCounts) {
 		google::dense_hash_map<ID, unsigned> counts;
+		google::dense_hash_map<ID, unsigned> fullCounts;
 		counts.set_empty_key(opt::EMPTY);
+		fullCounts.set_empty_key(opt::EMPTY);
 		for (vector<vector<ID> >::const_iterator i = hitsPattern.begin();
 				i != hitsPattern.end(); i++) {
 			//to determine if already added for this frame
 			google::dense_hash_set<ID> tempIDs;
 			tempIDs.set_empty_key(opt::EMPTY);
+			unsigned count = 0;
 			for (vector<ID>::const_iterator j = i->begin(); j != i->end(); j++) {
 				if (*j != opt::EMPTY) {
 					if (tempIDs.find(*j) == tempIDs.end()) {
@@ -392,13 +406,31 @@ private:
 						}
 						tempIDs.insert(*j);
 					}
+					++count;
+				}
+			}
+			if (count == m_filter.getHashNum()) {
+				google::dense_hash_set<ID> tempIDsFull;
+				tempIDsFull.set_empty_key(opt::EMPTY);
+				for (vector<ID>::const_iterator j = i->begin(); j != i->end();
+						j++) {
+					if (tempIDsFull.find(*j) == tempIDsFull.end()) {
+						google::dense_hash_map<ID, unsigned>::iterator tempItrFull =
+								fullCounts.find(*j);
+						if (tempItrFull == fullCounts.end()) {
+							fullCounts[*j] = 1;
+						} else {
+							++(tempItrFull->second);
+						}
+						tempIDsFull.insert(*j);
+					}
 				}
 			}
 		}
 
 		ID maxID = opt::EMPTY;
-		unsigned maxCount = 0;
 		double minVal = 1.0;
+		double maxMinVal = 1.0;
 		double adjustedPValThreshold = 1.0
 				- pow(1.0 - opt::score, 1.0 / double(m_fullIDs.size() - 1));
 		pVal = 1.0;
@@ -409,20 +441,22 @@ private:
 			binomial bin(evaluatedSeeds, 1.0 - m_perFrameProb[itr->first]);
 			double cumProb = cdf(bin, evaluatedSeeds - itr->second);
 			if (adjustedPValThreshold > cumProb) {
-				signifVal.push_back(cumProb*(m_fullIDs.size() - 1));
+				if (fullCounts[itr->first] > maxCount
+						|| (fullCounts[itr->first] == maxCount
+								&& maxMinVal > cumProb)) {
+					maxCount = fullCounts[itr->first];
+					maxID = itr->first;
+					maxMinVal = cumProb;
+				}
+				fullSignifCounts.push_back(fullCounts[itr->first]);
+				signifCounts.push_back(itr->second);
 				signifResults.push_back(itr->first);
 			}
-			if(minVal == cumProb && counts[itr->first] > maxCount) {
-				maxCount = counts[itr->first];
-				maxID = itr->first;
-			}
 			if (minVal > cumProb) {
-				maxCount = counts[itr->first];
-				maxID = itr->first;
 				minVal = cumProb;
 			}
 		}
-		//sidak method - TODO - leads to precision errors
+		//sidak method - leads to precision errors
 //		pVal = 1.0 - pow(1.0-minVal, m_fullIDs.size() - 1);
 		//bonferroni
 		pVal = minVal*(m_fullIDs.size() - 1);
@@ -516,21 +550,53 @@ private:
 		return bestID;
 	}
 
-	inline void printVerbose(const string &header, const string &seq, ID value) {
+	inline void printVerbose(const string &header, const string &comment,
+			const string &seq, const vector<vector<ID> > &hitsPattern,
+			const vector<unsigned> &sig, const vector<unsigned> &saturation,
+			ID value) {
 		unsigned evaluatedSeeds = 0;
-		vector<vector<ID> > hitsPattern;
-		vector<unsigned> sig = getMatchSignature(seq, evaluatedSeeds,
-				hitsPattern);
-		cout << header << ' ' << evaluatedSeeds << ' '
+		cout << header << ' ' << comment << ' ' << evaluatedSeeds << ' '
 				<< base64_chars[value % 64] << ' ' << value << endl;
 		cout << seq << endl;
 		cout << vectToStr(sig, seq) << endl;
+		cout << vectToStr(saturation, seq) << endl;
 		cout << vectToStr(sig, hitsPattern, seq);
 	}
 
 	inline string vectToStr(const vector<unsigned> &hitsVector,
 			const vector<vector<ID> > &hitsPattern, const string &seq) {
 		stringstream ss;
+		{
+			unsigned prevIndex = 1;
+			unsigned index = 0;
+			//print first stretch of zeros
+			if (hitsVector.size()) {
+				for (unsigned i = prevIndex; i <= hitsVector[index]; ++i) {
+					ss << " ";
+				}
+				prevIndex = hitsVector[index] + 1;
+				for (; index < hitsVector.size(); index++) {
+					//print 0s
+					for (unsigned i = prevIndex; i < hitsVector[index]; ++i) {
+						ss << " ";
+					}
+					unsigned count = 0;
+					for (unsigned hVal = 0; hVal < m_filter.getHashNum(); ++hVal) {
+						if (hitsPattern[index][hVal] != opt::EMPTY) {
+							++count;
+						}
+					}
+					ss << count;
+					prevIndex = hitsVector[index] + 1;
+				}
+				++prevIndex;
+			}
+			for (unsigned i = prevIndex;
+					i <= (seq.size() - m_filter.getKmerSize() + 1); ++i) {
+				ss << " ";
+			}
+			ss << "\n";
+		}
 		for (unsigned hVal = 0; hVal < m_filter.getHashNum(); ++hVal) {
 			unsigned prevIndex = 1;
 			unsigned index = 0;

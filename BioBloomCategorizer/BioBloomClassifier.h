@@ -9,7 +9,7 @@
 #define BIOBLOOMCLASSIFIER_H_
 #include <vector>
 #include <string>
-#include "google/dense_hash_map"
+#include <google/dense_hash_map>
 #include "Common/BloomFilterInfo.h"
 #include "Common/Dynamicofstream.h"
 #include "Common/SeqEval.h"
