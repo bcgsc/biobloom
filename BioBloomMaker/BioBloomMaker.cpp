@@ -19,7 +19,7 @@
 #if _OPENMP
 # include <omp.h>
 #endif
-#include "BloomMapGenerator.h"
+#include "MIBFGen.hpp"
 
 using namespace std;
 
@@ -78,8 +78,6 @@ void printHelpDialog() {
 		"  -S, --seed_str=N       Generate a miBF using multiple spaced seeds instead of\n"
 		"                         kmers. Expects list of seed 1s & 0s separated by spaces.\n"
 		"  -F, --by_file          For miBF, assign IDs by file rather than by fasta header\n"
-		"  -c, --colli_id         Compute k-mer collision IDs for miBF. Experimental\n"
-		"  -C, --colli_analysis   Compute k-mer collision matrix. Experimental\n"
 		"\nOptions for progressive filters:\n"
 		"  -r, --progressive=N    Progressive filter creation. The score threshold is\n"
 		"                         specified by N, which may be either a floating point\n"
@@ -141,8 +139,6 @@ int main(int argc, char *argv[]) {
 			"kmer_size", required_argument, NULL, 'k' }, {
 			"num_ele", required_argument, NULL, 'n' }, {
 			"by_file", no_argument, NULL, 'F' }, {
-			"colli_id", no_argument, NULL, 'c' }, {
-			"colli_analysis", no_argument, NULL, 'C' }, {
 			"progressive", required_argument, NULL, 'r' }, {
 			"subtract",	required_argument, NULL, 's' }, {
 			"no_rep_kmer", no_argument, NULL, 'd' }, {
@@ -203,14 +199,6 @@ int main(int argc, char *argv[]) {
 		}
 		case 'F': {
 			opt::idByFile = true;
-			break;
-		}
-		case 'c': {
-			opt::colliIDs = true;
-			break;
-		}
-		case 'C': {
-			opt::colliAnalysis = true;
 			break;
 		}
 		case 'i': {
@@ -443,7 +431,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (opt::filterType == BLOOMMAP) {
-		BloomMapGenerator filterGen(inputFiles, opt::kmerSize, entryNum);
+		MIBFGen filterGen(inputFiles, opt::kmerSize, entryNum);
 		filterGen.generate(outputDir + filterPrefix, opt::fpr);
 		cerr << "Bloom Map Creation Complete." << endl;
 		return 0;

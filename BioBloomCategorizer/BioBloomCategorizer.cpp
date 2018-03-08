@@ -11,7 +11,7 @@
 #include <vector>
 #include <sys/stat.h>
 #include "BioBloomClassifier.h"
-#include "BloomMapClassifier.h"
+#include "MIBFClassifier.hpp"
 #include "config.h"
 #include "Common/Options.h"
 #include "Common/SeqEval.h"
@@ -129,10 +129,6 @@ void printHelpDialog()
 	"                         filter listed by -f. Reads are outputed in fastq,\n"
 	"                         and if paired will output will be interlaced.\n"
 	"Options for multi index bloom filters:\n"
-	"  -D, --delta            Max Number of matches between second best hit and best\n"
-	"                         hit before it is considered significantly matching to\n"
-	"                         best hit (not a multimatch). [0]\n"
-	"  -G, --max_group        Max groups size when using collision ids. [inf]\n"
 	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
 	"                         miBFs.[0]\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
@@ -175,8 +171,6 @@ int main(int argc, char *argv[])
 		"interval",	required_argument, NULL, 'I' }, {
 		"threads", required_argument, NULL, 't' }, {
 		"allowed_miss", required_argument, NULL, 'a' }, {
-		"delta", required_argument, NULL, 'D' }, {
-		"max_group", required_argument, NULL, 'G' }, {
 		"gz_output", no_argument, NULL, 'g' }, {
 		"fq", no_argument, &fastq, 1 }, {
 		"fa", no_argument, &fasta, 1 }, {
@@ -186,14 +180,14 @@ int main(int argc, char *argv[])
 		"streak", required_argument, NULL, 'r' }, {
 		"min_hit_only", no_argument, NULL, 'o' }, {
 		"ordered", no_argument, NULL, 'c' }, {
-		"stdout_filter", required_argument, NULL, 'd' }, {
+		"stdout_filter", no_argument, NULL, 'd' }, {
 		"with_score", no_argument, NULL, 'w' }, {
 		NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:r:t:cdiwI:a:D:G:", long_options,
+	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:r:t:cdiwI:a:G:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -276,14 +270,6 @@ int main(int argc, char *argv[])
 			}
 			break;
 		}
-		case 'D': {
-			stringstream convert(optarg);
-			if (!(convert >> opt::delta)) {
-				cerr << "Error - Invalid parameter! D: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
 		case 'G': {
 			stringstream convert(optarg);
 			if (!(convert >> opt::maxGroupSize)) {
@@ -317,10 +303,6 @@ int main(int argc, char *argv[])
 			printVersion();
 			break;
 		}
-//		case 'o': {
-//			minHitOnly = true;
-//			break;
-//		}
 		case 'r': {
 			stringstream convert(optarg);
 			if (!(convert >> opt::streakThreshold)) {
@@ -449,9 +431,11 @@ int main(int argc, char *argv[])
 		if(opt::outputType == ""){
 			opt::outputType = "fa";
 		}
-		BloomMapClassifier BMC(filterFilePaths[0]);
+		MIBFClassifier BMC(filterFilePaths[0]);
 		if (paired) {
-			BMC.filterPair(inputFiles[0], inputFiles[1]);
+			cerr << "paired MIBF classification not supported yet" << endl;
+			exit(1);
+//			BMC.filterPair(inputFiles[0], inputFiles[1]);
 		} else {
 			BMC.filter(inputFiles);
 		}

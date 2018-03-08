@@ -34,9 +34,8 @@ namespace opt {
 	
 	//options of BBM only
 	//TODO: move to own header file
-	extern bool colliIDs;
-	extern bool colliAnalysis;
 	extern bool idByFile;
+//	extern double occupancy;
 
 
 	//options for new refactored code

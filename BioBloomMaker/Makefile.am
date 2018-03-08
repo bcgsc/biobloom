@@ -13,9 +13,4 @@ biobloommaker_LDFLAGS = $(OPENMP_CXXFLAGS)
 
 biobloommaker_SOURCES = BioBloomMaker.cpp \
 	BloomFilterGenerator.h BloomFilterGenerator.cpp \
-	BloomMapGenerator.h BloomMapGenerator.cpp \
-	SimMat.h \
-	SpacedSeedIndex.h \
-	newick_file.cc newick_file.hh \
-	newick.cc newick.hh \
-	tree.cc tree.hh
+	MIBFGen.hpp

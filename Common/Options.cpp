@@ -16,8 +16,6 @@ namespace opt {
 	std::vector<std::string> sseeds;
 	unsigned allowMisses = 0;
 
-	bool colliIDs = false;
-	bool colliAnalysis = false;
 	bool idByFile = false;
 
 	double baitThreshold = -1;
@@ -28,6 +26,7 @@ namespace opt {
 
 	unsigned fileInterval = 10000000;
 	double fpr = 0.0078125;
+//	double occupancy = 0.5;
 	bool noRep = false;
 	
 	std::string prefix = "";

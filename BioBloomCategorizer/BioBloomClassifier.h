@@ -15,9 +15,12 @@
 #include "Common/SeqEval.h"
 #include <zlib.h>
 #include <iostream>
-#include "Common/kseq.h"
 #include "ResultsManager.hpp"
+#ifndef KSEQ_INIT_NEW
+#define KSEQ_INIT_NEW
+#include "Common/kseq.h"
 KSEQ_INIT(gzFile, gzread)
+#endif /*KSEQ_INIT_NEW*/
 
 using namespace std;
 
