@@ -63,7 +63,7 @@ public:
 				kseq_t *seq = kseq_init(fp);
 				m_ids.push_back(m_fileNames[i].substr(
 						m_fileNames[i].find_last_of("/") + 1));
-				m_nameToID[m_ids.back()] = m_ids.size();
+				m_nameToID[m_ids.back()] = m_ids.size() - 1;
 				int l;
 				for (;;) {
 					l = kseq_read(seq);
@@ -87,7 +87,7 @@ public:
 					if (l >= 0) {
 						m_ids.push_back(m_fileNames[i].substr(
 								m_fileNames[i].find_last_of("/") + 1));
-						m_nameToID[m_ids.back()] = m_ids.size();
+						m_nameToID[m_ids.back()] = m_ids.size() - 1;
 						counts += seq->seq.l - m_kmerSize + 1;
 					} else {
 						kseq_destroy(seq);
@@ -131,6 +131,7 @@ public:
 			if (opt::verbose)
 				cerr << "Pass " << j << endl;
 			if (opt::idByFile) {
+#pragma omp parallel for
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 					gzFile fp;
 					if (opt::verbose)
@@ -143,10 +144,8 @@ public:
 							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
 					kseq_t *seq = kseq_init(fp);
 					int l;
-#pragma omp parallel private(l)
 					for (;;) {
 						string sequence, name;
-#pragma omp critical(seq)
 						{
 							l = kseq_read(seq);
 							if (l >= 0) {
