@@ -94,8 +94,7 @@ public:
 				for (;;) {
 					l = kseq_read(seq);
 					if (l >= 0) {
-						m_ids.push_back(m_fileNames[i].substr(
-								m_fileNames[i].find_last_of("/") + 1));
+						m_ids.push_back(string(seq->name.s, seq->name.l));
 						m_nameToID[m_ids.back()] = m_ids.size() - 1;
 						counts += seq->seq.l - m_kmerSize + 1;
 					} else {
