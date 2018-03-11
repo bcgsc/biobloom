@@ -80,6 +80,15 @@ public:
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 				gzFile fp;
 				fp = gzopen(m_fileNames[i].c_str(), "r");
+				if (fp == NULL) {
+					cerr << "file " << m_fileNames[i] << " cannot be opened"
+							<< endl;
+					exit(1);
+				}
+				if (!fexists(m_fileNames[i] + ".rv")) {
+					cerr << "Missing file " << m_fileNames[i] << ".rv" << endl;
+					exit(1);
+				}
 				kseq_t *seq = kseq_init(fp);
 				int l;
 				for (;;) {
