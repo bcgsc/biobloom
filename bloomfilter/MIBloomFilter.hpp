@@ -466,6 +466,7 @@ public:
 			}
 		}
 		if (count == 0 && !saturated) {
+			assert(max == 1); //if this triggers then spaced seed is probably not symmetric
 			saturate(hashes);
 		}
 		return true;
