@@ -17,6 +17,7 @@
 #include <iostream>
 #include "Common/kseq.h"
 #include "ResultsManager.hpp"
+#include "BioBloomCategorizer/Options.h"
 KSEQ_INIT(gzFile, gzread)
 
 using namespace std;
