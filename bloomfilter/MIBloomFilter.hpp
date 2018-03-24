@@ -25,10 +25,9 @@
 #include <sdsl/bit_vector_il.hpp>
 #include <sdsl/rank_support.hpp>
 #include <omp.h>
-#include <algorithm>
+#include <algorithm>    // std::random_shuffle
 #include <boost/math/distributions/binomial.hpp>
 #include <google/dense_hash_set>
-#include <google/dense_hash_map>
 
 using namespace std;
 
@@ -118,18 +117,19 @@ public:
 	//TODO return saturated frame counts?
 	//TODO return pVals?
 	template<typename H>
-	static vector<T> query(MIBloomFilter<T> &miBF, H &itr,
-			const vector<double> &perFrameProb,
+	vector<pair<ID, double>> query(H &itr, const vector<double> &perFrameProb,
 			const vector<double> &perMultiMatchFrameProb, double alpha = 0.0001,
 			double multimapAlpha = 0.001, size_t maxPos =
 					numeric_limits<size_t>::max()) {
 		unsigned evaluatedSeeds = 0;
+		unsigned totalCount = 0;
+		unsigned saturatedCount = 0;
 
 		google::dense_hash_map<T, unsigned> counts;
 		counts.set_empty_key(0);
 		while (itr != itr.end() && itr.pos() < maxPos) {
 			bool saturated = true;
-			vector<T> results = miBF.at(*itr, saturated);
+			vector<T> results = at(*itr, saturated);
 			//to determine if already added for this frame
 			google::dense_hash_set<T> tempIDs;
 			tempIDs.set_empty_key(0);
@@ -153,12 +153,16 @@ public:
 				}
 				++evaluatedSeeds;
 			}
+			else{
+				++saturatedCount;
+			}
+			++totalCount;
 			++itr;
 		}
 
 		//potential signifResults
-		vector<T> potSignifResults;
-		vector<T> signifResults;
+		vector<pair<T, double>> potSignifResults;
+		vector<pair<T, double>> signifResults;
 
 		double adjustedPValThreshold = 1.0
 				- pow(1.0 - alpha, 1.0 / double(perFrameProb.size() - 1));
@@ -172,29 +176,32 @@ public:
 				if (counts[bestSignifVal] < counts[itr->first]) {
 					bestSignifVal = itr->first;
 				}
-				potSignifResults.push_back(itr->first);
+				potSignifResults.push_back(pair<T, double>(itr->first, cumProb));
 			}
-	//		cerr << unsigned(itr->first) << " " << adjustedPValThreshold << " "
-	//				<< cumProb << " " << itr->second << " " << miBF.getPop()
-	//				<< endl;
 		}
 
 		adjustedPValThreshold = 1.0
 				- pow(1.0 - multimapAlpha, 1.0 / double(perFrameProb.size() - 1));
 		//TODO: generalized because this assumes a = 0, fix me?
-		for (typename vector<T>::const_iterator itr = potSignifResults.begin();
+		for (typename vector<pair<T, double>>::const_iterator itr = potSignifResults.begin();
 				itr != potSignifResults.end(); ++itr) {
 			//compute single frame prob
-			boost::math::binomial bin(counts[bestSignifVal], 1.0 - perMultiMatchFrameProb.at(*itr));
-			double cumProb = cdf(bin, counts[bestSignifVal] - counts[*itr]);
+			boost::math::binomial bin(counts[bestSignifVal], 1.0 - perMultiMatchFrameProb.at(itr->first));
+			double cumProb = cdf(bin, counts[bestSignifVal] - counts[itr->first]);
 			if (adjustedPValThreshold > cumProb) {
 				signifResults.push_back(*itr);
 			}
-	//		cerr << unsigned(*itr) << " " << counts[bestSignifVal] << " "
-	//				<< counts[*itr] << " " << adjustedPValThreshold << " "
-	//				<< multimapAlpha << " " << cumProb << endl;
 		}
 
+		if (signifResults.size() == 0 && saturatedCount) {
+			boost::math::binomial bin(totalCount, 1.0 - m_probSaturated);
+			double cumProb = cdf(bin, totalCount - saturatedCount);
+			if (adjustedPValThreshold > cumProb) {
+				//0 is empty
+				signifResults.push_back(pair<T, double>(0, saturatedCount));
+			}
+		}
+		sort(signifResults.begin(), signifResults.end(), sortbysec);
 		//Best hit considered the class with the most hits
 		return signifResults;
 	}
@@ -243,7 +250,7 @@ public:
 	MIBloomFilter<T>(unsigned hashNum, unsigned kmerSize, sdsl::bit_vector &bv,
 			const vector<string> seeds = vector<string>(0)) :
 			m_dSize(0), m_hashNum(hashNum), m_kmerSize(kmerSize), m_sseeds(
-					seeds) {
+					seeds), m_probSaturated(0) {
 		m_bv = sdsl::bit_vector_il<BLOCKSIZE>(bv);
 		bv = sdsl::bit_vector();
 		if (!seeds.empty()) {
@@ -351,6 +358,8 @@ public:
 
 		cerr << "Bit Vector Size: " << m_bv.size() << endl;
 		cerr << "Popcount: " << getPop() << endl;
+		//TODO make more streamlined
+		m_probSaturated = pow(double(getPopSaturated())/double(getPop()),m_hashNum);
 	}
 
 	/*
@@ -415,7 +424,7 @@ public:
 	}
 
 	/*
-	 * saturated should be set to true to start with, if already saturated it should return as false
+	 * Returns false if unable to insert hashes values
 	 */
 	inline bool insert(const size_t *hashes, T value, unsigned max) {
 		unsigned count = 0;
@@ -465,9 +474,12 @@ public:
 				return true;
 			}
 		}
-		if (count == 0 && !saturated) {
-			assert(max == 1); //if this triggers then spaced seed is probably not symmetric
-			saturate(hashes);
+		if (count == 0) {
+			if (!saturated) {
+				assert(max == 1); //if this triggers then spaced seed is probably not symmetric
+				saturate(hashes);
+			}
+			return false;
 		}
 		return true;
 	}
@@ -582,6 +594,14 @@ private:
 	const T mask = 1 << (sizeof(T) * 8 - 1);
 	const T antiMask = ~mask;
 
+	// Driver function to sort the vector elements
+	// by second element of pairs
+	static bool sortbysec(const pair<int,int> &a,
+	              const pair<int,int> &b)
+	{
+	    return (a.second < b.second);
+	}
+
 	/*
 	 * Helper function for header storage
 	 */
@@ -677,6 +697,8 @@ private:
 
 	typedef vector<vector<unsigned> > SeedVal;
 	vector<string> m_sseeds;
+
+	double m_probSaturated;
 	SeedVal m_ssVal;
 	const char* MAGICSTR = "MIBLOOMF";
 };
