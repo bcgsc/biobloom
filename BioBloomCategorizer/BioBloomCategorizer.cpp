@@ -131,6 +131,7 @@ void printHelpDialog()
 	"Options for multi index bloom filters:\n"
 	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
 	"                         miBFs.[0]\n"
+	"  --debug                debug filter output mode."
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
 	cerr << dialog << endl;
@@ -182,6 +183,8 @@ int main(int argc, char *argv[])
 		"ordered", no_argument, NULL, 'c' }, {
 		"stdout_filter", no_argument, NULL, 'd' }, {
 		"with_score", no_argument, NULL, 'w' }, {
+		"debug", no_argument, &opt::debug, 1 }, {
+		"verbose", no_argument, &opt::verbose, 1 }, {
 		NULL, 0, NULL, 0 } };
 
 	//actual checking step
@@ -436,7 +439,10 @@ int main(int argc, char *argv[])
 			cerr << "paired MIBF classification not supported yet" << endl;
 			exit(1);
 //			BMC.filterPair(inputFiles[0], inputFiles[1]);
-		} else {
+		} else if (opt::debug) {
+			BMC.filterOld(inputFiles);
+		}
+		else{
 			BMC.filter(inputFiles);
 		}
 		//load filters

@@ -24,5 +24,7 @@ extern std::string outputType;
 extern bool minHitOnly;
 extern unsigned minHit;
 extern unsigned maxGroupSize;
+extern int debug;
+extern double multiThresh;
 }
 #endif

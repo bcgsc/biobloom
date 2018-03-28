@@ -138,6 +138,7 @@ public:
 					vector<ID> signifResults;
 					vector<unsigned> signifValues;
 					vector<unsigned> fullSignifCounts;
+					vector<double> multiMatchPVal;
 					ID idIndex = evalRead(hitsPattern, evaluatedSeeds, pVal,
 							maxCount, signifResults, signifValues,
 							fullSignifCounts, pVals);
@@ -148,19 +149,19 @@ public:
 							idIndex == resSummary.getMultiMatchIndex() ?
 									MULTI_MATCH : m_fullIDs.at(idIndex);
 					//debugging
-#pragma omp critical(cout)
-				if (name == "noMatch") {
-					cout << pVal << "\t" << "F" << "\t" << name << "\t"
-							<< fullID << endl;
-				} else {
-					cout << pVal << "\t" << "T" << "\t" << name << "\t"
-							<< fullID << endl;
-				}
+//#pragma omp critical(cout)
+//					if (name == "noMatch") {
+//						cout << pVal << "\t" << "F" << "\t" << name << "\t"
+//								<< fullID << endl;
+//					} else {
+//						cout << pVal << "\t" << "T" << "\t" << name << "\t"
+//								<< fullID << endl;
+//					}
 					bool match = false;
 					unsigned tempCount = 0;
 					for (unsigned i = 0; i < signifResults.size(); ++i) {
 						//TODO resolve precision error better
-						if (fullSignifCounts[i] + 3 >= maxCount) {
+						if (fullSignifCounts[i] >= maxCount) {
 							if (name == m_fullIDs.at(signifResults[i])) {
 								match = true;
 							}
@@ -172,28 +173,30 @@ public:
 						++multiCount;
 					}
 
-//#pragma omp critical(cout)
-					if (!match) {
+					if(!match){
 #pragma omp atomic
 						++incorrectCount;
-//						cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
-//								<< "\tCorrectName:" << name << "\tPredictedID:"
-//								<< m_idToIndex[fullID] << "\tPredictedName:"
-//								<< fullID << "\tCorrectID:"
-//								<< base64_chars[m_idToIndex[name] % 64]
-//								<< "\tpVal:" << log10(pVal) * (-10.0) << "\t"
-//								<< endl;
-//
-//						for (unsigned i = 0; i < signifResults.size(); ++i) {
-//							cout << signifResults[i] << ","
-//									<< m_fullIDs[signifResults[i]] << ","
-//									<< base64_chars[signifResults[i] % 64]
-//									<< "," << signifValues[i] << ","
-//									<< fullSignifCounts[i] << "\t";
-//						}
-//						cout << endl;
-//						printVerbose(name, comment, sequence, hitsPattern, sig,
-//								saturation, idIndex);
+					}
+
+#pragma omp critical(cout)
+					if (!match || tempCount > 1) {
+						cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
+								<< "\tCorrectName:" << name << "\tPredictedID:"
+								<< m_idToIndex[fullID] << "\tPredictedName:"
+								<< fullID
+								<< "\tpVal:" << log10(pVal) * (-10.0) << "\t"
+								<< endl;
+
+						for (unsigned i = 0; i < signifResults.size(); ++i) {
+							cout << signifResults[i] << ","
+									<< m_fullIDs[signifResults[i]] << ","
+									<< base64_chars[signifResults[i] % 64]
+									<< "," << signifValues[i] << ","
+									<< fullSignifCounts[i] << "\t";
+						}
+						cout << endl;
+						printVerbose(name, comment, sequence, hitsPattern, sig,
+								saturation, idIndex);
 					}
 
 					if (idIndex != opt::EMPTY) {
@@ -219,10 +222,10 @@ public:
 			gzclose(fp);
 		}
 
-		cerr << "Multiple Map Count:" << multiCount << endl;
-		cerr << incorrectCount << endl;
+		cerr << "Multiple Map Count: " << multiCount << endl;
+		cerr << "Incorrect: " << incorrectCount << endl;
 
-		cerr << "Total Reads:" << m_numRead << endl;
+		cerr << "Total Reads: " << m_numRead << endl;
 		cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
 				<< endl;
 
@@ -420,9 +423,16 @@ public:
 						readsOutput << "\n" << sequence << "\n+\n" << qual
 								<< "\n";
 					} else {
-						for (unsigned i = 0; i < signifResults.size(); ++i) {
-							readsOutput << m_fullIDs[signifResults[i]] << "\t"
-									<< name << "\n";
+						if (signifResults.empty()) {
+							readsOutput << "noMatch\t" << name << "\t"
+									<< comment << "\t0\n";
+						} else {
+							for (unsigned i = 0; i < signifResults.size();
+									++i) {
+								readsOutput << m_fullIDs[signifResults[i]]
+										<< "\t" << name << "\t" << comment
+										<< "\t" << signifResults.size() << "\n";
+							}
 						}
 					}
 				} else {
@@ -567,6 +577,10 @@ private:
 		cerr << vectToStr(hitsVector, hitsPattern, seq);
 	}
 
+	/*
+	 * Old function for evaluating pValues
+	 * For debugging now
+	 */
 	inline ID evalRead(const vector<vector<ID> > &hitsPattern,
 			unsigned evaluatedSeeds, double &pVal, unsigned &maxCount,
 			vector<ID> &signifResults, vector<unsigned> &signifCounts,
