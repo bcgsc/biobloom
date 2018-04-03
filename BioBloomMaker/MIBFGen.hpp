@@ -49,6 +49,12 @@ public:
 
 		if (opt::idByFile) {
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+				m_ids.push_back(m_fileNames[i].substr(
+						m_fileNames[i].find_last_of("/") + 1));
+				m_nameToID[m_ids.back()] = m_ids.size() - 1;
+			}
+#pragma omp parallel for
+			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 				gzFile fp;
 				fp = gzopen(m_fileNames[i].c_str(), "r");
 				if (fp == NULL) {
@@ -60,14 +66,16 @@ public:
 					cerr << "Missing file " << m_fileNames[i] << ".rv" << endl;
 					exit(1);
 				}
+				if(opt::verbose){
+#pragma omp critical(stderr)
+					cerr << "Opening " << m_fileNames[i] << endl;
+				}
 				kseq_t *seq = kseq_init(fp);
-				m_ids.push_back(m_fileNames[i].substr(
-						m_fileNames[i].find_last_of("/") + 1));
-				m_nameToID[m_ids.back()] = m_ids.size() - 1;
 				int l;
 				for (;;) {
 					l = kseq_read(seq);
 					if (l >= 0) {
+#pragma omp atomic
 						counts += seq->seq.l - m_kmerSize + 1;
 					} else {
 						kseq_destroy(seq);
@@ -266,43 +274,85 @@ private:
 			cerr << "Populating initial bit vector" << endl;
 
 		//populate sdsl bitvector (bloomFilter)
-		for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-			gzFile fp;
-			fp = gzopen(m_fileNames[i].c_str(), "r");
-			kseq_t *seq = kseq_init(fp);
-			int l;
-			size_t colliCounts = 0;
-			size_t totalCount = 0;
-#pragma omp parallel private(l)
-			for (;;) {
-				string sequence;
-#pragma omp critical(seq)
-				{
-					l = kseq_read(seq);
-					if (l >= 0) {
-						sequence = string(seq->seq.s, seq->seq.l);
-					}
+		if (opt::idByFile) {
+#pragma omp parallel for
+			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+				gzFile fp;
+				if(opt::verbose){
+#pragma omp critical(stderr)
+					cerr << "Opening " << m_fileNames[i] << endl;
 				}
-				if (l >= 0) {
-					if (sequence.length() >= m_kmerSize) {
-						//k-merize with rolling hash insert into multi index Bloom filter
-						if (ssVal != NULL) {
-#pragma omp atomic
-							colliCounts += loadSeq(bv, sequence, *ssVal);
-						} else {
-#pragma omp atomic
-							colliCounts += loadSeq(bv, sequence);
+				fp = gzopen(m_fileNames[i].c_str(), "r");
+				kseq_t *seq = kseq_init(fp);
+				int l;
+				size_t colliCounts = 0;
+				size_t totalCount = 0;
+				for (;;) {
+					string sequence;
+					{
+						l = kseq_read(seq);
+						if (l >= 0) {
+							sequence = string(seq->seq.s, seq->seq.l);
 						}
-#pragma omp atomic
-						totalCount += sequence.length() - m_kmerSize + 1;
 					}
-				} else {
-					break;
+					if (l >= 0) {
+						if (sequence.length() >= m_kmerSize) {
+							//k-merize with rolling hash insert into multi index Bloom filter
+							if (ssVal != NULL) {
+								colliCounts += loadSeq(bv, sequence, *ssVal);
+							} else {
+								colliCounts += loadSeq(bv, sequence);
+							}
+							totalCount += sequence.length() - m_kmerSize + 1;
+						}
+					} else {
+						break;
+					}
 				}
+#pragma omp atomic
+				uniqueCounts += totalCount - colliCounts;
+				kseq_destroy(seq);
+				gzclose(fp);
 			}
-			uniqueCounts += totalCount - colliCounts;
-			kseq_destroy(seq);
-			gzclose(fp);
+		} else {
+			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+				gzFile fp;
+				fp = gzopen(m_fileNames[i].c_str(), "r");
+				kseq_t *seq = kseq_init(fp);
+				int l;
+				size_t colliCounts = 0;
+				size_t totalCount = 0;
+#pragma omp parallel private(l)
+				for (;;) {
+					string sequence;
+#pragma omp critical(seq)
+					{
+						l = kseq_read(seq);
+						if (l >= 0) {
+							sequence = string(seq->seq.s, seq->seq.l);
+						}
+					}
+					if (l >= 0) {
+						if (sequence.length() >= m_kmerSize) {
+							//k-merize with rolling hash insert into multi index Bloom filter
+							if (ssVal != NULL) {
+#pragma omp atomic
+								colliCounts += loadSeq(bv, sequence, *ssVal);
+							} else {
+#pragma omp atomic
+								colliCounts += loadSeq(bv, sequence);
+							}
+#pragma omp atomic
+							totalCount += sequence.length() - m_kmerSize + 1;
+						}
+					} else {
+						break;
+					}
+				}
+				uniqueCounts += totalCount - colliCounts;
+				kseq_destroy(seq);
+				gzclose(fp);
+			}
 		}
 
 		if (opt::verbose > 0) {
