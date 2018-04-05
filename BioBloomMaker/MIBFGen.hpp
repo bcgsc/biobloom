@@ -150,11 +150,13 @@ public:
 #pragma omp parallel for
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 					gzFile fp;
-					if (opt::verbose)
+					if (opt::verbose) {
+#pragma omp critical(stderr)
 						cerr << "Opening: "
 								<< (j % 2 ?
 										m_fileNames[i] : m_fileNames[i] + ".rv")
 								<< endl;
+					}
 					fp = j % 2 ?
 							gzopen(m_fileNames[i].c_str(), "r") :
 							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
@@ -217,6 +219,7 @@ public:
 					kseq_destroy(seq);
 					gzclose(fp);
 					if (opt::verbose > 0) {
+#pragma omp critical(stderr)
 						cerr << "Saturation: " << miBFBV->getPopSaturated()
 								<< " popNonZero: " << miBFBV->getPopNonZero()
 								<< endl;
