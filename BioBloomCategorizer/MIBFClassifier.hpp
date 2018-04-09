@@ -402,13 +402,13 @@ public:
 								<< endl;
 					}
 
-					vector<ID> signifResults = classify(sequence);
+					vector<pair<ID, double>> signifResults = classify(sequence);
 
 					if(signifResults.size() == 0){
 						resSummary.updateSummaryData(opt::EMPTY);
 					}
 					else if(signifResults.size() == 1){
-						resSummary.updateSummaryData(signifResults[0]);
+						resSummary.updateSummaryData(signifResults[0].first);
 					}
 					else{
 						resSummary.updateSummaryData(resSummary.getMultiMatchIndex());
@@ -418,7 +418,7 @@ public:
 					if (opt::outputType == "fq") {
 						readsOutput << "@" << name << " ";
 						for (unsigned i = 0; i < signifResults.size(); ++i) {
-							readsOutput << " " << m_fullIDs[signifResults[i]];
+							readsOutput << " " << m_fullIDs[signifResults[i].first];
 						}
 						readsOutput << "\n" << sequence << "\n+\n" << qual
 								<< "\n";
@@ -429,7 +429,7 @@ public:
 						} else {
 							for (unsigned i = 0; i < signifResults.size();
 									++i) {
-								readsOutput << m_fullIDs[signifResults[i]]
+								readsOutput << m_fullIDs[signifResults[i].first]
 										<< "\t" << name << "\t" << comment
 										<< "\t" << signifResults.size() << "\n";
 							}
@@ -486,18 +486,18 @@ private:
 	/*
 	 * Streamlined classification code
 	 */
-	inline vector<ID> classify(const string &seq) {
+	inline vector<pair<ID, double>> classify(const string &seq) {
 		if (m_filter.getSeedValues().size() > 0) {
 			RollingHashIterator itr(seq, m_filter.getKmerSize(),
 					m_filter.getSeedValues());
-			return MIBloomFilter<ID>::query(m_filter, itr, m_perFrameProb,
-					m_perFrameProbMulti, opt::score, opt::score);
+			return m_filter.query(itr, m_perFrameProb, m_perFrameProbMulti,
+					opt::score, opt::multiThresh, opt::allowMisses);
 
 		} else {
 			ntHashIterator itr(seq, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return MIBloomFilter<ID>::query(m_filter, itr, m_perFrameProb,
-					m_perFrameProbMulti, opt::score, opt::score);
+			return m_filter.query(itr, m_perFrameProb, m_perFrameProbMulti,
+					opt::score, opt::multiThresh, opt::allowMisses);
 		}
 	}
 

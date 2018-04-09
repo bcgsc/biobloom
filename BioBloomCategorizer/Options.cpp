@@ -17,7 +17,6 @@ string outputPrefix = "";
 string filePostfix = "";
 string outputType = "";
 bool minHitOnly = false;
-unsigned minHit = 0;
 unsigned maxGroupSize = std::numeric_limits<unsigned>::max();
 int debug = 0;
 double multiThresh = 0.000001;

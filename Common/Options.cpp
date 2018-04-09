@@ -5,7 +5,7 @@ namespace opt {
 	bool colourSpace;
 
 	/** Verbose output */
-	int verbose;
+	int verbose = 1;
 
 	unsigned streakThreshold = 3;
 	unsigned threads = 1;

@@ -132,6 +132,7 @@ void printHelpDialog()
 	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
 	"                         miBFs.[0]\n"
 	"  --debug                debug filter output mode."
+	"  -m, --multi            Multi Match threshold for miBF classification. [0.0000001]"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
 	cerr << dialog << endl;
@@ -184,25 +185,18 @@ int main(int argc, char *argv[])
 		"stdout_filter", no_argument, NULL, 'd' }, {
 		"with_score", no_argument, NULL, 'w' }, {
 		"debug", no_argument, &opt::debug, 1 }, {
+		"multi", no_argument, NULL, 'm' }, {
 		"verbose", no_argument, &opt::verbose, 1 }, {
 		NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:r:t:cdiwI:a:G:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:hegl:vs:r:t:cdiwI:a:G:m:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
 		switch (c) {
-		case 'm': {
-			stringstream convert(optarg);
-			if (!(convert >> opt::minHit)) {
-				cerr << "Error - Invalid parameter! m: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
 		case 's': {
 			stringstream convert(optarg);
 			unsigned matchLen;
@@ -310,6 +304,14 @@ int main(int argc, char *argv[])
 			stringstream convert(optarg);
 			if (!(convert >> opt::streakThreshold)) {
 				cerr << "Error - Invalid parameter! r: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
+		case 'm': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::multiThresh)) {
+				cerr << "Error - Invalid parameter! m: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -457,10 +459,7 @@ int main(int argc, char *argv[])
 		bbc.setStdout();
 	}
 
-	if (collab && opt::minHit) {
-		cerr << "Error: -m -c outputs types cannot be both set" << endl;
-		exit(1);
-	} else if (collab) {
+	if (collab) {
 		bbc.setOrderedFilter();
 	}
 

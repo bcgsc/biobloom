@@ -28,6 +28,7 @@
 #include <algorithm>    // std::random_shuffle
 #include <boost/math/distributions/binomial.hpp>
 #include <google/dense_hash_set>
+#include <google/dense_hash_map>
 
 using namespace std;
 
@@ -119,7 +120,7 @@ public:
 	template<typename H>
 	vector<pair<ID, double>> query(H &itr, const vector<double> &perFrameProb,
 			const vector<double> &perMultiMatchFrameProb, double alpha = 0.0001,
-			double multimapAlpha = 0.001, size_t maxPos =
+			double multimapAlpha = 0.001, unsigned maxMiss = 0, size_t maxPos =
 					numeric_limits<size_t>::max()) {
 		unsigned evaluatedSeeds = 0;
 		unsigned totalCount = 0;
@@ -129,7 +130,7 @@ public:
 		counts.set_empty_key(0);
 		while (itr != itr.end() && itr.pos() < maxPos) {
 			bool saturated = true;
-			vector<T> results = at(*itr, saturated);
+			vector<T> results = at(*itr, saturated, maxMiss);
 			//to determine if already added for this frame
 			google::dense_hash_set<T> tempIDs;
 			tempIDs.set_empty_key(0);
@@ -182,13 +183,21 @@ public:
 
 		adjustedPValThreshold = 1.0
 				- pow(1.0 - multimapAlpha, 1.0 / double(perFrameProb.size() - 1));
+		assert(perMultiMatchFrameProb.size());
 		//TODO: generalized because this assumes a = 0, fix me?
+//		for (typename vector<pair<T, double>>::const_iterator itr = potSignifResults.begin();
+//				itr != potSignifResults.end(); ++itr) {
+//			//compute single frame prob
+//			boost::math::binomial bin(counts[bestSignifVal], 1.0 - perMultiMatchFrameProb.at(itr->first));
+//			double cumProb = cdf(bin, counts[bestSignifVal] - counts[itr->first]);
+//			if (adjustedPValThreshold > cumProb) {
+//				signifResults.push_back(*itr);
+//			}
+//		}
+
 		for (typename vector<pair<T, double>>::const_iterator itr = potSignifResults.begin();
 				itr != potSignifResults.end(); ++itr) {
-			//compute single frame prob
-			boost::math::binomial bin(counts[bestSignifVal], 1.0 - perMultiMatchFrameProb.at(itr->first));
-			double cumProb = cdf(bin, counts[bestSignifVal] - counts[itr->first]);
-			if (adjustedPValThreshold > cumProb) {
+			if (counts[bestSignifVal] <= counts[itr->first]) {
 				signifResults.push_back(*itr);
 			}
 		}
