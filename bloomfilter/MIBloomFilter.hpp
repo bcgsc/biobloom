@@ -181,9 +181,10 @@ public:
 			}
 		}
 
-		adjustedPValThreshold = 1.0
-				- pow(1.0 - multimapAlpha, 1.0 / double(perFrameProb.size() - 1));
+//		adjustedPValThreshold = 1.0
+//				- pow(1.0 - multimapAlpha, 1.0 / double(perFrameProb.size() - 1));
 		assert(perMultiMatchFrameProb.size());
+		assert(multimapAlpha);
 		//TODO: generalized because this assumes a = 0, fix me?
 //		for (typename vector<pair<T, double>>::const_iterator itr = potSignifResults.begin();
 //				itr != potSignifResults.end(); ++itr) {
@@ -202,16 +203,125 @@ public:
 			}
 		}
 
-		if (signifResults.size() == 0 && saturatedCount) {
-			boost::math::binomial bin(totalCount, 1.0 - m_probSaturated);
-			double cumProb = cdf(bin, totalCount - saturatedCount);
+		//TODO detect repeat sequence
+//
+//		if (signifResults.size() == 0 && saturatedCount) {
+//			boost::math::binomial bin(totalCount, 1.0 - m_probSaturated);
+//			double cumProb = cdf(bin, totalCount - saturatedCount);
+//			if (adjustedPValThreshold > cumProb) {
+//				//0 is empty
+//				signifResults.push_back(pair<T, double>(0, saturatedCount));
+//			}
+//		}
+		sort(signifResults.begin(), signifResults.end(), sortbysec);
+		//Best hit considered the class with the most hits and lowest pValue
+		return signifResults;
+	}
+
+	template<typename H>
+	vector<pair<ID, double>> query(H &itr1, H &itr2,
+			const vector<double> &perFrameProb, double alpha = 0.0001,
+			unsigned maxMiss = 0) {
+		unsigned evaluatedSeeds = 0;
+		unsigned totalCount = 0;
+		unsigned saturatedCount = 0;
+
+		google::dense_hash_map<T, unsigned> counts;
+		counts.set_empty_key(0);
+		while (itr1 != itr1.end()) {
+			bool saturated = true;
+			vector<T> results = at(*itr1, saturated, maxMiss);
+			//to determine if already added for this frame
+			google::dense_hash_set<T> tempIDs;
+			tempIDs.set_empty_key(0);
+
+			if (!saturated) {
+				for (typename vector<T>::const_iterator j = results.begin();
+						j != results.end(); j++) {
+					if (*j != 0) {
+						if (tempIDs.find(*j) == tempIDs.end()) {
+							typename google::dense_hash_map<T, unsigned>::iterator tempItr =
+									counts.find(*j);
+							assert(*j > 0);
+							if (tempItr == counts.end()) {
+								counts[*j] = 1;
+							} else {
+								++(tempItr->second);
+							}
+							tempIDs.insert(*j);
+						}
+					}
+				}
+				++evaluatedSeeds;
+			}
+			else{
+				++saturatedCount;
+			}
+			++totalCount;
+			++itr1;
+		}
+		while (itr2 != itr2.end()) {
+			bool saturated = true;
+			vector<T> results = at(*itr2, saturated, maxMiss);
+			//to determine if already added for this frame
+			google::dense_hash_set<T> tempIDs;
+			tempIDs.set_empty_key(0);
+
+			if (!saturated) {
+				for (typename vector<T>::const_iterator j = results.begin();
+						j != results.end(); j++) {
+					if (*j != 0) {
+						if (tempIDs.find(*j) == tempIDs.end()) {
+							typename google::dense_hash_map<T, unsigned>::iterator tempItr =
+									counts.find(*j);
+							assert(*j > 0);
+							if (tempItr == counts.end()) {
+								counts[*j] = 1;
+							} else {
+								++(tempItr->second);
+							}
+							tempIDs.insert(*j);
+						}
+					}
+				}
+				++evaluatedSeeds;
+			}
+			else{
+				++saturatedCount;
+			}
+			++totalCount;
+			++itr2;
+		}
+
+		//potential signifResults
+		vector<pair<T, double>> potSignifResults;
+		vector<pair<T, double>> signifResults;
+
+		double adjustedPValThreshold = 1.0
+				- pow(1.0 - alpha, 1.0 / double(perFrameProb.size() - 1));
+		T bestSignifVal = counts.begin()->first;
+		for (typename google::dense_hash_map<T, unsigned>::const_iterator itr =
+				counts.begin(); itr != counts.end(); itr++) {
+			//TODO use complement cdf? so I don't have to subtract?
+			boost::math::binomial bin(evaluatedSeeds, 1.0 - perFrameProb.at(itr->first));
+			double cumProb = cdf(bin, evaluatedSeeds - itr->second);
 			if (adjustedPValThreshold > cumProb) {
-				//0 is empty
-				signifResults.push_back(pair<T, double>(0, saturatedCount));
+				if (counts[bestSignifVal] < counts[itr->first]) {
+					bestSignifVal = itr->first;
+				}
+				potSignifResults.push_back(pair<T, double>(itr->first, cumProb));
+			}
+		}
+
+
+		for (typename vector<pair<T, double>>::const_iterator itr = potSignifResults.begin();
+				itr != potSignifResults.end(); ++itr) {
+			if (counts[bestSignifVal] <= counts[itr->first]) {
+				signifResults.push_back(*itr);
 			}
 		}
 		sort(signifResults.begin(), signifResults.end(), sortbysec);
-		//Best hit considered the class with the most hits
+		//Best hit considered the class with the most hits and lowest pValue
 		return signifResults;
 	}
 

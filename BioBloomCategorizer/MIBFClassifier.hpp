@@ -19,6 +19,7 @@
 #include "btl_bloomfilter/ntHashIterator.hpp"
 #include <iostream>
 #include <boost/math/distributions/binomial.hpp>
+#include <BioBloomClassifier.h>
 #include <tuple>
 
 #include <zlib.h>
@@ -173,7 +174,7 @@ public:
 						++multiCount;
 					}
 
-					if(!match){
+					if (!match) {
 #pragma omp atomic
 						++incorrectCount;
 					}
@@ -183,9 +184,8 @@ public:
 						cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
 								<< "\tCorrectName:" << name << "\tPredictedID:"
 								<< m_idToIndex[fullID] << "\tPredictedName:"
-								<< fullID
-								<< "\tpVal:" << log10(pVal) * (-10.0) << "\t"
-								<< endl;
+								<< fullID << "\tpVal:" << log10(pVal) * (-10.0)
+								<< "\t" << endl;
 
 						for (unsigned i = 0; i < signifResults.size(); ++i) {
 							cout << signifResults[i] << ","
@@ -226,128 +226,6 @@ public:
 		cerr << "Incorrect: " << incorrectCount << endl;
 
 		cerr << "Total Reads: " << m_numRead << endl;
-		cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
-				<< endl;
-
-		Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
-		summaryOutput << resSummary.getResultsSummary(m_numRead);
-		summaryOutput.close();
-		cout.flush();
-	}
-
-	void filterPairOld(const string &file1, const string &file2) {
-		string outputName = opt::outputPrefix + "_reads.tsv";
-
-		//TODO output fasta?
-		if (opt::outputType == "fq") {
-			outputName = opt::outputPrefix + "_reads.fq";
-		}
-
-		Dynamicofstream readsOutput(outputName);
-
-		//print out header info and initialize variables
-		ResultsManager<ID> resSummary(m_fullIDs, false);
-
-		if (!m_filter.getSeedValues().empty()) {
-			cerr << "Spaced Seed Mode" << endl;
-		}
-
-		cerr << "Filtering Start" << endl;
-
-		gzFile fp1;
-		gzFile fp2;
-		fp1 = gzopen(file1.c_str(), "r");
-		if (fp1 == NULL) {
-			cerr << "Cannot open file " << file1.c_str() << endl;
-			exit(1);
-		}
-		fp2 = gzopen(file2.c_str(), "r");
-		if (fp2 == NULL) {
-			cerr << "Cannot open file " << file2.c_str() << endl;
-			exit(1);
-		}
-		kseq_t *seq1 = kseq_init(fp1);
-		kseq_t *seq2 = kseq_init(fp2);
-		int l1;
-		int l2;
-#pragma omp parallel private(l1, l2)
-		for (string sequence1;;) {
-			string sequence2;
-			//TODO sanity check if names to make sure both names are the same
-			string name1;
-			string name2;
-			string qual1;
-			string qual2;
-#pragma omp critical(sequence)
-			{
-				l1 = kseq_read(seq1);
-				sequence1 = string(seq1->seq.s, seq1->seq.l);
-				name1 = string(seq1->name.s, seq1->name.l);
-				qual1 = string(seq1->qual.s, seq1->qual.l);
-
-				l2 = kseq_read(seq2);
-				sequence2 = string(seq2->seq.s, seq2->seq.l);
-				name2 = string(seq2->name.s, seq2->name.l);
-				qual2 = string(seq2->qual.s, seq2->qual.l);
-			}
-			if (l1 >= 0 && l2 >= 0) {
-#pragma omp critical(totalReads)
-				if (++m_numRead % opt::fileInterval == 0) {
-					cerr << "Currently Reading Read Number: " << m_numRead
-							<< endl;
-				}
-
-				google::dense_hash_map<ID, unsigned> hitCounts1;
-				google::dense_hash_map<ID, unsigned> hitCounts2;
-				hitCounts1.set_empty_key(opt::EMPTY);
-				hitCounts2.set_empty_key(opt::EMPTY);
-
-				if (m_numRead > opt::fileInterval) {
-					exit(1);
-				}
-
-				unsigned bestHit = 0;
-
-				vector<ID> hits;
-				ID idIndex = opt::EMPTY;
-
-				idIndex = resSummary.updateSummaryData(hits);
-				if (idIndex != opt::EMPTY) {
-					const string &fullID =
-							idIndex == opt::EMPTY ? NO_MATCH :
-							idIndex == resSummary.getMultiMatchIndex() ?
-									MULTI_MATCH : m_fullIDs.at(idIndex);
-					if (opt::outputType == "fq") {
-#pragma omp critical(outputFiles)
-						{
-							readsOutput << "@" << name1 << " " << fullID << "\n"
-									<< sequence1 << "\n+\n" << qual1 << "\n"
-									<< "@" << name2 << " " << fullID << "\n"
-									<< sequence2 << "\n+\n" << qual2 << "\n";
-						}
-					} else {
-#pragma omp critical(outputFiles)
-						{
-							readsOutput << fullID << "\t" << name1 << "\t"
-									<< bestHit << "\n";
-						}
-					}
-				}
-			} else {
-				if (l1 != -1 || l2 != -1) {
-					cerr << "Terminated without getting to eof at read "
-							<< m_numRead << endl;
-					exit(1);
-				}
-				break;
-			}
-		}
-		kseq_destroy(seq1);
-		kseq_destroy(seq2);
-		gzclose(fp1);
-		gzclose(fp2);
-
-		cerr << "Total Reads:" << m_numRead << endl;
 		cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
 				<< endl;
 
@@ -404,21 +282,21 @@ public:
 
 					vector<pair<ID, double>> signifResults = classify(sequence);
 
-					if(signifResults.size() == 0){
+					if (signifResults.size() == 0) {
 						resSummary.updateSummaryData(opt::EMPTY);
-					}
-					else if(signifResults.size() == 1){
+					} else if (signifResults.size() == 1) {
 						resSummary.updateSummaryData(signifResults[0].first);
-					}
-					else{
-						resSummary.updateSummaryData(resSummary.getMultiMatchIndex());
+					} else {
+						resSummary.updateSummaryData(
+								resSummary.getMultiMatchIndex());
 					}
 
 #pragma omp critical(outputFiles)
 					if (opt::outputType == "fq") {
 						readsOutput << "@" << name << " ";
 						for (unsigned i = 0; i < signifResults.size(); ++i) {
-							readsOutput << " " << m_fullIDs[signifResults[i].first];
+							readsOutput << " "
+									<< m_fullIDs[signifResults[i].first];
 						}
 						readsOutput << "\n" << sequence << "\n+\n" << qual
 								<< "\n";
@@ -449,6 +327,130 @@ public:
 
 		Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
 		summaryOutput << resSummary.getResultsSummary(m_numRead);
+		summaryOutput.close();
+		cout.flush();
+	}
+
+	/*
+	 * Filters reads -> uses paired end information
+	 * Assumes only one hash signature exists (load only filters with same
+	 * hash functions)
+	 * prints reads
+	 */
+	void filterPairPrint(const string &file1, const string &file2) {
+
+		gzFile fp1, fp2;
+		fp1 = gzopen(file1.c_str(), "r");
+		if (fp1 == NULL) {
+			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
+			exit(1);
+		}
+		fp2 = gzopen(file2.c_str(), "r");
+		if (fp2 == NULL) {
+			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
+			exit(1);
+		}
+		kseq_t *kseq1 = kseq_init(fp1);
+		kseq_t *kseq2 = kseq_init(fp2);
+		FaRec rec1;
+		FaRec rec2;
+
+		//results summary object
+		ResultsManager<unsigned> resSummary(m_fullIDs, false);
+
+		size_t totalReads = 0;
+
+		vector<Dynamicofstream*> outputFiles1(m_fullIDs.size(), 0);
+		vector<Dynamicofstream*> outputFiles2(m_fullIDs.size(), 0);
+		//initialize variables
+		unsigned index = 0;
+
+		for (vector<string>::const_iterator i = m_fullIDs.begin(); i != m_fullIDs.end(); ++i) {
+			outputFiles1[index] = new Dynamicofstream(
+					opt::outputPrefix + "_" + *i + "_1." + opt::outputType
+							+ opt::filePostfix);
+			outputFiles2[index++] = new Dynamicofstream(
+					opt::outputPrefix + "_" + *i + "_2." + opt::outputType
+							+ opt::filePostfix);
+		}
+
+		if (opt::verbose) {
+			cerr << "Filtering Start" << "\n";
+		}
+
+		double startTime = omp_get_wtime();
+
+#pragma omp parallel private(rec1, rec2)
+		for (int l1, l2;;) {
+#pragma omp critical(kseq)
+			{
+				l1 = kseq_read(kseq1);
+				if (l1 >= 0) {
+					rec1.seq = string(kseq1->seq.s, l1);
+					rec1.header = string(kseq1->name.s, kseq1->name.l);
+					rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
+				}
+				l2 = kseq_read(kseq2);
+				if (l2 >= 0) {
+					rec2.seq = string(kseq2->seq.s, l2);
+					rec2.header = string(kseq2->name.s, kseq2->name.l);
+					rec2.qual = string(kseq2->qual.s, kseq2->qual.l);
+				}
+			}
+			if (l1 >= 0 && l2 >= 0) {
+#pragma omp critical(totalReads)
+				{
+					++totalReads;
+					if (totalReads % opt::fileInterval == 0) {
+						cerr << "Currently Reading Read Number: " << totalReads
+								<< endl;
+					}
+				}
+
+				vector<pair<ID, double>> signifResults = classifyPair(rec1.seq,
+						rec2.seq);
+
+				if (signifResults.size() == 0) {
+					resSummary.updateSummaryData(opt::EMPTY);
+				} else if (signifResults.size() == 1) {
+					resSummary.updateSummaryData(signifResults[0].first);
+					printPairToFile(signifResults[0].first, rec1, rec2,
+							outputFiles1, outputFiles2);
+				} else {
+					resSummary.updateSummaryData(
+							resSummary.getMultiMatchIndex());
+					for (unsigned i = 0; i < signifResults.size(); ++i) {
+						printPairToFile(signifResults[i].first, rec1, rec2,
+								outputFiles1, outputFiles2);
+					}
+				}
+
+			} else
+				break;
+		}
+		cerr << "Classification time (s): " << (omp_get_wtime() - startTime)
+				<< endl;
+		kseq_destroy(kseq1);
+		kseq_destroy(kseq2);
+
+		//close sorting files
+		for (unsigned i = 0; i < m_fullIDs.size(); ++i) {
+			delete (outputFiles1[i]);
+			if (opt::verbose) {
+				cerr << "File written to: "
+						<< opt::outputPrefix + "_" + m_fullIDs[i] + "_1."
+								+ opt::outputType + opt::filePostfix << endl;
+			}
+			delete (outputFiles2[i]);
+			if (opt::verbose) {
+				cerr << "File written to: "
+						<< opt::outputPrefix + "_" + m_fullIDs[i] + "_2."
+								+ opt::outputType + opt::filePostfix << endl;
+			}
+		}
+
+		Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
+		summaryOutput << resSummary.getResultsSummary(totalReads);
 		summaryOutput.close();
 		cout.flush();
 	}
@@ -498,6 +500,48 @@ private:
 					m_filter.getKmerSize());
 			return m_filter.query(itr, m_perFrameProb, m_perFrameProbMulti,
 					opt::score, opt::multiThresh, opt::allowMisses);
+		}
+	}
+
+	inline vector<pair<ID, double>> classifyPair(const string &seq1,
+			const string &seq2) {
+		if (m_filter.getSeedValues().size() > 0) {
+			RollingHashIterator itr1(seq1, m_filter.getKmerSize(),
+					m_filter.getSeedValues());
+			RollingHashIterator itr2(seq2, m_filter.getKmerSize(),
+					m_filter.getSeedValues());
+			return m_filter.query(itr1, itr2, m_perFrameProb, opt::score,
+					opt::allowMisses);
+
+		} else {
+			ntHashIterator itr1(seq1, m_filter.getHashNum(),
+					m_filter.getKmerSize());
+			ntHashIterator itr2(seq2, m_filter.getHashNum(),
+					m_filter.getKmerSize());
+			return m_filter.query(itr1, itr2, m_perFrameProb, opt::score,
+					opt::allowMisses);
+		}
+	}
+
+	inline void printPairToFile(unsigned outputFileIndex, const FaRec rec1,
+			const FaRec rec2, vector<Dynamicofstream*> &outputFiles1,
+			vector<Dynamicofstream*> &outputFiles2) {
+		if (opt::outputType == "fa") {
+#pragma omp critical(outputFiles)
+			{
+				(*outputFiles1[outputFileIndex]) << ">" << rec1.header << "\n"
+						<< rec1.seq << "\n";
+				(*outputFiles2[outputFileIndex]) << ">" << rec2.header << "\n"
+						<< rec2.seq << "\n";
+			}
+		} else {
+#pragma omp critical(outputFiles)
+			{
+				(*outputFiles1[outputFileIndex]) << "@" << rec1.header << "\n"
+						<< rec1.seq << "\n+\n" << rec1.qual << "\n";
+				(*outputFiles2[outputFileIndex]) << "@" << rec2.header << "\n"
+						<< rec2.seq << "\n+\n" << rec2.qual << "\n";
+			}
 		}
 	}
 

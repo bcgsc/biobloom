@@ -81,8 +81,7 @@ void printHelpDialog()
 	const char dialog[] =
 	"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
 	"biobloomcategorizer [OPTION]... -e -f \"[FILTER1]...\" [FILE1.fq] [FILE2.fq]\n"
-	"Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or\n"
-	"BAM format and compressed with gz, bz2 or xz and may be tarred.\n"
+	"The input format may be FASTA, FASTQ, and compressed with gz.\n"
 	"\n"
 	"  -p, --prefix=N         Output prefix to use. Otherwise will output to current\n"
 	"                         directory.\n"
@@ -111,6 +110,7 @@ void printHelpDialog()
 	"  -l, --file_list=N      A file of list of file pairs to run in parallel.\n"
 	"  -v  --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
+	"      --verbose          Display verbose output\n"
 	"  -I, --interval         the interval to report file processing status [10000000]\n"
 	"Advanced options:\n"
 //	"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
@@ -131,7 +131,7 @@ void printHelpDialog()
 	"Options for multi index bloom filters:\n"
 	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
 	"                         miBFs.[0]\n"
-	"  --debug                debug filter output mode."
+	"  --debug                debug filter output mode.\n"
 	"  -m, --multi            Multi Match threshold for miBF classification. [0.0000001]"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
@@ -438,9 +438,7 @@ int main(int argc, char *argv[])
 		}
 		MIBFClassifier BMC(filterFilePaths[0]);
 		if (paired) {
-			cerr << "paired MIBF classification not supported yet" << endl;
-			exit(1);
-//			BMC.filterPair(inputFiles[0], inputFiles[1]);
+			BMC.filterPairPrint(inputFiles[0], inputFiles[1]);
 		} else if (opt::debug) {
 			BMC.filterOld(inputFiles);
 		}

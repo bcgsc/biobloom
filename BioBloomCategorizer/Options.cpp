@@ -19,7 +19,7 @@ string outputType = "";
 bool minHitOnly = false;
 unsigned maxGroupSize = std::numeric_limits<unsigned>::max();
 int debug = 0;
-double multiThresh = 0.000001;
+double multiThresh = 0.0001;
 
 }
 

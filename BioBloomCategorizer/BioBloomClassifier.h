@@ -29,6 +29,12 @@ enum mode {
 	ORDERED, BESTHIT, STD, SCORES
 };
 
+struct FaRec {
+	string header;
+	string seq;
+	string qual;
+};
+
 ///** for modes of printing out files */
 //enum printMode {FASTA, FASTQ, BEST_FASTA, BEST_FASTQ};
 //enum printMode {NORMAL, WITH_SCORE};
@@ -94,12 +100,6 @@ private:
 
 	bool m_stdout;
 	bool m_inclusive;
-
-	struct FaRec {
-		string header;
-		string seq;
-		string qual;
-	};
 
 	void loadFilters(const vector<string> &filterFilePaths);
 	void evaluateReadStd(const string &rec, vector<unsigned> &hits);
