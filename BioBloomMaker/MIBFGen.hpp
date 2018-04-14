@@ -180,11 +180,12 @@ public:
 					}
 					kseq_destroy(seq);
 					gzclose(fp);
-					if (opt::verbose > 0) {
-						cerr << "Saturation: " << miBFBV->getPopSaturated()
-								<< " popNonZero: " << miBFBV->getPopNonZero()
-								<< endl;
-					}
+//#pragma omp critical(stderr)
+//					if (opt::verbose > 0) {
+//						cerr << "Saturation: " << miBFBV->getPopSaturated()
+//								<< " popNonZero: " << miBFBV->getPopNonZero()
+//								<< endl;
+//					}
 				}
 			} else {
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
@@ -219,10 +220,10 @@ public:
 					kseq_destroy(seq);
 					gzclose(fp);
 					if (opt::verbose > 0) {
-#pragma omp critical(stderr)
-						cerr << "Saturation: " << miBFBV->getPopSaturated()
-								<< " popNonZero: " << miBFBV->getPopNonZero()
-								<< endl;
+//#pragma omp critical(stderr)
+//						cerr << "Saturation: " << miBFBV->getPopSaturated()
+//								<< " popNonZero: " << miBFBV->getPopNonZero()
+//								<< endl;
 					}
 				}
 			}
