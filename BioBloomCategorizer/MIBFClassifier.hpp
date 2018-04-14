@@ -363,9 +363,9 @@ public:
 		vector<Dynamicofstream*> outputFiles1(m_fullIDs.size(), 0);
 		vector<Dynamicofstream*> outputFiles2(m_fullIDs.size(), 0);
 		//initialize variables
-		unsigned index = 1;
+		unsigned index = 0;
 
-		for (vector<string>::const_iterator i = m_fullIDs.begin()++; i != m_fullIDs.end(); ++i) {
+		for (vector<string>::const_iterator i = m_fullIDs.begin(); i != m_fullIDs.end(); ++i) {
 			outputFiles1[index] = new Dynamicofstream(
 					opt::outputPrefix + "/" + *i + "_1." + opt::outputType
 							+ opt::filePostfix);
@@ -434,7 +434,7 @@ public:
 		kseq_destroy(kseq2);
 
 		//close sorting files
-		for (unsigned i = 1; i < m_fullIDs.size(); ++i) {
+		for (unsigned i = 0; i < m_fullIDs.size(); ++i) {
 			delete (outputFiles1[i]);
 			if (opt::verbose) {
 				cerr << "File written to: "
