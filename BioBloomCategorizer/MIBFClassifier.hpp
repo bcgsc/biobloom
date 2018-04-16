@@ -540,23 +540,23 @@ public:
 					resSummary.updateSummaryData(opt::EMPTY);
 				} else if (signifResults.size() == 1) {
 					resSummary.updateSummaryData(signifResults[0].first);
-					printPairToFile(rec1, rec2, readsOutput);
+//					printPairToFile(rec1, rec2, readsOutput);
 				} else {
 					resSummary.updateSummaryData(
 							resSummary.getMultiMatchIndex());
-					for (unsigned i = 0; i < signifResults.size(); ++i) {
-						printPairToFile(rec1, rec2, readsOutput);
-					}
+//					for (unsigned i = 0; i < signifResults.size(); ++i) {
+//						printPairToFile(rec1, rec2, readsOutput);
+//					}
 				}
 #pragma omp critical(outputFiles)
 				if (opt::outputType == "") {
 					if (signifResults.empty()) {
-						readsOutput << "noMatch\t" << rec1.header << "\t"
+						readsOutput << "noMatch\t" << rec1.header << " "
 								<< rec1.comment << "\t0\n";
 					} else {
 						for (unsigned i = 0; i < signifResults.size(); ++i) {
 							readsOutput << m_fullIDs[signifResults[i].first]
-									<< "\t" << rec1.header << "\t"
+									<< "\t" << rec1.header << " "
 									<< rec1.comment << "\t"
 									<< signifResults.size() << "\n";
 						}

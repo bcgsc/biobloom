@@ -433,9 +433,6 @@ int main(int argc, char *argv[])
 	}
 
 	if(opt::filterType == BLOOMMAP){
-		if(opt::outputType == ""){
-			opt::outputType = "fa";
-		}
 		MIBFClassifier BMC(filterFilePaths[0]);
 		if (paired) {
 			BMC.filterPair(inputFiles[0], inputFiles[1]);
