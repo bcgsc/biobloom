@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
 		}
 		MIBFClassifier BMC(filterFilePaths[0]);
 		if (paired) {
-			BMC.filterPairPrint(inputFiles[0], inputFiles[1]);
+			BMC.filterPair(inputFiles[0], inputFiles[1]);
 		} else if (opt::debug) {
 			BMC.filterOld(inputFiles);
 		}

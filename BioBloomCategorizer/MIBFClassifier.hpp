@@ -78,6 +78,8 @@ public:
 		//needed for later statistical calculation
 		MIBloomFilter<ID>::calcFrameProbs(m_filter, m_perFrameProb,
 				m_perFrameProbMulti);
+		m_minCount.set_empty_key(0);
+//		m_fprCount.set_empty_key(0);
 	}
 
 	void filterOld(const vector<string> &inputFiles) {
@@ -250,6 +252,8 @@ public:
 
 		cerr << "Filtering Start" << endl;
 
+		double startTime = omp_get_wtime();
+
 		for (vector<string>::const_iterator it = inputFiles.begin();
 				it != inputFiles.end(); ++it) {
 			gzFile fp;
@@ -280,7 +284,7 @@ public:
 								<< endl;
 					}
 
-					vector<pair<ID, double>> signifResults = classify(sequence);
+					vector<pair<ID, double>> signifResults = classify2(sequence);
 
 					if (signifResults.size() == 0) {
 						resSummary.updateSummaryData(opt::EMPTY);
@@ -320,6 +324,9 @@ public:
 			kseq_destroy(seq);
 			gzclose(fp);
 		}
+
+		cerr << "Classification time (s): " << (omp_get_wtime() - startTime)
+						<< endl;
 
 		cerr << "Total Reads:" << m_numRead << endl;
 		cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
@@ -389,12 +396,14 @@ public:
 					rec1.seq = string(kseq1->seq.s, l1);
 					rec1.header = string(kseq1->name.s, kseq1->name.l);
 					rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
+					rec1.comment = string(kseq1->comment.s, kseq1->comment.l);
 				}
 				l2 = kseq_read(kseq2);
 				if (l2 >= 0) {
 					rec2.seq = string(kseq2->seq.s, l2);
 					rec2.header = string(kseq2->name.s, kseq2->name.l);
 					rec2.qual = string(kseq2->qual.s, kseq2->qual.l);
+					rec2.comment = string(kseq1->comment.s, kseq1->comment.l);
 				}
 			}
 			if (l1 >= 0 && l2 >= 0) {
@@ -455,6 +464,119 @@ public:
 		cout.flush();
 	}
 
+	void filterPair(const string &file1, const string &file2) {
+
+		gzFile fp1, fp2;
+		fp1 = gzopen(file1.c_str(), "r");
+		if (fp1 == NULL) {
+			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
+			exit(1);
+		}
+		fp2 = gzopen(file2.c_str(), "r");
+		if (fp2 == NULL) {
+			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
+			exit(1);
+		}
+		kseq_t *kseq1 = kseq_init(fp1);
+		kseq_t *kseq2 = kseq_init(fp2);
+		FaRec rec1;
+		FaRec rec2;
+
+		//results summary object
+		ResultsManager<unsigned> resSummary(m_fullIDs, false);
+
+		size_t totalReads = 0;
+
+		string outputName = opt::outputPrefix + "_reads.tsv";
+
+		//TODO output fasta?
+		if (opt::outputType == "fq") {
+			outputName = opt::outputPrefix + "_reads.fq";
+		}
+		else if (opt::outputType == "fa") {
+			outputName = opt::outputPrefix + "_reads.fa";
+		}
+
+		Dynamicofstream readsOutput(outputName + opt::filePostfix);
+
+		if (opt::verbose) {
+			cerr << "Filtering Start" << "\n";
+		}
+		double startTime = omp_get_wtime();
+
+#pragma omp parallel private(rec1, rec2)
+		for (int l1, l2;;) {
+#pragma omp critical(kseq)
+			{
+				l1 = kseq_read(kseq1);
+				if (l1 >= 0) {
+					rec1.seq = string(kseq1->seq.s, l1);
+					rec1.header = string(kseq1->name.s, kseq1->name.l);
+					rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
+					rec1.comment = string(kseq1->comment.s, kseq1->comment.l);
+				}
+				l2 = kseq_read(kseq2);
+				if (l2 >= 0) {
+					rec2.seq = string(kseq2->seq.s, l2);
+					rec2.header = string(kseq2->name.s, kseq2->name.l);
+					rec2.qual = string(kseq2->qual.s, kseq2->qual.l);
+					rec2.comment = string(kseq1->comment.s, kseq1->comment.l);
+				}
+			}
+			if (l1 >= 0 && l2 >= 0) {
+#pragma omp critical(totalReads)
+				{
+					++totalReads;
+					if (totalReads % opt::fileInterval == 0) {
+						cerr << "Currently Reading Read Number: " << totalReads
+								<< endl;
+					}
+				}
+
+				vector<pair<ID, double>> signifResults = classifyPair(rec1.seq,
+						rec2.seq);
+
+				if (signifResults.size() == 0) {
+					resSummary.updateSummaryData(opt::EMPTY);
+				} else if (signifResults.size() == 1) {
+					resSummary.updateSummaryData(signifResults[0].first);
+					printPairToFile(rec1, rec2, readsOutput);
+				} else {
+					resSummary.updateSummaryData(
+							resSummary.getMultiMatchIndex());
+					for (unsigned i = 0; i < signifResults.size(); ++i) {
+						printPairToFile(rec1, rec2, readsOutput);
+					}
+				}
+#pragma omp critical(outputFiles)
+				if (opt::outputType == "") {
+					if (signifResults.empty()) {
+						readsOutput << "noMatch\t" << rec1.header << "\t"
+								<< rec1.comment << "\t0\n";
+					} else {
+						for (unsigned i = 0; i < signifResults.size(); ++i) {
+							readsOutput << m_fullIDs[signifResults[i].first]
+									<< "\t" << rec1.header << "\t"
+									<< rec1.comment << "\t"
+									<< signifResults.size() << "\n";
+						}
+					}
+				}
+			} else
+				break;
+		}
+		cerr << "Classification time (s): " << (omp_get_wtime() - startTime)
+				<< endl;
+		kseq_destroy(kseq1);
+		kseq_destroy(kseq2);
+		readsOutput.close();
+
+		Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
+		summaryOutput << resSummary.getResultsSummary(totalReads);
+		summaryOutput.close();
+		cout.flush();
+	}
+
 private:
 	MIBloomFilter<ID> m_filter;
 	size_t m_numRead;
@@ -462,6 +584,8 @@ private:
 	google::dense_hash_map<string, ID> m_idToIndex;
 	vector<double> m_perFrameProb;
 	vector<double> m_perFrameProbMulti;
+	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>> m_minCount;
+//	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>> m_fprCount;
 
 	bool fexists(const string &filename) const {
 		ifstream ifile(filename.c_str());
@@ -503,6 +627,72 @@ private:
 		}
 	}
 
+	/*
+	 * testing heuristic faster code
+	 */
+	inline vector<pair<ID, double>> classify2(const string &seq) {
+		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
+		if (m_minCount.find(frameCount) == m_minCount.end()) {
+			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
+					new vector<unsigned>(m_fullIDs.size()));
+			for (size_t i = 0; i < m_minCount.size(); ++i) {
+				//TODO remove hard coded values
+				(*m_minCount[frameCount])[i] = getMinCount(frameCount,
+						m_perFrameProb[i]);
+			}
+//			m_fprCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
+//					new vector<unsigned>(m_filter.getHashNum()));
+//			for (unsigned i = 0; i < m_filter.getHashNum(); ++i) {
+//				(*m_fprCount[frameCount])[i] = getFPRCount(frameCount,
+//						pow(double(m_filter.getPop()) / double(m_filter.size()),
+//								i + 1));
+////				cerr << i << " " << m_fprCount[seq.size()]->at(i) << endl;
+//			}
+		}
+		if (m_filter.getSeedValues().size() > 0) {
+			RollingHashIterator itr(seq, m_filter.getKmerSize(),
+					m_filter.getSeedValues());
+			return m_filter.query(itr, *m_minCount[frameCount], frameCount);
+
+		} else {
+			ntHashIterator itr(seq, m_filter.getHashNum(),
+					m_filter.getKmerSize());
+			return m_filter.query(itr, *m_minCount[frameCount], frameCount);
+		}
+	}
+
+	/*
+	 * heuristic code
+	 *
+	 */
+	inline vector<pair<ID, double>> classifyPair2(const string &seq1,
+			const string &seq2) {
+		unsigned frameCount = seq1.size() + seq2.size() - (m_filter.getKmerSize() + 1)*2;
+		if (m_minCount.find(frameCount) == m_minCount.end()) {
+			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
+					new vector<unsigned>(m_fullIDs.size()));
+			for (size_t i = 0; i < m_minCount.size(); ++i) {
+				//TODO remove hard coded values
+				(*m_minCount[frameCount])[i] = getMinCount(frameCount,
+						m_perFrameProb[i]);
+			}
+		}
+		if (m_filter.getSeedValues().size() > 0) {
+			RollingHashIterator itr1(seq1, m_filter.getKmerSize(),
+					m_filter.getSeedValues());
+			RollingHashIterator itr2(seq2, m_filter.getKmerSize(),
+					m_filter.getSeedValues());
+			return m_filter.query(itr1, itr2, *m_minCount[frameCount]);
+
+		} else {
+			ntHashIterator itr1(seq1, m_filter.getHashNum(),
+					m_filter.getKmerSize());
+			ntHashIterator itr2(seq2, m_filter.getHashNum(),
+					m_filter.getKmerSize());
+			return m_filter.query(itr1, itr2, *m_minCount[frameCount]);
+		}
+	}
+
 	inline vector<pair<ID, double>> classifyPair(const string &seq1,
 			const string &seq2) {
 		if (m_filter.getSeedValues().size() > 0) {
@@ -520,6 +710,25 @@ private:
 					m_filter.getKmerSize());
 			return m_filter.query(itr1, itr2, m_perFrameProb, opt::score,
 					opt::allowMisses);
+		}
+	}
+
+	inline void printPairToFile(const FaRec rec1, const FaRec rec2,
+			Dynamicofstream &outputFile) {
+		if (opt::outputType == "fa") {
+#pragma omp critical(outputFiles)
+			{
+				outputFile << ">" << rec1.header << "\n" << rec1.seq << "\n";
+				outputFile << ">" << rec2.header << "\n" << rec2.seq << "\n";
+			}
+		} else {
+#pragma omp critical(outputFiles)
+			{
+				outputFile << "@" << rec1.header << "\n" << rec1.seq << "\n+\n"
+						<< rec1.qual << "\n";
+				outputFile << "@" << rec2.header << "\n" << rec2.seq << "\n+\n"
+						<< rec2.qual << "\n";
+			}
 		}
 	}
 
@@ -736,7 +945,19 @@ private:
 		unsigned i = 0;
 		for (; i < length; ++i) {
 			double cumProb = cdf(bin, length - i);
-			if (criticalScore >= cumProb) {
+			if (criticalScore > cumProb) {
+				break;
+			}
+		}
+		return (i);
+	}
+
+	inline unsigned getFPRCount(unsigned length, double eventProb) {
+		binomial bin(length, 1.0 - eventProb);
+		unsigned i = 0;
+		for (; i < length; ++i) {
+			double cumProb = cdf(bin, length - i);
+			if (opt::score > cumProb) {
 				break;
 			}
 		}

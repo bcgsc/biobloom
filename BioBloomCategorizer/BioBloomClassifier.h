@@ -33,6 +33,7 @@ struct FaRec {
 	string header;
 	string seq;
 	string qual;
+	string comment;
 };
 
 ///** for modes of printing out files */
