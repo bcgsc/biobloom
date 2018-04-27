@@ -533,7 +533,7 @@ public:
 					}
 				}
 
-				vector<pair<ID, double>> signifResults = classifyPair(rec1.seq,
+				vector<pair<ID, double>> signifResults = classifyPair2(rec1.seq,
 						rec2.seq);
 
 				if (signifResults.size() == 0) {
@@ -551,15 +551,29 @@ public:
 #pragma omp critical(outputFiles)
 				if (opt::outputType == "") {
 					if (signifResults.empty()) {
-						readsOutput << "noMatch\t" << rec1.header << " "
-								<< rec1.comment << "\t0\n";
+						readsOutput << "*\t" << rec1.header << " "
+								<< rec1.comment << "\t0\t*\n";
 					} else {
-						for (unsigned i = 0; i < signifResults.size(); ++i) {
-							readsOutput << m_fullIDs[signifResults[i].first]
-									<< "\t" << rec1.header << " "
-									<< rec1.comment << "\t"
-									<< signifResults.size() << "\n";
+						unsigned i = 0;
+						readsOutput << m_fullIDs[signifResults[i].first]
+								<< "\t" << rec1.header << " "
+								<< rec1.comment << "\t"
+								<< signifResults.size() << "\t";
+						if(signifResults.size() == 1){
+							readsOutput << "*";
 						}
+						else {
+							for (++i; i < signifResults.size(); ++i) {
+								if (i != 1) {
+									readsOutput << ";"
+											<< m_fullIDs[signifResults[i].first];
+								} else {
+									readsOutput
+											<< m_fullIDs[signifResults[i].first];
+								}
+							}
+						}
+						readsOutput << "\n";
 					}
 				}
 			} else
@@ -671,10 +685,10 @@ private:
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
 					new vector<unsigned>(m_fullIDs.size()));
-			for (size_t i = 0; i < m_minCount.size(); ++i) {
-				//TODO remove hard coded values
+			for (size_t i = 1; i < m_fullIDs.size(); ++i) {
 				(*m_minCount[frameCount])[i] = getMinCount(frameCount,
 						m_perFrameProb[i]);
+//				cerr << i << " " << (*m_minCount[frameCount])[i] << endl;
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
@@ -682,14 +696,13 @@ private:
 					m_filter.getSeedValues());
 			RollingHashIterator itr2(seq2, m_filter.getKmerSize(),
 					m_filter.getSeedValues());
-			return m_filter.query(itr1, itr2, *m_minCount[frameCount]);
-
+			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb);
 		} else {
 			ntHashIterator itr1(seq1, m_filter.getHashNum(),
 					m_filter.getKmerSize());
 			ntHashIterator itr2(seq2, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return m_filter.query(itr1, itr2, *m_minCount[frameCount]);
+			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb);
 		}
 	}
 

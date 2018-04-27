@@ -318,7 +318,9 @@ public:
 
 	template<typename H>
 	vector<pair<ID, double>> query(H &itr1, H &itr2,
-			const vector<unsigned> &minCount, unsigned extraFrameLimit = 40) {
+			const vector<unsigned> &minCount,
+			const vector<double> &perFrameProb,
+			unsigned extraFrameLimit = 40) {
 
 		vector<pair<T, double>> signifResults;
 		unsigned extraFrame = 0;
@@ -443,10 +445,12 @@ public:
 		}
 		for (typename google::dense_hash_set<T>::const_iterator candidates =
 				candidateMatch.begin(); candidates != candidateMatch.end(); candidates++) {
-			if (bestCount == counts[*candidates]) {
-				signifResults.push_back(pair<T, double>(*candidates, 0.0));
+			if (bestCount <= counts[*candidates] + 4) {
+				//todo record not counts but pVals?
+				signifResults.push_back(pair<T, double>(*candidates, double(counts[*candidates]) + perFrameProb[*candidates]));
 			}
 		}
+		sort(signifResults.begin(), signifResults.end(), sortbysec);
 		return signifResults;
 	}
 
