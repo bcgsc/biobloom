@@ -61,7 +61,8 @@ void printHelpDialog() {
 		"  -p, --file_prefix=N    Filter prefix and filter ID. Required option.\n"
 		"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
 		"  -h, --help             Display this dialog.\n"
-		"  -v  --version          Display version information.\n"
+		"      --version          Display version information.\n"
+		"  -v  --verbose          Display verbose output.\n"
 		"  -t, --threads=N        The number of threads to use.\n"
 		"\nBloom filter options:\n"
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]\n"
@@ -107,6 +108,11 @@ void printHelpDialog() {
 	exit(0);
 }
 
+enum {
+	OPT_VERSION
+};
+
+
 int main(int argc, char *argv[]) {
 
 	bool die = false;
@@ -130,7 +136,6 @@ int main(int argc, char *argv[]) {
 			"file_prefix", required_argument, NULL, 'p' }, {
 			"output_dir", required_argument, NULL, 'o' }, {
 			"help", no_argument, NULL, 'h' }, {
-			"version", no_argument, NULL, 'v' }, {
 			"threads", required_argument, NULL, 't' }, {
 			"fal_pos_rate", required_argument, NULL, 'f' }, {
 			"multi_index", no_argument, NULL, 'm' }, {
@@ -149,6 +154,8 @@ int main(int argc, char *argv[]) {
 			"inclusive", no_argument, NULL, 'i' }, {
 			"print_reads", no_argument, NULL, 'P' }, {
 			"interval",	required_argument, NULL, 'I' }, {
+			"verbose", no_argument, NULL, 'v' }, {
+			"version", no_argument, NULL, OPT_VERSION }, {
 			NULL, 0, NULL, 0 } };
 
 	//actual checking step
@@ -254,7 +261,7 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 		case 'v': {
-			printVersion();
+			opt::verbose++;
 			break;
 		}
 		case 's': {
@@ -337,6 +344,10 @@ int main(int argc, char *argv[]) {
 				exit(EXIT_FAILURE);
 			}
 			break;
+		}
+		case OPT_VERSION:{
+			printVersion();
+			exit(EXIT_SUCCESS);
 		}
 		default: {
 			die = true;
