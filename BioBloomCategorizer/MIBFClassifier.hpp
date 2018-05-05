@@ -54,7 +54,7 @@ public:
 		}
 		m_fullIDs.push_back("");
 		ifstream idFH(idFile.c_str(), ifstream::in);
-		m_idToIndex.set_empty_key(m_fullIDs.back());
+//		m_idToIndex.set_empty_key(m_fullIDs.back());
 		string line;
 		getline(idFH, line);
 		while (idFH.good()) {
@@ -64,7 +64,7 @@ public:
 			converter >> id;
 			converter >> name;
 			m_fullIDs.push_back(name);
-			m_idToIndex[m_fullIDs.back()] = id;
+//			m_idToIndex[m_fullIDs.back()] = id;
 			getline(idFH, line);
 		}
 		idFH.close();
@@ -130,11 +130,10 @@ public:
 						cerr << "Currently Reading Read Number: " << m_numRead
 								<< endl;
 					}
-					vector<vector<ID> > hitsPattern;
-					vector<unsigned> saturation;
+					vector<vector<pair<ID, bool>> > hitsPattern;
 					unsigned evaluatedSeeds = 0;
 					vector<unsigned> sig = getMatchSignature(sequence,
-							evaluatedSeeds, hitsPattern, saturation);
+							evaluatedSeeds, hitsPattern);
 					double pVal = 1.0;
 					vector<double> pVals;
 					unsigned maxCount = 0;
@@ -160,14 +159,10 @@ public:
 //						cout << pVal << "\t" << "T" << "\t" << name << "\t"
 //								<< fullID << endl;
 //					}
-					bool match = false;
 					unsigned tempCount = 0;
 					for (unsigned i = 0; i < signifResults.size(); ++i) {
 						//TODO resolve precision error better
 						if (fullSignifCounts[i] >= maxCount) {
-							if (name == m_fullIDs.at(signifResults[i])) {
-								match = true;
-							}
 							++tempCount;
 						}
 					}
@@ -176,16 +171,15 @@ public:
 						++multiCount;
 					}
 
-					if (!match) {
-#pragma omp atomic
-						++incorrectCount;
-					}
-
 #pragma omp critical(cout)
-					if (!match || tempCount > 1) {
-						cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
-								<< "\tCorrectName:" << name << "\tPredictedID:"
-								<< m_idToIndex[fullID] << "\tPredictedName:"
+					if (tempCount > 0) {
+//						cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
+//								<< "\tCorrectName:" << name << "\tPredictedID:"
+//								<< m_idToIndex[fullID] << "\tPredictedName:"
+//								<< fullID << "\tpVal:" << log10(pVal) * (-10.0)
+//								<< "\t" << endl;
+
+						cout << m_numRead << "\tCorrectName:" << name << "\tPredictedName:"
 								<< fullID << "\tpVal:" << log10(pVal) * (-10.0)
 								<< "\t" << endl;
 
@@ -197,8 +191,8 @@ public:
 									<< fullSignifCounts[i] << "\t";
 						}
 						cout << endl;
-						printVerbose(name, comment, sequence, hitsPattern, sig,
-								saturation, idIndex);
+						printVerbose(name, comment, sequence, hitsPattern, sig, idIndex);
+						printCountHistogram(hitsPattern);
 					}
 
 					if (idIndex != opt::EMPTY) {
@@ -284,7 +278,9 @@ public:
 								<< endl;
 					}
 
-					vector<pair<ID, double>> signifResults = classify2(sequence);
+					unsigned saturatedCount = 0;
+					vector<pair<ID, double>> signifResults = classify(sequence,
+							saturatedCount);
 
 					if (signifResults.size() == 0) {
 						resSummary.updateSummaryData(opt::EMPTY);
@@ -294,27 +290,32 @@ public:
 						resSummary.updateSummaryData(
 								resSummary.getMultiMatchIndex());
 					}
-
-#pragma omp critical(outputFiles)
-					if (opt::outputType == "fq") {
-						readsOutput << "@" << name << " ";
-						for (unsigned i = 0; i < signifResults.size(); ++i) {
-							readsOutput << " "
-									<< m_fullIDs[signifResults[i].first];
-						}
-						readsOutput << "\n" << sequence << "\n+\n" << qual
-								<< "\n";
-					} else {
+	#pragma omp critical(outputFiles)
+					if (opt::outputType == "") {
 						if (signifResults.empty()) {
-							readsOutput << "noMatch\t" << name << "\t"
-									<< comment << "\t0\n";
+							readsOutput << "*\t" << name << " "
+									<< comment << "\t0\t*\t"<< saturatedCount <<"\n";
 						} else {
-							for (unsigned i = 0; i < signifResults.size();
-									++i) {
-								readsOutput << m_fullIDs[signifResults[i].first]
-										<< "\t" << name << "\t" << comment
-										<< "\t" << signifResults.size() << "\n";
+							unsigned i = 0;
+							readsOutput << m_fullIDs[signifResults[i].first]
+									<< "\t" << name << " "
+									<< comment << "\t"
+									<< signifResults.size() << "\t";
+							if(signifResults.size() == 1){
+								readsOutput << "*";
 							}
+							else {
+								for (++i; i < signifResults.size(); ++i) {
+									if (i != 1) {
+										readsOutput << ";"
+												<< m_fullIDs[signifResults[i].first];
+									} else {
+										readsOutput
+												<< m_fullIDs[signifResults[i].first];
+									}
+								}
+							}
+							readsOutput << "\t" << saturatedCount << "\n";
 						}
 					}
 				} else {
@@ -334,132 +335,6 @@ public:
 
 		Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
 		summaryOutput << resSummary.getResultsSummary(m_numRead);
-		summaryOutput.close();
-		cout.flush();
-	}
-
-	/*
-	 * Filters reads -> uses paired end information
-	 * Assumes only one hash signature exists (load only filters with same
-	 * hash functions)
-	 * prints reads
-	 */
-	void filterPairPrint(const string &file1, const string &file2) {
-
-		gzFile fp1, fp2;
-		fp1 = gzopen(file1.c_str(), "r");
-		if (fp1 == NULL) {
-			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
-			exit(1);
-		}
-		fp2 = gzopen(file2.c_str(), "r");
-		if (fp2 == NULL) {
-			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
-			exit(1);
-		}
-		kseq_t *kseq1 = kseq_init(fp1);
-		kseq_t *kseq2 = kseq_init(fp2);
-		FaRec rec1;
-		FaRec rec2;
-
-		//results summary object
-		ResultsManager<unsigned> resSummary(m_fullIDs, false);
-
-		size_t totalReads = 0;
-
-		vector<Dynamicofstream*> outputFiles1(m_fullIDs.size(), 0);
-		vector<Dynamicofstream*> outputFiles2(m_fullIDs.size(), 0);
-		//initialize variables
-		unsigned index = 0;
-
-		for (vector<string>::const_iterator i = m_fullIDs.begin(); i != m_fullIDs.end(); ++i) {
-			outputFiles1[index] = new Dynamicofstream(
-					opt::outputPrefix + "/" + *i + "_1." + opt::outputType
-							+ opt::filePostfix);
-			outputFiles2[index++] = new Dynamicofstream(
-					opt::outputPrefix + "/" + *i + "_2." + opt::outputType
-							+ opt::filePostfix);
-		}
-
-		if (opt::verbose) {
-			cerr << "Filtering Start" << "\n";
-		}
-
-		double startTime = omp_get_wtime();
-
-#pragma omp parallel private(rec1, rec2)
-		for (int l1, l2;;) {
-#pragma omp critical(kseq)
-			{
-				l1 = kseq_read(kseq1);
-				if (l1 >= 0) {
-					rec1.seq = string(kseq1->seq.s, l1);
-					rec1.header = string(kseq1->name.s, kseq1->name.l);
-					rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
-					rec1.comment = string(kseq1->comment.s, kseq1->comment.l);
-				}
-				l2 = kseq_read(kseq2);
-				if (l2 >= 0) {
-					rec2.seq = string(kseq2->seq.s, l2);
-					rec2.header = string(kseq2->name.s, kseq2->name.l);
-					rec2.qual = string(kseq2->qual.s, kseq2->qual.l);
-					rec2.comment = string(kseq1->comment.s, kseq1->comment.l);
-				}
-			}
-			if (l1 >= 0 && l2 >= 0) {
-#pragma omp critical(totalReads)
-				{
-					++totalReads;
-					if (totalReads % opt::fileInterval == 0) {
-						cerr << "Currently Reading Read Number: " << totalReads
-								<< endl;
-					}
-				}
-
-				vector<pair<ID, double>> signifResults = classifyPair(rec1.seq,
-						rec2.seq);
-
-				if (signifResults.size() == 0) {
-					resSummary.updateSummaryData(opt::EMPTY);
-				} else if (signifResults.size() == 1) {
-					resSummary.updateSummaryData(signifResults[0].first);
-					printPairToFile(signifResults[0].first, rec1, rec2,
-							outputFiles1, outputFiles2);
-				} else {
-					resSummary.updateSummaryData(
-							resSummary.getMultiMatchIndex());
-					for (unsigned i = 0; i < signifResults.size(); ++i) {
-						printPairToFile(signifResults[i].first, rec1, rec2,
-								outputFiles1, outputFiles2);
-					}
-				}
-
-			} else
-				break;
-		}
-		cerr << "Classification time (s): " << (omp_get_wtime() - startTime)
-				<< endl;
-		kseq_destroy(kseq1);
-		kseq_destroy(kseq2);
-
-		//close sorting files
-		for (unsigned i = 0; i < m_fullIDs.size(); ++i) {
-			delete (outputFiles1[i]);
-			if (opt::verbose) {
-				cerr << "File written to: "
-						<< opt::outputPrefix + "_" + m_fullIDs[i] + "_1."
-								+ opt::outputType + opt::filePostfix << endl;
-			}
-			delete (outputFiles2[i]);
-			if (opt::verbose) {
-				cerr << "File written to: "
-						<< opt::outputPrefix + "_" + m_fullIDs[i] + "_2."
-								+ opt::outputType + opt::filePostfix << endl;
-			}
-		}
-
-		Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
-		summaryOutput << resSummary.getResultsSummary(totalReads);
 		summaryOutput.close();
 		cout.flush();
 	}
@@ -533,8 +408,10 @@ public:
 					}
 				}
 
-				vector<pair<ID, double>> signifResults = classifyPair2(rec1.seq,
-						rec2.seq);
+				unsigned saturatedCount = 0;
+
+				vector<pair<ID, double>> signifResults = classifyPair(rec1.seq,
+						rec2.seq,saturatedCount);
 
 				if (signifResults.size() == 0) {
 					resSummary.updateSummaryData(opt::EMPTY);
@@ -552,7 +429,7 @@ public:
 				if (opt::outputType == "") {
 					if (signifResults.empty()) {
 						readsOutput << "*\t" << rec1.header << " "
-								<< rec1.comment << "\t0\t*\n";
+								<< rec1.comment << "\t0\t*\t"<< saturatedCount <<"\n";
 					} else {
 						unsigned i = 0;
 						readsOutput << m_fullIDs[signifResults[i].first]
@@ -573,7 +450,7 @@ public:
 								}
 							}
 						}
-						readsOutput << "\n";
+						readsOutput << "\t"<< saturatedCount <<"\n";
 					}
 				}
 			} else
@@ -595,7 +472,7 @@ private:
 	MIBloomFilter<ID> m_filter;
 	size_t m_numRead;
 	vector<string> m_fullIDs;
-	google::dense_hash_map<string, ID> m_idToIndex;
+//	google::dense_hash_map<string, ID> m_idToIndex;
 	vector<double> m_perFrameProb;
 	vector<double> m_perFrameProbMulti;
 	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>> m_minCount;
@@ -623,55 +500,46 @@ private:
 		return result;
 	}
 
-	/*
-	 * Streamlined classification code
-	 */
-	inline vector<pair<ID, double>> classify(const string &seq) {
-		if (m_filter.getSeedValues().size() > 0) {
-			RollingHashIterator itr(seq, m_filter.getKmerSize(),
-					m_filter.getSeedValues());
-			return m_filter.query(itr, m_perFrameProb, m_perFrameProbMulti,
-					opt::score, opt::multiThresh, opt::allowMisses);
-
-		} else {
-			ntHashIterator itr(seq, m_filter.getHashNum(),
-					m_filter.getKmerSize());
-			return m_filter.query(itr, m_perFrameProb, m_perFrameProbMulti,
-					opt::score, opt::multiThresh, opt::allowMisses);
-		}
-	}
+//	/*
+//	 * Streamlined classification code
+//	 */
+//	inline vector<pair<ID, double>> classify(const string &seq) {
+//		if (m_filter.getSeedValues().size() > 0) {
+//			RollingHashIterator itr(seq, m_filter.getKmerSize(),
+//					m_filter.getSeedValues());
+//			return m_filter.query(itr, m_perFrameProb, m_perFrameProbMulti,
+//					opt::score, opt::multiThresh, opt::allowMisses);
+//
+//		} else {
+//			ntHashIterator itr(seq, m_filter.getHashNum(),
+//					m_filter.getKmerSize());
+//			return m_filter.query(itr, m_perFrameProb, m_perFrameProbMulti,
+//					opt::score, opt::multiThresh, opt::allowMisses);
+//		}
+//	}
 
 	/*
 	 * testing heuristic faster code
 	 */
-	inline vector<pair<ID, double>> classify2(const string &seq) {
+	inline vector<pair<ID, double>> classify(const string &seq, unsigned &saturatedCount) {
 		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
 					new vector<unsigned>(m_fullIDs.size()));
 			for (size_t i = 0; i < m_minCount.size(); ++i) {
-				//TODO remove hard coded values
 				(*m_minCount[frameCount])[i] = getMinCount(frameCount,
 						m_perFrameProb[i]);
 			}
-//			m_fprCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
-//					new vector<unsigned>(m_filter.getHashNum()));
-//			for (unsigned i = 0; i < m_filter.getHashNum(); ++i) {
-//				(*m_fprCount[frameCount])[i] = getFPRCount(frameCount,
-//						pow(double(m_filter.getPop()) / double(m_filter.size()),
-//								i + 1));
-////				cerr << i << " " << m_fprCount[seq.size()]->at(i) << endl;
-//			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
 			RollingHashIterator itr(seq, m_filter.getKmerSize(),
 					m_filter.getSeedValues());
-			return m_filter.query(itr, *m_minCount[frameCount], frameCount);
+			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb, saturatedCount);
 
 		} else {
 			ntHashIterator itr(seq, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return m_filter.query(itr, *m_minCount[frameCount], frameCount);
+			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb, saturatedCount);
 		}
 	}
 
@@ -679,8 +547,8 @@ private:
 	 * heuristic code
 	 *
 	 */
-	inline vector<pair<ID, double>> classifyPair2(const string &seq1,
-			const string &seq2) {
+	inline vector<pair<ID, double>> classifyPair(const string &seq1,
+			const string &seq2, unsigned &saturatedCount) {
 		unsigned frameCount = seq1.size() + seq2.size() - (m_filter.getKmerSize() + 1)*2;
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
@@ -688,7 +556,6 @@ private:
 			for (size_t i = 1; i < m_fullIDs.size(); ++i) {
 				(*m_minCount[frameCount])[i] = getMinCount(frameCount,
 						m_perFrameProb[i]);
-//				cerr << i << " " << (*m_minCount[frameCount])[i] << endl;
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
@@ -696,33 +563,13 @@ private:
 					m_filter.getSeedValues());
 			RollingHashIterator itr2(seq2, m_filter.getKmerSize(),
 					m_filter.getSeedValues());
-			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb);
+			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb, saturatedCount);
 		} else {
 			ntHashIterator itr1(seq1, m_filter.getHashNum(),
 					m_filter.getKmerSize());
 			ntHashIterator itr2(seq2, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb);
-		}
-	}
-
-	inline vector<pair<ID, double>> classifyPair(const string &seq1,
-			const string &seq2) {
-		if (m_filter.getSeedValues().size() > 0) {
-			RollingHashIterator itr1(seq1, m_filter.getKmerSize(),
-					m_filter.getSeedValues());
-			RollingHashIterator itr2(seq2, m_filter.getKmerSize(),
-					m_filter.getSeedValues());
-			return m_filter.query(itr1, itr2, m_perFrameProb, opt::score,
-					opt::allowMisses);
-
-		} else {
-			ntHashIterator itr1(seq1, m_filter.getHashNum(),
-					m_filter.getKmerSize());
-			ntHashIterator itr2(seq2, m_filter.getHashNum(),
-					m_filter.getKmerSize());
-			return m_filter.query(itr1, itr2, m_perFrameProb, opt::score,
-					opt::allowMisses);
+			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb, saturatedCount);
 		}
 	}
 
@@ -768,16 +615,15 @@ private:
 	}
 
 	/*
+	 * Debugging
 	 * Computes criteria used for judging a read consisting of:
 	 * Position of matches
 	 * Number of actually evaluated k-mers
 	 * Return count of matching k-mers to set
 	 */
-	//TODO proof of concept not yet optimized
-	//TODO turn into streaming algorithm to terminate early
+	//TODO saturation not handle correctly
 	inline vector<unsigned> getMatchSignature(const string &seq,
-			unsigned &evaluatedSeeds, vector<vector<ID> > &hitsPattern,
-			vector<unsigned> &saturation) {
+			unsigned &evaluatedSeeds, vector<vector<pair<ID, bool> > > &hitsPattern) {
 		vector<unsigned> matchPos;
 		matchPos.reserve(seq.size() - m_filter.getKmerSize());
 
@@ -785,15 +631,19 @@ private:
 			RollingHashIterator itr(seq, m_filter.getKmerSize(),
 					m_filter.getSeedValues());
 			while (itr != itr.end()) {
-				bool saturated = true;
-				vector<ID> results = m_filter.at(*itr, saturated,
-						opt::allowMisses);
+				vector<ID> results = m_filter.at(*itr, opt::allowMisses);
+				vector<pair<ID, bool>> processedResults(results.size(), pair<ID, bool>(0,false));
 				if (results.size() > 0) {
+					for (unsigned i = 0; i < m_filter.getHashNum(); ++i) {
+						ID tempResult = results[i];
+						if (tempResult > MIBloomFilter<ID>::s_mask) {
+							processedResults[i] = pair<ID, bool> (tempResult & MIBloomFilter<ID>::s_antiMask, true);
+						} else {
+							processedResults[i] = pair<ID, bool> (tempResult & MIBloomFilter<ID>::s_antiMask, false);
+						}
+					}
 					matchPos.push_back(itr.pos());
-					hitsPattern.push_back(results);
-				}
-				if (saturated) {
-					saturation.push_back(itr.pos());
+					hitsPattern.push_back(processedResults);
 				}
 				++itr;
 				++evaluatedSeeds;
@@ -802,15 +652,19 @@ private:
 			ntHashIterator itr(seq, m_filter.getHashNum(),
 					m_filter.getKmerSize());
 			while (itr != itr.end()) {
-				bool saturated = true;
-				vector<ID> results = m_filter.at(*itr, saturated,
-						opt::allowMisses);
+				vector<ID> results = m_filter.at(*itr, opt::allowMisses);
+				vector<pair<ID, bool>> processedResults(results.size(), pair<ID, bool>(0,false));
 				if (results.size() > 0) {
+					for (unsigned i = 0; i < m_filter.getHashNum(); ++i) {
+						ID tempResult = results[i];
+						if (tempResult > MIBloomFilter<ID>::s_mask) {
+							processedResults[i] = pair<ID, bool> (tempResult & MIBloomFilter<ID>::s_antiMask, true);
+						} else {
+							processedResults[i] = pair<ID, bool> (tempResult & MIBloomFilter<ID>::s_antiMask, false);
+						}
+					}
 					matchPos.push_back(itr.pos());
-					hitsPattern.push_back(results);
-				}
-				if (saturated) {
-					saturation.push_back(itr.pos());
+					hitsPattern.push_back(processedResults);
 				}
 				++itr;
 				++evaluatedSeeds;
@@ -820,34 +674,10 @@ private:
 	}
 
 	/*
-	 * verbose output for debugging purposes
-	 * Read Seq
-	 * Seed match pattern
-	 * Expected false positives
-	 * Removed match pattern
-	 * Number of removed matches
-	 * Probability of false positive due to random chance
-	 * Expected false positives
-	 * Match pattern index
-	 */
-	inline void printVerbose(const string &header, const string &comment,
-			const string &seq, const vector<unsigned> &hitsVector,
-			unsigned evaluatedKmers, unsigned rmCount,
-			const vector<unsigned> &rmMatch, double probFP,
-			const vector<vector<ID> > &hitsPattern) {
-		cerr << header << ' ' << comment << ' ' << evaluatedKmers << ' '
-				<< rmCount << ' ' << rmMatch.size() << ' ' << probFP << endl;
-		cerr << seq << endl;
-		cerr << vectToStr(hitsVector, seq) << endl;
-		cerr << vectToStr(rmMatch, seq) << endl;
-		cerr << vectToStr(hitsVector, hitsPattern, seq);
-	}
-
-	/*
 	 * Old function for evaluating pValues
 	 * For debugging now
 	 */
-	inline ID evalRead(const vector<vector<ID> > &hitsPattern,
+	inline ID evalRead(const vector<vector<pair<ID, bool> > > &hitsPattern,
 			unsigned evaluatedSeeds, double &pVal, unsigned &maxCount,
 			vector<ID> &signifResults, vector<unsigned> &signifCounts,
 			vector<unsigned> &fullSignifCounts, vector<double> &pVals) {
@@ -855,42 +685,43 @@ private:
 		google::dense_hash_map<ID, unsigned> fullCounts;
 		counts.set_empty_key(opt::EMPTY);
 		fullCounts.set_empty_key(opt::EMPTY);
-		for (vector<vector<ID> >::const_iterator i = hitsPattern.begin();
-				i != hitsPattern.end(); i++) {
+		for (unsigned i = 0;
+				i < hitsPattern.size(); i++) {
 			//to determine if already added for this frame
 			google::dense_hash_set<ID> tempIDs;
 			tempIDs.set_empty_key(opt::EMPTY);
 			unsigned count = 0;
-			for (vector<ID>::const_iterator j = i->begin(); j != i->end();
+			for (vector<pair<ID, bool>>::const_iterator j = hitsPattern[i].begin(); j != hitsPattern[i].end();
 					j++) {
-				if (*j != opt::EMPTY) {
-					if (tempIDs.find(*j) == tempIDs.end()) {
+				if (j->first != opt::EMPTY) {
+					if (tempIDs.find(j->first) == tempIDs.end()) {
 						google::dense_hash_map<ID, unsigned>::iterator tempItr =
-								counts.find(*j);
+								counts.find(j->first);
 						if (tempItr == counts.end()) {
-							counts[*j] = 1;
+							counts[j->first] = 1;
 						} else {
 							++(tempItr->second);
 						}
-						tempIDs.insert(*j);
+						tempIDs.insert(j->first);
 					}
 					++count;
 				}
 			}
+			//make full counts consider only non-saturation
 			if (count == m_filter.getHashNum()) {
 				google::dense_hash_set<ID> tempIDsFull;
 				tempIDsFull.set_empty_key(opt::EMPTY);
-				for (vector<ID>::const_iterator j = i->begin(); j != i->end();
+				for (vector<pair<ID, bool>>::const_iterator j = hitsPattern[i].begin(); j != hitsPattern[i].end();
 						j++) {
-					if (tempIDsFull.find(*j) == tempIDsFull.end()) {
+					if (tempIDsFull.find(j->first) == tempIDsFull.end() && !j->second) {
 						google::dense_hash_map<ID, unsigned>::iterator tempItrFull =
-								fullCounts.find(*j);
+								fullCounts.find(j->first);
 						if (tempItrFull == fullCounts.end()) {
-							fullCounts[*j] = 1;
+							fullCounts[j->first] = 1;
 						} else {
 							++(tempItrFull->second);
 						}
-						tempIDsFull.insert(*j);
+						tempIDsFull.insert(j->first);
 					}
 				}
 			}
@@ -977,23 +808,99 @@ private:
 		return (i);
 	}
 
+	//debug helper methods
+	/*
+	 * debugging function
+	 * prints this count hist for all elements
+	 * allCounts, counts
+	 * TODO satuCounts, allSatuCounts
+	 */
+	void printCountHistogram(const vector<vector<pair<ID,bool>> > &hitsPattern){
+		google::dense_hash_map< ID, unsigned> allCounts;
+		allCounts.set_empty_key(0);
+		google::dense_hash_map< ID, unsigned> counts;
+		counts.set_empty_key(0);
+		google::dense_hash_map< ID, unsigned> satCounts;
+		satCounts.set_empty_key(0);
+		for(ID i = 1; i < m_fullIDs.size(); ++i){
+			allCounts[i] = 0;
+			counts[i] = 0;
+			satCounts[i] = 0;
+		}
+		for (vector<vector<pair<ID,bool>> >::const_iterator i = hitsPattern.begin();
+				i != hitsPattern.end(); i++) {
+			//to determine if already added for this frame
+			google::dense_hash_set<ID> tempIDs;
+			tempIDs.set_empty_key(opt::EMPTY);
+			for (vector<pair<ID,bool>>::const_iterator j = i->begin(); j != i->end();
+					j++) {
+				if (j->first != opt::EMPTY) {
+					if (tempIDs.find(j->first) == tempIDs.end()) {
+						tempIDs.insert(j->first);
+						++counts[j->first];
+					}
+					if(!j->second){
+						++satCounts[j->first];
+					}
+					++allCounts[j->first];
+				}
+			}
+		}
+
+		for (ID i = 1; i < m_fullIDs.size(); ++i) {
+			if(allCounts[i] > 0) {
+				cout << i << "\t" << m_fullIDs[i] << "\t" << counts[i] << "\t"
+				<< allCounts[i]<< "\t"
+				<< satCounts[i] << endl;
+			}
+		}
+	}
+
 	inline void printVerbose(const string &header, const string &comment,
-			const string &seq, const vector<vector<ID> > &hitsPattern,
-			const vector<unsigned> &sig, const vector<unsigned> &saturation,
-			ID value) {
+			const string &seq, const vector<vector<pair<ID,bool>> > &hitsPattern,
+			const vector<unsigned> &sig, ID value) {
 		unsigned evaluatedSeeds = 0;
 		cout << header << ' ' << comment << ' ' << evaluatedSeeds << ' '
 				<< base64_chars[value % 64] << ' ' << value << endl;
 		cout << seq << endl;
 		cout << vectToStr(sig, seq) << endl;
-		cout << vectToStr(saturation, seq) << endl;
 		cout << vectToStr(sig, hitsPattern, seq);
 	}
 
 	inline string vectToStr(const vector<unsigned> &hitsVector,
-			const vector<vector<ID> > &hitsPattern, const string &seq) {
+			const vector<vector<pair<ID,bool>> > &hitsPattern, const string &seq) {
 		stringstream ss;
-		{
+		unsigned prevIndex = 1;
+		unsigned index = 0;
+		//print first stretch of zeros
+		if (hitsVector.size()) {
+			for (unsigned i = prevIndex; i <= hitsVector[index]; ++i) {
+				ss << " ";
+			}
+			prevIndex = hitsVector[index] + 1;
+			for (; index < hitsVector.size(); index++) {
+				//print 0s
+				for (unsigned i = prevIndex; i < hitsVector[index]; ++i) {
+					ss << " ";
+				}
+				unsigned count = 0;
+				for (unsigned hVal = 0; hVal < m_filter.getHashNum();
+						++hVal) {
+					if (hitsPattern[index][hVal].first != opt::EMPTY) {
+						++count;
+					}
+				}
+				ss << count;
+				prevIndex = hitsVector[index] + 1;
+			}
+			++prevIndex;
+		}
+		for (unsigned i = prevIndex;
+				i <= (seq.size() - m_filter.getKmerSize() + 1); ++i) {
+			ss << " ";
+		}
+		ss << "\n";
+		for (unsigned hVal = 0; hVal < m_filter.getHashNum(); ++hVal) {
 			unsigned prevIndex = 1;
 			unsigned index = 0;
 			//print first stretch of zeros
@@ -1007,14 +914,11 @@ private:
 					for (unsigned i = prevIndex; i < hitsVector[index]; ++i) {
 						ss << " ";
 					}
-					unsigned count = 0;
-					for (unsigned hVal = 0; hVal < m_filter.getHashNum();
-							++hVal) {
-						if (hitsPattern[index][hVal] != opt::EMPTY) {
-							++count;
-						}
+					if (hitsPattern[index][hVal].first == opt::EMPTY) {
+						ss << " ";
+					} else {
+						ss << base64_chars[hitsPattern[index][hVal].first % 64];
 					}
-					ss << count;
 					prevIndex = hitsVector[index] + 1;
 				}
 				++prevIndex;
@@ -1039,10 +943,10 @@ private:
 					for (unsigned i = prevIndex; i < hitsVector[index]; ++i) {
 						ss << " ";
 					}
-					if (hitsPattern[index][hVal] == opt::EMPTY) {
-						ss << " ";
+					if (hitsPattern[index][hVal].second == opt::EMPTY) {
+						ss << 0;
 					} else {
-						ss << base64_chars[hitsPattern[index][hVal] % 64];
+						ss << 1;
 					}
 					prevIndex = hitsVector[index] + 1;
 				}
