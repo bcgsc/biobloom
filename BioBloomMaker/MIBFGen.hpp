@@ -53,7 +53,7 @@ public:
 						m_fileNames[i].find_last_of("/") + 1));
 				m_nameToID[m_ids.back()] = m_ids.size() - 1;
 			}
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic)
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 				gzFile fp;
 				fp = gzopen(m_fileNames[i].c_str(), "r");
@@ -148,15 +148,15 @@ public:
 		if (opt::verbose)
 			cerr << "Pass " << j << endl;
 		if (opt::idByFile) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic)
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 				gzFile fp;
-				if (opt::verbose) {
-#pragma omp critical(stderr)
-					cerr << "Opening: "
-							<< (j % 2 ? m_fileNames[i] : m_fileNames[i] + ".rv")
-							<< endl;
-				}
+//				if (opt::verbose) {
+//#pragma omp critical(stderr)
+//					cerr << "Opening: "
+//							<< (j % 2 ? m_fileNames[i] : m_fileNames[i] + ".rv")
+//							<< endl;
+//				}
 				fp = j % 2 ?
 						gzopen(m_fileNames[i].c_str(), "r") :
 						gzopen((m_fileNames[i] + ".rv").c_str(), "r");
@@ -218,8 +218,13 @@ public:
 		}
 
 		//second pass saturation normalization special
-		//TODO store values sparse bitmatrix instead
+		//TODO store values sparse bitmatrix instead?
 		{
+			//record memory before
+			size_t memKB = getRSS();
+			if (opt::verbose)
+				cerr << "Mem usage (kB): " << memKB << endl;
+
 			typedef google::dense_hash_map<size_t,
 					boost::shared_ptr<google::dense_hash_set<ID>>> SatMap;
 			SatMap satMap;
@@ -231,16 +236,16 @@ public:
 			if (opt::verbose)
 				cerr << "Pass normalize" << endl;
 			if (opt::idByFile) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic)
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 					gzFile fp;
-					if (opt::verbose) {
-#pragma omp critical(stderr)
-						cerr << "Opening: "
-								<< (j % 2 ?
-										m_fileNames[i] : m_fileNames[i] + ".rv")
-								<< endl;
-					}
+//					if (opt::verbose) {
+//#pragma omp critical(stderr)
+//						cerr << "Opening: "
+//								<< (j % 2 ?
+//										m_fileNames[i] : m_fileNames[i] + ".rv")
+//								<< endl;
+//					}
 					fp = j % 2 ?
 							gzopen(m_fileNames[i].c_str(), "r") :
 							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
@@ -301,11 +306,11 @@ public:
 			} else {
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 					gzFile fp;
-					if (opt::verbose)
-						cerr << "Opening: "
-								<< (j % 2 ?
-										m_fileNames[i] : m_fileNames[i] + ".rv")
-								<< endl;
+//					if (opt::verbose)
+//						cerr << "Opening: "
+//								<< (j % 2 ?
+//										m_fileNames[i] : m_fileNames[i] + ".rv")
+//								<< endl;
 					fp = j % 2 ?
 							gzopen(m_fileNames[i].c_str(), "r") :
 							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
@@ -397,7 +402,9 @@ public:
 					counts[tempItr->second]++;
 				}
 			}
-
+			//record memory after
+			if (opt::verbose)
+				cerr << "Mem usage of support datastructure (kB): " << (getRSS() - memKB) << endl;
 		}
 
 		//finish the rest
@@ -406,16 +413,16 @@ public:
 			if (opt::verbose)
 				cerr << "Pass " << j << endl;
 			if (opt::idByFile) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic)
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 					gzFile fp;
-					if (opt::verbose) {
-#pragma omp critical(stderr)
-						cerr << "Opening: "
-								<< (j % 2 ?
-										m_fileNames[i] : m_fileNames[i] + ".rv")
-								<< endl;
-					}
+//					if (opt::verbose) {
+//#pragma omp critical(stderr)
+//						cerr << "Opening: "
+//								<< (j % 2 ?
+//										m_fileNames[i] : m_fileNames[i] + ".rv")
+//								<< endl;
+//					}
 					fp = j % 2 ?
 							gzopen(m_fileNames[i].c_str(), "r") :
 							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
@@ -538,7 +545,7 @@ private:
 
 		//populate sdsl bitvector (bloomFilter)
 		if (opt::idByFile) {
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic)
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 				gzFile fp;
 				if(opt::verbose){
@@ -576,6 +583,10 @@ private:
 				uniqueCounts += totalCount - colliCounts;
 				kseq_destroy(seq);
 				gzclose(fp);
+				if(opt::verbose){
+#pragma omp critical(stderr)
+					cerr << "Finished processing " << m_fileNames[i] << endl;
+				}
 			}
 		} else {
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
@@ -619,7 +630,7 @@ private:
 		}
 
 		if (opt::verbose > 0) {
-			cerr << "Approximate number of unique entries in filter: "
+			cerr << "Approximate number of unique frames in filter: "
 					<< uniqueCounts << endl;
 		}
 		return new MIBloomFilter<ID>(opt::hashNum, m_kmerSize, bv, opt::sseeds);
@@ -789,6 +800,36 @@ private:
 			}
 		}
 		gzclose(fp);
+	}
+
+	//TODO move these functions to a common util class?
+
+	/*
+	 * Get RSS
+	 */
+	size_t getRSS(){ //Note: this value is in KB!
+	    FILE* file = fopen("/proc/self/status", "r");
+	    int result = -1;
+	    char line[128];
+
+	    while (fgets(line, 128, file) != NULL){
+	        if (strncmp(line, "VmRSS:", 6) == 0){
+	            result = parseLine(line);
+	            break;
+	        }
+	    }
+	    fclose(file);
+	    return result;
+	}
+
+	int parseLine(char* line){
+	    // This assumes that a digit will be found and the line ends in " Kb".
+	    int i = strlen(line);
+	    const char* p = line;
+	    while (*p <'0' || *p > '9') p++;
+	    line[i-3] = '\0';
+	    i = atoi(p);
+	    return i;
 	}
 
 	/*
