@@ -759,6 +759,21 @@ public:
 	}
 
 	/*
+	 * Returns if IDs are saturated
+	 * ~2 cache misses
+	 */
+	inline bool isSaturated(const size_t *hashes) {
+		unsigned misses = 0;
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
+			if(m_data[m_rankSupport(pos)] < s_mask){
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/*
 	 * No saturation masking
 	 */
 	inline vector<T> at(const size_t *hashes, unsigned maxMiss = 0) {
@@ -780,6 +795,21 @@ public:
 			results[i] = m_data[rankPos[i]];
 		}
 		return results;
+	}
+
+	/*
+	 * No saturation masking
+	 */
+	inline vector<size_t> getRankPos(const size_t *hashes) {
+		vector<size_t> rankPos(m_hashNum);
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
+			if (m_bv[pos] == 0) {
+			} else {
+				rankPos[i] = m_rankSupport(pos);
+			}
+		}
+		return rankPos;
 	}
 
 	inline const vector<vector<unsigned> > &getSeedValues() const {
@@ -848,6 +878,19 @@ public:
 
 	inline size_t size() {
 		return m_bv.size();
+	}
+
+	//overwrites existing value
+	inline void setData(size_t pos, T id){
+		__sync_fetch_and_or(&m_data[pos],id);
+	}
+
+	inline vector<T> getData(const vector<size_t> &rankPos){
+		vector<T> results(rankPos.size());
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			results[i] = m_data[rankPos[i]];
+		}
+		return results;
 	}
 
 	~MIBloomFilter() {

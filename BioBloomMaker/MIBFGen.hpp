@@ -141,9 +141,268 @@ public:
 					MIBloomFilter<ID>::parseSeedString(opt::sseeds);
 			miBFBV = generateBV(occ, &ssVal);
 		}
-		cerr << "Populating values of miBF" << endl;
+		if (opt::verbose)
+			cerr << "Populating values of miBF" << endl;
+		//first pass
+		unsigned j = 1;
+		if (opt::verbose)
+			cerr << "Pass " << j << endl;
+		if (opt::idByFile) {
+#pragma omp parallel for
+			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+				gzFile fp;
+				if (opt::verbose) {
+#pragma omp critical(stderr)
+					cerr << "Opening: "
+							<< (j % 2 ? m_fileNames[i] : m_fileNames[i] + ".rv")
+							<< endl;
+				}
+				fp = j % 2 ?
+						gzopen(m_fileNames[i].c_str(), "r") :
+						gzopen((m_fileNames[i] + ".rv").c_str(), "r");
+				kseq_t *seq = kseq_init(fp);
+				int l;
+				for (;;) {
+					string sequence, name;
+					{
+						l = kseq_read(seq);
+						if (l >= 0) {
+							sequence = string(seq->seq.s, seq->seq.l);
+							name = m_fileNames[i].substr(
+									m_fileNames[i].find_last_of("/") + 1);
+						}
+					}
+					if (l >= 0) {
+						loadSeq(*miBFBV, name, sequence, j);
+					} else {
+						break;
+					}
+				}
+				kseq_destroy(seq);
+				gzclose(fp);
+			}
+		} else {
+			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+				gzFile fp;
+				if (opt::verbose)
+					cerr << "Opening: "
+							<< (j % 2 ? m_fileNames[i] : m_fileNames[i] + ".rv")
+							<< endl;
+				fp = j % 2 ?
+						gzopen(m_fileNames[i].c_str(), "r") :
+						gzopen((m_fileNames[i] + ".rv").c_str(), "r");
+				kseq_t *seq = kseq_init(fp);
+				int l;
+#pragma omp parallel private(l)
+				for (;;) {
+					string sequence, name;
+#pragma omp critical(seq)
+					{
+						l = kseq_read(seq);
+						if (l >= 0) {
+							sequence = string(seq->seq.s, seq->seq.l);
+							name = string(seq->name.s, seq->name.l);
+						}
+					}
+					if (l >= 0) {
+						loadSeq(*miBFBV, name, sequence, j);
+					} else {
+						break;
+					}
+				}
+				kseq_destroy(seq);
+				gzclose(fp);
+				if (opt::verbose > 0) {
+				}
+			}
+		}
+
+		//second pass saturation normalization special
+		//TODO store values sparse bitmatrix instead
+		{
+			typedef google::dense_hash_map<size_t,
+					boost::shared_ptr<google::dense_hash_set<ID>>> SatMap;
+			SatMap satMap;
+			satMap.set_empty_key(miBFBV->size());
+			//TODO store values in sparse bitvector -> id retrieval from data vector
+			google::dense_hash_map<size_t, ID> critMap;
+			critMap.set_empty_key(miBFBV->size());
+
+			if (opt::verbose)
+				cerr << "Pass normalize" << endl;
+			if (opt::idByFile) {
+#pragma omp parallel for
+				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+					gzFile fp;
+					if (opt::verbose) {
+#pragma omp critical(stderr)
+						cerr << "Opening: "
+								<< (j % 2 ?
+										m_fileNames[i] : m_fileNames[i] + ".rv")
+								<< endl;
+					}
+					fp = j % 2 ?
+							gzopen(m_fileNames[i].c_str(), "r") :
+							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
+					kseq_t *seq = kseq_init(fp);
+					int l;
+					for (;;) {
+						string sequence, name;
+						{
+							l = kseq_read(seq);
+							if (l >= 0) {
+								sequence = string(seq->seq.s, seq->seq.l);
+								name = m_fileNames[i].substr(
+										m_fileNames[i].find_last_of("/") + 1);
+							}
+						}
+						if (l >= 0) {
+							//get positions
+							typedef google::dense_hash_set<size_t> SatSet;
+							SatSet satVal;
+							satVal.set_empty_key(miBFBV->size());
+							SatSet critVal;
+							critVal.set_empty_key(miBFBV->size());
+							ID id = m_nameToID[name];
+							recordSaturation(*miBFBV, id, sequence, satVal,
+									critVal);
+
+							//combine satVals and critVals
+#pragma omp critical(satMap)
+							for (SatSet::iterator itr = satVal.begin();
+									itr != satVal.end(); itr++) {
+								{
+									SatMap::iterator tempItr = satMap.find(
+											*itr);
+									if (tempItr == satMap.end()) {
+										satMap[*itr] = boost::shared_ptr<
+												google::dense_hash_set<ID>>(
+												new google::dense_hash_set<ID>);
+										satMap[*itr]->set_empty_key(
+												miBFBV->size());
+										satMap[*itr]->insert(id);
+									} else {
+										tempItr->second->insert(id);
+									}
+								}
+							}
+#pragma omp critical(critMap)
+							for (SatSet::iterator itr = critVal.begin();
+									itr != critVal.end(); itr++) {
+								critMap[*itr] = id;
+							}
+						} else {
+							break;
+						}
+					}
+					kseq_destroy(seq);
+					gzclose(fp);
+				}
+			} else {
+				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+					gzFile fp;
+					if (opt::verbose)
+						cerr << "Opening: "
+								<< (j % 2 ?
+										m_fileNames[i] : m_fileNames[i] + ".rv")
+								<< endl;
+					fp = j % 2 ?
+							gzopen(m_fileNames[i].c_str(), "r") :
+							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
+					kseq_t *seq = kseq_init(fp);
+					int l;
+#pragma omp parallel private(l)
+					for (;;) {
+						string sequence, name;
+#pragma omp critical(seq)
+						{
+							l = kseq_read(seq);
+							if (l >= 0) {
+								sequence = string(seq->seq.s, seq->seq.l);
+								name = string(seq->name.s, seq->name.l);
+							}
+						}
+						if (l >= 0) {
+							//get positions
+							typedef google::dense_hash_set<size_t> SatSet;
+							SatSet satVal;
+							satVal.set_empty_key(miBFBV->size());
+							SatSet critVal;
+							critVal.set_empty_key(miBFBV->size());
+							ID id = m_nameToID[name];
+							recordSaturation(*miBFBV, id, sequence, satVal,
+									critVal);
+
+							//combine satVals and critVals
+#pragma omp critical(satMap)
+							for (SatSet::iterator itr = satVal.begin();
+									itr != satVal.end(); itr++) {
+								{
+									SatMap::iterator tempItr = satMap.find(
+											*itr);
+									if (tempItr == satMap.end()) {
+										satMap[*itr] = boost::shared_ptr<
+												google::dense_hash_set<ID>>(
+												new google::dense_hash_set<ID>);
+										satMap[*itr]->set_empty_key(
+												miBFBV->size());
+										satMap[*itr]->insert(id);
+									} else {
+										tempItr->second->insert(id);
+									}
+								}
+							}
+#pragma omp critical(critMap)
+							for (SatSet::iterator itr = critVal.begin();
+									itr != critVal.end(); itr++) {
+								critMap[*itr] = id;
+							}
+						} else {
+							break;
+						}
+					}
+					kseq_destroy(seq);
+					gzclose(fp);
+					if (opt::verbose > 0) {
+					}
+				}
+			}
+
+			//mutate the saturatedID to random set of saturated IDs
+			vector<unsigned> counts(m_nameToID.size(),0);
+#pragma omp parallel
+			for(SatMap::iterator itr = satMap.begin(); itr != satMap.end(); ++itr){
+				//if part of critical list do nothing
+				google::dense_hash_map<size_t, ID>::iterator tempItr =
+						critMap.find(itr->first);
+				if (tempItr == critMap.end()) {
+					google::dense_hash_set<ID>::iterator i = itr->second->begin();
+					//between the choices, pick the smallest one (round robin)
+					ID minID = *i;
+					unsigned minCount = counts[*i];
+					for (; i != itr->second->end();
+							i++) {
+						if(counts[*i] < minCount)
+						{
+							minCount = counts[*i];
+							minID = *i;
+						}
+					}
+					//assign ID at random given list
+					miBFBV->setData(itr->first,minID);
+					counts[minID]++;
+				}
+				else{
+#pragma omp critical(counts)
+					counts[tempItr->second]++;
+				}
+			}
+
+		}
+
+		//finish the rest
 		//j is the number of matches for that iteration possible
-		for (unsigned j = 1; j <= opt::hashNum; ++j) {
+		for (++j; j <= opt::hashNum; ++j) {
 			if (opt::verbose)
 				cerr << "Pass " << j << endl;
 			if (opt::idByFile) {
@@ -378,6 +637,85 @@ private:
 			RollingHashIterator itr(seq, m_kmerSize, miBF.getSeedValues());
 #pragma omp atomic update
 			m_failedInsert += miBF.insert(itr, max, id);
+		}
+	}
+
+	/*
+	 * Returns set of datavector index where saturation occurs for this ID
+	 * TODO Store values into a sd vector O(1) select operation,  m(2+log n/m ) - Elias Fano encoding
+	 * Critical values ideally should never be mutated
+	 */
+	inline void recordSaturation(MIBloomFilter<ID> &miBF, ID id,
+			const string &seq, google::dense_hash_set<size_t> &saturatedValues,
+			google::dense_hash_set<size_t> &criticalValues) {
+		if (miBF.getSeedValues().empty()) {
+			ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
+			while (itr != itr.end()) {
+				//for each set of hash values, check for saturation
+				vector<size_t> rankPos = miBF.getRankPos(*itr);
+				vector<ID> results = miBF.getData(rankPos);
+				bool saturated = true;
+				for (unsigned i = 0; i < opt::hashNum; ++i) {
+					ID oldVal = results[i];
+					if (oldVal < MIBloomFilter<ID>::s_mask) {
+						saturated = false;
+						break;
+					}
+				}
+				if (saturated){
+					//if completely saturated, record hash location into main set
+					for (unsigned i = 0; i < opt::hashNum; ++i) {
+						saturatedValues.insert(rankPos[i]);
+					}
+				}
+				else{
+					for (unsigned i = 0; i < opt::hashNum; ++i) {
+						ID oldVal = results[i];
+						if (oldVal > MIBloomFilter<ID>::s_mask) {
+							oldVal = oldVal & MIBloomFilter<ID>::s_antiMask;
+							//if partially saturated and the same ID, record into critical set
+							if(oldVal == id){
+								criticalValues.insert(rankPos[i]);
+							}
+						}
+					}
+				}
+				++itr;
+			}
+		} else {
+			RollingHashIterator itr(seq, m_kmerSize, miBF.getSeedValues());
+			while (itr != itr.end()) {
+				//for each set of hash values, check for saturation
+				vector<size_t> rankPos = miBF.getRankPos(*itr);
+				vector<ID> results = miBF.getData(rankPos);
+				bool saturated = true;
+				for (unsigned i = 0; i < opt::hashNum; ++i) {
+					ID oldVal = results[i];
+					if (oldVal < MIBloomFilter<ID>::s_mask) {
+						saturated = false;
+						break;
+					}
+				}
+				if (saturated){
+					//if completely saturated, record hash location into main set
+					for (unsigned i = 0; i < opt::hashNum; ++i) {
+						saturatedValues.insert(rankPos[i]);
+					}
+				}
+				else{
+					for (unsigned i = 0; i < opt::hashNum; ++i) {
+						ID oldVal = results[i];
+						if (oldVal > MIBloomFilter<ID>::s_mask) {
+							oldVal = oldVal & MIBloomFilter<ID>::s_antiMask;
+							//if partially saturated and the same ID, record into critical set
+							if(oldVal == id){
+								criticalValues.insert(rankPos[i]);
+							}
+						}
+					}
+				}
+				++itr;
+			}
 		}
 	}
 
