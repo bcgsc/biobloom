@@ -308,7 +308,7 @@ public:
 										size_t randomSeed = *itr ^ id;
 										ID randomNum = std::hash<ID> { }(
 												randomSeed)
-												/ tempItr->second.second;
+												% tempItr->second.second;
 										if (randomNum
 												== tempItr->second.second - 1) {
 											tempItr->second.first = id;
@@ -385,7 +385,7 @@ public:
 										size_t randomSeed = *itr ^ id;
 										ID randomNum = std::hash<ID> { }(
 												randomSeed)
-												/ tempItr->second.second;
+												% tempItr->second.second;
 										if (randomNum
 												== tempItr->second.second - 1) {
 											tempItr->second.first = id;
