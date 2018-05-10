@@ -23,6 +23,7 @@
 
 #include <tuple>
 #include <google/dense_hash_map>
+#include <google/sparse_hash_map>
 #include <sdsl/int_vector.hpp>
 
 #include <zlib.h>
@@ -129,6 +130,10 @@ public:
 	}
 
 	MIBloomFilter<ID> * generate(const string &filePrefix, double occ) {
+		//keep track of time
+		double time = omp_get_wtime();
+
+
 		MIBloomFilter<ID> * miBFBV;
 		if (opt::sseeds.empty()) {
 			if (opt::verbose)
@@ -141,8 +146,11 @@ public:
 					MIBloomFilter<ID>::parseSeedString(opt::sseeds);
 			miBFBV = generateBV(occ, &ssVal);
 		}
-		if (opt::verbose)
+		if (opt::verbose){
+			cerr << "Finishing initial Bit vector construction " <<  omp_get_wtime() - time << "s" << endl;
+			time = omp_get_wtime();
 			cerr << "Populating values of miBF" << endl;
+		}
 		//first pass
 		unsigned j = 1;
 		if (opt::verbose)
@@ -216,22 +224,29 @@ public:
 				}
 			}
 		}
+		if (opt::verbose){
+			cerr << "Finishing Pass " << j << " " << omp_get_wtime() - time
+					<< "s" << endl;
+			time = omp_get_wtime();
+		}
 
 		//second pass saturation normalization special
-		//TODO store values sparse bitmatrix instead?
 		{
 			//record memory before
 			size_t memKB = getRSS();
 			if (opt::verbose)
 				cerr << "Mem usage (kB): " << memKB << endl;
 
-			typedef google::dense_hash_map<size_t,
-					boost::shared_ptr<google::dense_hash_set<ID>>> SatMap;
-			SatMap satMap;
-			satMap.set_empty_key(miBFBV->size());
-			//TODO store values in sparse bitvector -> id retrieval from data vector
-			google::dense_hash_map<size_t, ID> critMap;
-			critMap.set_empty_key(miBFBV->size());
+			//use single value Reservoir sampling
+			/*
+			 * pair<ID,ID> first ID stores the currentID, and ID stores the current observation count
+			 * If the second ID exceeds max possible count, the ID is a critical ID
+			 * Critical IDs are need for partial hits and always replace existing IDs
+			 */
+			//TODO since since is known (getPopSaturated()) possible to use sd-bitvector?
+			typedef google::sparse_hash_map<size_t, pair<ID,ID>> SatMap;
+			SatMap satMap(miBFBV->getPopSaturated());
+			const ID criticalCount = m_nameToID.size();
 
 			if (opt::verbose)
 				cerr << "Pass normalize" << endl;
@@ -239,13 +254,13 @@ public:
 #pragma omp parallel for schedule(dynamic)
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 					gzFile fp;
-//					if (opt::verbose) {
-//#pragma omp critical(stderr)
-//						cerr << "Opening: "
-//								<< (j % 2 ?
-//										m_fileNames[i] : m_fileNames[i] + ".rv")
-//								<< endl;
-//					}
+					if (opt::verbose) {
+#pragma omp critical(stderr)
+						cerr << "Opening: "
+								<< (j % 2 ?
+										m_fileNames[i] : m_fileNames[i] + ".rv")
+								<< endl;
+					}
 					fp = j % 2 ?
 							gzopen(m_fileNames[i].c_str(), "r") :
 							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
@@ -271,34 +286,46 @@ public:
 							ID id = m_nameToID[name];
 							recordSaturation(*miBFBV, id, sequence, satVal,
 									critVal);
-
-							//combine satVals and critVals
 #pragma omp critical(satMap)
-							for (SatSet::iterator itr = satVal.begin();
-									itr != satVal.end(); itr++) {
-								{
+							{
+								//set critial IDs
+								for (SatSet::iterator itr = critVal.begin();
+										itr != critVal.end(); itr++) {
+									satMap[*itr] = pair<ID, ID>(id,
+											criticalCount);
+								}
+								for (SatSet::iterator itr = satVal.begin();
+										itr != satVal.end(); itr++) {
 									SatMap::iterator tempItr = satMap.find(
 											*itr);
 									if (tempItr == satMap.end()) {
-										satMap[*itr] = boost::shared_ptr<
-												google::dense_hash_set<ID>>(
-												new google::dense_hash_set<ID>);
-										satMap[*itr]->set_empty_key(
-												miBFBV->size());
-										satMap[*itr]->insert(id);
-									} else {
-										tempItr->second->insert(id);
+										satMap[*itr] = pair<ID, ID>(id, 1);
+									} else if (tempItr->second.second
+											!= criticalCount) {
+										tempItr->second.second++;
+										//each position^ID combination is unique
+										//is this random enough ont is own?
+										size_t randomSeed = *itr ^ id;
+										ID randomNum = std::hash<ID> { }(
+												randomSeed)
+												/ tempItr->second.second;
+										if (randomNum
+												== tempItr->second.second - 1) {
+											tempItr->second.first = id;
+										}
 									}
 								}
-							}
-#pragma omp critical(critMap)
-							for (SatSet::iterator itr = critVal.begin();
-									itr != critVal.end(); itr++) {
-								critMap[*itr] = id;
 							}
 						} else {
 							break;
 						}
+					}
+					if (opt::verbose) {
+#pragma omp critical(stderr)
+						cerr << "Closing: "
+								<< (j % 2 ?
+										m_fileNames[i] : m_fileNames[i] + ".rv")
+								<< endl;
 					}
 					kseq_destroy(seq);
 					gzclose(fp);
@@ -337,30 +364,34 @@ public:
 							ID id = m_nameToID[name];
 							recordSaturation(*miBFBV, id, sequence, satVal,
 									critVal);
-
-							//combine satVals and critVals
 #pragma omp critical(satMap)
-							for (SatSet::iterator itr = satVal.begin();
-									itr != satVal.end(); itr++) {
-								{
+							{
+								//set critial IDs
+								for (SatSet::iterator itr = critVal.begin();
+										itr != critVal.end(); itr++) {
+									satMap[*itr] = pair<ID, ID>(id, criticalCount);
+								}
+								for (SatSet::iterator itr = satVal.begin();
+										itr != satVal.end(); itr++) {
 									SatMap::iterator tempItr = satMap.find(
 											*itr);
 									if (tempItr == satMap.end()) {
-										satMap[*itr] = boost::shared_ptr<
-												google::dense_hash_set<ID>>(
-												new google::dense_hash_set<ID>);
-										satMap[*itr]->set_empty_key(
-												miBFBV->size());
-										satMap[*itr]->insert(id);
-									} else {
-										tempItr->second->insert(id);
+										satMap[*itr] = pair<ID, ID>(id, 1);
+									} else if (tempItr->second.second
+											!= criticalCount) {
+										tempItr->second.second++;
+										//each position^ID combination is unique
+										//is this random enough ont is own?
+										size_t randomSeed = *itr ^ id;
+										ID randomNum = std::hash<ID> { }(
+												randomSeed)
+												/ tempItr->second.second;
+										if (randomNum
+												== tempItr->second.second - 1) {
+											tempItr->second.first = id;
+										}
 									}
 								}
-							}
-#pragma omp critical(critMap)
-							for (SatSet::iterator itr = critVal.begin();
-									itr != critVal.end(); itr++) {
-								critMap[*itr] = id;
 							}
 						} else {
 							break;
@@ -373,35 +404,28 @@ public:
 				}
 			}
 
+			if (opt::verbose){
+				cerr << "Finishing temporary saturation " << omp_get_wtime() - time
+						<< "s" << endl;
+				time = omp_get_wtime();
+			}
+
+
 			//mutate the saturatedID to random set of saturated IDs
-			vector<unsigned> counts(m_nameToID.size(),0);
 #pragma omp parallel
-			for(SatMap::iterator itr = satMap.begin(); itr != satMap.end(); ++itr){
+			for (SatMap::iterator itr = satMap.begin(); itr != satMap.end();
+					++itr) {
 				//if part of critical list do nothing
-				google::dense_hash_map<size_t, ID>::iterator tempItr =
-						critMap.find(itr->first);
-				if (tempItr == critMap.end()) {
-					google::dense_hash_set<ID>::iterator i = itr->second->begin();
-					//between the choices, pick the smallest one (round robin)
-					ID minID = *i;
-					unsigned minCount = counts[*i];
-					for (; i != itr->second->end();
-							i++) {
-						if(counts[*i] < minCount)
-						{
-							minCount = counts[*i];
-							minID = *i;
-						}
-					}
-					//assign ID at random given list
-					miBFBV->setData(itr->first,minID);
-					counts[minID]++;
-				}
-				else{
-#pragma omp critical(counts)
-					counts[tempItr->second]++;
+				if (itr->second.second != criticalCount) {
+					miBFBV->setData(itr->first, itr->second.first);
 				}
 			}
+			if (opt::verbose){
+				cerr << "Finishing normalization stage " << omp_get_wtime() - time
+						<< "s" << endl;
+				time = omp_get_wtime();
+			}
+
 			//record memory after
 			if (opt::verbose)
 				cerr << "Mem usage of support datastructure (kB): " << (getRSS() - memKB) << endl;
@@ -409,20 +433,20 @@ public:
 
 		//finish the rest
 		//j is the number of matches for that iteration possible
-		for (++j; j <= opt::hashNum; ++j) {
+		for (j++; j <= opt::hashNum; ++j) {
 			if (opt::verbose)
 				cerr << "Pass " << j << endl;
 			if (opt::idByFile) {
 #pragma omp parallel for schedule(dynamic)
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 					gzFile fp;
-//					if (opt::verbose) {
-//#pragma omp critical(stderr)
-//						cerr << "Opening: "
-//								<< (j % 2 ?
-//										m_fileNames[i] : m_fileNames[i] + ".rv")
-//								<< endl;
-//					}
+					if (opt::verbose) {
+#pragma omp critical(stderr)
+						cerr << "Opening: "
+								<< (j % 2 ?
+										m_fileNames[i] : m_fileNames[i] + ".rv")
+								<< endl;
+					}
 					fp = j % 2 ?
 							gzopen(m_fileNames[i].c_str(), "r") :
 							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
@@ -446,12 +470,12 @@ public:
 					}
 					kseq_destroy(seq);
 					gzclose(fp);
-//#pragma omp critical(stderr)
-//					if (opt::verbose > 0) {
-//						cerr << "Saturation: " << miBFBV->getPopSaturated()
-//								<< " popNonZero: " << miBFBV->getPopNonZero()
-//								<< endl;
-//					}
+#pragma omp critical(stderr)
+					if (opt::verbose > 0) {
+						cerr << "Saturation: " << miBFBV->getPopSaturated()
+								<< " popNonZero: " << miBFBV->getPopNonZero()
+								<< endl;
+					}
 				}
 			} else {
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
@@ -485,12 +509,6 @@ public:
 					}
 					kseq_destroy(seq);
 					gzclose(fp);
-					if (opt::verbose > 0) {
-//#pragma omp critical(stderr)
-//						cerr << "Saturation: " << miBFBV->getPopSaturated()
-//								<< " popNonZero: " << miBFBV->getPopNonZero()
-//								<< endl;
-					}
 				}
 			}
 		}
