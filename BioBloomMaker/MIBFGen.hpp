@@ -255,11 +255,11 @@ public:
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 					gzFile fp;
 					if (opt::verbose) {
-#pragma omp critical(stderr)
-						cerr << "Opening: "
-								<< (j % 2 ?
-										m_fileNames[i] : m_fileNames[i] + ".rv")
-								<< endl;
+//#pragma omp critical(stderr)
+//						cerr << "Opening: "
+//								<< (j % 2 ?
+//										m_fileNames[i] : m_fileNames[i] + ".rv")
+//								<< endl;
 					}
 					fp = j % 2 ?
 							gzopen(m_fileNames[i].c_str(), "r") :
@@ -320,13 +320,13 @@ public:
 							break;
 						}
 					}
-					if (opt::verbose) {
-#pragma omp critical(stderr)
-						cerr << "Closing: "
-								<< (j % 2 ?
-										m_fileNames[i] : m_fileNames[i] + ".rv")
-								<< endl;
-					}
+//					if (opt::verbose) {
+//#pragma omp critical(stderr)
+//						cerr << "Closing: "
+//								<< (j % 2 ?
+//										m_fileNames[i] : m_fileNames[i] + ".rv")
+//								<< endl;
+//					}
 					kseq_destroy(seq);
 					gzclose(fp);
 				}
@@ -440,13 +440,13 @@ public:
 #pragma omp parallel for schedule(dynamic)
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 					gzFile fp;
-					if (opt::verbose) {
-#pragma omp critical(stderr)
-						cerr << "Opening: "
-								<< (j % 2 ?
-										m_fileNames[i] : m_fileNames[i] + ".rv")
-								<< endl;
-					}
+//					if (opt::verbose) {
+//#pragma omp critical(stderr)
+//						cerr << "Opening: "
+//								<< (j % 2 ?
+//										m_fileNames[i] : m_fileNames[i] + ".rv")
+//								<< endl;
+//					}
 					fp = j % 2 ?
 							gzopen(m_fileNames[i].c_str(), "r") :
 							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
@@ -470,12 +470,12 @@ public:
 					}
 					kseq_destroy(seq);
 					gzclose(fp);
-#pragma omp critical(stderr)
-					if (opt::verbose > 0) {
-						cerr << "Saturation: " << miBFBV->getPopSaturated()
-								<< " popNonZero: " << miBFBV->getPopNonZero()
-								<< endl;
-					}
+//#pragma omp critical(stderr)
+//					if (opt::verbose > 0) {
+//						cerr << "Saturation: " << miBFBV->getPopSaturated()
+//								<< " popNonZero: " << miBFBV->getPopNonZero()
+//								<< endl;
+//					}
 				}
 			} else {
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
