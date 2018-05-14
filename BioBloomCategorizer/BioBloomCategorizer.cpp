@@ -108,7 +108,7 @@ void printHelpDialog()
 	"      --chastity         Discard and do not evaluate unchaste reads.\n"
 	"      --no-chastity      Do not discard unchaste reads. [default]\n"
 	"  -l, --file_list=N      A file of list of file pairs to run in parallel.\n"
-	"  -v  --version          Display version information.\n"
+	"  -v, --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
 	"      --verbose          Display verbose output\n"
 	"  -I, --interval         the interval to report file processing status [10000000]\n"
@@ -128,6 +128,7 @@ void printHelpDialog()
 	"  -d, --stdout_filter    Outputs all matching reads to stdout for the first\n"
 	"                         filter listed by -f. Reads are outputed in fastq,\n"
 	"                         and if paired will output will be interlaced.\n"
+	"  -n, --inverse          Inverts the output of -d (everything but first filter).\n"
 	"Options for multi index bloom filters:\n"
 	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
 	"                         miBFs.[0]\n"
@@ -183,6 +184,7 @@ int main(int argc, char *argv[])
 		"min_hit_only", no_argument, NULL, 'o' }, {
 		"ordered", no_argument, NULL, 'c' }, {
 		"stdout_filter", no_argument, NULL, 'd' }, {
+		"inverse", required_argument, NULL, 'n' }, {
 		"with_score", no_argument, NULL, 'w' }, {
 		"debug", no_argument, &opt::debug, 1 }, {
 		"multi", no_argument, NULL, 'm' }, {
@@ -322,6 +324,10 @@ int main(int argc, char *argv[])
 		}
 		case 'd': {
 			stdout = true;
+			break;
+		}
+		case 'n': {
+			opt::inverse = true;
 			break;
 		}
 		case 'w': {

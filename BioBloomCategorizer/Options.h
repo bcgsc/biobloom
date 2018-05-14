@@ -25,5 +25,6 @@ extern bool minHitOnly;
 extern unsigned maxGroupSize;
 extern int debug;
 extern double multiThresh;
+extern bool inverse;
 }
 #endif
