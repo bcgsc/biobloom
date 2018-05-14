@@ -311,11 +311,12 @@ public:
 	vector<pair<ID, double>> query(H &itr1, H &itr2,
 			const vector<unsigned> &minCount,
 			const vector<double> &perFrameProb, unsigned &saturatedCount,
-			unsigned extraFrameLimit = 75, unsigned extraCount = 8) {
+			unsigned extraFrameLimit = 10, unsigned extraCount = 1) {
 
 		vector<pair<T, double>> signifResults;
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
+		unsigned frameCount = 0;
 		unsigned secondBestCount = 0;
 
 		google::dense_hash_map<T, unsigned> counts;
@@ -324,9 +325,11 @@ public:
 		candidateMatch.set_empty_key(0);
 		bool candidateFound = false;
 
-		while (itr1 != itr1.end() && !candidateFound) {
+		while ((itr1 != itr1.end() && itr2 != itr2.end()) && !candidateFound) {
+			H &itr = frameCount % 2 == 0 && itr1 != itr1.end() ? itr1 :
+						frameCount % 2 == 1 && itr2 != itr2.end() ? itr2 : itr1;
 			unsigned count = 0;
-			vector<size_t> rankPos = atPos(*itr1, count);
+			vector<size_t> rankPos = atPos(*itr, count);
 			if (count == m_hashNum) {
 				vector<ID> results(m_hashNum);
 				for (unsigned i = 0; i < m_hashNum; ++i) {
@@ -337,24 +340,24 @@ public:
 				for (typename vector<T>::const_iterator j = results.begin();
 						j != results.end(); j++) {
 					if (*j != 0) {
-						bool saturated = true;
+//						bool saturated = true;
 						T result = *j;
 						//check for saturation
 						if (result > s_mask) {
 							result = *j & s_antiMask;
 						} else {
-							saturated = false;
+//							saturated = false;
 							++saturatedCount;
 						}
-						if (!saturated && tempIDs.find(*j) == tempIDs.end()) {
+						if (tempIDs.find(result) == tempIDs.end()) {
 							typename google::dense_hash_map<T, unsigned>::iterator tempItr =
 									counts.find(result);
-							assert(*j > 0);
+							assert(result > 0);
 							if (tempItr == counts.end()) {
-								counts[*j] = 1;
+								counts[result] = 1;
 							} else {
 								//check is count is exceeded
-								if (minCount[*j] <= ++tempItr->second) {
+								if (minCount[result] <= ++tempItr->second) {
 									if (tempItr->second > bestCount) {
 										bestCount = counts[result];
 									} else if (counts[result] > secondBestCount) {
@@ -363,7 +366,7 @@ public:
 									candidateMatch.insert(result);
 								}
 							}
-							tempIDs.insert(*j);
+							tempIDs.insert(result);
 						}
 					}
 				}
@@ -376,66 +379,8 @@ public:
 					}
 				}
 			}
-			++itr1;
-		}
-		candidateFound = false;
-		extraFrame = 0;
-		extraFrameLimit =
-				extraFrameLimit > bestCount ? extraFrameLimit : bestCount;
-		while (itr2 != itr2.end() && !candidateFound) {
-			unsigned count = 0;
-			vector<size_t> rankPos = atPos(*itr2, count);
-			if (count == m_hashNum) {
-				vector<ID> results(m_hashNum);
-				for (unsigned i = 0; i < m_hashNum; ++i) {
-					results[i] = m_data[rankPos[i]];
-				}
-				google::dense_hash_set<T> tempIDs;
-				tempIDs.set_empty_key(0);
-				for (typename vector<T>::const_iterator j = results.begin();
-						j != results.end(); j++) {
-					if (*j != 0) {
-						bool saturated = true;
-						T result = *j;
-						//check for saturation
-						if (result > s_mask) {
-							result = *j & s_antiMask;
-						} else {
-							saturated = false;
-							++saturatedCount;
-						}
-						if (!saturated && tempIDs.find(*j) == tempIDs.end()) {
-							typename google::dense_hash_map<T, unsigned>::iterator tempItr =
-									counts.find(result);
-							assert(*j > 0);
-							if (tempItr == counts.end()) {
-								counts[*j] = 1;
-							} else {
-								//check is count is exceeded
-								if (minCount[*j] <= ++tempItr->second) {
-									if (tempItr->second > bestCount) {
-										bestCount = counts[result];
-									} else if (counts[result]
-											> secondBestCount) {
-										secondBestCount = counts[result];
-									}
-									candidateMatch.insert(result);
-								}
-							}
-							tempIDs.insert(*j);
-						}
-					}
-				}
-				if (bestCount <= secondBestCount + secondBestCount) {
-					extraFrame = 0;
-				}
-				if (bestCount && bestCount > secondBestCount) {
-					if (extraFrameLimit < extraFrame++) {
-						candidateFound = true;
-					}
-				}
-			}
-			++itr2;
+			++frameCount;
+			++itr;
 		}
 		for (typename google::dense_hash_set<T>::const_iterator candidates =
 				candidateMatch.begin(); candidates != candidateMatch.end(); candidates++) {
@@ -800,7 +745,7 @@ public:
 	/*
 	 * No saturation masking
 	 */
-	inline vector<size_t> getRankPos(const size_t *hashes) {
+	inline vector<size_t> getRankPos(const size_t *hashes) const{
 		vector<size_t> rankPos(m_hashNum);
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes[i] % m_bv.size();
@@ -866,6 +811,21 @@ public:
 		return count;
 	}
 
+	/*
+	 * Checks data array for abnormal IDs
+	 * (i.e. values greater than what is possible)
+	 * Returns first abnormal ID or value of maxVal if no abnormal IDs are found
+	 * For debugging
+	 */
+	inline ID checkValues(T maxVal) const {
+		for (size_t i = 0; i < m_dSize; ++i) {
+			if ((m_data[i] & s_antiMask) > maxVal) {
+				return m_data[i];
+			}
+		}
+		return maxVal;
+	}
+
 	inline size_t getPopSaturated() const {
 		size_t count = 0;
 		for (size_t i = 0; i < m_dSize; ++i) {
@@ -882,10 +842,10 @@ public:
 
 	//overwrites existing value
 	inline void setData(size_t pos, T id){
-		__sync_fetch_and_or(&m_data[pos],id);
+		m_data[pos] = id;
 	}
 
-	inline vector<T> getData(const vector<size_t> &rankPos){
+	inline vector<T> getData(const vector<size_t> &rankPos) const{
 		vector<T> results(rankPos.size());
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			results[i] = m_data[rankPos[i]];
