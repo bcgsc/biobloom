@@ -246,7 +246,7 @@ public:
 			//TODO since since is known (getPopSaturated()) possible to use sd-bitvector?
 			typedef google::sparse_hash_map<size_t, pair<ID,ID>> SatMap;
 			SatMap satMap(miBFBV->getPopSaturated());
-			const ID criticalCount = m_nameToID.size();
+			const ID criticalCount = m_nameToID.size() + 1;
 
 			if (opt::verbose)
 				cerr << "Pass normalize" << endl;
@@ -417,9 +417,17 @@ public:
 					++itr) {
 				//if part of critical list do nothing
 				if (itr->second.second != criticalCount) {
-					miBFBV->setData(itr->first, itr->second.first);
+					miBFBV->setData(itr->first, itr->second.first | MIBloomFilter<ID>::s_mask);
 				}
 			}
+//			ID check = miBFBV->checkValues(m_nameToID.size());
+//			if (m_nameToID.size() != check) {
+//				cerr << check << " ID found " << (check
+//						& MIBloomFilter<ID>::s_antiMask)
+//								<< " (after masking), max possible ID is "
+//								<< m_nameToID.size() << endl;
+//				exit(1);
+//			}
 			if (opt::verbose){
 				cerr << "Finishing normalization stage " << omp_get_wtime() - time
 						<< "s" << endl;
@@ -671,10 +679,9 @@ private:
 
 	/*
 	 * Returns set of datavector index where saturation occurs for this ID
-	 * TODO Store values into a sd vector O(1) select operation,  m(2+log n/m ) - Elias Fano encoding
 	 * Critical values ideally should never be mutated
 	 */
-	inline void recordSaturation(MIBloomFilter<ID> &miBF, ID id,
+	inline void recordSaturation(const MIBloomFilter<ID> &miBF, ID id,
 			const string &seq, google::dense_hash_set<size_t> &saturatedValues,
 			google::dense_hash_set<size_t> &criticalValues) {
 		if (miBF.getSeedValues().empty()) {
