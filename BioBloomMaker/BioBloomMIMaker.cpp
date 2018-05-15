@@ -64,7 +64,6 @@ void printHelpDialog() {
 		"  -S, --seed_str=N       Generate a miBF using multiple spaced seeds. Expects\n"
 		"                         list of seed 1s & 0s separated by spaces.\n"
 		"  -F, --by_file          Assign IDs by file rather than by fasta header\n"
-		"  -I, --interval         the interval to report file processing status [10000000]\n"
 		"k-mer mode options (disabled when using spaced seeds):\n"
 		"  -g, --hash_num=N       Set number of hash functions when using k-mers.\n"
 		"  -k, --kmer_size=N      K-mer size to use to create filter. [25]\n"
@@ -98,14 +97,13 @@ int main(int argc, char *argv[]) {
 			"kmer_size", required_argument, NULL, 'k' }, {
 			"num_ele", required_argument, NULL, 'n' }, {
 			"by_file", no_argument, NULL, 'F' }, {
-			"interval",	required_argument, NULL, 'I' }, {
 			"verbose", no_argument, NULL, 'v' }, {
 			"version", no_argument, NULL, OPT_VERSION }, {
 			NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "p:ht:b:S:g:k:n:FIv",
+	while ((c = getopt_long(argc, argv, "p:ht:b:S:g:k:n:Fv",
 			long_options, &option_index)) != -1) {
 		switch (c) {
 		case 'b': {
@@ -165,14 +163,6 @@ int main(int argc, char *argv[]) {
 			if (!(convert >> opt::entryNum)) {
 				cerr << "Error - Invalid set of bloom filter parameters! n: "
 						<< optarg << endl;
-				return 0;
-			}
-			break;
-		}
-		case 'I': {
-			stringstream convert(optarg);
-			if (!(convert >> opt::fileInterval)) {
-				cerr << "Error - Invalid parameters! I: " << optarg << endl;
 				return 0;
 			}
 			break;
