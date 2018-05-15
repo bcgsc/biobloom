@@ -94,7 +94,7 @@ public:
 		string outputName = opt::outputPrefix + "_reads.tsv";
 
 		//TODO output fasta?
-		if (opt::outputType == "fq") {
+		if (opt::outputType == opt::FASTQ) {
 			outputName = opt::outputPrefix + "_reads.fq";
 		}
 
@@ -204,7 +204,7 @@ public:
 					}
 
 					if (idIndex != opt::EMPTY) {
-						if (opt::outputType == "fq") {
+						if (opt::outputType == opt::FASTQ) {
 #pragma omp critical(outputFiles)
 							{
 								readsOutput << "@" << name << " " << fullID
@@ -243,7 +243,7 @@ public:
 		string outputName = opt::outputPrefix + "_reads.tsv";
 
 		//TODO output fasta?
-		if (opt::outputType == "fq") {
+		if (opt::outputType == opt::FASTQ) {
 			outputName = opt::outputPrefix + "_reads.fq";
 		}
 
@@ -299,7 +299,7 @@ public:
 								resSummary.getMultiMatchIndex());
 					}
 	#pragma omp critical(outputFiles)
-					if (opt::outputType == "") {
+					if (opt::outputType == opt::NONE) {
 						if (signifResults.empty()) {
 							readsOutput << "*\t" << name << " "
 									<< comment << "\t0\t*\t"<< saturatedCount <<"\n";
@@ -373,10 +373,10 @@ public:
 		string outputName = opt::outputPrefix + "_reads.tsv";
 
 		//TODO output fasta?
-		if (opt::outputType == "fq") {
+		if (opt::outputType == opt::FASTQ) {
 			outputName = opt::outputPrefix + "_reads.fq";
 		}
-		else if (opt::outputType == "fa") {
+		else if (opt::outputType == opt::FASTA) {
 			outputName = opt::outputPrefix + "_reads.fa";
 		}
 
@@ -434,7 +434,7 @@ public:
 //					}
 				}
 #pragma omp critical(outputFiles)
-				if (opt::outputType == "") {
+				if (opt::outputType == opt::TSV) {
 					if (signifResults.empty()) {
 						readsOutput << "*\t" << rec1.header << " "
 								<< rec1.comment << "\t0\t*\t"<< saturatedCount <<"\n";
@@ -583,7 +583,7 @@ private:
 
 	inline void printPairToFile(const FaRec rec1, const FaRec rec2,
 			Dynamicofstream &outputFile) {
-		if (opt::outputType == "fa") {
+		if (opt::outputType == opt::FASTA) {
 #pragma omp critical(outputFiles)
 			{
 				outputFile << ">" << rec1.header << "\n" << rec1.seq << "\n";
@@ -603,7 +603,7 @@ private:
 	inline void printPairToFile(unsigned outputFileIndex, const FaRec rec1,
 			const FaRec rec2, vector<Dynamicofstream*> &outputFiles1,
 			vector<Dynamicofstream*> &outputFiles2) {
-		if (opt::outputType == "fa") {
+		if (opt::outputType == opt::FASTA) {
 #pragma omp critical(outputFiles)
 			{
 				(*outputFiles1[outputFileIndex]) << ">" << rec1.header << "\n"

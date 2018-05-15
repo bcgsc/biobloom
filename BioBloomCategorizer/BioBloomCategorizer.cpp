@@ -402,13 +402,13 @@ int main(int argc, char *argv[])
 				<< endl;
 		exit(1);
 	} else if (fastq) {
-		opt::outputType = "fq";
+		opt::outputType = opt::FASTQ;
 	} else if (fasta) {
-		opt::outputType = "fa";
+		opt::outputType = opt::FASTA;
 	}
 
 	//-w option cannot be used without output method
-	if (withScore && opt::outputType == "") {
+	if (withScore && opt::outputType == opt::NONE) {
 		cerr << "Error: -w option cannot be used without output method" << endl;
 		exit(1);
 	}
@@ -464,18 +464,27 @@ int main(int argc, char *argv[])
 		bbc.setOrderedFilter();
 	}
 
+	string outputType = "";
+	if (opt::FASTA == opt::outputType) {
+		outputType == "fa";
+	}
+	if (opt::FASTQ == opt::outputType) {
+		outputType == "fq";
+	}
+
 	//filtering step
 	//create directory structure if it does not exist
 	if (paired) {
 		if (opt::inclusive) {
 			bbc.setInclusive();
 		}
-		if (opt::outputType != "") {
+		if (opt::outputType) {
+
 			if (pairedBAMSAM) {
-				bbc.filterPairPrint(inputFiles[0], opt::outputType);
+				bbc.filterPairPrint(inputFiles[0], outputType);
 			} else {
 				bbc.filterPairPrint(inputFiles[0], inputFiles[1],
-						opt::outputType);
+						outputType);
 			}
 		} else {
 			if (pairedBAMSAM) {
@@ -504,8 +513,8 @@ int main(int argc, char *argv[])
 			}
 		}
 	} else {
-		if (opt::outputType != "") {
-			bbc.filterPrint(inputFiles, opt::outputType);
+		if (opt::outputType != opt::NONE) {
+			bbc.filterPrint(inputFiles, outputType);
 		} else {
 			bbc.filter(inputFiles);
 		}

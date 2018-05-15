@@ -15,12 +15,16 @@ bool inclusive = false;
 double score = 0.15;
 string outputPrefix = "";
 string filePostfix = "";
-string outputType = "";
+OutType outputType = NONE;
 bool minHitOnly = false;
 unsigned maxGroupSize = std::numeric_limits<unsigned>::max();
 int debug = 0;
-double multiThresh = 0.0001;
+unsigned multiThresh = 1;
 bool inverse = false;
+
+std::string filtersFile = "";
+bool paired = false;
+bool stdout = false;
 }
 
 

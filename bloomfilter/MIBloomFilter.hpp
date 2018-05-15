@@ -24,6 +24,8 @@
 #include <limits>
 #include <sdsl/bit_vector_il.hpp>
 #include <sdsl/rank_support.hpp>
+#include "Options.h"
+#include "Common/Options.h"
 #include <omp.h>
 #include <algorithm>    // std::random_shuffle
 #include <boost/math/distributions/binomial.hpp>
