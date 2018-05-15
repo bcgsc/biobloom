@@ -12,6 +12,7 @@
 #include <getopt.h>
 #include "config.h"
 #include "Options.h"
+#include "Common/Options.h"
 #include <fstream>
 #include <omp.h>
 #include "MIBFGen.hpp"
@@ -52,7 +53,6 @@ void printHelpDialog() {
 		"Creates a multi-index Bloom Filter from a list of fasta files.\n"
 		"\n"
 		"  -p, --file_prefix=N    Filter prefix and filter ID. Required option.\n"
-		"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
 		"  -h, --help             Display this dialog.\n"
 		"      --version          Display version information.\n"
 		"  -v  --verbose          Display verbose output.\n"
@@ -67,8 +67,6 @@ void printHelpDialog() {
 		"  -I, --interval         the interval to report file processing status [10000000]\n"
 		"k-mer mode options (disabled when using spaced seeds):\n"
 		"  -g, --hash_num=N       Set number of hash functions when using k-mers.\n"
-		"                         of automatically using calculated optimal number of\n"
-		"                         functions.[3]\n"
 		"  -k, --kmer_size=N      K-mer size to use to create filter. [25]\n"
 		"\n"
 		"Report bugs to <cjustin@bcgsc.ca>.";
@@ -92,7 +90,6 @@ int main(int argc, char *argv[]) {
 	static struct option long_options[] = {
 		{
 			"file_prefix", required_argument, NULL, 'p' }, {
-			"output_dir", required_argument, NULL, 'o' }, {
 			"help", no_argument, NULL, 'h' }, {
 			"threads", required_argument, NULL, 't' }, {
 			"occupancy", required_argument, NULL, 'b' }, {
@@ -108,7 +105,7 @@ int main(int argc, char *argv[]) {
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "p:o:ht:b:S:g:k:n:FIv",
+	while ((c = getopt_long(argc, argv, "p:ht:b:S:g:k:n:FIv",
 			long_options, &option_index)) != -1) {
 		switch (c) {
 		case 'b': {
@@ -126,13 +123,6 @@ int main(int argc, char *argv[]) {
 		}
 		case 'p': {
 			opt::prefix = optarg;
-			break;
-		}
-		case 'o': {
-			opt::outputDir = optarg;
-			if (opt::outputDir.at(opt::outputDir.length() - 1) != '/') {
-				opt::outputDir = opt::outputDir + '/';
-			}
 			break;
 		}
 		case 't': {
@@ -254,7 +244,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	MIBFGen filterGen(inputFiles, opt::kmerSize, opt::entryNum);
-	filterGen.generate(opt::outputDir + opt::prefix, opt::occupancy);
+	filterGen.generate(opt::prefix, opt::occupancy);
 	if (opt::verbose) {
 		cerr << "Multi Index Bloom Filter Creation Complete." << endl;
 	}

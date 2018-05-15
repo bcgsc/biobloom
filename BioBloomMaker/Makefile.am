@@ -26,4 +26,5 @@ biobloommimaker_LDADD = $(top_builddir)/Common/libcommon.a -lz -lsdsl
 biobloommimaker_LDFLAGS = $(OPENMP_CXXFLAGS)
 
 biobloommimaker_SOURCES = BioBloomMIMaker.cpp \
-	MIBFGen.hpp
+	MIBFGen.hpp \
+	Options.cpp Options.h

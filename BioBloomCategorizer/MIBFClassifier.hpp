@@ -79,6 +79,14 @@ public:
 		MIBloomFilter<ID>::calcFrameProbs(m_filter, m_perFrameProb,
 				m_perFrameProbMulti);
 		m_minCount.set_empty_key(0);
+//		ID check = m_filter.checkValues(m_fullIDs.size() - 1);
+//		if (m_fullIDs.size() - 1 != check) {
+//			cerr << check << " ID found " << (check
+//					& MIBloomFilter<ID>::s_antiMask)
+//							<< " (after masking), max possible ID is "
+//							<< m_fullIDs.size() - 1 << endl;
+//			exit(1);
+//		}
 //		m_fprCount.set_empty_key(0);
 	}
 
@@ -172,7 +180,7 @@ public:
 					}
 
 #pragma omp critical(cout)
-					if (tempCount > 0) {
+					if (tempCount > 0 ) {
 //						cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
 //								<< "\tCorrectName:" << name << "\tPredictedID:"
 //								<< m_idToIndex[fullID] << "\tPredictedName:"
