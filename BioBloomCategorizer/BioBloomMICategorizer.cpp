@@ -77,7 +77,7 @@ bool fexists(const string &filename) {
 void printHelpDialog()
 {
 	const char dialog[] =
-	"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
+	"Usage: biobloommicategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
 	"biobloomcategorizer [OPTION]... -e -f \"[FILTER1]...\" [FILE1.fq] [FILE2.fq]\n"
 	"The input format may be FASTA, FASTQ, and compressed with gz.\n"
 	"\n"
