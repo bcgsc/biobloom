@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
 	//set number of hash functions used
 	if (!opt::sseeds.empty()) {
 		opt::hashNum = opt::sseeds.size();
-	} else {
+	} else if (opt::hashNum == 0){
 		cerr << "Please pick number of hash values (-g)\n";
 		exit(1);
 	}
