@@ -443,7 +443,7 @@ int main(int argc, char *argv[])
 		if (paired) {
 			BMC.filterPair(inputFiles[0], inputFiles[1]);
 		} else if (opt::debug) {
-			BMC.filterOld(inputFiles);
+			BMC.filterDebug(inputFiles);
 		}
 		else{
 			BMC.filter(inputFiles);

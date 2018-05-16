@@ -37,6 +37,32 @@ public:
 
 	}
 
+	template<typename C>
+	T updateSummaryData(const vector<pair<T,C>> &hits) {
+		unsigned filterIndex = m_noMatchIndex;
+		for (typename vector<pair<T,C>>::const_iterator itr = hits.begin();
+				itr != hits.end(); ++itr) {
+#pragma omp atomic
+			++m_aboveThreshold[itr->first];
+			if (filterIndex == m_noMatchIndex) {
+				filterIndex = itr->first;
+			} else {
+				filterIndex = m_multiMatchIndex;
+			}
+		}
+		if (filterIndex == m_noMatchIndex) {
+#pragma omp atomic
+			++m_noMatch;
+		} else if (filterIndex == m_multiMatchIndex) {
+#pragma omp atomic
+			++m_multiMatch;
+		} else {
+#pragma omp atomic
+			++m_unique[filterIndex];
+		}
+		return filterIndex;
+	}
+
 	T updateSummaryData(const vector<T> &hits) {
 		unsigned filterIndex = m_noMatchIndex;
 		for (typename vector<T>::const_iterator i = hits.begin();

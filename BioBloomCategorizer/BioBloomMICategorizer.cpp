@@ -102,9 +102,7 @@ void printHelpDialog()
 	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
 	"                         miBFs.[0]\n"
 	"  -m, --multi=N          Multi Match threshold. [3]\n"
-	"  -r, --streak=N         The number of hits tiling in second pass needed to jump\n"
-	"                         Several tiles upon a miss. Small values decrease\n"
-	"                         runtime but decrease sensitivity. [3]\n"
+	"  -r, --streak=N         Number of additional hits needed to skip classification.[3]\n"
 	"  --debug                debug filter output mode.\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
@@ -123,6 +121,8 @@ int main(int argc, char *argv[])
 	int FASTA = 0;
 	int TSV = 0;
 	int OPT_VERSION = 0;
+
+	opt::score = pow(10.0,-6.0);
 
 	vector<string> inputFiles;
 
@@ -156,16 +156,9 @@ int main(int argc, char *argv[])
 		switch (c) {
 		case 's': {
 			stringstream convert(optarg);
-			if (!(convert >> opt::score)) {
-				cerr << "Error - Invalid set of bloom filter parameters! s: "
-						<< optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			if (opt::score <= 0) {
-				cerr << "Error - s must be a float > 0 Input given:" << optarg
-						<< endl;
-				exit(EXIT_FAILURE);
-			}
+			double rawVal;
+			convert >> rawVal;
+			opt::score = pow(10.0,-(rawVal/10.0));
 			break;
 		}
 		case 'f': {
@@ -307,7 +300,7 @@ int main(int argc, char *argv[])
 	if (opt::paired) {
 		BMC.filterPair(inputFiles[0], inputFiles[1]);
 	} else if (opt::debug) {
-		BMC.filterOld(inputFiles);
+		BMC.filterDebug(inputFiles);
 	} else {
 		BMC.filter(inputFiles);
 	}

@@ -312,8 +312,7 @@ public:
 	template<typename H>
 	vector<pair<ID, double>> query(H &itr1, H &itr2,
 			const vector<unsigned> &minCount,
-			const vector<double> &perFrameProb, unsigned &saturatedCount,
-			unsigned extraFrameLimit = 10, unsigned extraCount = 1) {
+			const vector<double> &perFrameProb, unsigned extraFrameLimit = 10, unsigned extraCount = 1) {
 
 		vector<pair<T, double>> signifResults;
 		unsigned extraFrame = 0;
@@ -347,9 +346,6 @@ public:
 						//check for saturation
 						if (result > s_mask) {
 							result = *j & s_antiMask;
-						} else {
-//							saturated = false;
-							++saturatedCount;
 						}
 						if (tempIDs.find(result) == tempIDs.end()) {
 							typename google::dense_hash_map<T, unsigned>::iterator tempItr =

@@ -52,7 +52,8 @@ public:
 		} else {
 			cerr << "Loading ID file: " << idFile.c_str() << endl;
 		}
-		m_fullIDs.push_back("");
+		//first element is considered repetitive
+		m_fullIDs.push_back("repeat");
 		ifstream idFH(idFile.c_str(), ifstream::in);
 //		m_idToIndex.set_empty_key(m_fullIDs.back());
 		string line;
@@ -90,24 +91,11 @@ public:
 //		m_fprCount.set_empty_key(0);
 	}
 
-	void filterOld(const vector<string> &inputFiles) {
-		string outputName = opt::outputPrefix + "_reads.tsv";
-
-		//TODO output fasta?
-		if (opt::outputType == opt::FASTQ) {
-			outputName = opt::outputPrefix + "_reads.fq";
-		}
-
-		Dynamicofstream readsOutput(outputName);
-
-		//print out header info and initialize variables
-		ResultsManager<ID> resSummary(m_fullIDs, false);
-
+	void filterDebug(const vector<string> &inputFiles) {
 		cerr << "Filtering Start" << endl;
 
 		//debugging
 		size_t multiCount = 0;
-		size_t incorrectCount = 0;
 
 		for (vector<string>::const_iterator it = inputFiles.begin();
 				it != inputFiles.end(); ++it) {
@@ -152,12 +140,8 @@ public:
 					ID idIndex = evalRead(hitsPattern, evaluatedSeeds, pVal,
 							maxCount, signifResults, signifValues,
 							fullSignifCounts, pVals);
-					resSummary.updateSummaryData(idIndex);
 
-					const string &fullID =
-							idIndex == opt::EMPTY ? NO_MATCH :
-							idIndex == resSummary.getMultiMatchIndex() ?
-									MULTI_MATCH : m_fullIDs.at(idIndex);
+					const string &fullID = m_fullIDs.at(idIndex);
 					//debugging
 //#pragma omp critical(cout)
 //					if (name == "noMatch") {
@@ -202,22 +186,6 @@ public:
 						printVerbose(name, comment, sequence, hitsPattern, sig, idIndex);
 						printCountHistogram(hitsPattern);
 					}
-
-					if (idIndex != opt::EMPTY) {
-						if (opt::outputType == opt::FASTQ) {
-#pragma omp critical(outputFiles)
-							{
-								readsOutput << "@" << name << " " << fullID
-										<< "\n" << sequence << "\n+\n" << qual
-										<< "\n";
-							}
-						} else {
-#pragma omp critical(outputFiles)
-							{
-								readsOutput << fullID << "\t" << name << "\n";
-							}
-						}
-					}
 				} else {
 					break;
 				}
@@ -227,23 +195,17 @@ public:
 		}
 
 		cerr << "Multiple Map Count: " << multiCount << endl;
-		cerr << "Incorrect: " << incorrectCount << endl;
-
 		cerr << "Total Reads: " << m_numRead << endl;
-		cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
-				<< endl;
-
-		Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
-		summaryOutput << resSummary.getResultsSummary(m_numRead);
-		summaryOutput.close();
 		cout.flush();
 	}
 
 	void filter(const vector<string> &inputFiles) {
 		string outputName = opt::outputPrefix + "_reads.tsv";
 
-		//TODO output fasta?
 		if (opt::outputType == opt::FASTQ) {
+			outputName = opt::outputPrefix + "_reads.fq";
+		}
+		else if (opt::outputType == opt::FASTA) {
 			outputName = opt::outputPrefix + "_reads.fq";
 		}
 
@@ -286,23 +248,40 @@ public:
 								<< endl;
 					}
 
-					unsigned saturatedCount = 0;
-					vector<pair<ID, double>> signifResults = classify(sequence,
-							saturatedCount);
+					//supposed to be order from best to worst
+					vector<pair<ID, double>> signifResults = classify(sequence);
+					resSummary.updateSummaryData(signifResults);
 
-					if (signifResults.size() == 0) {
-						resSummary.updateSummaryData(opt::EMPTY);
-					} else if (signifResults.size() == 1) {
-						resSummary.updateSummaryData(signifResults[0].first);
-					} else {
-						resSummary.updateSummaryData(
-								resSummary.getMultiMatchIndex());
+#pragma omp critical(outputFiles)
+					if (opt::outputType == opt::FASTA) {
+						readsOutput << ">" << name << " " << comment;
+						if (!signifResults.empty()) {
+							unsigned i = 0;
+							readsOutput << "\t"
+									<< m_fullIDs[signifResults[i].first];
+							for (++i; i < signifResults.size(); ++i) {
+								readsOutput
+										<< m_fullIDs[signifResults[i].first];
+							}
+						}
+						readsOutput << "\n" << seq << "\n";
+					} else if (opt::outputType == opt::FASTQ) {
+						readsOutput << "@" << name << " " << comment;
+						if (!signifResults.empty()) {
+							unsigned i = 0;
+							readsOutput << "\t"
+									<< m_fullIDs[signifResults[i].first];
+							for (++i; i < signifResults.size(); ++i) {
+								readsOutput
+										<< m_fullIDs[signifResults[i].first];
+							}
+						}
+						readsOutput << "\n" << seq << "\n+" << qual << "\n";
 					}
-	#pragma omp critical(outputFiles)
-					if (opt::outputType == opt::NONE) {
+					else {
 						if (signifResults.empty()) {
 							readsOutput << "*\t" << name << " "
-									<< comment << "\t0\t*\t"<< saturatedCount <<"\n";
+									<< comment << "\t0\t*\n";
 						} else {
 							unsigned i = 0;
 							readsOutput << m_fullIDs[signifResults[i].first]
@@ -323,7 +302,7 @@ public:
 									}
 								}
 							}
-							readsOutput << "\t" << saturatedCount << "\n";
+							readsOutput << "\n";
 						}
 					}
 				} else {
@@ -366,7 +345,7 @@ public:
 		FaRec rec2;
 
 		//results summary object
-		ResultsManager<unsigned> resSummary(m_fullIDs, false);
+		ResultsManager<ID> resSummary(m_fullIDs, false);
 
 		size_t totalReads = 0;
 
@@ -421,46 +400,64 @@ public:
 				vector<pair<ID, double>> signifResults = classifyPair(rec1.seq,
 						rec2.seq,saturatedCount);
 
-				if (signifResults.size() == 0) {
-					resSummary.updateSummaryData(opt::EMPTY);
-				} else if (signifResults.size() == 1) {
-					resSummary.updateSummaryData(signifResults[0].first);
-//					printPairToFile(rec1, rec2, readsOutput);
-				} else {
-					resSummary.updateSummaryData(
-							resSummary.getMultiMatchIndex());
-//					for (unsigned i = 0; i < signifResults.size(); ++i) {
-//						printPairToFile(rec1, rec2, readsOutput);
-//					}
-				}
+				resSummary.updateSummaryData(signifResults);
 #pragma omp critical(outputFiles)
-				if (opt::outputType == opt::TSV) {
-					if (signifResults.empty()) {
-						readsOutput << "*\t" << rec1.header << " "
-								<< rec1.comment << "\t0\t*\t"<< saturatedCount <<"\n";
-					} else {
-						unsigned i = 0;
-						readsOutput << m_fullIDs[signifResults[i].first]
-								<< "\t" << rec1.header << " "
-								<< rec1.comment << "\t"
-								<< signifResults.size() << "\t";
-						if(signifResults.size() == 1){
-							readsOutput << "*";
-						}
-						else {
+					if (opt::outputType == opt::FASTA) {
+						readsOutput << ">" << rec1.header << " " << rec1.comment;
+						if (!signifResults.empty()) {
+							unsigned i = 0;
+							readsOutput << "\t"
+									<< m_fullIDs[signifResults[i].first];
 							for (++i; i < signifResults.size(); ++i) {
-								if (i != 1) {
-									readsOutput << ";"
-											<< m_fullIDs[signifResults[i].first];
-								} else {
-									readsOutput
-											<< m_fullIDs[signifResults[i].first];
-								}
+								readsOutput
+										<< m_fullIDs[signifResults[i].first];
 							}
 						}
-						readsOutput << "\t"<< saturatedCount <<"\n";
+						readsOutput << "\n" << rec1.seq << "\n";
+						readsOutput << ">" << rec2.header << " " << rec2.comment;
+						readsOutput << "\n" << rec2.seq << "\n";
+					} else if (opt::outputType == opt::FASTQ) {
+						readsOutput << "@" << rec1.header << " " << rec1.comment;
+						if (!signifResults.empty()) {
+							unsigned i = 0;
+							readsOutput << "\t"
+									<< m_fullIDs[signifResults[i].first];
+							for (++i; i < signifResults.size(); ++i) {
+								readsOutput
+										<< m_fullIDs[signifResults[i].first];
+							}
+						}
+						readsOutput << "\n" << rec1.seq << "\n+\n" << rec1.qual << "\n";
+						readsOutput << "@" << rec2.header << " " << rec2.comment;
+						readsOutput << "\n" << rec2.seq << "\n+\n" << rec2.qual << "\n";
 					}
-				}
+					else {
+						if (signifResults.empty()) {
+							readsOutput << "*\t" << rec1.header << " "
+									<< rec1.comment << "\t0\t*\n";
+						} else {
+							unsigned i = 0;
+							readsOutput << m_fullIDs[signifResults[i].first]
+									<< "\t" << rec1.header << " "
+									<< rec1.comment << "\t"
+									<< signifResults.size() << "\t";
+							if(signifResults.size() == 1){
+								readsOutput << "*";
+							}
+							else {
+								for (++i; i < signifResults.size(); ++i) {
+									if (i != 1) {
+										readsOutput << ";"
+												<< m_fullIDs[signifResults[i].first];
+									} else {
+										readsOutput
+												<< m_fullIDs[signifResults[i].first];
+									}
+								}
+							}
+							readsOutput << "\n";
+						}
+					}
 			} else
 				break;
 		}
@@ -529,7 +526,7 @@ private:
 	/*
 	 * testing heuristic faster code
 	 */
-	inline vector<pair<ID, double>> classify(const string &seq, unsigned &saturatedCount) {
+	inline vector<pair<ID, double>> classify(const string &seq) {
 		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
@@ -542,12 +539,12 @@ private:
 		if (m_filter.getSeedValues().size() > 0) {
 			RollingHashIterator itr(seq, m_filter.getKmerSize(),
 					m_filter.getSeedValues());
-			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb, saturatedCount);
+			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb);
 
 		} else {
 			ntHashIterator itr(seq, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb, saturatedCount);
+			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb);
 		}
 	}
 
