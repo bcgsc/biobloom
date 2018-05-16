@@ -395,10 +395,8 @@ public:
 					}
 				}
 
-				unsigned saturatedCount = 0;
-
 				vector<pair<ID, double>> signifResults = classifyPair(rec1.seq,
-						rec2.seq,saturatedCount);
+						rec2.seq);
 
 				resSummary.updateSummaryData(signifResults);
 #pragma omp critical(outputFiles)
@@ -539,12 +537,12 @@ private:
 		if (m_filter.getSeedValues().size() > 0) {
 			RollingHashIterator itr(seq, m_filter.getKmerSize(),
 					m_filter.getSeedValues());
-			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb);
+			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb, opt::streakThreshold,opt::multiThresh);
 
 		} else {
 			ntHashIterator itr(seq, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb);
+			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb, opt::streakThreshold,opt::multiThresh);
 		}
 	}
 
@@ -553,7 +551,7 @@ private:
 	 *
 	 */
 	inline vector<pair<ID, double>> classifyPair(const string &seq1,
-			const string &seq2, unsigned &saturatedCount) {
+			const string &seq2) {
 		unsigned frameCount = seq1.size() + seq2.size() - (m_filter.getKmerSize() + 1)*2;
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
@@ -568,13 +566,13 @@ private:
 					m_filter.getSeedValues());
 			RollingHashIterator itr2(seq2, m_filter.getKmerSize(),
 					m_filter.getSeedValues());
-			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb, saturatedCount);
+			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb, opt::streakThreshold,opt::multiThresh);
 		} else {
 			ntHashIterator itr1(seq1, m_filter.getHashNum(),
 					m_filter.getKmerSize());
 			ntHashIterator itr2(seq2, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb, saturatedCount);
+			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb, opt::streakThreshold,opt::multiThresh);
 		}
 	}
 

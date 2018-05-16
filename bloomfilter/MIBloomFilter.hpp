@@ -231,6 +231,7 @@ public:
 		vector<pair<T, double>> signifResults;
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
+		unsigned frameCount = 0;
 		unsigned secondBestCount = 0;
 
 		google::dense_hash_map<T, unsigned> counts;
@@ -240,58 +241,55 @@ public:
 		bool candidateFound = false;
 
 		while (itr != itr.end() && !candidateFound) {
-			bool saturated = true;
 			unsigned count = 0;
 			vector<size_t> rankPos = atPos(*itr, count);
 			if (count == m_hashNum) {
 				vector<ID> results(m_hashNum);
 				for (unsigned i = 0; i < m_hashNum; ++i) {
-					T tempResult = m_data[rankPos[i]];
-					if (tempResult > s_mask) {
-						results[i] = tempResult & s_antiMask;
-					} else {
-						results[i] = tempResult;
-						saturated = false;
+					results[i] = m_data[rankPos[i]];
+				}
+				google::dense_hash_set<T> tempIDs;
+				tempIDs.set_empty_key(0);
+				for (typename vector<T>::const_iterator j = results.begin();
+						j != results.end(); j++) {
+					if (*j != 0) {
+//						bool saturated = true;
+						T result = *j;
+						//check for saturation
+						if (result > s_mask) {
+							result = *j & s_antiMask;
+						}
+						if (tempIDs.find(result) == tempIDs.end()) {
+							typename google::dense_hash_map<T, unsigned>::iterator tempItr =
+									counts.find(result);
+							assert(result > 0);
+							if (tempItr == counts.end()) {
+								counts[result] = 1;
+							} else {
+								//check is count is exceeded
+								if (minCount[result] <= ++tempItr->second) {
+									if (tempItr->second > bestCount) {
+										bestCount = counts[result];
+									} else if (counts[result] > secondBestCount) {
+										secondBestCount = counts[result];
+									}
+									candidateMatch.insert(result);
+								}
+							}
+							tempIDs.insert(result);
+						}
 					}
 				}
-				if(!saturated) {
-					google::dense_hash_set<T> tempIDs;
-					tempIDs.set_empty_key(0);
-					for (typename vector<T>::const_iterator j = results.begin();
-							j != results.end(); j++) {
-						if (*j != 0) {
-							if (tempIDs.find(*j) == tempIDs.end()) {
-								typename google::dense_hash_map<T, unsigned>::iterator tempItr =
-										counts.find(*j);
-								assert(*j > 0);
-								if (tempItr == counts.end()) {
-									counts[*j] = 1;
-								} else {
-									//check is count is exceeded
-									if (minCount[*j] <= ++tempItr->second) {
-										if (tempItr->second > bestCount) {
-											bestCount = counts[*j];
-										} else if (counts[*j]
-												> secondBestCount) {
-											secondBestCount = counts[*j];
-										}
-										candidateMatch.insert(*j);
-									}
-								}
-								tempIDs.insert(*j);
-							}
-						}
-					}
-					if (bestCount == secondBestCount) {
-						extraFrame = 0;
-					}
-					if (bestCount && bestCount > secondBestCount) {
-						if (extraFrameLimit < extraFrame++) {
-							candidateFound = true;
-						}
+				if (bestCount <= secondBestCount + extraCount) {
+					extraFrame = 0;
+				}
+				if (bestCount && bestCount > secondBestCount) {
+					if (extraFrameLimit < extraFrame++) {
+						candidateFound = true;
 					}
 				}
 			}
+			++frameCount;
 			++itr;
 		}
 		for (typename google::dense_hash_set<T>::const_iterator candidates =
