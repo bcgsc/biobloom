@@ -70,6 +70,7 @@ void BioBloomClassifier::filter(const vector<string> &inputFiles) {
 					rec.seq = string(kseq->seq.s, l);
 					rec.header = string(kseq->name.s, kseq->name.l);
 					rec.qual = string(kseq->qual.s, kseq->qual.l);
+					rec.comment = string(kseq->comment.s, kseq->comment.l);
 				}
 			}
 			if (l >= 0) {
@@ -158,6 +159,7 @@ void BioBloomClassifier::filterPrint(const vector<string> &inputFiles,
 					rec.seq = string(kseq->seq.s, l);
 					rec.header = string(kseq->name.s, kseq->name.l);
 					rec.qual = string(kseq->qual.s, kseq->qual.l);
+					rec.comment = string(kseq->comment.s, kseq->comment.l);
 				}
 			}
 			if (l >= 0) {
@@ -259,12 +261,14 @@ void BioBloomClassifier::filterPair(const string &file1, const string &file2) {
 				rec1.seq = string(kseq1->seq.s, l1);
 				rec1.header = string(kseq1->name.s, kseq1->name.l);
 				rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
+				rec1.comment = string(kseq1->comment.s, kseq1->comment.l);
 			}
 			l2 = kseq_read(kseq2);
 			if (l2 >= 0) {
 				rec2.seq = string(kseq2->seq.s, l2);
 				rec2.header = string(kseq2->name.s, kseq2->name.l);
 				rec2.qual = string(kseq2->qual.s, kseq2->qual.l);
+				rec2.comment = string(kseq2->comment.s, kseq2->comment.l);
 			}
 		}
 		if (l1 >= 0 && l2 >= 0) {
@@ -372,12 +376,14 @@ void BioBloomClassifier::filterPairPrint(const string &file1,
 				rec1.seq = string(kseq1->seq.s, l1);
 				rec1.header = string(kseq1->name.s, kseq1->name.l);
 				rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
+				rec1.comment = string(kseq1->comment.s, kseq1->comment.l);
 			}
 			l2 = kseq_read(kseq2);
 			if (l2 >= 0) {
 				rec2.seq = string(kseq2->seq.s, l2);
 				rec2.header = string(kseq2->name.s, kseq2->name.l);
 				rec2.qual = string(kseq2->qual.s, kseq2->qual.l);
+				rec2.comment = string(kseq2->comment.s, kseq2->comment.l);
 			}
 		}
 		if (l1 >= 0 && l2 >= 0) {
@@ -500,6 +506,7 @@ void BioBloomClassifier::filterPair(const string &file) {
 				rec.header = string(kseq->name.s, kseq->name.l);
 				rec.seq = string(kseq->seq.s, l);
 				rec.qual = string(kseq->qual.s, kseq->qual.l);
+				rec.comment = string(kseq->comment.s, kseq->comment.l);
 			}
 		}
 		bool pairFound;
@@ -626,6 +633,7 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 				rec.header = string(kseq->name.s, kseq->name.l);
 				rec.seq = string(kseq->seq.s, l);
 				rec.qual = string(kseq->qual.s, kseq->qual.l);
+				rec.comment = string(kseq->comment.s, kseq->comment.l);
 			}
 		}
 		bool pairFound;

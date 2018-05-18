@@ -97,6 +97,7 @@ private:
 
 	struct FaRec {
 		string header;
+		string comment;
 		string seq;
 		string qual;
 	};
@@ -122,20 +123,20 @@ private:
 				if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
 					{
-						cout << "@" << rec.header << " " << score << "\n"
+						cout << "@" << rec.header << " " << rec.comment << " " << score << "\n"
 								<< rec.seq << "\n+\n" << rec.qual << "\n";
 					}
 				} else {
 #pragma omp critical(cout)
 					{
-						cout << "@" << rec.header << "\n" << rec.seq << "\n+\n"
+						cout << "@" << rec.header << " " << rec.comment << "\n" << rec.seq << "\n+\n"
 								<< rec.qual << "\n";
 					}
 				}
 			} else if (opt::inverse) {
 #pragma omp critical(cout)
 				{
-					cout << "@" << rec.header << "\n" << rec.seq << "\n+\n"
+					cout << "@" << rec.header << " " << rec.comment << "\n" << rec.seq << "\n+\n"
 							<< rec.qual << "\n";
 				}
 			}
@@ -150,7 +151,7 @@ private:
 			if (m_mode == SCORES && outputFileName == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << ">" << rec.header;
+					(*outputFiles[outputFileName]) << ">" << rec.header << " " << rec.comment;
 					for (vector<double>::iterator i = scores.begin();
 							i != scores.end(); ++i) {
 						(*outputFiles[outputFileName]) << " " << *i;
@@ -161,7 +162,7 @@ private:
 				if (outputFileName == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
-					(*outputFiles[outputFileName]) << ">" << rec.header;
+					(*outputFiles[outputFileName]) << ">" << rec.header << " " << rec.comment;
 					for (vector<double>::iterator i = scores.begin();
 							i != scores.end(); ++i) {
 						(*outputFiles[outputFileName]) << " " << *i;
@@ -170,13 +171,13 @@ private:
 				} else
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << ">" << rec.header << " "
+					(*outputFiles[outputFileName]) << ">" << rec.header << " " << rec.comment << " "
 							<< score << "\n" << rec.seq << "\n";
 				}
 			} else {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << ">" << rec.header << "\n"
+					(*outputFiles[outputFileName]) << ">" << rec.header << " " << rec.comment << "\n"
 							<< rec.seq << "\n";
 				}
 			}
@@ -184,7 +185,7 @@ private:
 			if (m_mode == SCORES && outputFileName == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << "@" << rec.header;
+					(*outputFiles[outputFileName]) << "@" << rec.header << " " << rec.comment;
 					for (vector<double>::iterator i = scores.begin();
 							i != scores.end(); ++i) {
 						(*outputFiles[outputFileName]) << " " << *i;
@@ -195,14 +196,14 @@ private:
 			} else if (m_mode == BESTHIT) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << "@" << rec.header << " "
+					(*outputFiles[outputFileName]) << "@" << rec.header << " " << rec.comment << " "
 							<< score << "\n" << rec.seq << "\n+\n" << rec.qual
 							<< "\n";
 				}
 			} else {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles[outputFileName]) << "@" << rec.header << "\n"
+					(*outputFiles[outputFileName]) << "@" << rec.header << " " << rec.comment << "\n"
 							<< rec.seq << "\n+\n" << rec.qual << "\n";
 				}
 			}
@@ -216,26 +217,26 @@ private:
 				if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
 					{
-						cout << "@" << rec1.header << " " << score1 << "\n"
+						cout << "@" << rec1.header << " " << rec1.comment << " " << score1 << "\n"
 								<< rec1.seq << "\n+\n" << rec1.qual << "\n";
-						cout << "@" << rec2.header << " " << score2 << "\n"
+						cout << "@" << rec2.header << " " << rec2.comment << " " << score2 << "\n"
 								<< rec2.seq << "\n+\n" << rec2.qual << "\n";
 					}
 				} else {
 #pragma omp critical(cout)
 					{
-						cout << "@" << rec1.header << "\n" << rec1.seq
+						cout << "@" << rec1.header << " " << rec1.comment << "\n" << rec1.seq
 								<< "\n+\n" << rec1.qual << "\n";
-						cout << "@" << rec2.header << "\n" << rec2.seq
+						cout << "@" << rec2.header << " " << rec2.comment << "\n" << rec2.seq
 								<< "\n+\n" << rec2.qual << "\n";
 					}
 				}
 			} else if (opt::inverse) {
 #pragma omp critical(cout)
 				{
-					cout << "@" << rec1.header << "\n" << rec1.seq
+					cout << "@" << rec1.header << " " << rec1.comment << "\n" << rec1.seq
 							<< "\n+\n" << rec1.qual << "\n";
-					cout << "@" << rec2.header << "\n" << rec2.seq
+					cout << "@" << rec2.header << " " << rec2.comment << "\n" << rec2.seq
 							<< "\n+\n" << rec2.qual << "\n";
 				}
 			}
@@ -249,28 +250,28 @@ private:
 				if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
 					{
-						cout << "@" << rec1->name.s << " " << score1 << "\n"
+						cout << "@" << rec1->name.s << " " << rec1->comment.s << " " << score1 << "\n"
 								<< rec1->seq.s << "\n+\n" << rec1->qual.s
 								<< "\n";
-						cout << "@" << rec2->name.s << " " << score2 << "\n"
+						cout << "@" << rec2->name.s << " " << rec2->comment.s << " " << score2 << "\n"
 								<< rec2->seq.s << "\n+\n" << rec2->qual.s
 								<< "\n";
 					}
 				} else {
 #pragma omp critical(cout)
 					{
-						cout << "@" << rec1->name.s << "\n" << rec1->seq.s
+						cout << "@" << rec1->name.s << " " << rec1->comment.s << "\n" << rec1->seq.s
 								<< "\n+\n" << rec1->qual.s << "\n";
-						cout << "@" << rec2->name.s << "\n" << rec2->seq.s
+						cout << "@" << rec2->name.s << " " << rec2->comment.s << "\n" << rec2->seq.s
 								<< "\n+\n" << rec2->qual.s << "\n";
 					}
 				}
 			} else if (opt::inverse) {
 #pragma omp critical(cout)
 				{
-					cout << "@" << rec1->name.s << "\n" << rec1->seq.s
+					cout << "@" << rec1->name.s << " " << rec1->comment.s << "\n" << rec1->seq.s
 							<< "\n+\n" << rec1->qual.s << "\n";
-					cout << "@" << rec2->name.s << "\n" << rec2->seq.s
+					cout << "@" << rec2->name.s << " " << rec2->comment.s << "\n" << rec2->seq.s
 							<< "\n+\n" << rec2->qual.s << "\n";
 				}
 			}
@@ -287,14 +288,14 @@ private:
 					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << ">" << rec1.header;
+					(*outputFiles1[outputFileIndex]) << ">" << rec1.header << " " << rec1.comment;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
 						(*outputFiles1[outputFileIndex]) << " " << *i;
 					}
 					(*outputFiles1[outputFileIndex]) << "\n" << rec1.seq
 							<< "\n";
-					(*outputFiles2[outputFileIndex]) << ">" << rec2.header;
+					(*outputFiles2[outputFileIndex]) << ">" << rec2.header << " " << rec2.comment;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles2[outputFileIndex]) << " " << *i;
@@ -306,14 +307,14 @@ private:
 				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
-					(*outputFiles1[outputFileIndex]) << ">" << rec1.header;
+					(*outputFiles1[outputFileIndex]) << ">" << rec1.header << " " << rec1.comment;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
 						(*outputFiles1[outputFileIndex]) << " " << *i;
 					}
 					(*outputFiles1[outputFileIndex]) << "\n" << rec1.seq
 							<< "\n";
-					(*outputFiles2[outputFileIndex]) << ">" << rec2.header;
+					(*outputFiles2[outputFileIndex]) << ">" << rec2.header << " " << rec2.comment;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles2[outputFileIndex]) << " " << *i;
@@ -323,17 +324,17 @@ private:
 				} else
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << ">" << rec1.header
+					(*outputFiles1[outputFileIndex]) << ">" << rec1.header << " " << rec1.comment
 							<< " " << score1 << "\n" << rec1.seq << "\n";
-					(*outputFiles2[outputFileIndex]) << ">" << rec2.header
+					(*outputFiles2[outputFileIndex]) << ">" << rec2.header << " " << rec2.comment
 							<< " " << score2 << "\n" << rec2.seq << "\n";
 				}
 			} else {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << ">" << rec1.header
+					(*outputFiles1[outputFileIndex]) << ">" << rec1.header << " " << rec1.comment
 							<< "\n" << rec1.seq << "\n";
-					(*outputFiles2[outputFileIndex]) << ">" << rec2.header
+					(*outputFiles2[outputFileIndex]) << ">" << rec2.header << " " << rec2.comment
 							<< "\n" << rec2.seq << "\n";
 				}
 			}
@@ -342,14 +343,14 @@ private:
 					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << "@" << rec1.header;
+					(*outputFiles1[outputFileIndex]) << "@" << rec1.header << " " << rec1.comment;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
 						(*outputFiles1[outputFileIndex]) << " " << *i;
 					}
 					(*outputFiles1[outputFileIndex]) << "\n" << rec1.seq
 							<< "\n+\n" << rec1.qual << "\n";
-					(*outputFiles2[outputFileIndex]) << "@" << rec2.header;
+					(*outputFiles2[outputFileIndex]) << "@" << rec2.header << " " << rec2.comment;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles2[outputFileIndex]) << " " << *i;
@@ -361,14 +362,14 @@ private:
 				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
-					(*outputFiles1[outputFileIndex]) << "@" << rec1.header;
+					(*outputFiles1[outputFileIndex]) << "@" << rec1.header << " " << rec1.comment;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
 						(*outputFiles1[outputFileIndex]) << " " << *i;
 					}
 					(*outputFiles1[outputFileIndex]) << "\n" << rec1.seq
 							<< "\n+\n" << rec1.qual << "\n";
-					(*outputFiles2[outputFileIndex]) << "@" << rec2.header;
+					(*outputFiles2[outputFileIndex]) << "@" << rec2.header << " " << rec2.comment;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles2[outputFileIndex]) << " " << *i;
@@ -378,19 +379,19 @@ private:
 				} else
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << "@" << rec1.header
+					(*outputFiles1[outputFileIndex]) << "@" << rec1.header << " " << rec1.comment
 							<< " " << score1 << "\n" << rec1.seq << "\n+\n"
 							<< rec1.qual << "\n";
-					(*outputFiles2[outputFileIndex]) << "@" << rec2.header
+					(*outputFiles2[outputFileIndex]) << "@" << rec2.header << " " << rec2.comment
 							<< " " << score2 << "\n" << rec2.seq << "\n+\n"
 							<< rec2.qual << "\n";
 				}
 			} else {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << "@" << rec1.header
+					(*outputFiles1[outputFileIndex]) << "@" << rec1.header << " " << rec1.comment
 							<< "\n" << rec1.seq << "\n+\n" << rec1.qual << "\n";
-					(*outputFiles2[outputFileIndex]) << "@" << rec2.header
+					(*outputFiles2[outputFileIndex]) << "@" << rec2.header << " " << rec2.comment
 							<< "\n" << rec2.seq << "\n+\n" << rec2.qual << "\n";
 				}
 			}
@@ -407,14 +408,14 @@ private:
 					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << ">" << rec1->name.s;
+					(*outputFiles1[outputFileIndex]) << ">" << rec1->name.s << " " << rec1->comment.s;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
 						(*outputFiles1[outputFileIndex]) << " " << *i;
 					}
 					(*outputFiles1[outputFileIndex]) << "\n" << rec1->seq.s
 							<< "\n";
-					(*outputFiles2[outputFileIndex]) << ">" << rec2->name.s;
+					(*outputFiles2[outputFileIndex]) << ">" << rec2->name.s << " " << rec2->comment.s;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles2[outputFileIndex]) << " " << *i;
@@ -426,14 +427,14 @@ private:
 				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
-					(*outputFiles1[outputFileIndex]) << ">" << rec1->name.s;
+					(*outputFiles1[outputFileIndex]) << ">" << rec1->name.s << " " << rec1->comment.s;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
 						(*outputFiles1[outputFileIndex]) << " " << *i;
 					}
 					(*outputFiles1[outputFileIndex]) << "\n" << rec1->seq.s
 							<< "\n";
-					(*outputFiles2[outputFileIndex]) << ">" << rec2->name.s;
+					(*outputFiles2[outputFileIndex]) << ">" << rec2->name.s << " " << rec2->comment.s;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles2[outputFileIndex]) << " " << *i;
@@ -443,17 +444,17 @@ private:
 				} else
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << ">" << rec1->name.s
+					(*outputFiles1[outputFileIndex]) << ">" << rec1->name.s << " " << rec1->comment.s
 							<< " " << score1 << "\n" << rec1->seq.s << "\n";
-					(*outputFiles2[outputFileIndex]) << ">" << rec2->name.s
+					(*outputFiles2[outputFileIndex]) << ">" << rec2->name.s << " " << rec2->comment.s
 							<< " " << score2 << "\n" << rec2->seq.s << "\n";
 				}
 			} else {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << ">" << rec1->name.s
+					(*outputFiles1[outputFileIndex]) << ">" << rec1->name.s << " " << rec1->comment.s
 							<< "\n" << rec1->seq.s << "\n";
-					(*outputFiles2[outputFileIndex]) << ">" << rec2->name.s
+					(*outputFiles2[outputFileIndex]) << ">" << rec2->name.s << " " << rec2->comment.s
 							<< "\n" << rec2->seq.s << "\n";
 				}
 			}
@@ -462,14 +463,14 @@ private:
 					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << "@" << rec1->name.s;
+					(*outputFiles1[outputFileIndex]) << "@" << rec1->name.s << " " << rec1->comment.s;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
 						(*outputFiles1[outputFileIndex]) << " " << *i;
 					}
 					(*outputFiles1[outputFileIndex]) << "\n" << rec1->seq.s
 							<< "\n+\n" << rec1->qual.s << "\n";
-					(*outputFiles2[outputFileIndex]) << "@" << rec2->name.s;
+					(*outputFiles2[outputFileIndex]) << "@" << rec2->name.s << " " << rec2->comment.s;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles2[outputFileIndex]) << " " << *i;
@@ -481,14 +482,14 @@ private:
 				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
-					(*outputFiles1[outputFileIndex]) << "@" << rec1->name.s;
+					(*outputFiles1[outputFileIndex]) << "@" << rec1->name.s << " " << rec1->comment.s;
 					for (vector<double>::iterator i = scores1.begin();
 							i != scores1.end(); ++i) {
 						(*outputFiles1[outputFileIndex]) << " " << *i;
 					}
 					(*outputFiles1[outputFileIndex]) << "\n" << rec1->seq.s
 							<< "\n+\n" << rec1->qual.s << "\n";
-					(*outputFiles2[outputFileIndex]) << "@" << rec2->name.s;
+					(*outputFiles2[outputFileIndex]) << "@" << rec2->name.s << " " << rec2->comment.s;
 					for (vector<double>::iterator i = scores2.begin();
 							i != scores2.end(); ++i) {
 						(*outputFiles2[outputFileIndex]) << " " << *i;
@@ -498,20 +499,20 @@ private:
 				} else
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << "@" << rec1->name.s
+					(*outputFiles1[outputFileIndex]) << "@" << rec1->name.s << " " << rec1->comment.s
 							<< " " << score1 << "\n" << rec1->seq.s << "\n+\n"
 							<< rec1->qual.s << "\n";
-					(*outputFiles2[outputFileIndex]) << "@" << rec2->name.s
+					(*outputFiles2[outputFileIndex]) << "@" << rec2->name.s << " " << rec2->comment.s
 							<< " " << score2 << "\n" << rec2->seq.s << "\n+\n"
 							<< rec2->qual.s << "\n";
 				}
 			} else {
 #pragma omp critical(outputFiles)
 				{
-					(*outputFiles1[outputFileIndex]) << "@" << rec1->name.s
+					(*outputFiles1[outputFileIndex]) << "@" << rec1->name.s << " " << rec1->comment.s
 							<< "\n" << rec1->seq.s << "\n+\n" << rec1->qual.s
 							<< "\n";
-					(*outputFiles2[outputFileIndex]) << "@" << rec2->name.s
+					(*outputFiles2[outputFileIndex]) << "@" << rec2->name.s << " " << rec2->comment.s
 							<< "\n" << rec2->seq.s << "\n+\n" << rec2->qual.s
 							<< "\n";
 				}
