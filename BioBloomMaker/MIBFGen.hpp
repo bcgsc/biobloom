@@ -220,8 +220,6 @@ public:
 				}
 				kseq_destroy(seq);
 				gzclose(fp);
-				if (opt::verbose > 0) {
-				}
 			}
 		}
 		if (opt::verbose){
