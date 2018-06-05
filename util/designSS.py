@@ -79,8 +79,12 @@ def main():
                 seed[j][i]=0
         # make seed set symmetric
         for j in range(nseeds):
-            for i in range(seedlen//2):
-                seed[nseeds-j-1][seedlen-i-1]=seed[j][i]
+            if seedlen % 2:
+                for i in range((seedlen + 1)//2):
+                    seed[nseeds-j-1][seedlen-i-1]=seed[j][i]
+            else:
+                for i in range(seedlen//2):
+                    seed[nseeds-j-1][seedlen-i-1]=seed[j][i]
                 
         for j in range(nseeds):
             weight = 0
