@@ -40,6 +40,11 @@ public:
 	static const T s_mask = 1 << (sizeof(T) * 8 - 1);
 	static const T s_antiMask = (T)~s_mask;
 
+	static const T s_strand = 1 << (sizeof(T) * 8 - 2);
+	static const T s_antiStrand = (T)~s_strand;
+
+	static const T s_idMask = s_antiStrand & s_antiMask;
+
 	static const unsigned BLOCKSIZE = 512;
 	//static methods
 	/*
@@ -82,14 +87,38 @@ public:
 		return prob;
 	}
 
+//	/*
+//	 * Preconditions:
+//	 * 	frameProbs but be equal in size to multiMatchProbs
+//	 * 	frameProbs must be preallocated to correct size (number of ids + 1)
+//	 * Max value is the largest value seen in your set of possible values
+//	 */
+//	static void calcFrameProbs(MIBloomFilter<T> &miBF,
+//			vector<double> &frameProbs, vector<double> &multiMatchProbs) {
+//		double occupancy = double(miBF.getPop()) / double(miBF.size());
+//		unsigned hashNum = miBF.getHashNum();
+//		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
+//		miBF.getIDCounts(countTable);
+//		size_t sum = 0;
+//		for (vector<size_t>::const_iterator itr = countTable.begin();
+//				itr != countTable.end(); ++itr) {
+//			sum += *itr;
+//		}
+//		for (size_t i = 0; i < countTable.size(); ++i) {
+//			frameProbs[i] = calcProbSingleFrame(occupancy, hashNum,
+//					double(countTable[i]) / double(sum));
+//			multiMatchProbs[i] = calcProbMultiMatchSingleFrame(occupancy,
+//					hashNum, double(countTable[i]) / double(sum));
+//		}
+//	}
+//
 	/*
 	 * Preconditions:
 	 * 	frameProbs but be equal in size to multiMatchProbs
 	 * 	frameProbs must be preallocated to correct size (number of ids + 1)
 	 * Max value is the largest value seen in your set of possible values
 	 */
-	static void calcFrameProbs(MIBloomFilter<T> &miBF,
-			vector<double> &frameProbs, vector<double> &multiMatchProbs) {
+	static void calcFrameProbs(MIBloomFilter<T> &miBF, vector<double> &frameProbs) {
 		double occupancy = double(miBF.getPop()) / double(miBF.size());
 		unsigned hashNum = miBF.getHashNum();
 		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
@@ -102,291 +131,7 @@ public:
 		for (size_t i = 0; i < countTable.size(); ++i) {
 			frameProbs[i] = calcProbSingleFrame(occupancy, hashNum,
 					double(countTable[i]) / double(sum));
-			multiMatchProbs[i] = calcProbMultiMatchSingleFrame(occupancy,
-					hashNum, double(countTable[i]) / double(sum));
 		}
-	}
-
-	/*
-	 * Utility function for querying MiBF for a sequence in a hash itr object
-	 * Computes probability of a match for each possible value queried.
-	 * In this scheme saturated regions are ignored.
-	 *
-	 * Parameters:
-	 * perFrameProb - per frame probability of each possible value
-	 * alpha - significance threshold
-	 * itr - hash iterator of type H (ntHash)
-	 * maxPos - max number of positions to move on the sequence
-	 *
-	 * Returns significant values (smaller than alpha threshold)
-	 */
-	//TODO return saturated frame counts?
-	//TODO return pVals?
-	template<typename H>
-	vector<pair<ID, double>> query(H &itr, const vector<double> &perFrameProb,
-			const vector<double> &perMultiMatchFrameProb, double alpha = 0.0001,
-			double multimapAlpha = 0.001, unsigned maxMiss = 0, size_t maxPos =
-					numeric_limits<size_t>::max()) {
-		unsigned evaluatedSeeds = 0;
-		unsigned totalCount = 0;
-		unsigned saturatedCount = 0;
-
-		google::dense_hash_map<T, unsigned> counts;
-		counts.set_empty_key(0);
-		while (itr != itr.end() && itr.pos() < maxPos) {
-			bool saturated = true;
-			vector<T> results = at(*itr, saturated, maxMiss);
-			//to determine if already added for this frame
-			google::dense_hash_set<T> tempIDs;
-			tempIDs.set_empty_key(0);
-
-			if (!saturated) {
-				for (typename vector<T>::const_iterator j = results.begin();
-						j != results.end(); j++) {
-					if (*j != 0) {
-						if (tempIDs.find(*j) == tempIDs.end()) {
-							typename google::dense_hash_map<T, unsigned>::iterator tempItr =
-									counts.find(*j);
-							assert(*j > 0);
-							if (tempItr == counts.end()) {
-								counts[*j] = 1;
-							} else {
-								++(tempItr->second);
-							}
-							tempIDs.insert(*j);
-						}
-					}
-				}
-				++evaluatedSeeds;
-			}
-			else{
-				++saturatedCount;
-			}
-			++totalCount;
-			++itr;
-		}
-
-		//potential signifResults
-		vector<pair<T, double>> potSignifResults;
-		vector<pair<T, double>> signifResults;
-
-		double adjustedPValThreshold = 1.0
-				- pow(1.0 - alpha, 1.0 / double(perFrameProb.size() - 1));
-		T bestSignifVal = counts.begin()->first;
-		for (typename google::dense_hash_map<T, unsigned>::const_iterator itr =
-				counts.begin(); itr != counts.end(); itr++) {
-			//TODO use complement cdf? so I don't have to subtract?
-			boost::math::binomial bin(evaluatedSeeds, 1.0 - perFrameProb.at(itr->first));
-			double cumProb = cdf(bin, evaluatedSeeds - itr->second);
-			if (adjustedPValThreshold > cumProb) {
-				if (counts[bestSignifVal] < counts[itr->first]) {
-					bestSignifVal = itr->first;
-				}
-				potSignifResults.push_back(pair<T, double>(itr->first, cumProb));
-			}
-		}
-
-//		adjustedPValThreshold = 1.0
-//				- pow(1.0 - multimapAlpha, 1.0 / double(perFrameProb.size() - 1));
-		assert(perMultiMatchFrameProb.size());
-		assert(multimapAlpha);
-		//TODO: generalized because this assumes a = 0, fix me?
-//		for (typename vector<pair<T, double>>::const_iterator itr = potSignifResults.begin();
-//				itr != potSignifResults.end(); ++itr) {
-//			//compute single frame prob
-//			boost::math::binomial bin(counts[bestSignifVal], 1.0 - perMultiMatchFrameProb.at(itr->first));
-//			double cumProb = cdf(bin, counts[bestSignifVal] - counts[itr->first]);
-//			if (adjustedPValThreshold > cumProb) {
-//				signifResults.push_back(*itr);
-//			}
-//		}
-
-		for (typename vector<pair<T, double>>::const_iterator itr = potSignifResults.begin();
-				itr != potSignifResults.end(); ++itr) {
-			if (counts[bestSignifVal] <= counts[itr->first]) {
-				signifResults.push_back(*itr);
-			}
-		}
-
-		//TODO detect repeat sequence
-//
-//		if (signifResults.size() == 0 && saturatedCount) {
-//			boost::math::binomial bin(totalCount, 1.0 - m_probSaturated);
-//			double cumProb = cdf(bin, totalCount - saturatedCount);
-//			if (adjustedPValThreshold > cumProb) {
-//				//0 is empty
-//				signifResults.push_back(pair<T, double>(0, saturatedCount));
-//			}
-//		}
-		sort(signifResults.begin(), signifResults.end(), sortbysec);
-		//Best hit considered the class with the most hits and lowest pValue
-		return signifResults;
-	}
-
-	//TODO refine extraFrameLimit
-	template<typename H>
-	vector<pair<T, double>> query(H &itr, const vector<unsigned> &minCount,
-			const vector<double> &perFrameProb, unsigned extraFrameLimit = 50,
-			unsigned extraCount = 5) {
-		vector<pair<T, double>> signifResults;
-		unsigned extraFrame = 0;
-		unsigned bestCount = 0;
-		unsigned frameCount = 0;
-		unsigned secondBestCount = 0;
-
-		google::dense_hash_map<T, unsigned> counts;
-		counts.set_empty_key(0);
-		google::dense_hash_set<T> candidateMatch;
-		candidateMatch.set_empty_key(0);
-		bool candidateFound = false;
-
-		while (itr != itr.end() && !candidateFound) {
-			unsigned count = 0;
-			vector<size_t> rankPos = atPos(*itr, count);
-			if (count == m_hashNum) {
-				vector<ID> results(m_hashNum);
-				for (unsigned i = 0; i < m_hashNum; ++i) {
-					results[i] = m_data[rankPos[i]];
-				}
-				google::dense_hash_set<T> tempIDs;
-				tempIDs.set_empty_key(0);
-				for (typename vector<T>::const_iterator j = results.begin();
-						j != results.end(); j++) {
-					if (*j != 0) {
-//						bool saturated = true;
-						T result = *j;
-						//check for saturation
-						if (result > s_mask) {
-							result = *j & s_antiMask;
-						}
-						if (tempIDs.find(result) == tempIDs.end()) {
-							typename google::dense_hash_map<T, unsigned>::iterator tempItr =
-									counts.find(result);
-							assert(result > 0);
-							if (tempItr == counts.end()) {
-								counts[result] = 1;
-							} else {
-								//check is count is exceeded
-								if (minCount[result] <= ++tempItr->second) {
-									if (tempItr->second > bestCount) {
-										bestCount = counts[result];
-									} else if (counts[result] > secondBestCount) {
-										secondBestCount = counts[result];
-									}
-									candidateMatch.insert(result);
-								}
-							}
-							tempIDs.insert(result);
-						}
-					}
-				}
-				if (bestCount <= secondBestCount + extraCount) {
-					extraFrame = 0;
-				}
-				if (bestCount && bestCount > secondBestCount) {
-					if (extraFrameLimit < extraFrame++) {
-						candidateFound = true;
-					}
-				}
-			}
-			++frameCount;
-			++itr;
-		}
-		for (typename google::dense_hash_set<T>::const_iterator candidates =
-				candidateMatch.begin(); candidates != candidateMatch.end();
-				candidates++) {
-			if (bestCount <= counts[*candidates] + extraCount) {
-				//todo record not counts but pVals?
-				signifResults.push_back(
-						pair<T, double>(*candidates,
-								double(counts[*candidates])
-										+ perFrameProb[*candidates]));
-			}
-		}
-		sort(signifResults.begin(), signifResults.end(), sortbysec);
-		return signifResults;
-	}
-
-	template<typename H>
-	vector<pair<ID, double>> query(H &itr1, H &itr2,
-			const vector<unsigned> &minCount,
-			const vector<double> &perFrameProb, unsigned extraFrameLimit = 10, unsigned extraCount = 1) {
-
-		vector<pair<T, double>> signifResults;
-		unsigned extraFrame = 0;
-		unsigned bestCount = 0;
-		unsigned frameCount = 0;
-		unsigned secondBestCount = 0;
-
-		google::dense_hash_map<T, unsigned> counts;
-		counts.set_empty_key(0);
-		google::dense_hash_set<T> candidateMatch;
-		candidateMatch.set_empty_key(0);
-		bool candidateFound = false;
-
-		while ((itr1 != itr1.end() && itr2 != itr2.end()) && !candidateFound) {
-			H &itr = frameCount % 2 == 0 && itr1 != itr1.end() ? itr1 :
-						frameCount % 2 == 1 && itr2 != itr2.end() ? itr2 : itr1;
-			unsigned count = 0;
-			vector<size_t> rankPos = atPos(*itr, count);
-			if (count == m_hashNum) {
-				vector<ID> results(m_hashNum);
-				for (unsigned i = 0; i < m_hashNum; ++i) {
-					results[i] = m_data[rankPos[i]];
-				}
-				google::dense_hash_set<T> tempIDs;
-				tempIDs.set_empty_key(0);
-				for (typename vector<T>::const_iterator j = results.begin();
-						j != results.end(); j++) {
-					if (*j != 0) {
-//						bool saturated = true;
-						T result = *j;
-						//check for saturation
-						if (result > s_mask) {
-							result = *j & s_antiMask;
-						}
-						if (tempIDs.find(result) == tempIDs.end()) {
-							typename google::dense_hash_map<T, unsigned>::iterator tempItr =
-									counts.find(result);
-							assert(result > 0);
-							if (tempItr == counts.end()) {
-								counts[result] = 1;
-							} else {
-								//check is count is exceeded
-								if (minCount[result] <= ++tempItr->second) {
-									if (tempItr->second > bestCount) {
-										bestCount = counts[result];
-									} else if (counts[result] > secondBestCount) {
-										secondBestCount = counts[result];
-									}
-									candidateMatch.insert(result);
-								}
-							}
-							tempIDs.insert(result);
-						}
-					}
-				}
-				if (bestCount <= secondBestCount + extraCount) {
-					extraFrame = 0;
-				}
-				if (bestCount && bestCount > secondBestCount) {
-					if (extraFrameLimit < extraFrame++) {
-						candidateFound = true;
-					}
-				}
-			}
-			++frameCount;
-			++itr;
-		}
-		for (typename google::dense_hash_set<T>::const_iterator candidates =
-				candidateMatch.begin(); candidates != candidateMatch.end(); candidates++) {
-			if (bestCount <= counts[*candidates] + extraCount) {
-				//todo record not counts but pVals?
-				signifResults.push_back(pair<T, double>(*candidates, double(counts[*candidates]) + perFrameProb[*candidates]));
-			}
-		}
-		sort(signifResults.begin(), signifResults.end(), sortbysec);
-		return signifResults;
 	}
 
 	/*
@@ -590,20 +335,88 @@ public:
 		}
 	}
 
+//	/*
+//	 * Insert using an existing iterator (returning array of size_t)
+//	 */
+//	template<typename ITR>
+//	inline unsigned insert(ITR &itr, T value, unsigned max) {
+//		unsigned failedInsert = 0;
+//		while (itr != itr.end()) {
+//			//Last iteration check if value was obliterated
+//			if (!insert(*itr, value, max)) {
+//				++failedInsert;
+//			}
+//			++itr;
+//		}
+//		return failedInsert;
+//	}
+
 	/*
-	 * Insert using an existing iterator (returning array of size_t)
+	 * Returns false if unable to insert hashes values
+	 * Contains strand information
+	 * Inserts hash functions in random order
 	 */
-	template<typename ITR>
-	inline unsigned insert(ITR &itr, unsigned max, T value) {
-		unsigned failedInsert = 0;
-		while (itr != itr.end()) {
-			//Last iteration check if value was obliterated
-			if (!insert(*itr, value, max)) {
-				++failedInsert;
+	inline bool insert(const size_t *hashes, const bool *strand, T val, unsigned max) {
+		unsigned count = 0;
+		std::vector<unsigned> hashOrder;
+		bool saturated = true;
+		//for random number generator seed
+		size_t randValue = val;
+		bool strandDir = max % 2;
+
+		//check values and if value set
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			//check if values are already set
+			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
+			T value = strandDir ^ strand[i] ? val | s_strand : val;
+			//check for saturation
+			T oldVal = m_data[pos];
+			if (oldVal > s_mask) {
+				oldVal = oldVal & s_antiMask;
+			} else {
+				saturated = false;
 			}
-			++itr;
+			if (oldVal == value) {
+				++count;
+			}
+			else{
+				hashOrder.push_back(i);
+			}
+			if (count >= max) {
+				return true;
+			}
+			randValue ^= hashes[i];
 		}
-		return failedInsert;
+		std::minstd_rand g(randValue);
+		std::shuffle(hashOrder.begin(), hashOrder.end(), g);
+
+		//insert seeds in random order
+		for (std::vector<unsigned>::iterator itr = hashOrder.begin();
+				itr != hashOrder.end(); ++itr) {
+			size_t pos = m_rankSupport(hashes[*itr] % m_bv.size());
+			T value = strandDir ^ strand[*itr] ? val | s_strand : val;
+			//check for saturation
+			T oldVal = setVal(&m_data[pos], value);
+			if (oldVal > s_mask) {
+				oldVal = oldVal & s_antiMask;
+			} else {
+				saturated = false;
+			}
+			if (oldVal == 0) {
+				++count;
+			}
+			if (count >= max) {
+				return true;
+			}
+		}
+		if (count == 0) {
+			if (!saturated) {
+				assert(max == 1); //if this triggers then spaced seed is probably not symmetric
+				saturate(hashes);
+			}
+			return false;
+		}
+		return true;
 	}
 
 	/*
@@ -700,6 +513,29 @@ public:
 	}
 
 	/*
+	 * Populates rank pos vector. Boolean vector is use to confirm if hits are good
+	 * Returns total number of misses found
+	 */
+	unsigned atRank(const size_t *hashes, vector<size_t> &rankPos,
+			vector<bool> &hits, unsigned maxMiss) const{
+		unsigned misses = 0;
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
+			if (m_bv[pos]) {
+				rankPos[i] = m_rankSupport(pos);
+				hits[i] = true;
+			} else {
+				if (++misses > maxMiss) {
+					return misses;
+				}
+				hits[i] = false;
+			}
+		}
+		return misses;
+	}
+
+
+	/*
 	 * Returns if IDs are saturated
 	 * ~2 cache misses
 	 */
@@ -745,10 +581,12 @@ public:
 		vector<size_t> rankPos(m_hashNum);
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes[i] % m_bv.size();
-			if (m_bv[pos] == 0) {
-			} else {
-				rankPos[i] = m_rankSupport(pos);
-			}
+//			if (m_bv[pos] == 0) {
+//				cerr << "Missing bit in bitvector" << endl;
+//				exit(1);
+//			} else {
+			rankPos[i] = m_rankSupport(pos);
+//			}
 		}
 		return rankPos;
 	}
@@ -757,20 +595,21 @@ public:
 		return m_ssVal;
 	}
 
-	inline unsigned getKmerSize() {
+	inline unsigned getKmerSize() const{
 		return m_kmerSize;
 	}
 
-	inline unsigned getHashNum() {
+	inline unsigned getHashNum() const{
 		return m_hashNum;
 	}
 
 	/*
 	 * computes id frequency based on datavector
 	 */
-	inline void getIDCounts(vector<size_t> &counts) {
+	inline void getIDCounts(vector<size_t> &counts) const {
 		for (size_t i = 0; i < m_dSize; ++i) {
-			++counts[m_data[i] & s_antiMask];
+//			cerr << m_data[i] << " " << (m_data[i] & s_idMask) << " " << s_idMask << endl;
+			++counts[m_data[i] & s_idMask];
 		}
 	}
 
@@ -832,7 +671,7 @@ public:
 		return count;
 	}
 
-	inline size_t size() {
+	inline size_t size() const {
 		return m_bv.size();
 	}
 
@@ -847,6 +686,10 @@ public:
 			results[i] = m_data[rankPos[i]];
 		}
 		return results;
+	}
+
+	inline ID getData(size_t rank) const{
+		return m_data[rank];
 	}
 
 	~MIBloomFilter() {

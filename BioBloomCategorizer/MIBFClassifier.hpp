@@ -15,8 +15,9 @@
 #include <google/dense_hash_set>
 #include <vector>
 #include "bloomfilter/MIBloomFilter.hpp"
-#include "bloomfilter/RollingHashIterator.h"
-#include "btl_bloomfilter/ntHashIterator.hpp"
+#include "bloomfilter/stHashIterator.hpp"
+#include "bloomfilter/ntHashIterator.hpp"
+#include "bloomfilter/MIBFQuerySupport.hpp"
 #include <iostream>
 #include <boost/math/distributions/binomial.hpp>
 #include <BioBloomClassifier.h>
@@ -75,10 +76,9 @@ public:
 		}
 
 		m_perFrameProb = vector<double>(m_fullIDs.size());
-		m_perFrameProbMulti = vector<double>(m_fullIDs.size());
+//		m_perFrameProbMulti = vector<double>(m_fullIDs.size());
 		//needed for later statistical calculation
-		MIBloomFilter<ID>::calcFrameProbs(m_filter, m_perFrameProb,
-				m_perFrameProbMulti);
+		MIBloomFilter<ID>::calcFrameProbs(m_filter, m_perFrameProb);
 		m_minCount.set_empty_key(0);
 //		ID check = m_filter.checkValues(m_fullIDs.size() - 1);
 //		if (m_fullIDs.size() - 1 != check) {
@@ -228,18 +228,18 @@ public:
 			}
 			kseq_t *seq = kseq_init(fp);
 			int l;
-#pragma omp parallel private(l)
-			for (string sequence;;) {
-				string name;
-				string qual;
-				string comment;
+			FaRec faRec;
+			MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
+					m_perFrameProb, opt::multiThresh, opt::streakThreshold, opt::allowMisses);
+#pragma omp parallel private(l, faRec) firstprivate(support)
+			for (;;) {
 #pragma omp critical(sequence)
 				{
 					l = kseq_read(seq);
-					sequence = string(seq->seq.s, seq->seq.l);
-					name = string(seq->name.s, seq->name.l);
-					qual = string(seq->qual.s, seq->qual.l);
-					comment = string(seq->comment.s, seq->comment.l);
+					faRec.seq = string(seq->seq.s, seq->seq.l);
+					faRec.header = string(seq->name.s, seq->name.l);
+					faRec.qual = string(seq->qual.s, seq->qual.l);
+					faRec.comment = string(seq->comment.s, seq->comment.l);
 				}
 				if (l >= 0) {
 #pragma omp critical(totalReads)
@@ -249,44 +249,44 @@ public:
 					}
 
 					//supposed to be order from best to worst
-					vector<pair<ID, double>> signifResults = classify(sequence);
+					vector<MIBFQuerySupport<ID>::QueryResult> signifResults = classify(support, faRec.seq);
 					resSummary.updateSummaryData(signifResults);
 
 #pragma omp critical(outputFiles)
 					if (opt::outputType == opt::FASTA) {
-						readsOutput << ">" << name << " " << comment;
+						readsOutput << ">" << faRec.header << " " << faRec.comment;
 						if (!signifResults.empty()) {
 							unsigned i = 0;
 							readsOutput << "\t"
-									<< m_fullIDs[signifResults[i].first];
+									<< m_fullIDs[signifResults[i].id];
 							for (++i; i < signifResults.size(); ++i) {
 								readsOutput
-										<< m_fullIDs[signifResults[i].first];
+										<< m_fullIDs[signifResults[i].id];
 							}
 						}
 						readsOutput << "\n" << seq << "\n";
 					} else if (opt::outputType == opt::FASTQ) {
-						readsOutput << "@" << name << " " << comment;
+						readsOutput << "@" << faRec.header << " " << faRec.comment;
 						if (!signifResults.empty()) {
 							unsigned i = 0;
 							readsOutput << "\t"
-									<< m_fullIDs[signifResults[i].first];
+									<< m_fullIDs[signifResults[i].id];
 							for (++i; i < signifResults.size(); ++i) {
 								readsOutput
-										<< m_fullIDs[signifResults[i].first];
+										<< m_fullIDs[signifResults[i].id];
 							}
 						}
-						readsOutput << "\n" << seq << "\n+" << qual << "\n";
+						readsOutput << "\n" << seq << "\n+" << faRec.qual << "\n";
 					}
 					else {
 						if (signifResults.empty()) {
-							readsOutput << "*\t" << name << " "
-									<< comment << "\t0\t*\n";
+							readsOutput << "*\t" << faRec.header << " "
+									<< faRec.comment << "\t0\t*\n";
 						} else {
 							unsigned i = 0;
-							readsOutput << m_fullIDs[signifResults[i].first]
-									<< "\t" << name << " "
-									<< comment << "\t"
+							readsOutput << m_fullIDs[signifResults[i].id]
+									<< "\t" << faRec.header << " "
+									<< faRec.comment << "\t"
 									<< signifResults.size() << "\t";
 							if(signifResults.size() == 1){
 								readsOutput << "*";
@@ -295,10 +295,10 @@ public:
 								for (++i; i < signifResults.size(); ++i) {
 									if (i != 1) {
 										readsOutput << ";"
-												<< m_fullIDs[signifResults[i].first];
+												<< m_fullIDs[signifResults[i].id];
 									} else {
 										readsOutput
-												<< m_fullIDs[signifResults[i].first];
+												<< m_fullIDs[signifResults[i].id];
 									}
 								}
 							}
@@ -365,9 +365,12 @@ public:
 			cerr << "Filtering Start" << "\n";
 		}
 		double startTime = omp_get_wtime();
-
-#pragma omp parallel private(rec1, rec2)
-		for (int l1, l2;;) {
+		int l1, l2;
+		FaRec faRec;
+		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
+				m_perFrameProb, opt::multiThresh, opt::streakThreshold, opt::allowMisses);
+#pragma omp parallel private(l1, l2, rec1, rec2) firstprivate(support)
+		for (;;) {
 #pragma omp critical(kseq)
 			{
 				l1 = kseq_read(kseq1);
@@ -395,20 +398,19 @@ public:
 					}
 				}
 
-				vector<pair<ID, double>> signifResults = classifyPair(rec1.seq,
-						rec2.seq);
-
+				vector<MIBFQuerySupport<ID>::QueryResult> signifResults  = classify(support, rec1.seq, rec2.seq);
 				resSummary.updateSummaryData(signifResults);
+
 #pragma omp critical(outputFiles)
 					if (opt::outputType == opt::FASTA) {
 						readsOutput << ">" << rec1.header << " " << rec1.comment;
 						if (!signifResults.empty()) {
 							unsigned i = 0;
 							readsOutput << "\t"
-									<< m_fullIDs[signifResults[i].first];
+									<< m_fullIDs[signifResults[i].id];
 							for (++i; i < signifResults.size(); ++i) {
 								readsOutput
-										<< m_fullIDs[signifResults[i].first];
+										<< m_fullIDs[signifResults[i].id];
 							}
 						}
 						readsOutput << "\n" << rec1.seq << "\n";
@@ -419,10 +421,10 @@ public:
 						if (!signifResults.empty()) {
 							unsigned i = 0;
 							readsOutput << "\t"
-									<< m_fullIDs[signifResults[i].first];
+									<< m_fullIDs[signifResults[i].id];
 							for (++i; i < signifResults.size(); ++i) {
 								readsOutput
-										<< m_fullIDs[signifResults[i].first];
+										<< m_fullIDs[signifResults[i].id];
 							}
 						}
 						readsOutput << "\n" << rec1.seq << "\n+\n" << rec1.qual << "\n";
@@ -435,7 +437,7 @@ public:
 									<< rec1.comment << "\t0\t*\n";
 						} else {
 							unsigned i = 0;
-							readsOutput << m_fullIDs[signifResults[i].first]
+							readsOutput << m_fullIDs[signifResults[i].id]
 									<< "\t" << rec1.header << " "
 									<< rec1.comment << "\t"
 									<< signifResults.size() << "\t";
@@ -446,10 +448,10 @@ public:
 								for (++i; i < signifResults.size(); ++i) {
 									if (i != 1) {
 										readsOutput << ";"
-												<< m_fullIDs[signifResults[i].first];
+												<< m_fullIDs[signifResults[i].id];
 									} else {
 										readsOutput
-												<< m_fullIDs[signifResults[i].first];
+												<< m_fullIDs[signifResults[i].id];
 									}
 								}
 							}
@@ -477,7 +479,7 @@ private:
 	vector<string> m_fullIDs;
 //	google::dense_hash_map<string, ID> m_idToIndex;
 	vector<double> m_perFrameProb;
-	vector<double> m_perFrameProbMulti;
+//	vector<double> m_perFrameProbMulti;
 	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>> m_minCount;
 //	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>> m_fprCount;
 
@@ -503,29 +505,13 @@ private:
 		return result;
 	}
 
-//	/*
-//	 * Streamlined classification code
-//	 */
-//	inline vector<pair<ID, double>> classify(const string &seq) {
-//		if (m_filter.getSeedValues().size() > 0) {
-//			RollingHashIterator itr(seq, m_filter.getKmerSize(),
-//					m_filter.getSeedValues());
-//			return m_filter.query(itr, m_perFrameProb, m_perFrameProbMulti,
-//					opt::score, opt::multiThresh, opt::allowMisses);
-//
-//		} else {
-//			ntHashIterator itr(seq, m_filter.getHashNum(),
-//					m_filter.getKmerSize());
-//			return m_filter.query(itr, m_perFrameProb, m_perFrameProbMulti,
-//					opt::score, opt::multiThresh, opt::allowMisses);
-//		}
-//	}
-
 	/*
 	 * testing heuristic faster code
 	 */
-	inline vector<pair<ID, double>> classify(const string &seq) {
+	//TODO: Reuse itr object
+	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> support, const string &seq) {
 		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
+#pragma omp critical(m_minCount)
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
 					new vector<unsigned>(m_fullIDs.size()));
@@ -535,14 +521,13 @@ private:
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
-			RollingHashIterator itr(seq, m_filter.getKmerSize(),
-					m_filter.getSeedValues());
-			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb, opt::streakThreshold,opt::multiThresh);
+			stHashIterator itr(seq, m_filter.getSeedValues(), opt::hashNum, m_filter.getKmerSize());
+			return support.query(itr, *m_minCount[frameCount]);
 
 		} else {
 			ntHashIterator itr(seq, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return m_filter.query(itr, *m_minCount[frameCount], m_perFrameProb, opt::streakThreshold,opt::multiThresh);
+			return support.query(itr, *m_minCount[frameCount]);
 		}
 	}
 
@@ -550,7 +535,7 @@ private:
 	 * heuristic code
 	 *
 	 */
-	inline vector<pair<ID, double>> classifyPair(const string &seq1,
+	inline const vector<MIBFQuerySupport<ID>::QueryResult> classify(MIBFQuerySupport<ID> support, const string &seq1,
 			const string &seq2) {
 		unsigned frameCount = seq1.size() + seq2.size() - (m_filter.getKmerSize() + 1)*2;
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
@@ -562,17 +547,17 @@ private:
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
-			RollingHashIterator itr1(seq1, m_filter.getKmerSize(),
-					m_filter.getSeedValues());
-			RollingHashIterator itr2(seq2, m_filter.getKmerSize(),
-					m_filter.getSeedValues());
-			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb, opt::streakThreshold,opt::multiThresh);
+			stHashIterator itr1(seq1, m_filter.getSeedValues(), opt::hashNum,
+					m_filter.getKmerSize());
+			stHashIterator itr2(seq2, m_filter.getSeedValues(), opt::hashNum,
+					m_filter.getKmerSize());
+			return support.query(itr1, itr2, *m_minCount[frameCount]);
 		} else {
 			ntHashIterator itr1(seq1, m_filter.getHashNum(),
 					m_filter.getKmerSize());
 			ntHashIterator itr2(seq2, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return m_filter.query(itr1, itr2, *m_minCount[frameCount], m_perFrameProb, opt::streakThreshold,opt::multiThresh);
+			return support.query(itr1, itr2, *m_minCount[frameCount]);
 		}
 	}
 
@@ -631,8 +616,7 @@ private:
 		matchPos.reserve(seq.size() - m_filter.getKmerSize());
 
 		if (m_filter.getSeedValues().size() > 0) {
-			RollingHashIterator itr(seq, m_filter.getKmerSize(),
-					m_filter.getSeedValues());
+			stHashIterator itr(seq, m_filter.getSeedValues(), opt::hashNum, m_filter.getKmerSize());
 			while (itr != itr.end()) {
 				vector<ID> results = m_filter.at(*itr, opt::allowMisses);
 				vector<pair<ID, bool>> processedResults(results.size(), pair<ID, bool>(0,false));

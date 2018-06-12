@@ -38,14 +38,14 @@ public:
 	}
 
 	template<typename C>
-	T updateSummaryData(const vector<pair<T,C>> &hits) {
+	T updateSummaryData(const vector<C> &hits) {
 		unsigned filterIndex = m_noMatchIndex;
-		for (typename vector<pair<T,C>>::const_iterator itr = hits.begin();
+		for (typename vector<C>::const_iterator itr = hits.begin();
 				itr != hits.end(); ++itr) {
 #pragma omp atomic
-			++m_aboveThreshold[itr->first];
+			++m_aboveThreshold[itr->count];
 			if (filterIndex == m_noMatchIndex) {
-				filterIndex = itr->first;
+				filterIndex = itr->count;
 			} else {
 				filterIndex = m_multiMatchIndex;
 			}

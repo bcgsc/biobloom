@@ -15,9 +15,10 @@
 #include <stdint.h>
 
 #include "bloomfilter/MIBloomFilter.hpp"
-#include "bloomfilter/RollingHashIterator.h"
+#include "bloomfilter/stHashIterator.hpp"
+#include "bloomfilter/ntHashIterator.hpp"
+
 #include "btl_bloomfilter/BloomFilter.hpp"
-#include "btl_bloomfilter/ntHashIterator.hpp"
 
 #include "Common/Options.h"
 
@@ -664,12 +665,23 @@ private:
 		ID id = m_nameToID[name];
 		if (miBF.getSeedValues().empty()) {
 			ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
-#pragma omp atomic update
-			m_failedInsert += miBF.insert(itr, max, id);
+			insertTillEnd(miBF, max, itr, id);
 		} else {
-			RollingHashIterator itr(seq, m_kmerSize, miBF.getSeedValues());
-#pragma omp atomic update
-			m_failedInsert += miBF.insert(itr, max, id);
+			stHashIterator itr(seq, miBF.getSeedValues(), opt::hashNum, miBF.getKmerSize());
+			insertTillEnd(miBF, max, itr, id);
+		}
+	}
+
+	template<typename T>
+	inline void insertTillEnd(MIBloomFilter<ID> &miBF, unsigned max, T &itr,
+			ID id) {
+		while (itr != itr.end()) {
+			//Last iteration check if value was obliterated
+			if (!miBF.insert(*itr, id, max)) {
+#pragma omp atomic
+				++m_failedInsert;
+			}
+			++itr;
 		}
 	}
 
@@ -715,7 +727,7 @@ private:
 				++itr;
 			}
 		} else {
-			RollingHashIterator itr(seq, m_kmerSize, miBF.getSeedValues());
+			stHashIterator itr(seq, miBF.getSeedValues(), opt::hashNum, miBF.getKmerSize());
 			while (itr != itr.end()) {
 				//for each set of hash values, check for saturation
 				vector<size_t> rankPos = miBF.getRankPos(*itr);
@@ -778,7 +790,7 @@ private:
 			}
 		} else {
 			/* init rolling hash state and compute hash values for first k-mer */
-			for (RollingHashIterator itr(seq, m_kmerSize, seedVal);
+			for (stHashIterator itr(seq, seedVal, opt::hashNum, m_kmerSize);
 					itr != itr.end(); ++itr) {
 				unsigned colliCount = 0;
 				for (size_t i = 0; i < seedVal.size(); ++i) {
