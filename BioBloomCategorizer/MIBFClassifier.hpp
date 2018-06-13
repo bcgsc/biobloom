@@ -206,7 +206,7 @@ public:
 			outputName = opt::outputPrefix + "_reads.fq";
 		}
 		else if (opt::outputType == opt::FASTA) {
-			outputName = opt::outputPrefix + "_reads.fq";
+			outputName = opt::outputPrefix + "_reads.fa";
 		}
 
 		Dynamicofstream readsOutput(outputName);
