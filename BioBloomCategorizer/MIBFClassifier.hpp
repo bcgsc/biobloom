@@ -264,7 +264,7 @@ public:
 										<< m_fullIDs[signifResults[i].id];
 							}
 						}
-						readsOutput << "\n" << seq << "\n";
+						readsOutput << "\n" << faRec.seq << "\n";
 					} else if (opt::outputType == opt::FASTQ) {
 						readsOutput << "@" << faRec.header << " " << faRec.comment;
 						if (!signifResults.empty()) {
@@ -276,7 +276,7 @@ public:
 										<< m_fullIDs[signifResults[i].id];
 							}
 						}
-						readsOutput << "\n" << seq << "\n+" << faRec.qual << "\n";
+						readsOutput << "\n" << faRec.seq << "\n+" << faRec.qual << "\n";
 					}
 					else {
 						if (signifResults.empty()) {
