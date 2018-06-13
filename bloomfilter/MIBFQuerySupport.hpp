@@ -151,7 +151,7 @@ public:
 	const vector<QueryResult> &query(H &itr, const vector<unsigned> &minCount) {
 		//reset reusable values
 		m_candidateMatches.clear();
-		m_strandCounts.clear();
+		m_counts.clear();
 		m_signifResults.clear();
 
 		unsigned extraFrame = 0;
@@ -205,21 +205,13 @@ public:
 			}
 			++itr;
 		}
-		//needed due to a bug in google dense hash set
-		for (typename set<T>::const_iterator candidates =
+		for (typename set<T>::const_iterator candidate =
 				m_candidateMatches.begin();
-				candidates != m_candidateMatches.end(); candidates++) {
-			//true = fw, false = rv
-			bool strand = m_strandCounts[*candidates].first
-					> m_strandCounts[*candidates].second;
-			unsigned tempCount =
-					strand ?
-							m_strandCounts[*candidates].first :
-							m_strandCounts[*candidates].second;
-			if (bestCount <= tempCount + m_extraCount) {
+				candidate != m_candidateMatches.end(); candidate++) {
+			unsigned tempCount = m_counts[*candidate];
+			if (bestCount <= tempCount+ m_extraCount) {
 				QueryResult result;
-				result.id = *candidates;
-				result.strand = strand;
+				result.id = *candidate;
 				result.count = tempCount;
 				m_signifResults.push_back(result);
 			}
@@ -231,17 +223,14 @@ public:
 	template<typename H>
 	const vector<QueryResult> &query(H &itr1, H &itr2,
 			const vector<unsigned> &minCount) {
+		m_candidateMatches.clear();
+		m_counts.clear();
+		m_signifResults.clear();
 
-		vector<pair<T, double>> signifResults;
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
 		unsigned frameCount = 0;
 		unsigned secondBestCount = 0;
-
-		google::dense_hash_map<T, unsigned> counts;
-		counts.set_empty_key(0);
-		google::dense_hash_set<T> candidateMatch;
-		candidateMatch.set_empty_key(0);
 		bool candidateFound = false;
 
 		while ((itr1 != itr1.end() && itr2 != itr2.end()) && !candidateFound) {
@@ -291,21 +280,13 @@ public:
 			}
 			++itr;
 		}
-		//needed due to a bug in google dense hash set
 		for (typename set<T>::const_iterator candidates =
 				m_candidateMatches.begin();
 				candidates != m_candidateMatches.end(); candidates++) {
-			//true = fw, false = rv
-			bool strand = m_strandCounts[*candidates].first
-					> m_strandCounts[*candidates].second;
-			unsigned tempCount =
-					strand ?
-							m_strandCounts[*candidates].first :
-							m_strandCounts[*candidates].second;
-			if (bestCount <= tempCount + m_extraCount) {
+			unsigned tempCount = m_counts[*candidates];
+			if (bestCount <= tempCount+ m_extraCount) {
 				QueryResult result;
 				result.id = *candidates;
-				result.strand = strand;
 				result.count = tempCount;
 				m_signifResults.push_back(result);
 			}
