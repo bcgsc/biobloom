@@ -101,7 +101,7 @@ void printHelpDialog()
 	"Experimental options (may change in the future)\n"
 	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
 	"                         miBFs.[0]\n"
-	"  -m, --multi=N          Multi Match threshold. [3]\n"
+	"  -m, --multi=N          Multi Match threshold.[1]\n"
 	"  -r, --streak=N         Number of additional hits needed to skip classification.[3]\n"
 	"  --debug                debug filter output mode.\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
