@@ -249,7 +249,7 @@ public:
 					}
 
 					//supposed to be order from best to worst
-					vector<MIBFQuerySupport<ID>::QueryResult> signifResults = classify(support, faRec.seq);
+					const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, faRec.seq);
 					resSummary.updateSummaryData(signifResults);
 
 #pragma omp critical(outputFiles)
@@ -346,9 +346,6 @@ public:
 
 		//results summary object
 		ResultsManager<ID> resSummary(m_fullIDs, false);
-
-		size_t totalReads = 0;
-
 		string outputName = opt::outputPrefix + "_reads.tsv";
 
 		//TODO output fasta?
@@ -391,14 +388,14 @@ public:
 			if (l1 >= 0 && l2 >= 0) {
 #pragma omp critical(totalReads)
 				{
-					++totalReads;
-					if (totalReads % opt::fileInterval == 0) {
-						cerr << "Currently Reading Read Number: " << totalReads
+					++m_numRead;
+					if (m_numRead % opt::fileInterval == 0) {
+						cerr << "Currently Reading Read Number: " << m_numRead
 								<< endl;
 					}
 				}
 
-				vector<MIBFQuerySupport<ID>::QueryResult> signifResults  = classify(support, rec1.seq, rec2.seq);
+				const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, rec1.seq, rec2.seq);
 				resSummary.updateSummaryData(signifResults);
 
 #pragma omp critical(outputFiles)
@@ -468,7 +465,7 @@ public:
 		readsOutput.close();
 
 		Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
-		summaryOutput << resSummary.getResultsSummary(totalReads);
+		summaryOutput << resSummary.getResultsSummary(m_numRead);
 		summaryOutput.close();
 		cout.flush();
 	}
@@ -509,7 +506,7 @@ private:
 	 * testing heuristic faster code
 	 */
 	//TODO: Reuse itr object
-	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> support, const string &seq) {
+	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq) {
 		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
 #pragma omp critical(m_minCount)
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
@@ -521,7 +518,7 @@ private:
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
-			stHashIterator itr(seq, m_filter.getSeedValues(), opt::hashNum, m_filter.getKmerSize());
+			stHashIterator itr(seq, m_filter.getSeedValues(), m_filter.getHashNum(), m_filter.getKmerSize());
 			return support.query(itr, *m_minCount[frameCount]);
 
 		} else {
@@ -535,7 +532,7 @@ private:
 	 * heuristic code
 	 *
 	 */
-	inline const vector<MIBFQuerySupport<ID>::QueryResult> classify(MIBFQuerySupport<ID> support, const string &seq1,
+	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq1,
 			const string &seq2) {
 		unsigned frameCount = seq1.size() + seq2.size() - (m_filter.getKmerSize() + 1)*2;
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
@@ -547,9 +544,9 @@ private:
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
-			stHashIterator itr1(seq1, m_filter.getSeedValues(), opt::hashNum,
+			stHashIterator itr1(seq1, m_filter.getSeedValues(), m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			stHashIterator itr2(seq2, m_filter.getSeedValues(), opt::hashNum,
+			stHashIterator itr2(seq2, m_filter.getSeedValues(), m_filter.getHashNum(),
 					m_filter.getKmerSize());
 			return support.query(itr1, itr2, *m_minCount[frameCount]);
 		} else {
@@ -616,7 +613,7 @@ private:
 		matchPos.reserve(seq.size() - m_filter.getKmerSize());
 
 		if (m_filter.getSeedValues().size() > 0) {
-			stHashIterator itr(seq, m_filter.getSeedValues(), opt::hashNum, m_filter.getKmerSize());
+			stHashIterator itr(seq, m_filter.getSeedValues(), m_filter.getHashNum(), m_filter.getKmerSize());
 			while (itr != itr.end()) {
 				vector<ID> results = m_filter.at(*itr, opt::allowMisses);
 				vector<pair<ID, bool>> processedResults(results.size(), pair<ID, bool>(0,false));
