@@ -43,9 +43,9 @@ public:
 		for (typename vector<C>::const_iterator itr = hits.begin();
 				itr != hits.end(); ++itr) {
 #pragma omp atomic
-			++m_aboveThreshold[itr->count];
+			++m_aboveThreshold[itr->id];
 			if (filterIndex == m_noMatchIndex) {
-				filterIndex = itr->count;
+				filterIndex = itr->id;
 			} else {
 				filterIndex = m_multiMatchIndex;
 			}
