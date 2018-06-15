@@ -117,21 +117,24 @@ public:
 	 * 	frameProbs but be equal in size to multiMatchProbs
 	 * 	frameProbs must be preallocated to correct size (number of ids + 1)
 	 * Max value is the largest value seen in your set of possible values
+	 * Returns proportion of saturated elements relative to all elements
 	 */
-	static void calcFrameProbs(MIBloomFilter<T> &miBF, vector<double> &frameProbs) {
+	static double calcFrameProbs(MIBloomFilter<T> &miBF, vector<double> &frameProbs) {
 		double occupancy = double(miBF.getPop()) / double(miBF.size());
 		unsigned hashNum = miBF.getHashNum();
 		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
-		miBF.getIDCounts(countTable);
+		double satProp = double(miBF.getIDCounts(countTable));
 		size_t sum = 0;
 		for (vector<size_t>::const_iterator itr = countTable.begin();
 				itr != countTable.end(); ++itr) {
 			sum += *itr;
 		}
+		satProp /= double(sum);
 		for (size_t i = 0; i < countTable.size(); ++i) {
 			frameProbs[i] = calcProbSingleFrame(occupancy, hashNum,
 					double(countTable[i]) / double(sum));
 		}
+		return satProp;
 	}
 
 	/*
@@ -534,22 +537,6 @@ public:
 		return misses;
 	}
 
-
-	/*
-	 * Returns if IDs are saturated
-	 * ~2 cache misses
-	 */
-	inline bool isSaturated(const size_t *hashes) {
-		unsigned misses = 0;
-		for (unsigned i = 0; i < m_hashNum; ++i) {
-			size_t pos = hashes[i] % m_bv.size();
-			if(m_data[m_rankSupport(pos)] < s_mask){
-				return false;
-			}
-		}
-		return true;
-	}
-
 	/*
 	 * No saturation masking
 	 */
@@ -581,12 +568,7 @@ public:
 		vector<size_t> rankPos(m_hashNum);
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes[i] % m_bv.size();
-//			if (m_bv[pos] == 0) {
-//				cerr << "Missing bit in bitvector" << endl;
-//				exit(1);
-//			} else {
 			rankPos[i] = m_rankSupport(pos);
-//			}
 		}
 		return rankPos;
 	}
@@ -604,28 +586,39 @@ public:
 	}
 
 	/*
-	 * computes id frequency based on datavector
+	 * Computes id frequency based on data vector contents
+	 * Returns counts of repetitive sequence
 	 */
-	inline void getIDCounts(vector<size_t> &counts) const {
+	inline size_t getIDCounts(vector<size_t> &counts) const {
+		size_t saturatedCounts = 0;
 		for (size_t i = 0; i < m_dSize; ++i) {
-//			cerr << m_data[i] << " " << (m_data[i] & s_idMask) << " " << s_idMask << endl;
-			++counts[m_data[i] & s_idMask];
+			if(m_data[i] > s_mask){
+				++counts[m_data[i] & s_antiMask];
+				++saturatedCounts;
+			}
+			else{
+				++counts[m_data[i]];
+			}
 		}
+		return saturatedCounts;
 	}
 
 	/*
-	 * Returns max ID seen in filter
-	 * Expensive operation.
+	 * computes id frequency based on datavector
+	 * Returns counts of repetitive sequence
 	 */
-	inline T getMaxID() const {
-		T max = 0;
+	inline size_t getIDCountsStrand(vector<size_t> &counts) const {
+		size_t saturatedCounts = 0;
 		for (size_t i = 0; i < m_dSize; ++i) {
-			T tempVal = m_data[i] & s_antiMask;
-			if(max < tempVal){
-				max = tempVal;
+			if(m_data[i] > s_mask){
+				++counts[m_data[i] & s_idMask];
+				++saturatedCounts;
+			}
+			else{
+				++counts[m_data[i] & s_antiStrand];
 			}
 		}
-		return max;
+		return saturatedCounts;
 	}
 
 	inline size_t getPop() const {
@@ -636,6 +629,10 @@ public:
 		return m_rankSupport(index) + 1;
 	}
 
+	/*
+	 * Mostly for debugging
+	 * should equal getPop if fully populated
+	 */
 	inline size_t getPopNonZero() const {
 		size_t count = 0;
 		for (size_t i = 0; i < m_dSize; ++i) {

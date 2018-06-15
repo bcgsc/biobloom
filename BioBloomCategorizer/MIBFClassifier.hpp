@@ -56,7 +56,6 @@ public:
 		//first element is considered repetitive
 		m_fullIDs.push_back("repeat");
 		ifstream idFH(idFile.c_str(), ifstream::in);
-//		m_idToIndex.set_empty_key(m_fullIDs.back());
 		string line;
 		getline(idFH, line);
 		while (idFH.good()) {
@@ -66,7 +65,6 @@ public:
 			converter >> id;
 			converter >> name;
 			m_fullIDs.push_back(name);
-//			m_idToIndex[m_fullIDs.back()] = id;
 			getline(idFH, line);
 		}
 		idFH.close();
@@ -76,19 +74,8 @@ public:
 		}
 
 		m_perFrameProb = vector<double>(m_fullIDs.size());
-//		m_perFrameProbMulti = vector<double>(m_fullIDs.size());
-		//needed for later statistical calculation
-		MIBloomFilter<ID>::calcFrameProbs(m_filter, m_perFrameProb);
+		m_rateSaturated = MIBloomFilter<ID>::calcFrameProbs(m_filter, m_perFrameProb);
 		m_minCount.set_empty_key(0);
-//		ID check = m_filter.checkValues(m_fullIDs.size() - 1);
-//		if (m_fullIDs.size() - 1 != check) {
-//			cerr << check << " ID found " << (check
-//					& MIBloomFilter<ID>::s_antiMask)
-//							<< " (after masking), max possible ID is "
-//							<< m_fullIDs.size() - 1 << endl;
-//			exit(1);
-//		}
-//		m_fprCount.set_empty_key(0);
 	}
 
 	void filterDebug(const vector<string> &inputFiles) {
@@ -248,8 +235,8 @@ public:
 								<< endl;
 					}
 
-					//supposed to be order from best to worst
-					const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, faRec.seq);
+					double repeatProb = 0.0;
+					const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, faRec.seq, repeatProb);
 					resSummary.updateSummaryData(signifResults);
 
 #pragma omp critical(outputFiles)
@@ -287,7 +274,7 @@ public:
 							readsOutput << m_fullIDs[signifResults[i].id]
 									<< "\t" << faRec.header << " "
 									<< faRec.comment << "\t"
-									<< signifResults.size() << "\t";
+									<< unsigned(-10*log10(repeatProb)) << "\t";
 							if(signifResults.size() == 1){
 								readsOutput << "*";
 							}
@@ -395,7 +382,8 @@ public:
 					}
 				}
 
-				const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, rec1.seq, rec2.seq);
+				double repeatProb = 0.0;
+				const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, rec1.seq, rec2.seq, repeatProb);
 				resSummary.updateSummaryData(signifResults);
 
 #pragma omp critical(outputFiles)
@@ -437,7 +425,7 @@ public:
 							readsOutput << m_fullIDs[signifResults[i].id]
 									<< "\t" << rec1.header << " "
 									<< rec1.comment << "\t"
-									<< signifResults.size() << "\t";
+									<< unsigned(-10*log10(repeatProb)) << "\t";
 							if(signifResults.size() == 1){
 								readsOutput << "*";
 							}
@@ -474,11 +462,9 @@ private:
 	MIBloomFilter<ID> m_filter;
 	size_t m_numRead;
 	vector<string> m_fullIDs;
-//	google::dense_hash_map<string, ID> m_idToIndex;
 	vector<double> m_perFrameProb;
-//	vector<double> m_perFrameProbMulti;
 	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>> m_minCount;
-//	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>> m_fprCount;
+	double m_rateSaturated;
 
 	bool fexists(const string &filename) const {
 		ifstream ifile(filename.c_str());
@@ -506,7 +492,7 @@ private:
 	 * testing heuristic faster code
 	 */
 	//TODO: Reuse itr object
-	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq) {
+	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq, double &probSaturated) {
 		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
 #pragma omp critical(m_minCount)
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
@@ -519,12 +505,11 @@ private:
 		}
 		if (m_filter.getSeedValues().size() > 0) {
 			stHashIterator itr(seq, m_filter.getSeedValues(), m_filter.getHashNum(), m_filter.getKmerSize());
-			return support.query(itr, *m_minCount[frameCount]);
-
+			return support.query(itr, *m_minCount[frameCount], m_rateSaturated, probSaturated);
 		} else {
 			ntHashIterator itr(seq, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return support.query(itr, *m_minCount[frameCount]);
+			return support.query(itr, *m_minCount[frameCount], m_rateSaturated, probSaturated);
 		}
 	}
 
@@ -533,7 +518,7 @@ private:
 	 *
 	 */
 	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq1,
-			const string &seq2) {
+			const string &seq2, double &probSaturated) {
 		unsigned frameCount = seq1.size() + seq2.size() - (m_filter.getKmerSize() + 1)*2;
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
@@ -548,13 +533,13 @@ private:
 					m_filter.getKmerSize());
 			stHashIterator itr2(seq2, m_filter.getSeedValues(), m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return support.query(itr1, itr2, *m_minCount[frameCount]);
+			return support.query(itr1, itr2, *m_minCount[frameCount], m_rateSaturated, probSaturated);
 		} else {
 			ntHashIterator itr1(seq1, m_filter.getHashNum(),
 					m_filter.getKmerSize());
 			ntHashIterator itr2(seq2, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return support.query(itr1, itr2, *m_minCount[frameCount]);
+			return support.query(itr1, itr2, *m_minCount[frameCount], m_rateSaturated, probSaturated);
 		}
 	}
 
