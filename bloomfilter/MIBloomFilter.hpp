@@ -538,6 +538,21 @@ public:
 	}
 
 	/*
+	 * For k-mers
+	 */
+	bool atRank(const size_t *hashes, vector<size_t> &rankPos) const{
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
+			if (m_bv[pos]) {
+				rankPos[i] = m_rankSupport(pos);
+			} else {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/*
 	 * No saturation masking
 	 */
 	inline vector<T> at(const size_t *hashes, unsigned maxMiss = 0) {
