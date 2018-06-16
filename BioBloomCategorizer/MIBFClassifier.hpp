@@ -15,8 +15,8 @@
 #include <google/dense_hash_set>
 #include <vector>
 #include "bloomfilter/MIBloomFilter.hpp"
-#include "bloomfilter/stHashIterator.hpp"
-#include "bloomfilter/ntHashIterator.hpp"
+#include "btl_bloomfilter/stHashIterator.hpp"
+#include "btl_bloomfilter/ntHashIterator.hpp"
 #include "bloomfilter/MIBFQuerySupport.hpp"
 #include <iostream>
 #include <boost/math/distributions/binomial.hpp>

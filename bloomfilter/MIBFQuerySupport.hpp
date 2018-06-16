@@ -19,8 +19,8 @@
 #include "MIBloomFilter.hpp"
 #include <set>
 #include <boost/math/distributions/binomial.hpp>
-#include "bloomfilter/stHashIterator.hpp"
-#include "bloomfilter/ntHashIterator.hpp"
+#include "btl_bloomfilter/stHashIterator.hpp"
+#include "btl_bloomfilter/ntHashIterator.hpp"
 
 using namespace std;
 using boost::math::binomial;
@@ -57,7 +57,8 @@ public:
 	 * TODO: If junction exists, return position of junction to position read
 	 * TODO: use different perFrameProb (generalized to shared frames to increase sensitivity)
 	 */
-	const vector<QueryResult> &queryStrand(stHashIterator &itr, const vector<unsigned> &minCount) {
+	const vector<QueryResult> &queryStrand(stHashIterator &itr, const vector<unsigned> &minCount,
+			double rateSaturated, double &probSaturated) {
 		//reset reusable values
 		m_candidateMatches.clear();
 		m_strandCounts.clear();
@@ -77,26 +78,8 @@ public:
 					saturatedCount);
 			++itr;
 		}
-		//needed due to a bug in google dense hash set
-		for (typename set<T>::const_iterator candidates =
-				m_candidateMatches.begin();
-				candidates != m_candidateMatches.end(); candidates++) {
-			//true = fw, false = rv
-			bool strand = m_strandCounts[*candidates].second
-					> m_strandCounts[*candidates].first;
-			unsigned tempCount =
-					strand ?
-							m_strandCounts[*candidates].second :
-							m_strandCounts[*candidates].first;
-			if (bestCount <= tempCount + m_extraCount) {
-				QueryResult result;
-				result.id = *candidates;
-				result.strand = strand;
-				result.count = tempCount;
-				m_signifResults.push_back(result);
-			}
-		}
-		sort(m_signifResults.begin(), m_signifResults.end(), sortCandidates);
+		probSaturated = summarizeCandiates(evaluatedValues, rateSaturated,
+				saturatedCount, bestCount);
 		return m_signifResults;
 	}
 
@@ -106,7 +89,8 @@ public:
 	 * TODO: If junction exists, return position of junction to position read
 	 * TODO: use different perFrameProb (generalized to shared frames to increase sensitivity)
 	 */
-	const vector<QueryResult> &queryStrand(ntHashIterator &itr, const vector<unsigned> &minCount) {
+	const vector<QueryResult> &queryStrand(ntHashIterator &itr, const vector<unsigned> &minCount,
+			double rateSaturated, double &probSaturated) {
 		//reset reusable values
 		m_candidateMatches.clear();
 		m_strandCounts.clear();
@@ -126,26 +110,8 @@ public:
 					saturatedCount);
 			++itr;
 		}
-		//needed due to a bug in google dense hash set
-		for (typename set<T>::const_iterator candidates =
-				m_candidateMatches.begin();
-				candidates != m_candidateMatches.end(); candidates++) {
-			//true = fw, false = rv
-			bool strand = m_strandCounts[*candidates].second
-					> m_strandCounts[*candidates].first;
-			unsigned tempCount =
-					strand ?
-							m_strandCounts[*candidates].second :
-							m_strandCounts[*candidates].first;
-			if (bestCount <= tempCount + m_extraCount) {
-				QueryResult result;
-				result.id = *candidates;
-				result.strand = strand;
-				result.count = tempCount;
-				m_signifResults.push_back(result);
-			}
-		}
-		sort(m_signifResults.begin(), m_signifResults.end(), sortCandidates);
+		probSaturated = summarizeCandiates(evaluatedValues, pow(rateSaturated,m_miBF.getHashNum()),
+				saturatedCount, bestCount);
 		return m_signifResults;
 	}
 
@@ -153,8 +119,7 @@ public:
 	 * totalTrials = number of possible trials that can be checked
 	 */
 	const vector<QueryResult> &query(stHashIterator &itr, const vector<unsigned> &minCount,
-			double rateSaturated, double &probSaturated, unsigned minSatCount =
-					std::numeric_limits<unsigned>::max()) {
+			double rateSaturated, double &probSaturated) {
 		//reset reusable values
 		m_candidateMatches.clear();
 		m_counts.clear();
@@ -174,32 +139,9 @@ public:
 					saturatedCount);
 			++itr;
 		}
+		probSaturated = summarizeCandiates(evaluatedValues, rateSaturated,
+				saturatedCount, bestCount);
 
-		//do a statistical test if saturation rate occurs at a rate higher than random chance
-		//TODO learn how do use complement cdf?
-		binomial bin(evaluatedValues, 1.0 - rateSaturated);
-//		probSaturated = -10*log10(cdf(bin, evaluatedValues - saturatedCount));
-		probSaturated = cdf(bin, evaluatedValues - saturatedCount);
-
-		if (m_candidateMatches.size()) {
-			for (typename set<T>::const_iterator candidate =
-					m_candidateMatches.begin();
-					candidate != m_candidateMatches.end(); candidate++) {
-				unsigned tempCount = m_counts[*candidate];
-				if (bestCount <= tempCount + m_extraCount) {
-					QueryResult result;
-					result.id = *candidate;
-					result.count = tempCount;
-					m_signifResults.push_back(result);
-				}
-			}
-			sort(m_signifResults.begin(), m_signifResults.end(),
-					sortCandidates);
-		} else {
-			//TODO: test if read matches saturated sequence higher than random chance
-			//IE classifies to a repetitive sequence
-			assert(minSatCount);
-		}
 		return m_signifResults;
 	}
 
@@ -207,8 +149,7 @@ public:
 	 * Normal query using k-mers
 	 */
 	const vector<QueryResult> &query(ntHashIterator &itr, const vector<unsigned> &minCount,
-			double rateSaturated, double &probSaturated, unsigned minSatCount =
-					std::numeric_limits<unsigned>::max()) {
+			double rateSaturated, double &probSaturated) {
 		//reset reusable values
 		m_candidateMatches.clear();
 		m_counts.clear();
@@ -228,38 +169,14 @@ public:
 					saturatedCount);
 			++itr;
 		}
-
-		//do a statistical test if saturation rate occurs at a rate higher than random chance
-		//TODO learn how do use complement cdf?
-		binomial bin(evaluatedValues, 1.0 - rateSaturated);
-		probSaturated = cdf(bin, evaluatedValues - saturatedCount);
-
-		if (m_candidateMatches.size()) {
-			for (typename set<T>::const_iterator candidate =
-					m_candidateMatches.begin();
-					candidate != m_candidateMatches.end(); candidate++) {
-				unsigned tempCount = m_counts[*candidate];
-				if (bestCount <= tempCount + m_extraCount) {
-					QueryResult result;
-					result.id = *candidate;
-					result.count = tempCount;
-					m_signifResults.push_back(result);
-				}
-			}
-			sort(m_signifResults.begin(), m_signifResults.end(),
-					sortCandidates);
-		} else {
-			//TODO: test if read matches saturated sequence higher than random chance
-			//IE classifies to a repetitive sequence
-			assert(minSatCount);
-		}
+		probSaturated = summarizeCandiates(evaluatedValues, pow(rateSaturated,m_miBF.getHashNum()),
+				saturatedCount, bestCount);
 		return m_signifResults;
 	}
 
 	const vector<QueryResult> &query(stHashIterator &itr1, stHashIterator &itr2,
 			const vector<unsigned> &minCount, double rateSaturated,
-			double &probSaturated,
-			unsigned minSatCount = std::numeric_limits<unsigned>::max()) {
+			double &probSaturated) {
 		m_candidateMatches.clear();
 		m_counts.clear();
 		m_signifResults.clear();
@@ -282,38 +199,14 @@ public:
 					saturatedCount);
 			++itr;
 		}
-		//do a statistical test if saturation rate occurs at a rate higher than random chance
-		//TODO learn how do use complement cdf?
-		binomial bin(evaluatedValues, 1.0 - rateSaturated);
-//		probSaturated = -10*log10(cdf(bin, evaluatedValues - saturatedCount));
-		probSaturated = cdf(bin, evaluatedValues - saturatedCount);
-
-		if (m_candidateMatches.size()) {
-			for (typename set<T>::const_iterator candidate =
-					m_candidateMatches.begin();
-					candidate != m_candidateMatches.end(); candidate++) {
-				unsigned tempCount = m_counts[*candidate];
-				if (bestCount <= tempCount + m_extraCount) {
-					QueryResult result;
-					result.id = *candidate;
-					result.count = tempCount;
-					m_signifResults.push_back(result);
-				}
-			}
-			sort(m_signifResults.begin(), m_signifResults.end(),
-					sortCandidates);
-		} else {
-			//TODO: test if read matches saturated sequence higher than random chance
-			//IE classifies to a repetitive sequence
-			assert(minSatCount);
-		}
+		probSaturated = summarizeCandiates(evaluatedValues, rateSaturated,
+				saturatedCount, bestCount);
 		return m_signifResults;
 	}
 
 	const vector<QueryResult> &query(ntHashIterator &itr1, ntHashIterator &itr2,
 			const vector<unsigned> &minCount, double rateSaturated,
-			double &probSaturated,
-			unsigned minSatCount = std::numeric_limits<unsigned>::max()) {
+			double &probSaturated) {
 		m_candidateMatches.clear();
 		m_counts.clear();
 		m_signifResults.clear();
@@ -336,30 +229,8 @@ public:
 					saturatedCount);
 			++itr;
 		}
-		//do a statistical test if saturation rate occurs at a rate higher than random chance
-		//TODO learn how do use complement cdf?
-		binomial bin(evaluatedValues, 1.0 - rateSaturated);
-		probSaturated = cdf(bin, evaluatedValues - saturatedCount);
-
-		if (m_candidateMatches.size()) {
-			for (typename set<T>::const_iterator candidate =
-					m_candidateMatches.begin();
-					candidate != m_candidateMatches.end(); candidate++) {
-				unsigned tempCount = m_counts[*candidate];
-				if (bestCount <= tempCount + m_extraCount) {
-					QueryResult result;
-					result.id = *candidate;
-					result.count = tempCount;
-					m_signifResults.push_back(result);
-				}
-			}
-			sort(m_signifResults.begin(), m_signifResults.end(),
-					sortCandidates);
-		} else {
-			//TODO: test if read matches saturated sequence higher than random chance
-			//IE classifies to a repetitive sequence
-			assert(minSatCount);
-		}
+		probSaturated = summarizeCandiates(evaluatedValues, pow(rateSaturated,m_miBF.getHashNum()),
+				saturatedCount, bestCount);
 		return m_signifResults;
 	}
 
@@ -369,7 +240,7 @@ private:
 	static bool sortCandidates(const QueryResult &a, const QueryResult &b) {
 		return (b.count > a.count);
 	}
-	//references
+
 	//contains reference to MIBF object
 	const MIBloomFilter<T> &m_miBF;
 	const vector<double> &m_perFrameProb;
@@ -617,6 +488,31 @@ private:
 		}
 		++evaluatedValues;
 		return candidateFound;
+	}
+
+	inline double summarizeCandiates(unsigned evaluatedValues,
+			double singleEventProbSaturted, unsigned saturatedCount, unsigned bestCount) {
+		//do a statistical test if saturation rate occurs at a rate higher than random chance
+		//TODO learn how do use complement cdf?
+		binomial bin(evaluatedValues, 1.0 - singleEventProbSaturted);
+		double probSaturated = cdf(bin, evaluatedValues - saturatedCount);
+
+		if (m_candidateMatches.size()) {
+			for (typename set<T>::const_iterator candidate =
+					m_candidateMatches.begin();
+					candidate != m_candidateMatches.end(); candidate++) {
+				unsigned tempCount = m_counts[*candidate];
+				if (bestCount <= tempCount + m_extraCount) {
+					QueryResult result;
+					result.id = *candidate;
+					result.count = tempCount;
+					m_signifResults.push_back(result);
+				}
+			}
+			sort(m_signifResults.begin(), m_signifResults.end(),
+					sortCandidates);
+		}
+		return probSaturated;
 	}
 };
 

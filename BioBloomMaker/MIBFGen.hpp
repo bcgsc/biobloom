@@ -15,8 +15,8 @@
 #include <stdint.h>
 
 #include "bloomfilter/MIBloomFilter.hpp"
-#include "bloomfilter/stHashIterator.hpp"
-#include "bloomfilter/ntHashIterator.hpp"
+#include "btl_bloomfilter/stHashIterator.hpp"
+#include "btl_bloomfilter/ntHashIterator.hpp"
 
 #include "btl_bloomfilter/BloomFilter.hpp"
 
