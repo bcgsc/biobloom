@@ -17,10 +17,10 @@
 #define CHROMIUMMAP_MIBFQUERYSUPPORT_HPP_
 
 #include "MIBloomFilter.hpp"
-#include <set>
+//#include <set>
 #include <boost/math/distributions/binomial.hpp>
-#include "btl_bloomfilter/stHashIterator.hpp"
-#include "btl_bloomfilter/ntHashIterator.hpp"
+#include "stHashIterator.hpp"
+#include "ntHashIterator.hpp"
 
 using namespace std;
 using boost::math::binomial;
@@ -32,19 +32,31 @@ public:
 	struct QueryResult {
 		T id;
 		unsigned count;
+//		unsigned nonSatCount;
+//		unsigned nonSatFrameCounts;
+//		unsigned totalCount;
+//		unsigned totalnonSatCount;
 		bool strand;
 	};
 
 	MIBFQuerySupport(const MIBloomFilter<T> &miBF,
 			const vector<double> &perFrameProb, unsigned extraCount,
-			unsigned extraFrameLimit, unsigned maxMiss) :
+			unsigned extraFrameLimit, unsigned maxMiss, double rateSaturated) :
 			m_miBF(miBF), m_perFrameProb(perFrameProb), m_extraCount(
 					extraCount), m_extraFrameLimit(extraFrameLimit), m_maxMiss(
-					maxMiss), m_rankPos(miBF.getHashNum()), m_hits(
-					miBF.getHashNum()) {
+					maxMiss), m_rateSaturated(rateSaturated), m_satCount(0), m_evalCount(
+					0), m_rankPos(miBF.getHashNum()), m_hits(miBF.getHashNum()) {
 
+		//this should be a very small array most of the time
 		m_signifResults.reserve(m_perFrameProb.size());
+		//this should always be a small array
+		m_seenSet.reserve(miBF.getHashNum());
+
+		m_strandCounts.resize(m_perFrameProb.size());
+		m_strandCounts.min_load_factor(0.0);
 		m_strandCounts.set_empty_key(0);
+		m_counts.resize(m_perFrameProb.size());
+		m_counts.min_load_factor(0.0);
 		m_counts.set_empty_key(0);
 	}
 
@@ -57,29 +69,28 @@ public:
 	 * TODO: If junction exists, return position of junction to position read
 	 * TODO: use different perFrameProb (generalized to shared frames to increase sensitivity)
 	 */
-	const vector<QueryResult> &queryStrand(stHashIterator &itr, const vector<unsigned> &minCount,
-			double rateSaturated, double &probSaturated) {
+	const vector<QueryResult> &queryStrandJunction(stHashIterator &itr,
+			const vector<unsigned> &minCount) {
 		//reset reusable values
 		m_candidateMatches.clear();
 		m_strandCounts.clear();
 		m_signifResults.clear();
+		m_satCount = 0;
+		m_evalCount = 0;
 
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
 		unsigned secondBestCount = 0;
 		bool candidateFound = false;
 
-		unsigned saturatedCount = 0;
-		unsigned evaluatedValues = 0;
-
 		while (itr != itr.end() && !candidateFound) {
 			candidateFound = updateCountsSeedsStrand(itr, minCount, bestCount,
-					secondBestCount, extraFrame, evaluatedValues,
-					saturatedCount);
+					secondBestCount, extraFrame);
 			++itr;
 		}
-		probSaturated = summarizeCandiates(evaluatedValues, rateSaturated,
-				saturatedCount, bestCount);
+//		probSaturated = calcSat(totalEvaluated, m_rateSaturated,
+//				saturatedCount);
+		summarizeCandiatesStrand(bestCount);
 		return m_signifResults;
 	}
 
@@ -89,58 +100,87 @@ public:
 	 * TODO: If junction exists, return position of junction to position read
 	 * TODO: use different perFrameProb (generalized to shared frames to increase sensitivity)
 	 */
-	const vector<QueryResult> &queryStrand(ntHashIterator &itr, const vector<unsigned> &minCount,
-			double rateSaturated, double &probSaturated) {
+	const vector<QueryResult> &queryStrand(stHashIterator &itr,
+			const vector<unsigned> &minCount) {
 		//reset reusable values
 		m_candidateMatches.clear();
 		m_strandCounts.clear();
 		m_signifResults.clear();
+		m_satCount = 0;
+		m_evalCount = 0;
 
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
 		unsigned secondBestCount = 0;
 		bool candidateFound = false;
 
-		unsigned saturatedCount = 0;
-		unsigned evaluatedValues = 0;
+		while (itr != itr.end() && !candidateFound) {
+			candidateFound = updateCountsSeedsStrand(itr, minCount, bestCount,
+					secondBestCount, extraFrame);
+			++itr;
+		}
+//		probSaturated = calcSat(totalEvaluated, m_rateSaturated,
+//				saturatedCount);
+		summarizeCandiatesStrand(bestCount);
+		return m_signifResults;
+	}
+
+	/*
+	 * Strand & region aware query
+	 * Takes a read, region hash table and computes most likely hit
+	 * TODO: If junction exists, return position of junction to position read
+	 * TODO: use different perFrameProb (generalized to shared frames to increase sensitivity)
+	 */
+	const vector<QueryResult> &queryStrand(ntHashIterator &itr,
+			const vector<unsigned> &minCount) {
+		//reset reusable values
+		m_candidateMatches.clear();
+		m_strandCounts.clear();
+		m_signifResults.clear();
+		m_satCount = 0;
+		m_evalCount = 0;
+
+		unsigned extraFrame = 0;
+		unsigned bestCount = 0;
+		unsigned secondBestCount = 0;
+		bool candidateFound = false;
 
 		while (itr != itr.end() && !candidateFound) {
 			candidateFound = updateCountsKmerStrand(itr, minCount, bestCount,
-					secondBestCount, extraFrame, evaluatedValues,
-					saturatedCount);
+					secondBestCount, extraFrame);
 			++itr;
 		}
-		probSaturated = summarizeCandiates(evaluatedValues, pow(rateSaturated,m_miBF.getHashNum()),
-				saturatedCount, bestCount);
+//		probSaturated = calcSat(evaluatedValues,
+//				pow(m_rateSaturated, m_miBF.getHashNum()), saturatedCount);
+		summarizeCandiatesStrand(bestCount);
 		return m_signifResults;
 	}
 
 	/*
 	 * totalTrials = number of possible trials that can be checked
 	 */
-	const vector<QueryResult> &query(stHashIterator &itr, const vector<unsigned> &minCount,
-			double rateSaturated, double &probSaturated) {
+	const vector<QueryResult> &query(stHashIterator &itr,
+			const vector<unsigned> &minCount) {
 		//reset reusable values
 		m_candidateMatches.clear();
 		m_counts.clear();
 		m_signifResults.clear();
+		m_satCount = 0;
+		m_evalCount = 0;
 
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
 		unsigned secondBestCount = 0;
 		bool candidateFound = false;
 
-		unsigned saturatedCount = 0;
-		unsigned evaluatedValues = 0;
-
 		while (itr != itr.end() && !candidateFound) {
 			candidateFound = updateCountsSeeds(itr, minCount, bestCount,
-					secondBestCount, extraFrame, evaluatedValues,
-					saturatedCount);
+					secondBestCount, extraFrame);
 			++itr;
 		}
-		probSaturated = summarizeCandiates(evaluatedValues, rateSaturated,
-				saturatedCount, bestCount);
+//		probSaturated = calcSat(evaluatedValues, m_rateSaturated,
+//				saturatedCount);
+		summarizeCandiates(bestCount);
 
 		return m_signifResults;
 	}
@@ -148,68 +188,65 @@ public:
 	/*
 	 * Normal query using k-mers
 	 */
-	const vector<QueryResult> &query(ntHashIterator &itr, const vector<unsigned> &minCount,
-			double rateSaturated, double &probSaturated) {
+	const vector<QueryResult> &query(ntHashIterator &itr,
+			const vector<unsigned> &minCount) {
 		//reset reusable values
 		m_candidateMatches.clear();
 		m_counts.clear();
 		m_signifResults.clear();
+		m_satCount = 0;
+		m_evalCount = 0;
 
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
 		unsigned secondBestCount = 0;
 		bool candidateFound = false;
 
-		unsigned saturatedCount = 0;
-		unsigned evaluatedValues = 0;
-
 		while (itr != itr.end() && !candidateFound) {
 			candidateFound = updateCountsKmer(itr, minCount, bestCount,
-					secondBestCount, extraFrame, evaluatedValues,
-					saturatedCount);
+					secondBestCount, extraFrame);
 			++itr;
 		}
-		probSaturated = summarizeCandiates(evaluatedValues, pow(rateSaturated,m_miBF.getHashNum()),
-				saturatedCount, bestCount);
+//		probSaturated = calcSat(evaluatedValues,
+//				pow(m_rateSaturated, m_miBF.getHashNum()), saturatedCount);
+		summarizeCandiates(bestCount);
 		return m_signifResults;
 	}
 
 	const vector<QueryResult> &query(stHashIterator &itr1, stHashIterator &itr2,
-			const vector<unsigned> &minCount, double rateSaturated,
-			double &probSaturated) {
+			const vector<unsigned> &minCount) {
 		m_candidateMatches.clear();
 		m_counts.clear();
 		m_signifResults.clear();
+		m_satCount = 0;
+		m_evalCount = 0;
 
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
 		unsigned frameCount = 0;
 		unsigned secondBestCount = 0;
 		bool candidateFound = false;
-
-		unsigned saturatedCount = 0;
-		unsigned evaluatedValues = 0;
-
 
 		while ((itr1 != itr1.end() && itr2 != itr2.end()) && !candidateFound) {
 			stHashIterator &itr = frameCount % 2 == 0 && itr1 != itr1.end() ? itr1 :
 						frameCount % 2 == 1 && itr2 != itr2.end() ? itr2 : itr1;
 			candidateFound = updateCountsSeeds(itr, minCount, bestCount,
-					secondBestCount, extraFrame, evaluatedValues,
-					saturatedCount);
+					secondBestCount, extraFrame);
 			++itr;
 		}
-		probSaturated = summarizeCandiates(evaluatedValues, rateSaturated,
-				saturatedCount, bestCount);
+//		probSaturated = calcSat(evaluatedValues, m_rateSaturated,
+//				saturatedCount);
+		summarizeCandiates(bestCount);
 		return m_signifResults;
 	}
 
 	const vector<QueryResult> &query(ntHashIterator &itr1, ntHashIterator &itr2,
-			const vector<unsigned> &minCount, double rateSaturated,
-			double &probSaturated) {
+			const vector<unsigned> &minCount) {
 		m_candidateMatches.clear();
 		m_counts.clear();
 		m_signifResults.clear();
+		m_satCount = 0;
+		m_evalCount = 0;
 
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
@@ -217,21 +254,25 @@ public:
 		unsigned secondBestCount = 0;
 		bool candidateFound = false;
 
-		unsigned saturatedCount = 0;
-		unsigned evaluatedValues = 0;
-
-
 		while ((itr1 != itr1.end() && itr2 != itr2.end()) && !candidateFound) {
 			ntHashIterator &itr = frameCount % 2 == 0 && itr1 != itr1.end() ? itr1 :
 						frameCount % 2 == 1 && itr2 != itr2.end() ? itr2 : itr1;
 			candidateFound = updateCountsKmer(itr, minCount, bestCount,
-					secondBestCount, extraFrame, evaluatedValues,
-					saturatedCount);
+					secondBestCount, extraFrame);
 			++itr;
 		}
-		probSaturated = summarizeCandiates(evaluatedValues, pow(rateSaturated,m_miBF.getHashNum()),
-				saturatedCount, bestCount);
+//		probSaturated = calcSat(evaluatedValues,
+//				pow(m_rateSaturated, m_miBF.getHashNum()), saturatedCount);
+		summarizeCandiates(bestCount);
 		return m_signifResults;
+	}
+
+	unsigned getSatCount() const {
+		return m_satCount;
+	}
+
+	unsigned getEvalCount() const {
+		return m_evalCount;
 	}
 
 private:
@@ -241,29 +282,38 @@ private:
 		return (b.count > a.count);
 	}
 
-	//contains reference to MIBF object
+	//contains reference to parent
 	const MIBloomFilter<T> &m_miBF;
 	const vector<double> &m_perFrameProb;
 
+	//not references, but shared other objects or static variables
 	const unsigned m_extraCount;
 	const unsigned m_extraFrameLimit;
 	const unsigned m_maxMiss;
+	const double m_rateSaturated;
+
+	//resusable variables
+	unsigned m_satCount;
+	unsigned m_evalCount;
 
 	//resusable objects
 	vector<size_t> m_rankPos;
 	vector<bool> m_hits;
-
 	vector<QueryResult> m_signifResults;
-
 	google::dense_hash_map<T, pair<unsigned, unsigned>> m_strandCounts;
 	google::dense_hash_map<T, unsigned> m_counts;
-	set<T> m_candidateMatches; //should be a small set
-	set<T> m_seenSet; //always a small set
+//	google::dense_hash_map<T, unsigned> m_nonSatCounts;
+//	google::dense_hash_map<T, unsigned> m_nonSatFrameCounts;
+//	google::dense_hash_map<T, unsigned> m_totalCounts;
+//	google::dense_hash_map<T, unsigned> m_totalnonSatCounts;
+//	set<T> m_candidateMatches; //should be a small set
+//	set<T> m_seenSet; //always a small set
+	vector<T> m_candidateMatches;
+	vector<T> m_seenSet;
 
-	inline bool updateCountsSeedsStrand(const stHashIterator &itr,
+	bool updateCountsSeedsStrand(const stHashIterator &itr,
 			const vector<unsigned> &minCount, unsigned &bestCount,
-			unsigned &secondBestCount, unsigned &extraFrame,
-			unsigned &evaluatedValues, unsigned &saturatedCount) {
+			unsigned &secondBestCount, unsigned &extraFrame) {
 		bool candidateFound = false;
 		unsigned misses = m_miBF.atRank(*itr, m_rankPos, m_hits,
 				m_maxMiss);
@@ -273,9 +323,9 @@ private:
 				if (m_hits[i]) {
 					T result = m_miBF.getData(m_rankPos[i]);
 					//check for saturation
-					++evaluatedValues;
+					++m_evalCount;
 					if (result > m_miBF.s_mask) {
-						++saturatedCount;
+						++m_satCount;
 						result &= m_miBF.s_antiMask;
 					}
 					//derive strand
@@ -284,7 +334,7 @@ private:
 					if (curStrand) {
 						result &= m_miBF.s_antiStrand;
 					}
-					if (m_seenSet.find(result) == m_seenSet.end()) {
+					if (find(m_seenSet.begin(), m_seenSet.end(), result) == m_seenSet.end()) {
 						typename google::dense_hash_map<T,
 								pair<unsigned, unsigned>>::iterator tempItr =
 								m_strandCounts.find(result);
@@ -305,10 +355,12 @@ private:
 								} else if (tempCount > secondBestCount) {
 									secondBestCount = tempCount;
 								}
-								m_candidateMatches.insert(result);
+								if(find(m_candidateMatches.begin(), m_candidateMatches.end(), result) == m_candidateMatches.end()){
+									m_candidateMatches.push_back(result);
+								}
 							}
 						}
-						m_seenSet.insert(result);
+						m_seenSet.push_back(result);
 					}
 				}
 			}
@@ -324,10 +376,9 @@ private:
 		return candidateFound;
 	}
 
-	inline bool updateCountsSeeds(const stHashIterator &itr,
+	bool updateCountsSeeds(const stHashIterator &itr,
 			const vector<unsigned> &minCount, unsigned &bestCount,
-			unsigned &secondBestCount, unsigned &extraFrame,
-			unsigned &evaluatedValues, unsigned &saturatedCount) {
+			unsigned &secondBestCount, unsigned &extraFrame) {
 		bool candidateFound = false;
 		unsigned misses = m_miBF.atRank(*itr, m_rankPos, m_hits,
 				m_maxMiss);
@@ -336,11 +387,11 @@ private:
 			for (unsigned i = 0; i < m_miBF.getHashNum(); ++i) {
 				if (m_hits[i]) {
 					T result = m_miBF.getData(m_rankPos[i]);
-					++evaluatedValues;
+					++m_evalCount;
 					//check for saturation
 					if (result > m_miBF.s_mask) {
 						result &= m_miBF.s_antiMask;
-						++saturatedCount;
+						++m_satCount;
 					}
 					if (m_seenSet.find(result) == m_seenSet.end()) {
 						typename google::dense_hash_map<T, unsigned>::iterator tempItr =
@@ -376,10 +427,9 @@ private:
 		return candidateFound;
 	}
 
-	inline bool updateCountsKmerStrand(const ntHashIterator &itr,
+	bool updateCountsKmerStrand(const ntHashIterator &itr,
 			const vector<unsigned> &minCount, unsigned &bestCount,
-			unsigned &secondBestCount, unsigned &extraFrame,
-			unsigned &evaluatedValues, unsigned &saturatedCount) {
+			unsigned &secondBestCount, unsigned &extraFrame) {
 		bool candidateFound = false;
 		if (m_miBF.atRank(*itr, m_rankPos)) {
 			unsigned tempSaturatedCount = 0;
@@ -389,6 +439,7 @@ private:
 				//check for saturation
 				if (result > m_miBF.s_mask) {
 					result &= m_miBF.s_antiMask;
+					++tempSaturatedCount;
 				}
 				//derive strand
 				bool curStrand = result > m_miBF.s_strand;
@@ -396,7 +447,8 @@ private:
 				if (curStrand) {
 					result &= m_miBF.s_antiStrand;
 				}
-				if (m_seenSet.find(result) == m_seenSet.end()) {
+				if (find(m_seenSet.begin(), m_seenSet.end(), result)
+						== m_seenSet.end()) {
 					typename google::dense_hash_map<T, pair<unsigned, unsigned>>::iterator tempItr =
 							m_strandCounts.find(result);
 					if (tempItr == m_strandCounts.end()) {
@@ -416,10 +468,14 @@ private:
 							} else if (tempCount > secondBestCount) {
 								secondBestCount = tempCount;
 							}
-							m_candidateMatches.insert(result);
+							if (find(m_candidateMatches.begin(),
+									m_candidateMatches.end(), result)
+									== m_candidateMatches.end()) {
+								m_candidateMatches.push_back(result);
+							}
 						}
 					}
-					m_seenSet.insert(result);
+					m_seenSet.push_back(result);
 				}
 			}
 			if (bestCount <= secondBestCount + m_extraCount) {
@@ -431,18 +487,17 @@ private:
 				}
 			}
 			if (tempSaturatedCount == m_miBF.getHashNum()) {
-				++saturatedCount;
+				++m_satCount;
 			}
 		}
-		++evaluatedValues;
+		++m_evalCount;
 		return candidateFound;
 	}
 
 
-	inline bool updateCountsKmer(const ntHashIterator &itr,
+	bool updateCountsKmer(const ntHashIterator &itr,
 			const vector<unsigned> &minCount, unsigned &bestCount,
-			unsigned &secondBestCount, unsigned &extraFrame,
-			unsigned &evaluatedValues, unsigned &saturatedCount) {
+			unsigned &secondBestCount, unsigned &extraFrame) {
 		bool candidateFound = false;
 		if (m_miBF.atRank(*itr, m_rankPos)) {
 			unsigned tempSaturatedCount = 0;
@@ -483,20 +538,24 @@ private:
 				}
 			}
 			if (tempSaturatedCount == m_miBF.getHashNum()) {
-				++saturatedCount;
+				++m_satCount;
 			}
 		}
-		++evaluatedValues;
+		++m_evalCount;
 		return candidateFound;
 	}
 
-	inline double summarizeCandiates(unsigned evaluatedValues,
-			double singleEventProbSaturted, unsigned saturatedCount, unsigned bestCount) {
-		//do a statistical test if saturation rate occurs at a rate higher than random chance
-		//TODO learn how do use complement cdf?
-		binomial bin(evaluatedValues, 1.0 - singleEventProbSaturted);
-		double probSaturated = cdf(bin, evaluatedValues - saturatedCount);
+	double calcSat(unsigned evaluatedValues,
+			double singleEventProbSaturted, unsigned saturatedCount) {
+		double probSaturated = 0;
+		if (saturatedCount) {
+			binomial bin(evaluatedValues, singleEventProbSaturted);
+			probSaturated = cdf(bin, saturatedCount - 1);
+		}
+		return probSaturated;
+	}
 
+	void summarizeCandiates(unsigned bestCount) {
 		if (m_candidateMatches.size()) {
 			for (typename set<T>::const_iterator candidate =
 					m_candidateMatches.begin();
@@ -512,7 +571,31 @@ private:
 			sort(m_signifResults.begin(), m_signifResults.end(),
 					sortCandidates);
 		}
-		return probSaturated;
+	}
+
+	void summarizeCandiatesStrand(unsigned bestCount) {
+		if (m_candidateMatches.size()) {
+			for (typename vector<T>::const_iterator candidate =
+					m_candidateMatches.begin();
+					candidate != m_candidateMatches.end(); candidate++) {
+				//true = rv, false = fw
+				bool strand = m_strandCounts[*candidate].first
+						> m_strandCounts[*candidate].second;
+				unsigned tempCount =
+						strand ?
+								m_strandCounts[*candidate].first :
+								m_strandCounts[*candidate].second;
+				if (bestCount <= tempCount + m_extraCount) {
+					QueryResult result;
+					result.id = *candidate;
+					result.strand = strand;
+					result.count = tempCount;
+					m_signifResults.push_back(result);
+				}
+			}
+			sort(m_signifResults.begin(), m_signifResults.end(),
+					sortCandidates);
+		}
 	}
 };
 

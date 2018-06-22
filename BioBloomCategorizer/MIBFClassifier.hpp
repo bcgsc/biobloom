@@ -236,7 +236,7 @@ public:
 					}
 
 					double repeatProb = 0.0;
-					const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, faRec.seq, repeatProb);
+					const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, faRec.seq);
 					resSummary.updateSummaryData(signifResults);
 
 #pragma omp critical(outputFiles)
@@ -383,7 +383,7 @@ public:
 				}
 
 				double repeatProb = 0.0;
-				const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, rec1.seq, rec2.seq, repeatProb);
+				const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, rec1.seq, rec2.seq);
 				resSummary.updateSummaryData(signifResults);
 
 #pragma omp critical(outputFiles)
@@ -492,7 +492,7 @@ private:
 	 * testing heuristic faster code
 	 */
 	//TODO: Reuse itr object
-	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq, double &probSaturated) {
+	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq) {
 		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
 #pragma omp critical(m_minCount)
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
@@ -505,11 +505,11 @@ private:
 		}
 		if (m_filter.getSeedValues().size() > 0) {
 			stHashIterator itr(seq, m_filter.getSeedValues(), m_filter.getHashNum(), m_filter.getKmerSize());
-			return support.query(itr, *m_minCount[frameCount], m_rateSaturated, probSaturated);
+			return support.query(itr, *m_minCount[frameCount]);
 		} else {
 			ntHashIterator itr(seq, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return support.query(itr, *m_minCount[frameCount], m_rateSaturated, probSaturated);
+			return support.query(itr, *m_minCount[frameCount]);
 		}
 	}
 
@@ -518,7 +518,7 @@ private:
 	 *
 	 */
 	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq1,
-			const string &seq2, double &probSaturated) {
+			const string &seq2) {
 		unsigned frameCount = seq1.size() + seq2.size() - (m_filter.getKmerSize() + 1)*2;
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
@@ -533,13 +533,13 @@ private:
 					m_filter.getKmerSize());
 			stHashIterator itr2(seq2, m_filter.getSeedValues(), m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return support.query(itr1, itr2, *m_minCount[frameCount], m_rateSaturated, probSaturated);
+			return support.query(itr1, itr2, *m_minCount[frameCount]);
 		} else {
 			ntHashIterator itr1(seq1, m_filter.getHashNum(),
 					m_filter.getKmerSize());
 			ntHashIterator itr2(seq2, m_filter.getHashNum(),
 					m_filter.getKmerSize());
-			return support.query(itr1, itr2, *m_minCount[frameCount], m_rateSaturated, probSaturated);
+			return support.query(itr1, itr2, *m_minCount[frameCount]);
 		}
 	}
 
