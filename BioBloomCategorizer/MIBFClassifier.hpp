@@ -217,7 +217,8 @@ public:
 			int l;
 			FaRec faRec;
 			MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
-					m_perFrameProb, opt::multiThresh, opt::streakThreshold, opt::allowMisses);
+					m_perFrameProb, opt::multiThresh, opt::streakThreshold,
+					opt::allowMisses, m_rateSaturated);
 #pragma omp parallel private(l, faRec) firstprivate(support)
 			for (;;) {
 #pragma omp critical(sequence)
@@ -235,7 +236,6 @@ public:
 								<< endl;
 					}
 
-					double repeatProb = 0.0;
 					const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, faRec.seq);
 					resSummary.updateSummaryData(signifResults);
 
@@ -274,18 +274,36 @@ public:
 							readsOutput << m_fullIDs[signifResults[i].id]
 									<< "\t" << faRec.header << " "
 									<< faRec.comment << "\t"
-									<< unsigned(-10*log10(repeatProb)) << "\t";
+									<< signifResults.size() << "\t";
 							if(signifResults.size() == 1){
 								readsOutput << "*";
 							}
 							else {
-								for (++i; i < signifResults.size(); ++i) {
-									if (i != 1) {
+								for (; i < signifResults.size(); ++i) {
+									if (i != 0) {
 										readsOutput << ";"
-												<< m_fullIDs[signifResults[i].id];
+												<< m_fullIDs[signifResults[i].id]
+												<< "," << signifResults[i].count
+												<< ","
+												<< signifResults[i].nonSatCount
+												<< ","
+												<< signifResults[i].nonSatFrameCount
+												<< ","
+												<< signifResults[i].totalCount
+												<< ","
+												<< signifResults[i].totalNonSatCount;
 									} else {
 										readsOutput
-												<< m_fullIDs[signifResults[i].id];
+												<< m_fullIDs[signifResults[i].id]
+												<< "," << signifResults[i].count
+												<< ","
+												<< signifResults[i].nonSatCount
+												<< ","
+												<< signifResults[i].nonSatFrameCount
+												<< ","
+												<< signifResults[i].totalCount
+												<< ","
+												<< signifResults[i].totalNonSatCount;
 									}
 								}
 							}
@@ -352,7 +370,8 @@ public:
 		int l1, l2;
 		FaRec faRec;
 		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
-				m_perFrameProb, opt::multiThresh, opt::streakThreshold, opt::allowMisses);
+				m_perFrameProb, opt::multiThresh, opt::streakThreshold,
+				opt::allowMisses, m_rateSaturated);
 #pragma omp parallel private(l1, l2, rec1, rec2) firstprivate(support)
 		for (;;) {
 #pragma omp critical(kseq)
@@ -382,67 +401,80 @@ public:
 					}
 				}
 
-				double repeatProb = 0.0;
-				const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, rec1.seq, rec2.seq);
+				const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
+						classify(support, rec1.seq, rec2.seq);
 				resSummary.updateSummaryData(signifResults);
 
 #pragma omp critical(outputFiles)
-					if (opt::outputType == opt::FASTA) {
-						readsOutput << ">" << rec1.header << " " << rec1.comment;
-						if (!signifResults.empty()) {
-							unsigned i = 0;
-							readsOutput << "\t"
-									<< m_fullIDs[signifResults[i].id];
-							for (++i; i < signifResults.size(); ++i) {
-								readsOutput
-										<< m_fullIDs[signifResults[i].id];
-							}
+				if (opt::outputType == opt::FASTA) {
+					readsOutput << ">" << rec1.header << " " << rec1.comment;
+					if (!signifResults.empty()) {
+						unsigned i = 0;
+						readsOutput << "\t" << m_fullIDs[signifResults[i].id];
+						for (++i; i < signifResults.size(); ++i) {
+							readsOutput << m_fullIDs[signifResults[i].id];
 						}
-						readsOutput << "\n" << rec1.seq << "\n";
-						readsOutput << ">" << rec2.header << " " << rec2.comment;
-						readsOutput << "\n" << rec2.seq << "\n";
-					} else if (opt::outputType == opt::FASTQ) {
-						readsOutput << "@" << rec1.header << " " << rec1.comment;
-						if (!signifResults.empty()) {
-							unsigned i = 0;
-							readsOutput << "\t"
-									<< m_fullIDs[signifResults[i].id];
-							for (++i; i < signifResults.size(); ++i) {
-								readsOutput
-										<< m_fullIDs[signifResults[i].id];
-							}
-						}
-						readsOutput << "\n" << rec1.seq << "\n+\n" << rec1.qual << "\n";
-						readsOutput << "@" << rec2.header << " " << rec2.comment;
-						readsOutput << "\n" << rec2.seq << "\n+\n" << rec2.qual << "\n";
 					}
-					else {
-						if (signifResults.empty()) {
-							readsOutput << "*\t" << rec1.header << " "
-									<< rec1.comment << "\t0\t*\n";
+					readsOutput << "\n" << rec1.seq << "\n";
+					readsOutput << ">" << rec2.header << " " << rec2.comment;
+					readsOutput << "\n" << rec2.seq << "\n";
+				} else if (opt::outputType == opt::FASTQ) {
+					readsOutput << "@" << rec1.header << " " << rec1.comment;
+					if (!signifResults.empty()) {
+						unsigned i = 0;
+						readsOutput << "\t" << m_fullIDs[signifResults[i].id];
+						for (++i; i < signifResults.size(); ++i) {
+							readsOutput << m_fullIDs[signifResults[i].id];
+						}
+					}
+					readsOutput << "\n" << rec1.seq << "\n+\n" << rec1.qual
+							<< "\n";
+					readsOutput << "@" << rec2.header << " " << rec2.comment;
+					readsOutput << "\n" << rec2.seq << "\n+\n" << rec2.qual
+							<< "\n";
+				} else {
+					if (signifResults.empty()) {
+						readsOutput << "*\t" << rec1.header << " "
+								<< rec1.comment << "\t0\t*\n";
+					} else {
+						unsigned i = 0;
+						readsOutput << m_fullIDs[signifResults[i].id] << "\t"
+								<< rec1.header << " " << rec1.comment << "\t"
+								<< signifResults.size() << "\t";
+						if (signifResults.size() == 1) {
+							readsOutput << "*";
 						} else {
-							unsigned i = 0;
-							readsOutput << m_fullIDs[signifResults[i].id]
-									<< "\t" << rec1.header << " "
-									<< rec1.comment << "\t"
-									<< unsigned(-10*log10(repeatProb)) << "\t";
-							if(signifResults.size() == 1){
-								readsOutput << "*";
-							}
-							else {
-								for (++i; i < signifResults.size(); ++i) {
-									if (i != 1) {
-										readsOutput << ";"
-												<< m_fullIDs[signifResults[i].id];
-									} else {
-										readsOutput
-												<< m_fullIDs[signifResults[i].id];
-									}
+							for (; i < signifResults.size(); ++i) {
+								if (i != 0) {
+									readsOutput << ";"
+											<< m_fullIDs[signifResults[i].id]
+											<< "," << signifResults[i].count
+											<< ","
+											<< signifResults[i].nonSatCount
+											<< ","
+											<< signifResults[i].nonSatFrameCount
+											<< ","
+											<< signifResults[i].totalCount
+											<< ","
+											<< signifResults[i].totalNonSatCount;
+								} else {
+									readsOutput
+											<< m_fullIDs[signifResults[i].id]
+											<< "," << signifResults[i].count
+											<< ","
+											<< signifResults[i].nonSatCount
+											<< ","
+											<< signifResults[i].nonSatFrameCount
+											<< ","
+											<< signifResults[i].totalCount
+											<< ","
+											<< signifResults[i].totalNonSatCount;
 								}
 							}
-							readsOutput << "\n";
 						}
+						readsOutput << "\n";
 					}
+				}
 			} else
 				break;
 		}
