@@ -36,7 +36,7 @@ public:
 					extraCount), m_extraFrameLimit(extraFrameLimit), m_maxMiss(
 					maxMiss), m_rateSaturated(rateSaturated), m_satCount(0), m_evalCount(
 					0), m_rankPos(miBF.getHashNum()), m_hits(miBF.getHashNum()), m_counts(
-					vector<CountResult>(perFrameProb.size(), { 0, 0, 0, 0, 0 })) {
+					vector<CountResult>(perFrameProb.size(), { 0, 0, 0, 0, 0, 0 })) {
 
 		//this should be a very small array most of the time
 		m_signifResults.reserve(m_perFrameProb.size());
@@ -51,6 +51,7 @@ public:
 		uint16_t totalCount;
 		uint16_t totalNonSatCount;
 		uint16_t nonSatFrameCount;
+		uint16_t solidCount;
 //		bool strand;
 	};
 
@@ -60,6 +61,7 @@ public:
 		uint16_t totalCount;
 		uint16_t totalNonSatCount;
 		uint16_t nonSatFrameCount;
+		uint16_t solidCount;
 	};
 
 	//default destructor should be fine
@@ -267,20 +269,38 @@ public:
 
 private:
 
+	/*
+	 * Sort in order of
+	 * nonSatFrameCount
+	 * nonSatCount
+	 * count
+	 * pVal (TODO)
+	 * totalNonSatCount
+	 * nonSatFrameCount
+	 */
+	static inline bool sortCandidates(const QueryResult &a, const QueryResult &b) {
+		return (b.nonSatFrameCount == a.nonSatFrameCount ?
+				(b.nonSatCount == a.nonSatCount ?
+						(b.count == a.count ?
+								(b.solidCount == a.solidCount ?
+										(b.totalNonSatCount
+												== a.totalNonSatCount ?
+												(b.totalCount == a.totalCount ?
+														0 :
+														a.totalCount
+																> b.totalCount) :
+												a.totalNonSatCount
+														> b.totalNonSatCount) :
+										a.solidCount > b.solidCount) :
+								a.count > b.count) :
+						a.nonSatCount > b.nonSatCount) :
+				a.nonSatFrameCount > b.nonSatFrameCount);
+	}
+//
 //	//TODO: sort by counts and then p-value, needs refinement!
 //	static inline bool sortCandidates(const QueryResult &a, const QueryResult &b) {
-//		return b.count == a.count ?
-//				b.nonSatFrameCount == a.nonSatFrameCount ?
-//				b.nonSatCount == a.nonSatCount ?
-//				b.nonSatCount == a. ?
-//				: b.nonSatCount > a.nonSatCount : b.nonSatCount > a.nonSatCount
-//				: b.count > a.count;
+//		return a.count > b.count;
 //	}
-
-	//TODO: sort by counts and then p-value, needs refinement!
-	static inline bool sortCandidates(const QueryResult &a, const QueryResult &b) {
-		return a.count > b.count;
-	}
 
 
 	//contains reference to parent
@@ -447,6 +467,9 @@ private:
 				for (typename vector<T>::iterator itr = m_seenSet.begin();
 						itr != m_seenSet.end(); ++itr) {
 					++m_counts[*itr].nonSatFrameCount;
+					if(misses == 0){
+						++m_counts[*itr].solidCount;
+					}
 				}
 			}
 			if (bestCount <= secondBestCount + m_extraCount) {
@@ -641,6 +664,7 @@ private:
 					result.totalCount = resultCount.totalCount;
 					result.totalNonSatCount = resultCount.totalNonSatCount;
 					result.nonSatFrameCount = resultCount.nonSatFrameCount;
+					result.solidCount = resultCount.solidCount;
 					m_signifResults.push_back(result);
 				}
 			}

@@ -235,7 +235,6 @@ public:
 						cerr << "Currently Reading Read Number: " << m_numRead
 								<< endl;
 					}
-
 					const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, faRec.seq);
 					resSummary.updateSummaryData(signifResults);
 
@@ -275,36 +274,22 @@ public:
 									<< "\t" << faRec.header << " "
 									<< faRec.comment << "\t"
 									<< signifResults.size() << "\t";
-							if(signifResults.size() == 1){
+							if (signifResults.size() == 1) {
 								readsOutput << "*";
-							}
-							else {
-								for (; i < signifResults.size(); ++i) {
+							} else {
+								for (++i; i < signifResults.size(); ++i) {
 									if (i != 0) {
-										readsOutput << ";"
-												<< m_fullIDs[signifResults[i].id]
-												<< "," << signifResults[i].count
-												<< ","
-												<< signifResults[i].nonSatCount
-												<< ","
-												<< signifResults[i].nonSatFrameCount
-												<< ","
-												<< signifResults[i].totalCount
-												<< ","
-												<< signifResults[i].totalNonSatCount;
-									} else {
-										readsOutput
-												<< m_fullIDs[signifResults[i].id]
-												<< "," << signifResults[i].count
-												<< ","
-												<< signifResults[i].nonSatCount
-												<< ","
-												<< signifResults[i].nonSatFrameCount
-												<< ","
-												<< signifResults[i].totalCount
-												<< ","
-												<< signifResults[i].totalNonSatCount;
+										readsOutput << ";";
 									}
+//									readsOutput << m_fullIDs[signifResults[i].id]
+//											<< ","
+//											<< signifResults[i].nonSatFrameCount
+//											<< "," << signifResults[i].nonSatCount
+//											<< "," << signifResults[i].count << ","
+//											<< signifResults[i].solidCount << ","
+//											<< signifResults[i].totalCount << ","
+//											<< signifResults[i].totalNonSatCount;
+									readsOutput << m_fullIDs[signifResults[i].id];
 								}
 							}
 							readsOutput << "\n";
@@ -368,7 +353,6 @@ public:
 		}
 		double startTime = omp_get_wtime();
 		int l1, l2;
-		FaRec faRec;
 		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
 				m_perFrameProb, opt::multiThresh, opt::streakThreshold,
 				opt::allowMisses, m_rateSaturated);
@@ -388,7 +372,7 @@ public:
 					rec2.seq = string(kseq2->seq.s, l2);
 					rec2.header = string(kseq2->name.s, kseq2->name.l);
 					rec2.qual = string(kseq2->qual.s, kseq2->qual.l);
-					rec2.comment = string(kseq1->comment.s, kseq1->comment.l);
+					rec2.comment = string(kseq2->comment.s, kseq2->comment.l);
 				}
 			}
 			if (l1 >= 0 && l2 >= 0) {
@@ -444,32 +428,19 @@ public:
 						if (signifResults.size() == 1) {
 							readsOutput << "*";
 						} else {
-							for (; i < signifResults.size(); ++i) {
+							for (++i; i < signifResults.size(); ++i) {
 								if (i != 0) {
-									readsOutput << ";"
-											<< m_fullIDs[signifResults[i].id]
-											<< "," << signifResults[i].count
-											<< ","
-											<< signifResults[i].nonSatCount
-											<< ","
-											<< signifResults[i].nonSatFrameCount
-											<< ","
-											<< signifResults[i].totalCount
-											<< ","
-											<< signifResults[i].totalNonSatCount;
-								} else {
-									readsOutput
-											<< m_fullIDs[signifResults[i].id]
-											<< "," << signifResults[i].count
-											<< ","
-											<< signifResults[i].nonSatCount
-											<< ","
-											<< signifResults[i].nonSatFrameCount
-											<< ","
-											<< signifResults[i].totalCount
-											<< ","
-											<< signifResults[i].totalNonSatCount;
+									readsOutput << ";";
 								}
+//								readsOutput << m_fullIDs[signifResults[i].id]
+//										<< ","
+//										<< signifResults[i].nonSatFrameCount
+//										<< "," << signifResults[i].nonSatCount
+//										<< "," << signifResults[i].count << ","
+//										<< signifResults[i].solidCount << ","
+//										<< signifResults[i].totalCount << ","
+//										<< signifResults[i].totalNonSatCount;
+								readsOutput << m_fullIDs[signifResults[i].id];
 							}
 						}
 						readsOutput << "\n";
