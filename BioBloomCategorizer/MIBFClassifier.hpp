@@ -331,8 +331,7 @@ public:
 		}
 		kseq_t *kseq1 = kseq_init(fp1);
 		kseq_t *kseq2 = kseq_init(fp2);
-		FaRec rec1;
-		FaRec rec2;
+		FaRec rec1, rec2;
 
 		//results summary object
 		ResultsManager<ID> resSummary(m_fullIDs, false);
@@ -362,14 +361,14 @@ public:
 			{
 				l1 = kseq_read(kseq1);
 				if (l1 >= 0) {
-					rec1.seq = string(kseq1->seq.s, l1);
+					rec1.seq = string(kseq1->seq.s, kseq1->seq.l);
 					rec1.header = string(kseq1->name.s, kseq1->name.l);
 					rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
 					rec1.comment = string(kseq1->comment.s, kseq1->comment.l);
 				}
 				l2 = kseq_read(kseq2);
 				if (l2 >= 0) {
-					rec2.seq = string(kseq2->seq.s, l2);
+					rec2.seq = string(kseq2->seq.s, kseq2->seq.l);
 					rec2.header = string(kseq2->name.s, kseq2->name.l);
 					rec2.qual = string(kseq2->qual.s, kseq2->qual.l);
 					rec2.comment = string(kseq2->comment.s, kseq2->comment.l);
@@ -523,6 +522,7 @@ private:
 	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq1,
 			const string &seq2) {
 		unsigned frameCount = seq1.size() + seq2.size() - (m_filter.getKmerSize() + 1)*2;
+#pragma omp critical(m_minCount)
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
 					new vector<unsigned>(m_fullIDs.size()));
