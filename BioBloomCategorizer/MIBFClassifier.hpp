@@ -217,8 +217,8 @@ public:
 			int l;
 			FaRec faRec;
 			MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
-					m_perFrameProb, opt::multiThresh, opt::streakThreshold,
-					opt::allowMisses, m_rateSaturated);
+					m_perFrameProb.size(), opt::multiThresh, opt::streakThreshold,
+					opt::allowMisses);
 #pragma omp parallel private(l, faRec) firstprivate(support)
 			for (;;) {
 #pragma omp critical(sequence)
@@ -281,16 +281,31 @@ public:
 									if (i != 0) {
 										readsOutput << ";";
 									}
-//									readsOutput << m_fullIDs[signifResults[i].id]
-//											<< ","
-//											<< signifResults[i].nonSatFrameCount
-//											<< "," << signifResults[i].nonSatCount
-//											<< "," << signifResults[i].count << ","
-//											<< signifResults[i].solidCount << ","
-//											<< signifResults[i].totalCount << ","
-//											<< signifResults[i].totalNonSatCount;
+	//								readsOutput << m_fullIDs[signifResults[i].id]
+	//										<< ","
+	//										<< signifResults[i].nonSatFrameCount
+	//										<< "," << signifResults[i].nonSatCount
+	//										<< "," << signifResults[i].count << ","
+	//										<< signifResults[i].solidCount << ","
+	//										<< signifResults[i].totalCount << ","
+	//										<< signifResults[i].totalNonSatCount;
 									readsOutput << m_fullIDs[signifResults[i].id];
 								}
+							}
+							readsOutput << "\t";
+							for (i = 0; i < signifResults.size(); ++i) {
+								if (i != 0) {
+									readsOutput << ";";
+								}
+									readsOutput << m_fullIDs[signifResults[i].id]
+											<< ","
+											<< signifResults[i].nonSatFrameCount
+											<< "," << signifResults[i].nonSatCount
+											<< "," << signifResults[i].count << ","
+											<< signifResults[i].solidCount << ","
+											<< signifResults[i].totalCount << ","
+											<< signifResults[i].totalNonSatCount;
+									assert(signifResults[i].count < faRec.seq.size());
 							}
 							readsOutput << "\n";
 						}
@@ -353,8 +368,8 @@ public:
 		double startTime = omp_get_wtime();
 		int l1, l2;
 		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
-				m_perFrameProb, opt::multiThresh, opt::streakThreshold,
-				opt::allowMisses, m_rateSaturated);
+				m_perFrameProb.size(), opt::multiThresh, opt::streakThreshold,
+				opt::allowMisses);
 #pragma omp parallel private(l1, l2, rec1, rec2) firstprivate(support)
 		for (;;) {
 #pragma omp critical(kseq)
@@ -442,6 +457,20 @@ public:
 								readsOutput << m_fullIDs[signifResults[i].id];
 							}
 						}
+						readsOutput << "\t";
+						for (i = 0; i < signifResults.size(); ++i) {
+							if (i != 0) {
+								readsOutput << ";";
+							}
+								readsOutput << m_fullIDs[signifResults[i].id]
+										<< ","
+										<< signifResults[i].nonSatFrameCount
+										<< "," << signifResults[i].nonSatCount
+										<< "," << signifResults[i].count << ","
+										<< signifResults[i].solidCount << ","
+										<< signifResults[i].totalCount << ","
+										<< signifResults[i].totalNonSatCount;
+						}
 						readsOutput << "\n";
 					}
 				}
@@ -500,9 +529,10 @@ private:
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
 					new vector<unsigned>(m_fullIDs.size()));
-			for (size_t i = 0; i < m_minCount.size(); ++i) {
+			for (size_t i = 0; i < m_fullIDs.size(); ++i) {
 				(*m_minCount[frameCount])[i] = getMinCount(frameCount,
 						m_perFrameProb[i]);
+				assert((*m_minCount[frameCount])[i] > 1);
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
@@ -740,20 +770,6 @@ private:
 		return opt::EMPTY;
 	}
 
-	//TODO not optimized
-	inline double calcProbSingleFrame(double freq) {
-		double occupancy = double(m_filter.getPop()) / double(m_filter.size());
-		double probTotal = 0.0;
-		for (unsigned i = 0; i <= opt::allowMisses; i++) {
-			double prob = nChoosek(m_filter.getHashNum(), i);
-			prob *= pow(occupancy, m_filter.getHashNum() - i);
-			prob *= pow(1.0 - occupancy, i);
-			prob *= (1.0 - pow(1.0 - freq, m_filter.getHashNum() - i));
-			probTotal += prob;
-		}
-		return probTotal;
-	}
-
 	inline unsigned getMinCount(unsigned length, double eventProb) {
 		binomial bin(length, 1.0 - eventProb);
 		double criticalScore = 1.0
@@ -765,19 +781,7 @@ private:
 				break;
 			}
 		}
-		return (i);
-	}
-
-	inline unsigned getFPRCount(unsigned length, double eventProb) {
-		binomial bin(length, 1.0 - eventProb);
-		unsigned i = 0;
-		for (; i < length; ++i) {
-			double cumProb = cdf(bin, length - i);
-			if (opt::score > cumProb) {
-				break;
-			}
-		}
-		return (i);
+		return (i > 1 ? i : 2);
 	}
 
 	//debug helper methods

@@ -50,7 +50,7 @@ public:
 	/*
 	 * Parses spaced seed string (string consisting of 1s and 0s) to vector
 	 */
-	static vector<vector<unsigned> > parseSeedString(
+	static inline vector<vector<unsigned> > parseSeedString(
 			const vector<string> &spacedSeeds) {
 		vector<vector<unsigned> > seeds(spacedSeeds.size(), vector<unsigned>());
 		for (unsigned i = 0; i < spacedSeeds.size(); ++i) {
@@ -66,7 +66,7 @@ public:
 
 	//helper methods
 	//calculates the per frame probability of a random match for single value
-	static double calcProbSingleFrame(double occupancy, unsigned hashNum,
+	static inline double calcProbSingleFrame(double occupancy, unsigned hashNum,
 			double freq, unsigned allowedMisses = 0) {
 		double probTotal = 0.0;
 		for (unsigned i = hashNum - allowedMisses; i <= hashNum; i++) {
@@ -74,13 +74,13 @@ public:
 			prob *= pow(occupancy, i);
 			prob *= pow(1.0 - occupancy, hashNum - i);
 			prob *= (1.0 - pow(1.0 - freq, i));
-			probTotal += prob;
+			probTotal += (prob > 0.0 ? prob : numeric_limits<double>::min()) ;
 		}
 		return probTotal;
 	}
 
 	//calculates the per frame probability of a random multi match given a significant result
-	static double calcProbMultiMatchSingleFrame(double occupancy, unsigned hashNum,
+	static inline double calcProbMultiMatchSingleFrame(double occupancy, unsigned hashNum,
 			double freq) {
 		double prob = 1.0
 				- pow(1.0 - freq, hashNum * (1 + occupancy / log(1 - occupancy)));
@@ -93,7 +93,7 @@ public:
 //	 * 	frameProbs must be preallocated to correct size (number of ids + 1)
 //	 * Max value is the largest value seen in your set of possible values
 //	 */
-//	static void calcFrameProbs(MIBloomFilter<T> &miBF,
+//	static inline void calcFrameProbs(MIBloomFilter<T> &miBF,
 //			vector<double> &frameProbs, vector<double> &multiMatchProbs) {
 //		double occupancy = double(miBF.getPop()) / double(miBF.size());
 //		unsigned hashNum = miBF.getHashNum();
@@ -112,6 +112,31 @@ public:
 //		}
 //	}
 //
+//	/*
+//	 * Preconditions:
+//	 * 	frameProbs but be equal in size to multiMatchProbs
+//	 * 	frameProbs must be preallocated to correct size (number of ids + 1)
+//	 * Max value is the largest value seen in your set of possible values
+//	 * Returns proportion of saturated elements relative to all elements
+//	 */
+//	static inline double calcFrameProbs(MIBloomFilter<T> &miBF, vector<double> &frameProbs) {
+//		double occupancy = double(miBF.getPop()) / double(miBF.size());
+//		unsigned hashNum = miBF.getHashNum();
+//		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
+//		double satProp = double(miBF.getIDCounts(countTable));
+//		size_t sum = 0;
+//		for (vector<size_t>::const_iterator itr = countTable.begin();
+//				itr != countTable.end(); ++itr) {
+//			sum += *itr;
+//		}
+//		satProp /= double(sum);
+//		for (size_t i = 0; i < countTable.size(); ++i) {
+//			frameProbs[i] = calcProbSingleFrame(occupancy, hashNum,
+//					double(countTable[i]) / double(sum));
+//		}
+//		return satProp;
+//	}
+
 	/*
 	 * Preconditions:
 	 * 	frameProbs but be equal in size to multiMatchProbs
@@ -119,7 +144,7 @@ public:
 	 * Max value is the largest value seen in your set of possible values
 	 * Returns proportion of saturated elements relative to all elements
 	 */
-	static double calcFrameProbs(MIBloomFilter<T> &miBF, vector<double> &frameProbs) {
+	static inline double calcFrameProbs(MIBloomFilter<T> &miBF, vector<double> &frameProbs) {
 		double occupancy = double(miBF.getPop()) / double(miBF.size());
 		unsigned hashNum = miBF.getHashNum();
 		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
@@ -136,6 +161,7 @@ public:
 		}
 		return satProp;
 	}
+
 
 	/*
 	 * Returns an a filter size large enough to maintain an occupancy specified

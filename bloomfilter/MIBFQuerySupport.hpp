@@ -29,17 +29,16 @@ using boost::math::binomial;
 template<typename T>
 class MIBFQuerySupport {
 public:
-	MIBFQuerySupport(const MIBloomFilter<T> &miBF,
-			const vector<double> &perFrameProb, unsigned extraCount,
-			unsigned extraFrameLimit, unsigned maxMiss, double rateSaturated) :
-			m_miBF(miBF), m_perFrameProb(perFrameProb), m_extraCount(
+	MIBFQuerySupport(const MIBloomFilter<T> &miBF, size_t numIDs, unsigned extraCount,
+			unsigned extraFrameLimit, unsigned maxMiss) :
+			m_miBF(miBF), m_extraCount(
 					extraCount), m_extraFrameLimit(extraFrameLimit), m_maxMiss(
-					maxMiss), m_rateSaturated(rateSaturated), m_satCount(0), m_evalCount(
+					maxMiss), m_satCount(0), m_evalCount(
 					0), m_rankPos(miBF.getHashNum()), m_hits(miBF.getHashNum()), m_counts(
-					vector<CountResult>(perFrameProb.size(), { 0, 0, 0, 0, 0, 0 })) {
+					vector<CountResult>(numIDs, { 0, 0, 0, 0, 0, 0 })) {
 
 		//this should be a very small array most of the time
-		m_signifResults.reserve(m_perFrameProb.size());
+//		m_signifResults.reserve(numIDs);
 		//this should always be a small array
 		m_seenSet.reserve(miBF.getHashNum());
 	}
@@ -163,7 +162,7 @@ public:
 			const vector<unsigned> &minCount) {
 		//reset reusable values
 		m_candidateMatches.clear();
-		m_counts.clear();
+		std::fill(m_counts.begin(), m_counts.end(), CountResult());
 		m_signifResults.clear();
 		m_satCount = 0;
 		m_evalCount = 0;
@@ -190,7 +189,7 @@ public:
 			const vector<unsigned> &minCount) {
 		//reset reusable values
 		m_candidateMatches.clear();
-		m_counts.clear();
+		std::fill(m_counts.begin(), m_counts.end(), CountResult());
 		m_signifResults.clear();
 		m_satCount = 0;
 		m_evalCount = 0;
@@ -305,13 +304,13 @@ private:
 
 	//contains reference to parent
 	const MIBloomFilter<T> &m_miBF;
-	const vector<double> &m_perFrameProb;
+//	const vector<double> &m_perFrameProb;
 
 	//not references, but shared other objects or static variables
 	const unsigned m_extraCount;
 	const unsigned m_extraFrameLimit;
 	const unsigned m_maxMiss;
-	const double m_rateSaturated;
+//	const double m_rateSaturated;
 
 	//resusable variables
 	unsigned m_satCount;
@@ -426,38 +425,12 @@ private:
 							//if the non-saturated version has not been seen before
 							if (find(m_seenSet.begin(), m_seenSet.end(), result) == m_seenSet.end()) {
 								//check is count is exceeded
-								if (minCount[result]
-										<= ++m_counts[result].count) {
-									if (m_counts[result].count > bestCount) {
-										bestCount = m_counts[result].count;
-									} else if (m_counts[result].count
-											> secondBestCount) {
-										secondBestCount =
-												m_counts[result].count;
-									}
-									if (find(m_candidateMatches.begin(),
-											m_candidateMatches.end(), result)
-											== m_candidateMatches.end()) {
-										m_candidateMatches.push_back(result);
-									}
-								}
+								++m_counts[result].count;
 							}
 						} else {
 							++m_counts[result].nonSatCount;
 							//check is count is exceeded
-							if (minCount[result] <= ++m_counts[result].count) {
-								if (m_counts[result].count > bestCount) {
-									bestCount = m_counts[result].count;
-								} else if (m_counts[result].count
-										> secondBestCount) {
-									secondBestCount = m_counts[result].count;
-								}
-								if (find(m_candidateMatches.begin(),
-										m_candidateMatches.end(), result)
-										== m_candidateMatches.end()) {
-									m_candidateMatches.push_back(result);
-								}
-							}
+							++m_counts[result].count;
 						}
 						m_seenSet.push_back(resultRaw);
 					}
@@ -469,6 +442,20 @@ private:
 					++m_counts[*itr].nonSatFrameCount;
 					if(misses == 0){
 						++m_counts[*itr].solidCount;
+					}
+					if (m_counts[*itr].nonSatFrameCount >= minCount[*itr]) {
+						assert(minCount[*itr] > 1);
+						if (m_counts[*itr].nonSatFrameCount > bestCount) {
+							bestCount = m_counts[*itr].nonSatFrameCount;
+						} else if (m_counts[*itr].nonSatFrameCount
+								> secondBestCount) {
+							secondBestCount = m_counts[*itr].nonSatFrameCount;
+						}
+						if (find(m_candidateMatches.begin(),
+								m_candidateMatches.end(), *itr)
+								== m_candidateMatches.end()) {
+							m_candidateMatches.push_back(*itr);
+						}
 					}
 				}
 			}
@@ -656,7 +643,7 @@ private:
 					m_candidateMatches.begin();
 					candidate != m_candidateMatches.end(); candidate++) {
 				CountResult resultCount = m_counts[*candidate];
-				if (bestCount <= resultCount.count + m_extraCount) {
+				if (bestCount <= resultCount.nonSatFrameCount + m_extraCount) {
 					QueryResult result;
 					result.id = *candidate;
 					result.count = resultCount.count;
