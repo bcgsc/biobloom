@@ -533,16 +533,12 @@ public:
 	 */
 	size_t getIDCounts(vector<size_t> &counts) const {
 		size_t saturatedCounts = 0;
-//#pragma omp parallel for
 		for (size_t i = 0; i < m_dSize; ++i) {
 			if(m_data[i] > s_mask){
-//#pragma omp atomic
 				++counts[m_data[i] & s_antiMask];
-//#pragma omp atomic
 				++saturatedCounts;
 			}
 			else{
-//#pragma omp atomic
 				++counts[m_data[i]];
 			}
 		}
@@ -645,27 +641,17 @@ public:
 	double calcFrameProbs(vector<double> &frameProbs, unsigned allowedMiss) {
 		double occupancy = double(getPop()) / double(size());
 		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
-//		double start_time = omp_get_wtime();
-//		cerr << "start" << endl;
+		double start_time = omp_get_wtime();
 		double satProp = double(getIDCounts(countTable));
-//		cerr << omp_get_wtime() - start_time << endl;
 		size_t sum = 0;
-//		start_time = omp_get_wtime();
-//		cerr << "start" << endl;
-//#pragma omp parallel for
 		for (size_t i = 1; i < countTable.size(); ++i) {
 			sum += countTable[i];
 		}
-//		cerr << omp_get_wtime() - start_time << endl;
 		satProp /= double(sum);
-//		start_time = omp_get_wtime();
-//		cerr << "start" << endl;
-//#pragma omp parallel for
 		for (size_t i = 1; i < countTable.size(); ++i) {
 			frameProbs[i] = calcProbSingleFrame(occupancy, m_hashNum,
 					double(countTable[i]) / double(sum), allowedMiss);
 		}
-//		cerr << omp_get_wtime() - start_time << endl;
 		return satProp;
 	}
 	
