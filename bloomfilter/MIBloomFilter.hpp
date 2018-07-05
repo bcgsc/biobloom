@@ -641,8 +641,9 @@ public:
 	double calcFrameProbs(vector<double> &frameProbs, unsigned allowedMiss) {
 		double occupancy = double(getPop()) / double(size());
 		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
-		double start_time = omp_get_wtime();
+//		double start_time = omp_get_wtime();
 		double satProp = double(getIDCounts(countTable));
+//		cerr << omp_get_wtime() - start_time << endl;
 		size_t sum = 0;
 		for (size_t i = 1; i < countTable.size(); ++i) {
 			sum += countTable[i];
