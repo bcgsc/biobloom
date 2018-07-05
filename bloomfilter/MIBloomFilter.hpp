@@ -28,9 +28,6 @@
 #include "Common/Options.h"
 #include <omp.h>
 #include <algorithm>    // std::random_shuffle
-#include <boost/math/distributions/binomial.hpp>
-#include <google/dense_hash_set>
-#include <google/dense_hash_map>
 
 using namespace std;
 
@@ -67,101 +64,21 @@ public:
 	//helper methods
 	//calculates the per frame probability of a random match for single value
 	static inline double calcProbSingleFrame(double occupancy, unsigned hashNum,
-			double freq, unsigned allowedMisses = 0) {
+			double freq, unsigned allowedMisses) {
 		double probTotal = 0.0;
 		for (unsigned i = hashNum - allowedMisses; i <= hashNum; i++) {
 			double prob = nChoosek(hashNum, i);
 			prob *= pow(occupancy, i);
 			prob *= pow(1.0 - occupancy, hashNum - i);
 			prob *= (1.0 - pow(1.0 - freq, i));
-			probTotal += (prob > 0.0 ? prob : numeric_limits<double>::min()) ;
+			probTotal += prob;
 		}
 		return probTotal;
 	}
 
-	//calculates the per frame probability of a random multi match given a significant result
-	static inline double calcProbMultiMatchSingleFrame(double occupancy, unsigned hashNum,
-			double freq) {
-		double prob = 1.0
-				- pow(1.0 - freq, hashNum * (1 + occupancy / log(1 - occupancy)));
-		return prob;
+	static inline double calcProbSingle(double occupancy, double freq) {
+		return occupancy*freq;
 	}
-
-//	/*
-//	 * Preconditions:
-//	 * 	frameProbs but be equal in size to multiMatchProbs
-//	 * 	frameProbs must be preallocated to correct size (number of ids + 1)
-//	 * Max value is the largest value seen in your set of possible values
-//	 */
-//	static inline void calcFrameProbs(MIBloomFilter<T> &miBF,
-//			vector<double> &frameProbs, vector<double> &multiMatchProbs) {
-//		double occupancy = double(miBF.getPop()) / double(miBF.size());
-//		unsigned hashNum = miBF.getHashNum();
-//		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
-//		miBF.getIDCounts(countTable);
-//		size_t sum = 0;
-//		for (vector<size_t>::const_iterator itr = countTable.begin();
-//				itr != countTable.end(); ++itr) {
-//			sum += *itr;
-//		}
-//		for (size_t i = 0; i < countTable.size(); ++i) {
-//			frameProbs[i] = calcProbSingleFrame(occupancy, hashNum,
-//					double(countTable[i]) / double(sum));
-//			multiMatchProbs[i] = calcProbMultiMatchSingleFrame(occupancy,
-//					hashNum, double(countTable[i]) / double(sum));
-//		}
-//	}
-//
-//	/*
-//	 * Preconditions:
-//	 * 	frameProbs but be equal in size to multiMatchProbs
-//	 * 	frameProbs must be preallocated to correct size (number of ids + 1)
-//	 * Max value is the largest value seen in your set of possible values
-//	 * Returns proportion of saturated elements relative to all elements
-//	 */
-//	static inline double calcFrameProbs(MIBloomFilter<T> &miBF, vector<double> &frameProbs) {
-//		double occupancy = double(miBF.getPop()) / double(miBF.size());
-//		unsigned hashNum = miBF.getHashNum();
-//		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
-//		double satProp = double(miBF.getIDCounts(countTable));
-//		size_t sum = 0;
-//		for (vector<size_t>::const_iterator itr = countTable.begin();
-//				itr != countTable.end(); ++itr) {
-//			sum += *itr;
-//		}
-//		satProp /= double(sum);
-//		for (size_t i = 0; i < countTable.size(); ++i) {
-//			frameProbs[i] = calcProbSingleFrame(occupancy, hashNum,
-//					double(countTable[i]) / double(sum));
-//		}
-//		return satProp;
-//	}
-
-	/*
-	 * Preconditions:
-	 * 	frameProbs but be equal in size to multiMatchProbs
-	 * 	frameProbs must be preallocated to correct size (number of ids + 1)
-	 * Max value is the largest value seen in your set of possible values
-	 * Returns proportion of saturated elements relative to all elements
-	 */
-	static inline double calcFrameProbs(MIBloomFilter<T> &miBF, vector<double> &frameProbs) {
-		double occupancy = double(miBF.getPop()) / double(miBF.size());
-		unsigned hashNum = miBF.getHashNum();
-		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
-		double satProp = double(miBF.getIDCounts(countTable));
-		size_t sum = 0;
-		for (vector<size_t>::const_iterator itr = countTable.begin();
-				itr != countTable.end(); ++itr) {
-			sum += *itr;
-		}
-		satProp /= double(sum);
-		for (size_t i = 0; i < countTable.size(); ++i) {
-			frameProbs[i] = calcProbSingleFrame(occupancy, hashNum,
-					double(countTable[i]) / double(sum));
-		}
-		return satProp;
-	}
-
 
 	/*
 	 * Returns an a filter size large enough to maintain an occupancy specified
@@ -324,7 +241,7 @@ public:
 	 * Stores uncompressed because the random data tends to
 	 * compress poorly anyway
 	 */
-	inline void store(string const &filterFilePath) const {
+	void store(string const &filterFilePath) const {
 
 #pragma omp parallel for
 		for (unsigned i = 0; i < 2; ++i) {
@@ -364,28 +281,12 @@ public:
 		}
 	}
 
-//	/*
-//	 * Insert using an existing iterator (returning array of size_t)
-//	 */
-//	template<typename ITR>
-//	inline unsigned insert(ITR &itr, T value, unsigned max) {
-//		unsigned failedInsert = 0;
-//		while (itr != itr.end()) {
-//			//Last iteration check if value was obliterated
-//			if (!insert(*itr, value, max)) {
-//				++failedInsert;
-//			}
-//			++itr;
-//		}
-//		return failedInsert;
-//	}
-
 	/*
 	 * Returns false if unable to insert hashes values
 	 * Contains strand information
 	 * Inserts hash functions in random order
 	 */
-	inline bool insert(const size_t *hashes, const bool *strand, T val, unsigned max) {
+	bool insert(const size_t *hashes, const bool *strand, T val, unsigned max) {
 		unsigned count = 0;
 		std::vector<unsigned> hashOrder;
 		bool saturated = true;
@@ -452,7 +353,7 @@ public:
 	 * Returns false if unable to insert hashes values
 	 * Inserts hash functions in random order
 	 */
-	inline bool insert(const size_t *hashes, T value, unsigned max) {
+	bool insert(const size_t *hashes, T value, unsigned max) {
 		unsigned count = 0;
 		std::vector<unsigned> hashOrder;
 		bool saturated = true;
@@ -512,7 +413,7 @@ public:
 		return true;
 	}
 
-	inline void saturate(const size_t *hashes) {
+	void saturate(const size_t *hashes) {
 		for (size_t i = 0; i < m_hashNum; ++i) {
 			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
 			__sync_or_and_fetch(&m_data[pos], s_mask);
@@ -522,7 +423,7 @@ public:
 	/*
 	 * Return the position of a hash values
 	 */
-	inline vector<size_t> atPos(const size_t *hashes, unsigned &finished, unsigned maxMiss = 0){
+	vector<size_t> atPos(const size_t *hashes, unsigned &finished, unsigned maxMiss = 0){
 		vector<size_t> rankPos(m_hashNum);
 		unsigned misses = 0;
 		for (unsigned i = 0; i < m_hashNum; ++i) {
@@ -581,7 +482,7 @@ public:
 	/*
 	 * No saturation masking
 	 */
-	inline vector<T> at(const size_t *hashes, unsigned maxMiss = 0) {
+	vector<T> at(const size_t *hashes, unsigned maxMiss = 0) {
 		vector<T> results(m_hashNum);
 		vector<size_t> rankPos(m_hashNum);
 		unsigned misses = 0;
@@ -605,7 +506,7 @@ public:
 	/*
 	 * No saturation masking
 	 */
-	inline vector<size_t> getRankPos(const size_t *hashes) const{
+	vector<size_t> getRankPos(const size_t *hashes) const{
 		vector<size_t> rankPos(m_hashNum);
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			size_t pos = hashes[i] % m_bv.size();
@@ -614,15 +515,15 @@ public:
 		return rankPos;
 	}
 
-	inline const vector<vector<unsigned> > &getSeedValues() const {
+	const vector<vector<unsigned> > &getSeedValues() const {
 		return m_ssVal;
 	}
 
-	inline unsigned getKmerSize() const{
+	unsigned getKmerSize() const{
 		return m_kmerSize;
 	}
 
-	inline unsigned getHashNum() const{
+	unsigned getHashNum() const{
 		return m_hashNum;
 	}
 
@@ -630,14 +531,18 @@ public:
 	 * Computes id frequency based on data vector contents
 	 * Returns counts of repetitive sequence
 	 */
-	inline size_t getIDCounts(vector<size_t> &counts) const {
+	size_t getIDCounts(vector<size_t> &counts) const {
 		size_t saturatedCounts = 0;
+//#pragma omp parallel for
 		for (size_t i = 0; i < m_dSize; ++i) {
 			if(m_data[i] > s_mask){
+//#pragma omp atomic
 				++counts[m_data[i] & s_antiMask];
+//#pragma omp atomic
 				++saturatedCounts;
 			}
 			else{
+//#pragma omp atomic
 				++counts[m_data[i]];
 			}
 		}
@@ -648,7 +553,7 @@ public:
 	 * computes id frequency based on datavector
 	 * Returns counts of repetitive sequence
 	 */
-	inline size_t getIDCountsStrand(vector<size_t> &counts) const {
+	size_t getIDCountsStrand(vector<size_t> &counts) const {
 		size_t saturatedCounts = 0;
 		for (size_t i = 0; i < m_dSize; ++i) {
 			if(m_data[i] > s_mask){
@@ -662,7 +567,7 @@ public:
 		return saturatedCounts;
 	}
 
-	inline size_t getPop() const {
+	size_t getPop() const {
 		size_t index = m_bv.size() - 1;
 		while (m_bv[index] == 0) {
 			--index;
@@ -674,7 +579,7 @@ public:
 	 * Mostly for debugging
 	 * should equal getPop if fully populated
 	 */
-	inline size_t getPopNonZero() const {
+	size_t getPopNonZero() const {
 		size_t count = 0;
 		for (size_t i = 0; i < m_dSize; ++i) {
 			if (m_data[i] != 0) {
@@ -690,7 +595,7 @@ public:
 	 * Returns first abnormal ID or value of maxVal if no abnormal IDs are found
 	 * For debugging
 	 */
-	inline ID checkValues(T maxVal) const {
+	ID checkValues(T maxVal) const {
 		for (size_t i = 0; i < m_dSize; ++i) {
 			if ((m_data[i] & s_antiMask) > maxVal) {
 				return m_data[i];
@@ -699,7 +604,7 @@ public:
 		return maxVal;
 	}
 
-	inline size_t getPopSaturated() const {
+	size_t getPopSaturated() const {
 		size_t count = 0;
 		for (size_t i = 0; i < m_dSize; ++i) {
 			if (m_data[i] > s_mask) {
@@ -709,16 +614,16 @@ public:
 		return count;
 	}
 
-	inline size_t size() const {
+	size_t size() const {
 		return m_bv.size();
 	}
 
 	//overwrites existing value
-	inline void setData(size_t pos, T id){
+	void setData(size_t pos, T id){
 		m_data[pos] = id;
 	}
 
-	inline vector<T> getData(const vector<size_t> &rankPos) const{
+	vector<T> getData(const vector<size_t> &rankPos) const{
 		vector<T> results(rankPos.size());
 		for (unsigned i = 0; i < m_hashNum; ++i) {
 			results[i] = m_data[rankPos[i]];
@@ -726,8 +631,69 @@ public:
 		return results;
 	}
 
-	inline ID getData(size_t rank) const{
+	ID getData(size_t rank) const{
 		return m_data[rank];
+	}
+
+	/*
+	 * Preconditions:
+	 * 	frameProbs but be equal in size to multiMatchProbs
+	 * 	frameProbs must be preallocated to correct size (number of ids + 1)
+	 * Max value is the largest value seen in your set of possible values
+	 * Returns proportion of saturated elements relative to all elements
+	 */
+	double calcFrameProbs(vector<double> &frameProbs, unsigned allowedMiss) {
+		double occupancy = double(getPop()) / double(size());
+		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
+//		double start_time = omp_get_wtime();
+//		cerr << "start" << endl;
+		double satProp = double(getIDCounts(countTable));
+//		cerr << omp_get_wtime() - start_time << endl;
+		size_t sum = 0;
+//		start_time = omp_get_wtime();
+//		cerr << "start" << endl;
+//#pragma omp parallel for
+		for (size_t i = 1; i < countTable.size(); ++i) {
+			sum += countTable[i];
+		}
+//		cerr << omp_get_wtime() - start_time << endl;
+		satProp /= double(sum);
+//		start_time = omp_get_wtime();
+//		cerr << "start" << endl;
+//#pragma omp parallel for
+		for (size_t i = 1; i < countTable.size(); ++i) {
+			frameProbs[i] = calcProbSingleFrame(occupancy, m_hashNum,
+					double(countTable[i]) / double(sum), allowedMiss);
+		}
+//		cerr << omp_get_wtime() - start_time << endl;
+		return satProp;
+	}
+	
+	/*
+	 * Preconditions:
+	 * 	frameProbs but be equal in size to multiMatchProbs
+	 * 	frameProbs must be preallocated to correct size (number of ids + 1)
+	 * Max value is the largest value seen in your set of possible values
+	 * Returns proportion of saturated elements relative to all elements
+	 */
+	double calcFrameProbsStrand(vector<double> &frameProbs, unsigned allowedMiss) {
+		double occupancy = double(getPop()) / double(size());
+		vector<size_t> countTable = vector<size_t>(frameProbs.size(), 0);
+		double satProp = double(getIDCountsStrand(countTable));
+		size_t sum = 0;
+		for (vector<size_t>::const_iterator itr = countTable.begin();
+				itr != countTable.end(); ++itr) {
+			sum += *itr;
+		}
+		satProp /= double(sum);
+#pragma omp parallel for
+		for (size_t i = 1; i < countTable.size(); ++i) {
+			frameProbs[i] = calcProbSingleFrame(occupancy, m_hashNum,
+					double(countTable[i]) / double(sum), allowedMiss);
+//			frameProbs[i] = calcProbSingle(occupancy,
+//					double(countTable[i]) / double(sum));
+		}
+		return satProp;
 	}
 
 	~MIBloomFilter() {
@@ -746,7 +712,7 @@ private:
 	/*
 	 * Helper function for header storage
 	 */
-	inline void writeHeader(ofstream &out) const {
+	void writeHeader(ofstream &out) const {
 		FileHeader header;
 		char magic[9];
 		strncpy(magic, MAGICSTR, 8);
@@ -782,7 +748,7 @@ private:
 	 * Calculate FPR based on hash functions, size and number of entries
 	 * see http://en.wikipedia.org/wiki/Bloom_filter
 	 */
-	inline double calcFPR_numInserted(size_t numEntr) const {
+	double calcFPR_numInserted(size_t numEntr) const {
 		return pow(
 				1.0
 						- pow(1.0 - 1.0 / double(m_bv.size()),
@@ -793,14 +759,14 @@ private:
 	/*
 	 * Calculates the optimal FPR to use based on hash functions
 	 */
-	inline double calcFPR_hashNum(int hashFunctNum) const {
+	double calcFPR_hashNum(int hashFunctNum) const {
 		return pow(2.0, -hashFunctNum);
 	}
 
 	/*
 	 * Returns old value that was inside
 	 */
-	inline T setVal(T *val, T newVal) {
+	T setVal(T *val, T newVal) {
 		T oldValue;
 		do {
 			oldValue = *val;

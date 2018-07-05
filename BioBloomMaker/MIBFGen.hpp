@@ -25,6 +25,7 @@
 #include <tuple>
 #include <google/dense_hash_map>
 #include <google/sparse_hash_map>
+#include <google/dense_hash_set>
 #include <sdsl/int_vector.hpp>
 
 #include <zlib.h>

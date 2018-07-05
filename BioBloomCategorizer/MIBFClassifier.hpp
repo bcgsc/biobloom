@@ -19,7 +19,6 @@
 #include "btl_bloomfilter/ntHashIterator.hpp"
 #include "bloomfilter/MIBFQuerySupport.hpp"
 #include <iostream>
-#include <boost/math/distributions/binomial.hpp>
 #include <BioBloomClassifier.h>
 #include <tuple>
 
@@ -30,8 +29,11 @@
 KSEQ_INIT(gzFile, gzread)
 #endif /*KSEQ_INIT_NEW*/
 
+#include <boost/math/distributions/binomial.hpp>
+
 using namespace std;
-using boost::math::binomial;
+using namespace boost::math::policies;
+using namespace boost::math;
 
 static const std::string base64_chars =
 		"!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
@@ -50,7 +52,7 @@ public:
 					<< " File cannot be opened. A corresponding id file is needed."
 					<< endl;
 			exit(1);
-		} else {
+		} else if (opt::verbose) {
 			cerr << "Loading ID file: " << idFile.c_str() << endl;
 		}
 		//first element is considered repetitive
@@ -72,10 +74,16 @@ public:
 			cerr << "Allowed miss (-a) should not be used with k-mers" << endl;
 			exit(1);
 		}
+		if (opt::verbose) {
+			cerr << "Calculating frame probabilities" << endl;
+		}
 
 		m_perFrameProb = vector<double>(m_fullIDs.size());
-		m_rateSaturated = MIBloomFilter<ID>::calcFrameProbs(m_filter, m_perFrameProb);
+		m_rateSaturated = m_filter.calcFrameProbs(m_perFrameProb, opt::allowMisses);
 		m_minCount.set_empty_key(0);
+		if (opt::verbose) {
+			cerr << "Filter loading complete" << endl;
+		}
 	}
 
 	void filterDebug(const vector<string> &inputFiles) {
@@ -217,7 +225,7 @@ public:
 			int l;
 			FaRec faRec;
 			MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
-					m_perFrameProb.size(), opt::multiThresh, opt::streakThreshold,
+					m_perFrameProb, opt::multiThresh, opt::streakThreshold,
 					opt::allowMisses);
 #pragma omp parallel private(l, faRec) firstprivate(support)
 			for (;;) {
@@ -273,12 +281,12 @@ public:
 							readsOutput << m_fullIDs[signifResults[i].id]
 									<< "\t" << faRec.header << " "
 									<< faRec.comment << "\t"
-									<< signifResults.size() << "\t";
+									<< support.getSatCount() << "\t";
 							if (signifResults.size() == 1) {
 								readsOutput << "*";
 							} else {
 								for (++i; i < signifResults.size(); ++i) {
-									if (i != 0) {
+									if (i != 1) {
 										readsOutput << ";";
 									}
 	//								readsOutput << m_fullIDs[signifResults[i].id]
@@ -297,14 +305,14 @@ public:
 								if (i != 0) {
 									readsOutput << ";";
 								}
-									readsOutput << m_fullIDs[signifResults[i].id]
-											<< ","
-											<< signifResults[i].nonSatFrameCount
-											<< "," << signifResults[i].nonSatCount
-											<< "," << signifResults[i].count << ","
+									readsOutput << m_fullIDs[signifResults[i].id] << ","
+											<< signifResults[i].nonSatFrameCount << ","
 											<< signifResults[i].solidCount << ","
+											<< signifResults[i].count << ","
+											<< signifResults[i].nonSatCount << ","
+											<< signifResults[i].totalNonSatCount << ","
 											<< signifResults[i].totalCount << ","
-											<< signifResults[i].totalNonSatCount;
+											<< signifResults[i].frameProb;
 									assert(signifResults[i].count < faRec.seq.size());
 							}
 							readsOutput << "\n";
@@ -368,7 +376,7 @@ public:
 		double startTime = omp_get_wtime();
 		int l1, l2;
 		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
-				m_perFrameProb.size(), opt::multiThresh, opt::streakThreshold,
+				m_perFrameProb, opt::multiThresh, opt::streakThreshold,
 				opt::allowMisses);
 #pragma omp parallel private(l1, l2, rec1, rec2) firstprivate(support)
 		for (;;) {
@@ -438,7 +446,7 @@ public:
 						unsigned i = 0;
 						readsOutput << m_fullIDs[signifResults[i].id] << "\t"
 								<< rec1.header << " " << rec1.comment << "\t"
-								<< signifResults.size() << "\t";
+								<< support.getSatCount() << "\t";
 						if (signifResults.size() == 1) {
 							readsOutput << "*";
 						} else {
@@ -469,7 +477,8 @@ public:
 										<< "," << signifResults[i].count << ","
 										<< signifResults[i].solidCount << ","
 										<< signifResults[i].totalCount << ","
-										<< signifResults[i].totalNonSatCount;
+										<< signifResults[i].totalNonSatCount << ","
+										<< signifResults[i].frameProb;
 						}
 						readsOutput << "\n";
 					}
@@ -525,14 +534,14 @@ private:
 	//TODO: Reuse itr object
 	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq) {
 		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
+		frameCount *= m_filter.getHashNum();
 #pragma omp critical(m_minCount)
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
 					new vector<unsigned>(m_fullIDs.size()));
-			for (size_t i = 0; i < m_fullIDs.size(); ++i) {
+			for (size_t i = 1; i < m_fullIDs.size(); ++i) {
 				(*m_minCount[frameCount])[i] = getMinCount(frameCount,
 						m_perFrameProb[i]);
-				assert((*m_minCount[frameCount])[i] > 1);
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
@@ -771,17 +780,14 @@ private:
 	}
 
 	inline unsigned getMinCount(unsigned length, double eventProb) {
-		binomial bin(length, 1.0 - eventProb);
-		double criticalScore = 1.0
-				- pow(1.0 - opt::score, 1.0 / double(m_fullIDs.size() - 1));
-		unsigned i = 0;
-		for (; i < length; ++i) {
-			double cumProb = cdf(bin, length - i);
-			if (criticalScore > cumProb) {
-				break;
-			}
-		}
-		return (i > 1 ? i : 2);
+		typedef boost::math::binomial_distribution<
+		            double,
+		            policy<discrete_quantile<integer_round_up> > >
+		        binom_round_up;
+		binom_round_up bin(length, eventProb);
+		double criticalScore = opt::score / double(m_fullIDs.size() - 1);
+		unsigned i = quantile(complement(bin, criticalScore));
+		return i > 1 ? i : 1;
 	}
 
 	//debug helper methods
