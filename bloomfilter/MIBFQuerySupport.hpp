@@ -395,19 +395,16 @@ private:
 		}
 		for (typename vector<T>::iterator itr = m_seenSet.begin();
 				itr != m_seenSet.end(); ++itr) {
-			if (*itr > m_miBF.s_mask) {
-				if (m_counts[*itr].count >= minCount[*itr]) {
-					if (find(m_candidateMatches.begin(),
-							m_candidateMatches.end(), *itr)
-							== m_candidateMatches.end()) {
-						m_candidateMatches.push_back(*itr);
-					}
-					if (m_counts[*itr].nonSatFrameCount > bestCount) {
-						bestCount = m_counts[*itr].nonSatFrameCount;
-					} else if (m_counts[*itr].nonSatFrameCount
-							> secondBestCount) {
-						secondBestCount = m_counts[*itr].nonSatFrameCount;
-					}
+			T result = *itr &= m_miBF.s_antiMask;
+			if (m_counts[result].count >= minCount[result]) {
+				if (find(m_candidateMatches.begin(), m_candidateMatches.end(),
+						result) == m_candidateMatches.end()) {
+					m_candidateMatches.push_back(*itr);
+				}
+				if (m_counts[result].nonSatFrameCount > bestCount) {
+					bestCount = m_counts[result].nonSatFrameCount;
+				} else if (m_counts[result].nonSatFrameCount > secondBestCount) {
+					secondBestCount = m_counts[result].nonSatFrameCount;
 				}
 			}
 		}
