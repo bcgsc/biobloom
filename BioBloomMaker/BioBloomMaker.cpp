@@ -19,7 +19,6 @@
 #if _OPENMP
 # include <omp.h>
 #endif
-#include "MIBFGen.hpp"
 
 using namespace std;
 
@@ -74,11 +73,6 @@ void printHelpDialog() {
 		"                         progressive mode.\n"
 		"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 		"                         is determined from sequences sizes within files. [0]\n"
-		"\nMultiIndex Bloom filter options\n"
-		"  -m, --multi_index      Generate a MultiIndex Bloom Filter. Experimental\n"
-		"  -S, --seed_str=N       Generate a miBF using multiple spaced seeds instead of\n"
-		"                         kmers. Expects list of seed 1s & 0s separated by spaces.\n"
-		"  -F, --by_file          For miBF, assign IDs by file rather than by fasta header\n"
 		"\nOptions for progressive filters:\n"
 		"  -r, --progressive=N    Progressive filter creation. The score threshold is\n"
 		"                         specified by N, which may be either a floating point\n"
@@ -138,12 +132,9 @@ int main(int argc, char *argv[]) {
 			"help", no_argument, NULL, 'h' }, {
 			"threads", required_argument, NULL, 't' }, {
 			"fal_pos_rate", required_argument, NULL, 'f' }, {
-			"multi_index", no_argument, NULL, 'm' }, {
-			"seed_str", required_argument, NULL, 'S' }, {
 			"hash_num", required_argument, NULL, 'g' }, {
 			"kmer_size", required_argument, NULL, 'k' }, {
 			"num_ele", required_argument, NULL, 'n' }, {
-			"by_file", no_argument, NULL, 'F' }, {
 			"progressive", required_argument, NULL, 'r' }, {
 			"subtract",	required_argument, NULL, 's' }, {
 			"no_rep_kmer", no_argument, NULL, 'd' }, {
@@ -160,7 +151,7 @@ int main(int argc, char *argv[]) {
 
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:da:I:FcCS:m",
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:t:Pr:ib:e:l:da:I:",
 			long_options, &option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -193,19 +184,6 @@ int main(int argc, char *argv[]) {
 				cerr << "Error - Invalid parameter! t: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
-			break;
-		}
-		case 'm': {
-			opt::filterType = BLOOMMAP;
-			break;
-		}
-		case 'S': {
-			opt::sseeds = convertInputString(optarg);
-			opt::kmerSize = opt::sseeds[0].size();
-			break;
-		}
-		case 'F': {
-			opt::idByFile = true;
 			break;
 		}
 		case 'i': {
@@ -431,13 +409,6 @@ int main(int argc, char *argv[]) {
 			cerr << "Score threshold = " << progressive << endl;
 			break;
 		}
-	}
-
-	if (opt::filterType == BLOOMMAP) {
-		MIBFGen filterGen(inputFiles, opt::kmerSize, entryNum);
-		filterGen.generate(outputDir + filterPrefix, opt::fpr);
-		cerr << "Bloom Map Creation Complete." << endl;
-		return 0;
 	}
 
 	if(!opt::sseeds.empty()){
