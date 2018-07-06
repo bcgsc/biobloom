@@ -262,14 +262,6 @@ int main(int argc, char *argv[])
 			opt::inclusive = true;
 			break;
 		}
-		case 'a': {
-			stringstream convert(optarg);
-			if (!(convert >> opt::allowMisses)) {
-				cerr << "Error - Invalid parameter! a: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
 		case 'G': {
 			stringstream convert(optarg);
 			if (!(convert >> opt::maxGroupSize)) {
