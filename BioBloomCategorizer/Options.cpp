@@ -19,7 +19,7 @@ OutType outputType = NONE;
 bool minHitOnly = false;
 unsigned maxGroupSize = std::numeric_limits<unsigned>::max();
 int debug = 0;
-unsigned multiThresh = 1;
+unsigned multiThresh = 2;
 bool inverse = false;
 
 std::string filtersFile = "";

@@ -101,8 +101,8 @@ void printHelpDialog()
 	"Experimental options (may change in the future)\n"
 	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
 	"                         miBFs.[0]\n"
-	"  -m, --multi=N          Multi Match threshold.[1]\n"
-	"  -r, --streak=N         Number of additional hits needed to skip classification.[3]\n"
+	"  -m, --multi=N          Multi Match threshold.[2]\n"
+	"  -r, --streak=N         Number of additional hits needed to skip classification. [20]\n"
 	"  --debug                debug filter output mode.\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
@@ -123,6 +123,7 @@ int main(int argc, char *argv[])
 	int OPT_VERSION = 0;
 
 	opt::score = pow(10.0,-6.0);
+	opt::streakThreshold = 10;
 
 	vector<string> inputFiles;
 
