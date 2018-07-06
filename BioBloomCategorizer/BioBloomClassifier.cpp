@@ -12,7 +12,8 @@
 #include <sstream>
 #include <sys/stat.h>
 #include "Common/Options.h"
-#include <map>
+#include <boost/shared_ptr.hpp>
+#include <unordered_map>
 #if _OPENMP
 # include <omp.h>
 #endif
@@ -471,8 +472,7 @@ void BioBloomClassifier::filterPair(const string &file) {
 	//results summary object
 	ResultsManager<unsigned> resSummary(m_filterOrder, m_inclusive);
 
-	google::dense_hash_map<string, FaRec> unPairedReads;
-	unPairedReads.set_empty_key("");
+	unordered_map<string, boost::shared_ptr<FaRec> > unPairedReads;
 
 	size_t totalReads = 0;
 
@@ -503,31 +503,34 @@ void BioBloomClassifier::filterPair(const string &file) {
 		{
 			l = kseq_read(kseq);
 			if (l >= 0) {
-				rec.header = string(kseq->name.s, kseq->name.l);
+				rec.header = string(kseq->name.s,
+						kseq->name.s[kseq->name.l - 1] == '1'
+								|| kseq->name.s[kseq->name.l - 1] == '2' ?
+								kseq->name.l - 2 : kseq->name.l);
 				rec.seq = string(kseq->seq.s, l);
 				rec.qual = string(kseq->qual.s, kseq->qual.l);
 				rec.comment = string(kseq->comment.s, kseq->comment.l);
 			}
 		}
-		bool pairFound;
 		if (l >= 0) {
-			//TODO:prevent copy somehow?
-			string readID = string(rec.header, rec.header.length() - 2);
+			unordered_map<string, boost::shared_ptr<FaRec> >::iterator itr = unPairedReads.find(rec.header);
+			bool pairFound = false;
 #pragma omp critical(unPairedReads)
 			{
-				if (unPairedReads.find(readID) != unPairedReads.end()) {
+				if (unPairedReads.find(rec.header) != unPairedReads.end()) {
 					pairFound = true;
 				} else {
-					unPairedReads[readID] = rec;
+					unPairedReads[rec.header] = boost::shared_ptr<FaRec>(
+							new FaRec());
+					unPairedReads[rec.header]->header = rec.header;
+					unPairedReads[rec.header]->seq = rec.seq;
+					unPairedReads[rec.header]->qual = rec.qual;
+					unPairedReads[rec.header]->comment = rec.comment;
 				}
 			}
 			if (pairFound) {
-				FaRec &rec1 =
-						rec.header[rec.header.length() - 1] == '1' ?
-								rec : unPairedReads[readID];
-				FaRec &rec2 =
-						rec.header[rec.header.length() - 1] == '1' ?
-								unPairedReads[readID] : rec;
+				FaRec &rec1 = rec;
+				FaRec &rec2 = *itr->second;
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
@@ -552,6 +555,7 @@ void BioBloomClassifier::filterPair(const string &file) {
 
 				//Evaluate hit data and record for summary
 				printPair(rec1, rec2, score1, score2, outputFileIndex);
+				unPairedReads.erase(itr->first);
 			}
 		} else
 			break;
@@ -579,9 +583,7 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 	//results summary object
 	ResultsManager<unsigned> resSummary(m_filterOrder, m_inclusive);
 
-	google::dense_hash_map<string, FaRec> unPairedReads;
-	unPairedReads.set_empty_key("");
-
+	unordered_map<string, boost::shared_ptr<FaRec> > unPairedReads;
 	size_t totalReads = 0;
 
 	vector<Dynamicofstream*> outputFiles1(m_filterOrder.size() + 2, 0);
@@ -630,31 +632,30 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 		{
 			l = kseq_read(kseq);
 			if (l >= 0) {
-				rec.header = string(kseq->name.s, kseq->name.l);
+				rec.header = string(kseq->name.s,
+						kseq->name.s[kseq->name.l - 1] == '1'
+								|| kseq->name.s[kseq->name.l - 1] == '2' ?
+								kseq->name.l - 2 : kseq->name.l);
 				rec.seq = string(kseq->seq.s, l);
 				rec.qual = string(kseq->qual.s, kseq->qual.l);
 				rec.comment = string(kseq->comment.s, kseq->comment.l);
 			}
 		}
-		bool pairFound;
 		if (l >= 0) {
-			//TODO:prevent copy somehow?
-			string readID = string(rec.header, rec.header.length() - 2);
+			unordered_map<string, boost::shared_ptr<FaRec> >::iterator itr = unPairedReads.find(rec.header);
+			bool pairFound = false;
 #pragma omp critical(unPairedReads)
 			{
-				if (unPairedReads.find(readID) != unPairedReads.end()) {
+				if (unPairedReads.find(rec.header) != unPairedReads.end()) {
 					pairFound = true;
 				} else {
-					unPairedReads[readID] = rec;
+					boost::shared_ptr<FaRec> ptr(new FaRec(rec));
+					unPairedReads[ptr->header] = ptr;
 				}
 			}
 			if (pairFound) {
-				FaRec &rec1 =
-						rec.header[rec.header.length() - 1] == '1' ?
-								rec : unPairedReads[readID];
-				FaRec &rec2 =
-						rec.header[rec.header.length() - 1] == '1' ?
-								unPairedReads[readID] : rec;
+				FaRec &rec1 = rec;
+				FaRec &rec2 = *itr->second;
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
@@ -682,6 +683,7 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 				printPairToFile(outputFileIndex, rec1, rec2, outputFiles1,
 						outputFiles2, outputType, score1, score2, scores1,
 						scores2, resSummary);
+				unPairedReads.erase(itr->first);
 			}
 		} else
 			break;

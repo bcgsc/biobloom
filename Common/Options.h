@@ -23,7 +23,6 @@ namespace opt {
 	extern const ID EMPTY;
 	extern const ID COLLI;
 	extern std::vector<std::string> sseeds;
-	extern unsigned allowMisses;
 	extern double baitThreshold;
 	extern unsigned progItrns;
 	extern std::vector<std::string> fileList1;
@@ -36,7 +35,6 @@ namespace opt {
 	//TODO: move to own header file
 	extern bool idByFile;
 //	extern double occupancy;
-
 
 	//options for new refactored code
 	extern std::string prefix;

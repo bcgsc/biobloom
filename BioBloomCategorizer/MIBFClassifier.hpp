@@ -70,16 +70,16 @@ public:
 			getline(idFH, line);
 		}
 		idFH.close();
-		if (opt::allowMisses > 0 && m_filter.getSeedValues().size() == 0) {
-			cerr << "Allowed miss (-a) should not be used with k-mers" << endl;
-			exit(1);
-		}
+		m_allowedMiss =
+				(opt::frameMatches > m_filter.getHashNum())
+						|| (m_filter.getSeedValues().size() == 0) ?
+						0 : m_filter.getHashNum() - opt::frameMatches;
 		if (opt::verbose) {
 			cerr << "Calculating frame probabilities" << endl;
 		}
 
 		m_perFrameProb = vector<double>(m_fullIDs.size());
-		m_rateSaturated = m_filter.calcFrameProbs(m_perFrameProb, opt::allowMisses);
+		m_rateSaturated = m_filter.calcFrameProbs(m_perFrameProb, m_allowedMiss);
 		m_minCount.set_empty_key(0);
 		if (opt::verbose) {
 			cerr << "Filter loading complete" << endl;
@@ -226,7 +226,7 @@ public:
 			FaRec faRec;
 			MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
 					m_perFrameProb, opt::multiThresh, opt::streakThreshold,
-					opt::allowMisses);
+					m_allowedMiss, opt::minCountNonSatCount);
 #pragma omp parallel private(l, faRec) firstprivate(support)
 			for (;;) {
 #pragma omp critical(sequence)
@@ -377,7 +377,7 @@ public:
 		int l1, l2;
 		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
 				m_perFrameProb, opt::multiThresh, opt::streakThreshold,
-				opt::allowMisses);
+				m_allowedMiss, opt::minCountNonSatCount);
 #pragma omp parallel private(l1, l2, rec1, rec2) firstprivate(support)
 		for (;;) {
 #pragma omp critical(kseq)
@@ -505,6 +505,7 @@ private:
 	vector<double> m_perFrameProb;
 	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>> m_minCount;
 	double m_rateSaturated;
+	unsigned m_allowedMiss;
 
 	bool fexists(const string &filename) const {
 		ifstream ifile(filename.c_str());
@@ -642,7 +643,7 @@ private:
 		if (m_filter.getSeedValues().size() > 0) {
 			stHashIterator itr(seq, m_filter.getSeedValues(), m_filter.getHashNum(), m_filter.getKmerSize());
 			while (itr != itr.end()) {
-				vector<ID> results = m_filter.at(*itr, opt::allowMisses);
+				vector<ID> results = m_filter.at(*itr, m_allowedMiss);
 				vector<pair<ID, bool>> processedResults(results.size(), pair<ID, bool>(0,false));
 				if (results.size() > 0) {
 					for (unsigned i = 0; i < m_filter.getHashNum(); ++i) {
@@ -663,7 +664,7 @@ private:
 			ntHashIterator itr(seq, m_filter.getHashNum(),
 					m_filter.getKmerSize());
 			while (itr != itr.end()) {
-				vector<ID> results = m_filter.at(*itr, opt::allowMisses);
+				vector<ID> results = m_filter.at(*itr, m_allowedMiss);
 				vector<pair<ID, bool>> processedResults(results.size(), pair<ID, bool>(0,false));
 				if (results.size() > 0) {
 					for (unsigned i = 0; i < m_filter.getHashNum(); ++i) {

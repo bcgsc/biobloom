@@ -14,7 +14,6 @@ namespace opt {
 	const ID EMPTY = 0;
 	const ID COLLI = std::numeric_limits<ID>::max();
 	std::vector<std::string> sseeds;
-	unsigned allowMisses = 0;
 
 	bool idByFile = false;
 

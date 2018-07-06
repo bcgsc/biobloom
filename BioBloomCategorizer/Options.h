@@ -31,5 +31,8 @@ extern bool inverse;
 extern std::string filtersFile;
 extern bool paired;
 extern bool stdout;
+
+extern unsigned minCountNonSatCount;
+extern unsigned frameMatches;
 }
 #endif

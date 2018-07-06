@@ -99,10 +99,12 @@ void printHelpDialog()
 	"  -v, --verbose          Display verbose output\n"
 	"  -I, --interval         the interval to report file processing status [10000000]\n"
 	"Experimental options (may change in the future)\n"
-	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
-	"                         miBFs.[0]\n"
+	"  -f, --frameMatches=N    Min number seed matches needed in a frame to match [1]\n"
+	"                          Ignored if k-mers used when indexing.\n"
 	"  -m, --multi=N          Multi Match threshold.[2]\n"
 	"  -r, --streak=N         Number of additional hits needed to skip classification. [20]\n"
+	"  -c, --minNoSat         Minimum count of non saturated matches. Increasing this value\n"
+	"                         will filter out repetitive or low quality sequences.[0]\n"
 	"  --debug                debug filter output mode.\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
@@ -136,13 +138,14 @@ int main(int argc, char *argv[])
 		"help", no_argument, NULL, 'h' }, {
 		"interval",	required_argument, NULL, 'I' }, {
 		"threads", required_argument, NULL, 't' }, {
-		"allowed_miss", required_argument, NULL, 'a' }, {
+		"frameMatches", required_argument, NULL, 'f' }, {
 		"fq", no_argument, &FASTQ, 1 }, {
 		"fa", no_argument, &FASTA, 1 }, {
 		"tsv", no_argument, &TSV, 1 }, {
 		"version", no_argument, &OPT_VERSION, 1 }, {
 		"multi", required_argument, NULL, 'm' }, {
 		"streak", required_argument, NULL, 'r' }, {
+		"minNoSat", required_argument, NULL, 'c' }, {
 		"stdout_filter", no_argument, NULL, 'd' }, {
 		"inverse", no_argument, NULL, 'n' }, {
 		"debug", no_argument, &opt::debug, 1 }, {
@@ -150,7 +153,7 @@ int main(int argc, char *argv[])
 		NULL, 0, NULL, 0 } };
 
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "p:f:es:hI:t:a:m:r:dnv", long_options,
+	while ((c = getopt_long(argc, argv, "p:f:es:hI:t:f:m:r:dnvc:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -188,7 +191,7 @@ int main(int argc, char *argv[])
 		}
 		case 'a': {
 			stringstream convert(optarg);
-			if (!(convert >> opt::allowMisses)) {
+			if (!(convert >> opt::frameMatches)) {
 				cerr << "Error - Invalid parameter! a: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
@@ -210,6 +213,14 @@ int main(int argc, char *argv[])
 			stringstream convert(optarg);
 			if (!(convert >> opt::streakThreshold)) {
 				cerr << "Error - Invalid parameter! r: " << optarg << endl;
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
+		case 'c': {
+			stringstream convert(optarg);
+			if (!(convert >> opt::minCountNonSatCount)) {
+				cerr << "Error - Invalid parameter! c: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
 			break;

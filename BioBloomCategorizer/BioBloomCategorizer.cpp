@@ -81,7 +81,8 @@ void printHelpDialog()
 	const char dialog[] =
 	"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
 	"biobloomcategorizer [OPTION]... -e -f \"[FILTER1]...\" [FILE1.fq] [FILE2.fq]\n"
-	"The input format may be FASTA, FASTQ, and compressed with gz.\n"
+	"biobloomcategorizer [OPTION]... -e -f \"[FILTER1]...\" [SMARTFILE.fq]\n"
+	"Categorize Sequences. The input format may be FASTA, FASTQ, and compressed gz.\n"
 	"\n"
 	"  -p, --prefix=N         Output prefix to use. Otherwise will output to current\n"
 	"                         directory.\n"
@@ -194,7 +195,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:hegl:vs:r:t:cdiwI:a:G:m:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:hegl:vs:r:t:cdiwI:a:G:m:n:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -354,23 +355,18 @@ int main(int argc, char *argv[])
 		optind++;
 	}
 
-	bool pairedBAMSAM = false;
+	bool smartPair = false;
 
 	//check validity of inputs for paired end mode
 	if (paired) {
-		if (inputFiles.size() == 1
-				&& (inputFiles[0].substr(inputFiles[0].size() - 4) == ".bam"
-						|| inputFiles[0].substr(inputFiles[0].size() - 4)
-								== ".sam"))
+		if (inputFiles.size() == 1)
 		{
-			pairedBAMSAM = true;
-		} else if (inputFiles.size() == 2) {
-			pairedBAMSAM = false;
+			smartPair = true;
 		}
-		else if (fileListFilename == "") {
+		else {
 			cerr << "Usage of paired end mode:\n"
 					<< "BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [FILEPAIR1] [FILEPAIR2]\n"
-					<< "or BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [PAIREDBAMSAM]\n"
+					<< "or BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [SMARTPAIR]\n"
 					<< endl;
 			exit(1);
 		}
@@ -480,14 +476,14 @@ int main(int argc, char *argv[])
 		}
 		if (opt::outputType) {
 
-			if (pairedBAMSAM) {
+			if (smartPair) {
 				bbc.filterPairPrint(inputFiles[0], outputType);
 			} else {
 				bbc.filterPairPrint(inputFiles[0], inputFiles[1],
 						outputType);
 			}
 		} else {
-			if (pairedBAMSAM) {
+			if (smartPair) {
 				bbc.filterPair(inputFiles[0]);
 			} else if (fileListFilename != "") {
 				string line;

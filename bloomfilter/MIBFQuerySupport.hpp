@@ -31,10 +31,10 @@ class MIBFQuerySupport {
 public:
 	MIBFQuerySupport(const MIBloomFilter<T> &miBF,
 			const vector<double> &perFrameProb,
-			unsigned extraCount, unsigned extraFrameLimit, unsigned maxMiss) :
+			unsigned extraCount, unsigned extraFrameLimit, unsigned maxMiss, unsigned minCount) :
 			m_miBF(miBF), m_perFrameProb(perFrameProb), m_extraCount(
 					extraCount), m_extraFrameLimit(extraFrameLimit), m_maxMiss(
-					maxMiss), m_satCount(0), m_evalCount(0), m_rankPos(
+					maxMiss), m_minCount(minCount), m_satCount(0), m_evalCount(0), m_rankPos(
 					miBF.getHashNum()), m_hits(miBF.getHashNum()), m_counts(
 					vector<CountResult>(perFrameProb.size(), { 0, 0, 0, 0, 0, 0 })) {
 
@@ -305,6 +305,7 @@ private:
 	const unsigned m_extraCount;
 	const unsigned m_extraFrameLimit;
 	const unsigned m_maxMiss;
+	const unsigned m_minCount;
 //	const double m_rateSaturated;
 
 	//resusable variables
@@ -430,7 +431,7 @@ private:
 	}
 
 	void summarizeCandiates(unsigned bestCount) {
-		if (m_candidateMatches.size()) {
+		if (m_candidateMatches.size() && m_minCount <= bestCount) {
 			for (typename vector<T>::const_iterator candidate =
 					m_candidateMatches.begin();
 					candidate != m_candidateMatches.end(); candidate++) {

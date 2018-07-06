@@ -563,6 +563,31 @@ public:
 		return saturatedCounts;
 	}
 
+//	size_t getIDCounts(vector<size_t> &counts) const {
+//		vector<vector<size_t>> allCounts(omp_get_num_threads(),
+//				vector<size_t>(counts.size(), 0));
+//		size_t saturatedCounts = 0;
+//#pragma omp parallel for
+//		for (size_t i = 0; i < m_dSize; ++i) {
+//			T data = m_data[i];
+//			if(data > s_mask){
+//				++allCounts[omp_get_thread_num()][data & s_antiMask];
+//#pragma omp atomic update
+//				++saturatedCounts;
+//			}
+//			else{
+//				++allCounts[omp_get_thread_num()][data];
+//			}
+//		}
+//		for (size_t i = 0; i < counts.size(); ++i) {
+//			for (size_t j = 0; j < allCounts.size(); ++j) {
+//				counts[i] += allCounts[j][i];
+//			}
+//		}
+//
+//		return saturatedCounts;
+//	}
+
 	size_t getPop() const {
 		size_t index = m_bv.size() - 1;
 		while (m_bv[index] == 0) {

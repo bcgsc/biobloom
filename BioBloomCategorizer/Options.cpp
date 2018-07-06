@@ -25,6 +25,9 @@ bool inverse = false;
 std::string filtersFile = "";
 bool paired = false;
 bool stdout = false;
+
+unsigned minCountNonSatCount = 0;
+unsigned frameMatches = 0;
 }
 
 
