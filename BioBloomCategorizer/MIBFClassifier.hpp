@@ -226,7 +226,7 @@ public:
 			FaRec faRec;
 			MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
 					m_perFrameProb, opt::multiThresh, opt::streakThreshold,
-					m_allowedMiss, opt::minCountNonSatCount);
+					m_allowedMiss, opt::minCountNonSatCount, opt::bestHitCountAgree);
 #pragma omp parallel private(l, faRec) firstprivate(support)
 			for (;;) {
 #pragma omp critical(sequence)
@@ -377,7 +377,7 @@ public:
 		int l1, l2;
 		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
 				m_perFrameProb, opt::multiThresh, opt::streakThreshold,
-				m_allowedMiss, opt::minCountNonSatCount);
+				m_allowedMiss, opt::minCountNonSatCount, opt::bestHitCountAgree);
 #pragma omp parallel private(l1, l2, rec1, rec2) firstprivate(support)
 		for (;;) {
 #pragma omp critical(kseq)

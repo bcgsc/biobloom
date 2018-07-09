@@ -89,22 +89,24 @@ void printHelpDialog()
 	"                         larger than normal. Sorting by read name may be needed.\n"
 	"  -s, --min_FPR=N        Minimum -10*log(FPR) threshold for a match. [60.0]\n"
 	"  -t, --threads=N        The number of threads to use. [1]\n"
-	"  -d, --stdout_filter    Outputs all matching reads to stdout in fastq\n"
-	"                         and if paired will output will be interlaced.\n"
-	"  -n, --inverse          Inverts the output of -d.\n"
+//	"  -d, --stdout=N         Outputs all matching reads to set of targets to stdout\n"
+//	"                         in fastq and if paired will output will be interlaced.\n"
+//	"  -n, --inverse          Inverts the output of -d.\n"
 	"      --fa               Output categorized reads in Fasta files.\n"
 	"      --fq               Output categorized reads in Fastq files.\n"
 	"      --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
 	"  -v, --verbose          Display verbose output\n"
 	"  -I, --interval         the interval to report file processing status [10000000]\n"
-	"Experimental options (may change in the future)\n"
-	"  -f, --frameMatches=N    Min number seed matches needed in a frame to match [1]\n"
-	"                          Ignored if k-mers used when indexing.\n"
+	"Advanced options:\n"
+	"  -a, --frameMatches=N   Min number seed matches needed in a frame to match [1]\n"
+	"                         Ignored if k-mers used when indexing.\n"
 	"  -m, --multi=N          Multi Match threshold.[2]\n"
 	"  -r, --streak=N         Number of additional hits needed to skip classification. [20]\n"
 	"  -c, --minNoSat         Minimum count of non saturated matches. Increasing this value\n"
 	"                         will filter out repetitive or low quality sequences.[0]\n"
+	"  -b, --bestHitAgree     Filters out all matches where best hit is ambiguous because\n"
+	"                         match count metrics do not agree."
 	"  --debug                debug filter output mode.\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
@@ -138,7 +140,7 @@ int main(int argc, char *argv[])
 		"help", no_argument, NULL, 'h' }, {
 		"interval",	required_argument, NULL, 'I' }, {
 		"threads", required_argument, NULL, 't' }, {
-		"frameMatches", required_argument, NULL, 'f' }, {
+		"frameMatches", required_argument, NULL, 'a' }, {
 		"fq", no_argument, &FASTQ, 1 }, {
 		"fa", no_argument, &FASTA, 1 }, {
 		"tsv", no_argument, &TSV, 1 }, {
@@ -146,14 +148,15 @@ int main(int argc, char *argv[])
 		"multi", required_argument, NULL, 'm' }, {
 		"streak", required_argument, NULL, 'r' }, {
 		"minNoSat", required_argument, NULL, 'c' }, {
-		"stdout_filter", no_argument, NULL, 'd' }, {
+		"bestHitAgree", no_argument, NULL, 'b' }, {
+		"stdout", no_argument, NULL, 'd' }, {
 		"inverse", no_argument, NULL, 'n' }, {
 		"debug", no_argument, &opt::debug, 1 }, {
 		"verbose", no_argument, NULL, 'v' }, {
 		NULL, 0, NULL, 0 } };
 
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "p:f:es:hI:t:f:m:r:dnvc:", long_options,
+	while ((c = getopt_long(argc, argv, "p:f:es:hI:t:f:m:r:dnvc:a:b", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -195,6 +198,10 @@ int main(int argc, char *argv[])
 				cerr << "Error - Invalid parameter! a: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
+			break;
+		}
+		case 'b': {
+			opt::bestHitCountAgree = true;
 			break;
 		}
 		case 't': {

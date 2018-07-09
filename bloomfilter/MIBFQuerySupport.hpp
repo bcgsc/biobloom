@@ -13,8 +13,8 @@
  *      Author: justin
  */
 
-#ifndef CHROMIUMMAP_MIBFQUERYSUPPORT_HPP_
-#define CHROMIUMMAP_MIBFQUERYSUPPORT_HPP_
+#ifndef MIBFQUERYSUPPORT_HPP_
+#define MIBFQUERYSUPPORT_HPP_
 
 #include "MIBloomFilter.hpp"
 //#include <set>
@@ -30,16 +30,16 @@ template<typename T>
 class MIBFQuerySupport {
 public:
 	MIBFQuerySupport(const MIBloomFilter<T> &miBF,
-			const vector<double> &perFrameProb,
-			unsigned extraCount, unsigned extraFrameLimit, unsigned maxMiss, unsigned minCount) :
+			const vector<double> &perFrameProb, unsigned extraCount,
+			unsigned extraFrameLimit, unsigned maxMiss, unsigned minCount,
+			bool bestHitAgree) :
 			m_miBF(miBF), m_perFrameProb(perFrameProb), m_extraCount(
 					extraCount), m_extraFrameLimit(extraFrameLimit), m_maxMiss(
-					maxMiss), m_minCount(minCount), m_satCount(0), m_evalCount(0), m_rankPos(
-					miBF.getHashNum()), m_hits(miBF.getHashNum()), m_counts(
-					vector<CountResult>(perFrameProb.size(), { 0, 0, 0, 0, 0, 0 })) {
-
-		//this should be a very small array most of the time
-//		m_signifResults.reserve(numIDs);
+					maxMiss), m_minCount(minCount), m_bestHitAgree(bestHitAgree), m_satCount(
+					0), m_evalCount(0), m_rankPos(miBF.getHashNum()), m_hits(
+					miBF.getHashNum()), m_counts(
+					vector<CountResult>(perFrameProb.size(),
+							{ 0, 0, 0, 0, 0, 0 })) {
 		//this should always be a small array
 		m_seenSet.reserve(miBF.getHashNum());
 	}
@@ -53,7 +53,6 @@ public:
 		uint16_t nonSatFrameCount;
 		uint16_t solidCount;
 		double frameProb;
-//		bool strand;
 	};
 
 	struct CountResult {
@@ -64,98 +63,6 @@ public:
 		uint16_t nonSatFrameCount;
 		uint16_t solidCount;
 	};
-
-	//default destructor should be fine
-//	virtual ~MIBFQuerySupport();
-
-//	/*
-//	 * Strand & region aware query
-//	 * Takes a read, region hash table and computes most likely hit
-//	 * TODO: If junction exists, return position of junction to position read
-//	 * TODO: use different perFrameProb (generalized to shared frames to increase sensitivity)
-//	 */
-//	const vector<QueryResult> &queryStrandJunction(stHashIterator &itr,
-//			const vector<unsigned> &minCount) {
-//		//reset reusable values
-//		m_candidateMatches.clear();
-//		m_strandCounts.clear();
-//		m_signifResults.clear();
-//		m_satCount = 0;
-//		m_evalCount = 0;
-//
-//		unsigned extraFrame = 0;
-//		unsigned bestCount = 0;
-//		unsigned secondBestCount = 0;
-//		bool candidateFound = false;
-//
-//		while (itr != itr.end() && !candidateFound) {
-//			candidateFound = updateCountsSeedsStrand(itr, minCount, bestCount,
-//					secondBestCount, extraFrame);
-//			++itr;
-//		}
-////		probSaturated = calcSat(totalEvaluated, m_rateSaturated,
-////				saturatedCount);
-//		summarizeCandiatesStrand(bestCount);
-//		return m_signifResults;
-//	}
-
-//	/*
-//	 * Strand & region aware query
-//	 * Takes a read, region hash table and computes most likely hit
-//	 */
-//	const vector<QueryResult> &queryStrand(stHashIterator &itr,
-//			const vector<unsigned> &minCount) {
-//		//reset reusable values
-//		m_candidateMatches.clear();
-//		m_strandCounts.clear();
-//		m_signifResults.clear();
-//		m_satCount = 0;
-//		m_evalCount = 0;
-//
-//		unsigned extraFrame = 0;
-//		unsigned bestCount = 0;
-//		unsigned secondBestCount = 0;
-//		bool candidateFound = false;
-//
-//		while (itr != itr.end() && !candidateFound) {
-//			candidateFound = updateCountsSeedsStrand(itr, minCount, bestCount,
-//					secondBestCount, extraFrame);
-//			++itr;
-//		}
-////		probSaturated = calcSat(totalEvaluated, m_rateSaturated,
-////				saturatedCount);
-//		summarizeCandiatesStrand(bestCount);
-//		return m_signifResults;
-//	}
-
-//	/*
-//	 * Strand & region aware query
-//	 * Takes a read, region hash table and computes most likely hit
-//	 */
-//	const vector<QueryResult> &queryStrand(ntHashIterator &itr,
-//			const vector<unsigned> &minCount) {
-//		//reset reusable values
-//		m_candidateMatches.clear();
-//		m_strandCounts.clear();
-//		m_signifResults.clear();
-//		m_satCount = 0;
-//		m_evalCount = 0;
-//
-//		unsigned extraFrame = 0;
-//		unsigned bestCount = 0;
-//		unsigned secondBestCount = 0;
-//		bool candidateFound = false;
-//
-//		while (itr != itr.end() && !candidateFound) {
-//			candidateFound = updateCountsKmerStrand(itr, minCount, bestCount,
-//					secondBestCount, extraFrame);
-//			++itr;
-//		}
-////		probSaturated = calcSat(evaluatedValues,
-////				pow(m_rateSaturated, m_miBF.getHashNum()), saturatedCount);
-//		summarizeCandiatesStrand(bestCount);
-//		return m_signifResults;
-//	}
 
 	/*
 	 * totalTrials = number of possible trials that can be checked
@@ -297,6 +204,17 @@ private:
 					a.nonSatFrameCount > b.nonSatFrameCount);
 	}
 
+	bool checkCountAgreement(QueryResult b, QueryResult a){
+		return (
+				b.nonSatFrameCount >= a.nonSatFrameCount
+				&& b.count >= a.count
+				&& b.solidCount >= a.solidCount
+				&& b.nonSatCount >= a.nonSatCount
+				&& b.totalNonSatCount >= a.totalNonSatCount
+				&& b.totalCount >= a.totalCount
+				);
+	}
+
 	//contains reference to parent
 	const MIBloomFilter<T> &m_miBF;
 	const vector<double> &m_perFrameProb;
@@ -306,6 +224,7 @@ private:
 	const unsigned m_extraFrameLimit;
 	const unsigned m_maxMiss;
 	const unsigned m_minCount;
+	const bool m_bestHitAgree;
 //	const double m_rateSaturated;
 
 	//resusable variables
@@ -451,33 +370,13 @@ private:
 			}
 			sort(m_signifResults.begin(), m_signifResults.end(),
 					sortCandidates);
+			if (m_bestHitAgree && m_signifResults.size() >= 2
+					&& !checkCountAgreement(m_signifResults[0],
+							m_signifResults[1])) {
+				m_signifResults.clear();
+			}
 		}
 	}
-//
-//	void summarizeCandiatesStrand(unsigned bestCount) {
-//		if (m_candidateMatches.size()) {
-//			for (typename vector<T>::const_iterator candidate =
-//					m_candidateMatches.begin();
-//					candidate != m_candidateMatches.end(); candidate++) {
-//				//true = rv, false = fw
-//				bool strand = m_strandCounts[*candidate].first
-//						> m_strandCounts[*candidate].second;
-//				unsigned tempCount =
-//						strand ?
-//								m_strandCounts[*candidate].first :
-//								m_strandCounts[*candidate].second;
-//				if (bestCount <= tempCount + m_extraCount) {
-//					QueryResult result;
-//					result.id = *candidate;
-//					result.strand = strand;
-//					result.count = tempCount;
-//					m_signifResults.push_back(result);
-//				}
-//			}
-//			sort(m_signifResults.begin(), m_signifResults.end(),
-//					sortCandidates);
-//		}
-//	}
 };
 
-#endif /* CHROMIUMMAP_MIBFQUERYSUPPORT_HPP_ */
+#endif /* MIBFQUERYSUPPORT_HPP_ */
