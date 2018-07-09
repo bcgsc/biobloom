@@ -270,6 +270,14 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	//Streak should be larger than filtering threshold
+	if (opt::streakThreshold <= opt::minCountNonSatCount) {
+		cerr << "-r should be greater than -c" << endl;
+		exit(1);
+	}
+
+
+
 	//Check needed options
 	if (inputFiles.size() == 0) {
 		cerr << "Error: Need Input File" << endl;
