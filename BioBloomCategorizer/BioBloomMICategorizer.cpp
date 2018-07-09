@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
 	int OPT_VERSION = 0;
 
 	opt::score = pow(10.0,-6.0);
-	opt::streakThreshold = 10;
+	opt::streakThreshold = 20;
 
 	vector<string> inputFiles;
 
