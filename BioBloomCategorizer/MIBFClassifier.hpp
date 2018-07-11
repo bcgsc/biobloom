@@ -454,14 +454,6 @@ public:
 								if (i != 0) {
 									readsOutput << ";";
 								}
-//								readsOutput << m_fullIDs[signifResults[i].id]
-//										<< ","
-//										<< signifResults[i].nonSatFrameCount
-//										<< "," << signifResults[i].nonSatCount
-//										<< "," << signifResults[i].count << ","
-//										<< signifResults[i].solidCount << ","
-//										<< signifResults[i].totalCount << ","
-//										<< signifResults[i].totalNonSatCount;
 								readsOutput << m_fullIDs[signifResults[i].id];
 							}
 						}
