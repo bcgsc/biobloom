@@ -137,15 +137,6 @@ public:
 							fullSignifCounts, pVals);
 
 					const string &fullID = m_fullIDs.at(idIndex);
-					//debugging
-//#pragma omp critical(cout)
-//					if (name == "noMatch") {
-//						cout << pVal << "\t" << "F" << "\t" << name << "\t"
-//								<< fullID << endl;
-//					} else {
-//						cout << pVal << "\t" << "T" << "\t" << name << "\t"
-//								<< fullID << endl;
-//					}
 					unsigned tempCount = 0;
 					for (unsigned i = 0; i < signifResults.size(); ++i) {
 						//TODO resolve precision error better
@@ -160,12 +151,6 @@ public:
 
 #pragma omp critical(cout)
 					if (tempCount > 0 ) {
-//						cout << m_numRead << "\tCorrectID:" << m_idToIndex[name]
-//								<< "\tCorrectName:" << name << "\tPredictedID:"
-//								<< m_idToIndex[fullID] << "\tPredictedName:"
-//								<< fullID << "\tpVal:" << log10(pVal) * (-10.0)
-//								<< "\t" << endl;
-
 						cout << m_numRead << "\tCorrectName:" << name << "\tPredictedName:"
 								<< fullID << "\tpVal:" << log10(pVal) * (-10.0)
 								<< "\t" << endl;
@@ -175,7 +160,7 @@ public:
 									<< m_fullIDs[signifResults[i]] << ","
 									<< base64_chars[signifResults[i] % 64]
 									<< "," << signifValues[i] << ","
-									<< fullSignifCounts[i] << "\t";
+									<< fullSignifCounts[i] << "," << pVals[i] <<"\t";
 						}
 						cout << endl;
 						printVerbose(name, comment, sequence, hitsPattern, sig, idIndex);
@@ -734,15 +719,16 @@ private:
 		ID maxID = opt::EMPTY;
 		double minVal = 1.0;
 		double maxMinVal = 1.0;
-		double adjustedPValThreshold = 1.0
-				- pow(1.0 - opt::score, 1.0 / double(m_fullIDs.size() - 1));
+		double adjustedPValThreshold = opt::score / double(m_fullIDs.size() - 1);
 		pVal = 1.0;
 		for (google::dense_hash_map<ID, unsigned>::const_iterator itr =
 				counts.begin(); itr != counts.end(); itr++) {
-			//TODO use complement cdf? so I don't have to subtract?
-			//TODO check maximum numerical precision on perFrameProb
-			binomial bin(evaluatedSeeds, 1.0 - m_perFrameProb[itr->first]);
-			double cumProb = cdf(bin, evaluatedSeeds - itr->second);
+			typedef boost::math::binomial_distribution<
+			            double,
+			            policy<discrete_quantile<integer_round_up> > >
+			        binom_round_up;
+			binom_round_up bin(evaluatedSeeds, m_perFrameProb[itr->first]);
+			double cumProb = cdf(complement(bin, itr->second));
 			if (adjustedPValThreshold > cumProb) {
 				if (fullCounts[itr->first] > maxCount
 						|| (fullCounts[itr->first] == maxCount
@@ -760,8 +746,6 @@ private:
 				minVal = cumProb;
 			}
 		}
-		//sidak method - leads to precision errors
-//		pVal = 1.0 - pow(1.0-minVal, m_fullIDs.size() - 1);
 		//bonferroni
 		pVal = minVal * (m_fullIDs.size() - 1);
 		pVal = pVal > 1 ? 1.0 : pVal;
@@ -825,7 +809,7 @@ private:
 		for (ID i = 1; i < m_fullIDs.size(); ++i) {
 			if(allCounts[i] > 0) {
 				cout << i << "\t" << m_fullIDs[i] << "\t" << counts[i] << "\t"
-				<< allCounts[i]<< "\t"
+				<< allCounts[i] << "\t"
 				<< satCounts[i] << endl;
 			}
 		}
