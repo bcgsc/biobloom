@@ -87,7 +87,7 @@ void printHelpDialog()
 	"  -e, --paired_mode      Uses paired-end information. For BAM or SAM files, if\n"
 	"                         they are poorly ordered, the memory usage will be much\n"
 	"                         larger than normal. Sorting by read name may be needed.\n"
-	"  -s, --min_FPR=N        Minimum -10*log(FPR) threshold for a match. [60.0]\n"
+	"  -s, --min_FPR=N        Minimum -10*log(FPR) threshold for a match. [100.0]\n"
 	"  -t, --threads=N        The number of threads to use. [1]\n"
 //	"  -d, --stdout=N         Outputs all matching reads to set of targets to stdout\n"
 //	"                         in fastq and if paired will output will be interlaced.\n"
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 	int TSV = 0;
 	int OPT_VERSION = 0;
 
-	opt::score = pow(10.0,-6.0);
+	opt::score = pow(10.0,-10.0);
 	opt::streakThreshold = 20;
 
 	vector<string> inputFiles;
