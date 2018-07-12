@@ -35,9 +35,9 @@ public:
 			bool bestHitAgree) :
 			m_miBF(miBF), m_perFrameProb(perFrameProb), m_extraCount(
 					extraCount), m_extraFrameLimit(extraFrameLimit), m_maxMiss(
-					maxMiss), m_minCount(minCount, true), m_bestHitAgree(bestHitAgree), m_satCount(
+					maxMiss), m_minCount(minCount), m_bestHitAgree(bestHitAgree), m_satCount(
 					0), m_evalCount(0), m_rankPos(miBF.getHashNum()), m_hits(
-					miBF.getHashNum()), m_counts(
+					miBF.getHashNum(), true), m_counts(
 					vector<CountResult>(perFrameProb.size(),
 							{ 0, 0, 0, 0, 0, 0 })) {
 		//this should always be a small array
