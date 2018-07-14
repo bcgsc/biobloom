@@ -102,7 +102,10 @@ public:
 			}
 			kseq_t *seq = kseq_init(fp);
 			int l;
-#pragma omp parallel private(l)
+			MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
+					m_perFrameProb, opt::multiThresh, opt::streakThreshold,
+					m_allowedMiss, opt::minCountNonSatCount, opt::bestHitCountAgree);
+#pragma omp parallel private(l) firstprivate(support)
 			for (string sequence;;) {
 				string name;
 				string qual;
@@ -123,7 +126,7 @@ public:
 					}
 					vector<vector<pair<ID, bool>> > hitsPattern;
 					unsigned evaluatedSeeds = 0;
-					vector<unsigned> sig = getMatchSignature(sequence,
+					vector<unsigned> sig = support.getMatchSignature(sequence,
 							evaluatedSeeds, hitsPattern);
 					double pVal = 1.0;
 					vector<double> pVals;
@@ -135,6 +138,7 @@ public:
 					ID idIndex = evalRead(hitsPattern, evaluatedSeeds, pVal,
 							maxCount, signifResults, signifValues,
 							fullSignifCounts, pVals);
+					classify(support, sequence);
 
 					const string &fullID = m_fullIDs.at(idIndex);
 					unsigned tempCount = 0;
@@ -164,7 +168,8 @@ public:
 						}
 						cout << endl;
 						printVerbose(name, comment, sequence, hitsPattern, sig, idIndex);
-						printCountHistogram(hitsPattern);
+//						printCountHistogram(hitsPattern);
+						support.printAllCounts(m_fullIDs);
 					}
 				} else {
 					break;
@@ -602,64 +607,6 @@ private:
 						<< rec2.seq << "\n+\n" << rec2.qual << "\n";
 			}
 		}
-	}
-
-	/*
-	 * Debugging
-	 * Computes criteria used for judging a read consisting of:
-	 * Position of matches
-	 * Number of actually evaluated k-mers
-	 * Return count of matching k-mers to set
-	 */
-	//TODO saturation not handle correctly
-	inline vector<unsigned> getMatchSignature(const string &seq,
-			unsigned &evaluatedSeeds, vector<vector<pair<ID, bool> > > &hitsPattern) {
-		vector<unsigned> matchPos;
-		matchPos.reserve(seq.size() - m_filter.getKmerSize());
-
-		if (m_filter.getSeedValues().size() > 0) {
-			stHashIterator itr(seq, m_filter.getSeedValues(), m_filter.getHashNum(), m_filter.getKmerSize());
-			while (itr != itr.end()) {
-				vector<ID> results = m_filter.at(*itr, m_allowedMiss);
-				vector<pair<ID, bool>> processedResults(results.size(), pair<ID, bool>(0,false));
-				if (results.size() > 0) {
-					for (unsigned i = 0; i < m_filter.getHashNum(); ++i) {
-						ID tempResult = results[i];
-						if (tempResult > MIBloomFilter<ID>::s_mask) {
-							processedResults[i] = pair<ID, bool> (tempResult & MIBloomFilter<ID>::s_antiMask, true);
-						} else {
-							processedResults[i] = pair<ID, bool> (tempResult & MIBloomFilter<ID>::s_antiMask, false);
-						}
-					}
-					matchPos.push_back(itr.pos());
-					hitsPattern.push_back(processedResults);
-				}
-				++itr;
-				++evaluatedSeeds;
-			}
-		} else {
-			ntHashIterator itr(seq, m_filter.getHashNum(),
-					m_filter.getKmerSize());
-			while (itr != itr.end()) {
-				vector<ID> results = m_filter.at(*itr, m_allowedMiss);
-				vector<pair<ID, bool>> processedResults(results.size(), pair<ID, bool>(0,false));
-				if (results.size() > 0) {
-					for (unsigned i = 0; i < m_filter.getHashNum(); ++i) {
-						ID tempResult = results[i];
-						if (tempResult > MIBloomFilter<ID>::s_mask) {
-							processedResults[i] = pair<ID, bool> (tempResult & MIBloomFilter<ID>::s_antiMask, true);
-						} else {
-							processedResults[i] = pair<ID, bool> (tempResult & MIBloomFilter<ID>::s_antiMask, false);
-						}
-					}
-					matchPos.push_back(itr.pos());
-					hitsPattern.push_back(processedResults);
-				}
-				++itr;
-				++evaluatedSeeds;
-			}
-		}
-		return matchPos;
 	}
 
 	/*

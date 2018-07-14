@@ -175,6 +175,100 @@ public:
 		return m_evalCount;
 	}
 
+	//debugging functions:
+
+	void printAllCounts(const vector<string> &ids){
+		for(size_t i = 0; i< m_counts.size(); ++i){
+			if(m_counts[i].totalCount > 0)
+			{
+			cout << i << "\t" << ids[i] << "\t" << m_counts[i].nonSatFrameCount <<
+					"\t" << m_counts[i].count <<
+					"\t" << m_counts[i].solidCount <<
+					"\t" << m_counts[i].nonSatCount <<
+					"\t" << m_counts[i].totalNonSatCount <<
+					"\t" << m_counts[i].totalCount <<
+					"\n";
+			}
+		}
+	}
+
+	/*
+	 * Debugging
+	 * Computes criteria used for judging a read consisting of:
+	 * Position of matches
+	 * Number of actually evaluated k-mers
+	 * Return count of matching k-mers to set
+	 */
+	//TODO saturation not handle correctly
+	inline vector<unsigned> getMatchSignature(const string &seq,
+			unsigned &evaluatedSeeds, vector<vector<pair<ID, bool> > > &hitsPattern) {
+		vector<unsigned> matchPos;
+		matchPos.reserve(seq.size() - m_miBF.getKmerSize());
+
+		if (m_miBF.getSeedValues().size() > 0) {
+			stHashIterator itr(seq, m_miBF.getSeedValues(), m_miBF.getHashNum(),
+					m_miBF.getKmerSize());
+			while (itr != itr.end()) {
+				if (m_miBF.atRank(*itr, m_rankPos, m_hits, m_maxMiss)) {
+					vector<ID> results = m_miBF.getData(m_rankPos);
+					vector<pair<ID, bool>> processedResults(results.size(),
+							pair<ID, bool>(0, false));
+					for (unsigned i = 0; i < m_miBF.getHashNum(); ++i) {
+						if (m_hits[i]) {
+							ID tempResult = results[i];
+							if (tempResult > MIBloomFilter<ID>::s_mask) {
+								processedResults[i] = pair<ID, bool>(
+										tempResult
+												& MIBloomFilter<ID>::s_antiMask,
+										true);
+							} else {
+								processedResults[i] = pair<ID, bool>(
+										tempResult
+												& MIBloomFilter<ID>::s_antiMask,
+										false);
+							}
+						}
+					}
+					matchPos.push_back(itr.pos());
+					hitsPattern.push_back(processedResults);
+				}
+				++itr;
+				++evaluatedSeeds;
+			}
+		} else {
+			ntHashIterator itr(seq, m_miBF.getHashNum(),
+					m_miBF.getKmerSize());
+			while (itr != itr.end()) {
+				if (m_miBF.atRank(*itr, m_rankPos)) {
+					vector<ID> results = m_miBF.getData(m_rankPos);
+					vector<pair<ID, bool>> processedResults(results.size(),
+							pair<ID, bool>(0, false));
+					if (results.size() > 0) {
+						for (unsigned i = 0; i < m_miBF.getHashNum(); ++i) {
+							ID tempResult = results[i];
+							if (tempResult > MIBloomFilter<ID>::s_mask) {
+								processedResults[i] = pair<ID, bool>(
+										tempResult
+												& MIBloomFilter<ID>::s_antiMask,
+										true);
+							} else {
+								processedResults[i] = pair<ID, bool>(
+										tempResult
+												& MIBloomFilter<ID>::s_antiMask,
+										false);
+							}
+						}
+						matchPos.push_back(itr.pos());
+						hitsPattern.push_back(processedResults);
+					}
+				}
+				++itr;
+				++evaluatedSeeds;
+			}
+		}
+		return matchPos;
+	}
+
 private:
 
 	/*
@@ -316,6 +410,14 @@ private:
 		for (typename vector<T>::iterator itr = m_seenSet.begin();
 				itr != m_seenSet.end(); ++itr) {
 			T result = *itr &= m_miBF.s_antiMask;
+			if (result > m_miBF.s_mask) {
+				//if not saturated version already exists
+				if (find(m_seenSet.begin(), m_seenSet.end(), result)
+						== m_seenSet.end()) {
+					continue;
+				}
+				result &= m_miBF.s_antiMask;
+			}
 			if (m_counts[result].count >= minCount[result]) {
 				if (find(m_candidateMatches.begin(), m_candidateMatches.end(),
 						result) == m_candidateMatches.end()) {
@@ -331,7 +433,7 @@ private:
 		if (bestCount <= secondBestCount + m_extraCount) {
 			extraFrame = 0;
 		}
-		if (bestCount && bestCount > secondBestCount) {
+		if (bestCount > secondBestCount) {
 			if (m_extraFrameLimit < extraFrame++) {
 				return true;
 			}

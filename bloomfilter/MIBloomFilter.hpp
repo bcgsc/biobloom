@@ -420,27 +420,27 @@ public:
 		}
 	}
 
-	/*
-	 * Return the position of a hash values
-	 */
-	vector<size_t> atPos(const size_t *hashes, unsigned &finished, unsigned maxMiss = 0){
-		vector<size_t> rankPos(m_hashNum);
-		unsigned misses = 0;
-		for (unsigned i = 0; i < m_hashNum; ++i) {
-			size_t pos = hashes[i] % m_bv.size();
-			if (m_bv[pos]) {
-				rankPos[i] = m_rankSupport(pos);
-			} else {
-				++misses;
-				if (misses > maxMiss) {
-					finished = i;
-					return rankPos;
-				}
-			}
-		}
-		finished = m_hashNum;
-		return rankPos;
-	}
+//	/*
+//	 * Return the position of a hash values
+//	 */
+//	vector<size_t> atPos(const size_t *hashes, unsigned &finished, unsigned maxMiss = 0){
+//		vector<size_t> rankPos(m_hashNum);
+//		unsigned misses = 0;
+//		for (unsigned i = 0; i < m_hashNum; ++i) {
+//			size_t pos = hashes[i] % m_bv.size();
+//			if (m_bv[pos]) {
+//				rankPos[i] = m_rankSupport(pos);
+//			} else {
+//				++misses;
+//				if (misses > maxMiss) {
+//					finished = i;
+//					return rankPos;
+//				}
+//			}
+//		}
+//		finished = m_hashNum;
+//		return rankPos;
+//	}
 
 	/*
 	 * Populates rank pos vector. Boolean vector is use to confirm if hits are good
@@ -479,33 +479,32 @@ public:
 		return true;
 	}
 
-	/*
-	 * No saturation masking
-	 */
-	vector<T> at(const size_t *hashes, unsigned maxMiss = 0) {
-		vector<T> results(m_hashNum);
-		vector<size_t> rankPos(m_hashNum);
-		unsigned misses = 0;
-		for (unsigned i = 0; i < m_hashNum; ++i) {
-			size_t pos = hashes[i] % m_bv.size();
-			if (m_bv[pos] == 0) {
-				++misses;
-				if (misses > maxMiss) {
-					return vector<T>();
-				}
-			} else {
-				rankPos[i] = m_rankSupport(pos);
-			}
-		}
-		for (unsigned i = 0; i < m_hashNum; ++i){
-			results[i] = m_data[rankPos[i]];
-		}
-		return results;
-	}
+//	/*
+//	 * No saturation masking
+//	 */
+//	vector<T> at(const size_t *hashes, unsigned maxMiss = 0) {
+//		vector<T> results(m_hashNum);
+//		vector<size_t> rankPos(m_hashNum);
+//		vector<bool> hits;
+//		unsigned misses = 0;
+//		for (unsigned i = 0; i < m_hashNum; ++i) {
+//			size_t pos = hashes[i] % m_bv.size();
+//			if (m_bv[pos] == 0) {
+//				++misses;
+//				if (misses > maxMiss) {
+//					return vector<T>();
+//				}
+//			} else {
+//				rankPos[i] = m_rankSupport(pos);
+//			}
+//		}
+//		for (unsigned i = 0; i < m_hashNum; ++i){
+//			results[i] = m_data[rankPos[i]];
+//		}
+//		return results;
+//	}
 
-	/*
-	 * No saturation masking
-	 */
+
 	vector<size_t> getRankPos(const size_t *hashes) const{
 		vector<size_t> rankPos(m_hashNum);
 		for (unsigned i = 0; i < m_hashNum; ++i) {
