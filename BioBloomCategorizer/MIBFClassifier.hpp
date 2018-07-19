@@ -21,6 +21,7 @@
 #include <iostream>
 #include <BioBloomClassifier.h>
 #include <tuple>
+#include "Common/concurrentqueue.h"
 
 #include <zlib.h>
 #ifndef KSEQ_INIT_NEW
@@ -28,6 +29,7 @@
 #include "Common/kseq.h"
 KSEQ_INIT(gzFile, gzread)
 #endif /*KSEQ_INIT_NEW*/
+#include "Common/kseq_util.h"
 
 #include <boost/math/distributions/binomial.hpp>
 
@@ -37,6 +39,8 @@ using namespace boost::math;
 
 static const std::string base64_chars =
 		"!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+
+const static size_t s_bulkSize = 256;
 
 class MIBFClassifier {
 public:
@@ -79,7 +83,8 @@ public:
 		}
 
 		m_perFrameProb = vector<double>(m_fullIDs.size());
-		m_rateSaturated = m_filter.calcFrameProbs(m_perFrameProb, m_allowedMiss);
+		m_rateSaturated = m_filter.calcFrameProbs(m_perFrameProb,
+				m_allowedMiss);
 		m_minCount.set_empty_key(0);
 		if (opt::verbose) {
 			cerr << "Filter loading complete" << endl;
@@ -104,7 +109,8 @@ public:
 			int l;
 			MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
 					m_perFrameProb, opt::multiThresh, opt::streakThreshold,
-					m_allowedMiss, opt::minCountNonSatCount, opt::bestHitCountAgree);
+					m_allowedMiss, opt::minCountNonSatCount,
+					opt::bestHitCountAgree);
 #pragma omp parallel private(l) firstprivate(support)
 			for (string sequence;;) {
 				string name;
@@ -154,20 +160,22 @@ public:
 					}
 
 #pragma omp critical(cout)
-					if (tempCount > 0 ) {
-						cout << m_numRead << "\tCorrectName:" << name << "\tPredictedName:"
-								<< fullID << "\tpVal:" << log10(pVal) * (-10.0)
-								<< "\t" << endl;
+					if (tempCount > 0) {
+						cout << m_numRead << "\tCorrectName:" << name
+								<< "\tPredictedName:" << fullID << "\tpVal:"
+								<< log10(pVal) * (-10.0) << "\t" << endl;
 
 						for (unsigned i = 0; i < signifResults.size(); ++i) {
 							cout << signifResults[i] << ","
 									<< m_fullIDs[signifResults[i]] << ","
 									<< base64_chars[signifResults[i] % 64]
 									<< "," << signifValues[i] << ","
-									<< fullSignifCounts[i] << "," << pVals[i] <<"\t";
+									<< fullSignifCounts[i] << "," << pVals[i]
+									<< "\t";
 						}
 						cout << endl;
-						printVerbose(name, comment, sequence, hitsPattern, sig, idIndex);
+						printVerbose(name, comment, sequence, hitsPattern, sig,
+								idIndex);
 //						printCountHistogram(hitsPattern);
 						support.printAllCounts(m_fullIDs);
 					}
@@ -189,135 +197,113 @@ public:
 
 		if (opt::outputType == opt::FASTQ) {
 			outputName = opt::outputPrefix + "_reads.fq";
-		}
-		else if (opt::outputType == opt::FASTA) {
+		} else if (opt::outputType == opt::FASTA) {
 			outputName = opt::outputPrefix + "_reads.fa";
 		}
 
-		Dynamicofstream readsOutput(outputName);
+		ofstream readsOutput(outputName);
 
 		//print out header info and initialize variables
 		ResultsManager<ID> resSummary(m_fullIDs, false);
 
 		cerr << "Filtering Start" << endl;
 
-		double startTime = omp_get_wtime();
+		moodycamel::ConcurrentQueue<kseq_t> workQueue(
+				opt::threads * s_bulkSize);
 
+		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
+				m_perFrameProb, opt::multiThresh, opt::streakThreshold,
+				m_allowedMiss, opt::minCountNonSatCount,
+				opt::bestHitCountAgree);
+
+		double startTime = omp_get_wtime();
 		for (vector<string>::const_iterator it = inputFiles.begin();
 				it != inputFiles.end(); ++it) {
-			gzFile fp;
-			fp = gzopen(it->c_str(), "r");
-			if (fp == NULL) {
-				cerr << "Cannot open file" << it->c_str() << endl;
-				exit(1);
-			}
-			kseq_t *seq = kseq_init(fp);
-			int l;
-			FaRec faRec;
-			MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
-					m_perFrameProb, opt::multiThresh, opt::streakThreshold,
-					m_allowedMiss, opt::minCountNonSatCount, opt::bestHitCountAgree);
-#pragma omp parallel private(l, faRec) firstprivate(support)
-			for (;;) {
-#pragma omp critical(sequence)
-				{
-					l = kseq_read(seq);
-					faRec.seq = string(seq->seq.s, seq->seq.l);
-					faRec.header = string(seq->name.s, seq->name.l);
-					faRec.qual = string(seq->qual.s, seq->qual.l);
-					faRec.comment = string(seq->comment.s, seq->comment.l);
-				}
-				if (l >= 0) {
-#pragma omp critical(totalReads)
-					if (++m_numRead % opt::fileInterval == 0) {
-						cerr << "Currently Reading Read Number: " << m_numRead
-								<< endl;
-					}
-					const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults = classify(support, faRec.seq);
-					resSummary.updateSummaryData(signifResults);
+			bool good = true;
+#pragma omp parallel firstprivate(support)
+			{
+				kseq_t readBuffer[s_bulkSize];
+				memset(&readBuffer, 0, sizeof(kseq_t) * s_bulkSize);
+				if (omp_get_thread_num() == 0) {
+					//file reading init
+					gzFile fp;
+					fp = gzopen(it->c_str(), "r");
+					kseq_t *seq = kseq_init(fp);
 
-#pragma omp critical(outputFiles)
-					if (opt::outputType == opt::FASTA) {
-						readsOutput << ">" << faRec.header << " " << faRec.comment;
-						if (!signifResults.empty()) {
-							unsigned i = 0;
-							readsOutput << "\t"
-									<< m_fullIDs[signifResults[i].id];
-							for (++i; i < signifResults.size(); ++i) {
-								readsOutput
-										<< m_fullIDs[signifResults[i].id];
-							}
+					//per thread token
+					moodycamel::ProducerToken ptok(workQueue);
+
+					unsigned size = 0;
+					while (kseq_read(seq) >= 0) {
+						cpy_kseq(&readBuffer[size++], seq);
+						if (++m_numRead % opt::fileInterval == 0) {
+							cerr << "Currently Reading Read Number: "
+									<< m_numRead << endl;
 						}
-						readsOutput << "\n" << faRec.seq << "\n";
-					} else if (opt::outputType == opt::FASTQ) {
-						readsOutput << "@" << faRec.header << " " << faRec.comment;
-						if (!signifResults.empty()) {
-							unsigned i = 0;
-							readsOutput << "\t"
-									<< m_fullIDs[signifResults[i].id];
-							for (++i; i < signifResults.size(); ++i) {
-								readsOutput
-										<< m_fullIDs[signifResults[i].id];
-							}
-						}
-						readsOutput << "\n" << faRec.seq << "\n+" << faRec.qual << "\n";
-					}
-					else {
-						if (signifResults.empty()) {
-							readsOutput << "*\t" << faRec.header << " "
-									<< faRec.comment << "\t0\t*\n";
-						} else {
-							unsigned i = 0;
-							readsOutput << m_fullIDs[signifResults[i].id]
-									<< "\t" << faRec.header << " "
-									<< faRec.comment << "\t"
-									<< support.getSatCount() << "\t";
-							if (signifResults.size() == 1) {
-								readsOutput << "*";
-							} else {
-								for (++i; i < signifResults.size(); ++i) {
-									if (i != 1) {
-										readsOutput << ";";
-									}
-	//								readsOutput << m_fullIDs[signifResults[i].id]
-	//										<< ","
-	//										<< signifResults[i].nonSatFrameCount
-	//										<< "," << signifResults[i].nonSatCount
-	//										<< "," << signifResults[i].count << ","
-	//										<< signifResults[i].solidCount << ","
-	//										<< signifResults[i].totalCount << ","
-	//										<< signifResults[i].totalNonSatCount;
-									readsOutput << m_fullIDs[signifResults[i].id];
+						if (s_bulkSize == size) {
+							//try to insert, if cannot queue is full
+							if (!workQueue.try_enqueue_bulk(ptok, readBuffer,
+									size)) {
+								//join in to work since queue is full
+								for (unsigned i = 0; i < size; ++i) {
+									filterSingleRead(readBuffer[i], support, readsOutput, resSummary);
+//									assert(readBuffer[i].seq.l); //work
+//									assert(support.getSatCount() == 0);
+//									assert(resSummary.updateSummaryData(vector<MIBFQuerySupport<ID>::QueryResult>()));
+//									assert(readsOutput.good());
 								}
 							}
-							readsOutput << "\t";
-							for (i = 0; i < signifResults.size(); ++i) {
-								if (i != 0) {
-									readsOutput << ";";
-								}
-									readsOutput << m_fullIDs[signifResults[i].id] << ","
-											<< signifResults[i].nonSatFrameCount << ","
-											<< signifResults[i].solidCount << ","
-											<< signifResults[i].count << ","
-											<< signifResults[i].nonSatCount << ","
-											<< signifResults[i].totalNonSatCount << ","
-											<< signifResults[i].totalCount << ","
-											<< signifResults[i].frameProb;
-									assert(signifResults[i].count < faRec.seq.size());
-							}
-							readsOutput << "\n";
+							size = 0;
 						}
 					}
+					//finish off remaining work
+					for (unsigned i = 0; i < size; ++i) {
+						assert(readBuffer[i].seq.l); //work
+					}
+					if (workQueue.size_approx()) {
+						moodycamel::ConsumerToken ctok(workQueue);
+						//join in if others are still not finished
+						while (workQueue.size_approx()) {
+							size_t num = workQueue.try_dequeue_bulk(ctok,
+									readBuffer, s_bulkSize);
+							if (num) {
+								for (unsigned i = 0; i < num; ++i) {
+									filterSingleRead(readBuffer[i], support, readsOutput, resSummary);
+//									assert(readBuffer[i].seq.l); //work
+//									assert(support.getSatCount() == 0);
+//									assert(resSummary.updateSummaryData(vector<MIBFQuerySupport<ID>::QueryResult>()));
+//									assert(readsOutput.good());
+								}
+							}
+						}
+					}
+#pragma omp atomic update
+					good &= false;
+					kseq_destroy(seq);
+					gzclose(fp);
 				} else {
-					break;
+					moodycamel::ConsumerToken ctok(workQueue);
+					while (good) {
+						if (workQueue.size_approx() >= s_bulkSize) {
+							size_t num = workQueue.try_dequeue_bulk(ctok,
+									readBuffer, s_bulkSize);
+							if (num) {
+								for (unsigned i = 0; i < num; ++i) {
+									filterSingleRead(readBuffer[i], support, readsOutput, resSummary);
+//									assert(readBuffer[i].seq.l); //work
+//									assert(support.getSatCount() == 0);
+//									assert(resSummary.updateSummaryData(vector<MIBFQuerySupport<ID>::QueryResult>()));
+//									assert(readsOutput.good());
+								}
+							}
+						}
+					}
 				}
 			}
-			kseq_destroy(seq);
-			gzclose(fp);
 		}
 
 		cerr << "Classification time (s): " << (omp_get_wtime() - startTime)
-						<< endl;
+				<< endl;
 
 		cerr << "Total Reads:" << m_numRead << endl;
 		cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
@@ -353,8 +339,7 @@ public:
 		//TODO output fasta?
 		if (opt::outputType == opt::FASTQ) {
 			outputName = opt::outputPrefix + "_reads.fq";
-		}
-		else if (opt::outputType == opt::FASTA) {
+		} else if (opt::outputType == opt::FASTA) {
 			outputName = opt::outputPrefix + "_reads.fa";
 		}
 
@@ -367,7 +352,8 @@ public:
 		int l1, l2;
 		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
 				m_perFrameProb, opt::multiThresh, opt::streakThreshold,
-				m_allowedMiss, opt::minCountNonSatCount, opt::bestHitCountAgree);
+				m_allowedMiss, opt::minCountNonSatCount,
+				opt::bestHitCountAgree);
 #pragma omp parallel private(l1, l2, rec1, rec2) firstprivate(support)
 		for (;;) {
 #pragma omp critical(kseq)
@@ -452,15 +438,14 @@ public:
 							if (i != 0) {
 								readsOutput << ";";
 							}
-								readsOutput << m_fullIDs[signifResults[i].id]
-										<< ","
-										<< signifResults[i].nonSatFrameCount
-										<< "," << signifResults[i].nonSatCount
-										<< "," << signifResults[i].count << ","
-										<< signifResults[i].solidCount << ","
-										<< signifResults[i].totalCount << ","
-										<< signifResults[i].totalNonSatCount << ","
-										<< signifResults[i].frameProb;
+							readsOutput << m_fullIDs[signifResults[i].id] << ","
+									<< signifResults[i].nonSatFrameCount << ","
+									<< signifResults[i].nonSatCount << ","
+									<< signifResults[i].count << ","
+									<< signifResults[i].solidCount << ","
+									<< signifResults[i].totalCount << ","
+									<< signifResults[i].totalNonSatCount << ","
+									<< signifResults[i].frameProb;
 						}
 						readsOutput << "\n";
 					}
@@ -485,7 +470,7 @@ private:
 	size_t m_numRead;
 	vector<string> m_fullIDs;
 	vector<double> m_perFrameProb;
-	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>> m_minCount;
+	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>>m_minCount;
 	double m_rateSaturated;
 	unsigned m_allowedMiss;
 
@@ -497,11 +482,11 @@ private:
 	//from https://stackoverflow.com/questions/9330915/number-of-combinations-n-choose-r-in-c
 	inline unsigned nChoosek(unsigned n, unsigned k) {
 		if (k > n)
-			return 0;
+		return 0;
 		if (k * 2 > n)
-			k = n - k;
+		k = n - k;
 		if (k == 0)
-			return 1;
+		return 1;
 
 		int result = n;
 		for (unsigned i = 2; i <= k; ++i) {
@@ -511,20 +496,105 @@ private:
 		return result;
 	}
 
+	void filterSingleRead(const kseq_t &read, MIBFQuerySupport<ID> &support,
+			ofstream &readsOutput, ResultsManager<ID> &resSummary) {
+		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
+				classify(support, read.seq.s);
+		resSummary.updateSummaryData(signifResults);
+//		assert(support.getSatCount() == 0);
+//		assert(resSummary.updateSummaryData(vector<MIBFQuerySupport<ID>::QueryResult>()));
+//		assert(read.name.l);
+//		assert(readsOutput.good());
+
+#pragma omp critical(outputFiles)
+		if (opt::outputType == opt::FASTA) {
+			readsOutput << ">" << read.name.s;
+			if(read.comment.l) {
+				readsOutput << " " << read.comment.s;
+			}
+			if (!signifResults.empty()) {
+				unsigned i = 0;
+				readsOutput << "\t"
+				<< m_fullIDs[signifResults[i].id];
+				for (++i; i < signifResults.size(); ++i) {
+					readsOutput
+					<< m_fullIDs[signifResults[i].id];
+				}
+			}
+			readsOutput << "\n" << read.seq.s << "\n";
+		} else if (opt::outputType == opt::FASTQ) {
+			readsOutput << "@" << read.name.s;
+			if(read.comment.l) {
+				readsOutput << " " << read.comment.s;
+			}
+			if (!signifResults.empty()) {
+				unsigned i = 0;
+				readsOutput << "\t"
+				<< m_fullIDs[signifResults[i].id];
+				for (++i; i < signifResults.size(); ++i) {
+					readsOutput
+					<< m_fullIDs[signifResults[i].id];
+				}
+			}
+			readsOutput << "\n" << read.seq.s << "\n+" << read.qual.s << "\n";
+		}
+		else {
+			if (signifResults.empty()) {
+				readsOutput << "*\t" << read.name.s;
+				if(read.comment.l) {
+					readsOutput << " " << read.comment.s;
+				}
+			} else {
+				unsigned i = 0;
+				readsOutput << m_fullIDs[signifResults[i].id] << "\t" << read.name.s;
+				if(read.comment.l) {
+					readsOutput << " " << read.comment.s;
+				}
+				readsOutput << "\t" << support.getSatCount() << "\t";
+				if (signifResults.size() == 1) {
+					readsOutput << "*";
+				} else {
+					for (++i; i < signifResults.size(); ++i) {
+						if (i != 1) {
+							readsOutput << ";";
+						}
+						readsOutput << m_fullIDs[signifResults[i].id];
+					}
+				}
+				readsOutput << "\t";
+				for (i = 0; i < signifResults.size(); ++i) {
+					if (i != 0) {
+						readsOutput << ";";
+					}
+					readsOutput << m_fullIDs[signifResults[i].id] << ","
+					<< signifResults[i].nonSatFrameCount << ","
+					<< signifResults[i].solidCount << ","
+					<< signifResults[i].count << ","
+					<< signifResults[i].nonSatCount << ","
+					<< signifResults[i].totalNonSatCount << ","
+					<< signifResults[i].totalCount << ","
+					<< signifResults[i].frameProb;
+				}
+				readsOutput << "\n";
+			}
+		}
+	}
+
 	/*
 	 * testing heuristic faster code
 	 */
 	//TODO: Reuse itr object
 	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq) {
 		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
-		frameCount *= m_filter.getHashNum();
-#pragma omp critical(m_minCount)
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
-			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
-					new vector<unsigned>(m_fullIDs.size()));
-			for (size_t i = 1; i < m_fullIDs.size(); ++i) {
-				(*m_minCount[frameCount])[i] = getMinCount(frameCount,
-						m_perFrameProb[i]);
+#pragma omp critical(m_minCount)
+			if (m_minCount.find(frameCount) == m_minCount.end()) {
+				m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
+						new vector<unsigned>(m_fullIDs.size()));
+				for (size_t i = 1; i < m_fullIDs.size(); ++i) {
+					(*m_minCount[frameCount])[i] = getMinCount(frameCount,
+							m_perFrameProb[i]);
+				}
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
@@ -580,9 +650,9 @@ private:
 #pragma omp critical(outputFiles)
 			{
 				outputFile << "@" << rec1.header << "\n" << rec1.seq << "\n+\n"
-						<< rec1.qual << "\n";
+				<< rec1.qual << "\n";
 				outputFile << "@" << rec2.header << "\n" << rec2.seq << "\n+\n"
-						<< rec2.qual << "\n";
+				<< rec2.qual << "\n";
 			}
 		}
 	}
@@ -594,17 +664,17 @@ private:
 #pragma omp critical(outputFiles)
 			{
 				(*outputFiles1[outputFileIndex]) << ">" << rec1.header << "\n"
-						<< rec1.seq << "\n";
+				<< rec1.seq << "\n";
 				(*outputFiles2[outputFileIndex]) << ">" << rec2.header << "\n"
-						<< rec2.seq << "\n";
+				<< rec2.seq << "\n";
 			}
 		} else {
 #pragma omp critical(outputFiles)
 			{
 				(*outputFiles1[outputFileIndex]) << "@" << rec1.header << "\n"
-						<< rec1.seq << "\n+\n" << rec1.qual << "\n";
+				<< rec1.seq << "\n+\n" << rec1.qual << "\n";
 				(*outputFiles2[outputFileIndex]) << "@" << rec2.header << "\n"
-						<< rec2.seq << "\n+\n" << rec2.qual << "\n";
+				<< rec2.seq << "\n+\n" << rec2.qual << "\n";
 			}
 		}
 	}
@@ -632,7 +702,7 @@ private:
 				if (j->first != opt::EMPTY) {
 					if (tempIDs.find(j->first) == tempIDs.end()) {
 						google::dense_hash_map<ID, unsigned>::iterator tempItr =
-								counts.find(j->first);
+						counts.find(j->first);
 						if (tempItr == counts.end()) {
 							counts[j->first] = 1;
 						} else {
@@ -651,7 +721,7 @@ private:
 						j++) {
 					if (tempIDsFull.find(j->first) == tempIDsFull.end() && !j->second) {
 						google::dense_hash_map<ID, unsigned>::iterator tempItrFull =
-								fullCounts.find(j->first);
+						fullCounts.find(j->first);
 						if (tempItrFull == fullCounts.end()) {
 							fullCounts[j->first] = 1;
 						} else {
@@ -671,9 +741,9 @@ private:
 		for (google::dense_hash_map<ID, unsigned>::const_iterator itr =
 				counts.begin(); itr != counts.end(); itr++) {
 			typedef boost::math::binomial_distribution<
-			            double,
-			            policy<discrete_quantile<integer_round_up> > >
-			        binom_round_up;
+			double,
+			policy<discrete_quantile<integer_round_up> > >
+			binom_round_up;
 			binom_round_up bin(evaluatedSeeds, m_perFrameProb[itr->first]);
 			double cumProb = cdf(complement(bin, itr->second));
 			if (adjustedPValThreshold > cumProb) {
@@ -705,9 +775,9 @@ private:
 
 	inline unsigned getMinCount(unsigned length, double eventProb) {
 		typedef boost::math::binomial_distribution<
-		            double,
-		            policy<discrete_quantile<integer_round_up> > >
-		        binom_round_up;
+		double,
+		policy<discrete_quantile<integer_round_up> > >
+		binom_round_up;
 		binom_round_up bin(length, eventProb);
 		double criticalScore = opt::score / double(m_fullIDs.size() - 1);
 		unsigned i = quantile(complement(bin, criticalScore));
@@ -721,14 +791,14 @@ private:
 	 * allCounts, counts
 	 * TODO satuCounts, allSatuCounts
 	 */
-	void printCountHistogram(const vector<vector<pair<ID,bool>> > &hitsPattern){
+	void printCountHistogram(const vector<vector<pair<ID,bool>> > &hitsPattern) {
 		google::dense_hash_map< ID, unsigned> allCounts;
 		allCounts.set_empty_key(0);
 		google::dense_hash_map< ID, unsigned> counts;
 		counts.set_empty_key(0);
 		google::dense_hash_map< ID, unsigned> satCounts;
 		satCounts.set_empty_key(0);
-		for(ID i = 1; i < m_fullIDs.size(); ++i){
+		for(ID i = 1; i < m_fullIDs.size(); ++i) {
 			allCounts[i] = 0;
 			counts[i] = 0;
 			satCounts[i] = 0;
@@ -745,7 +815,7 @@ private:
 						tempIDs.insert(j->first);
 						++counts[j->first];
 					}
-					if(!j->second){
+					if(!j->second) {
 						++satCounts[j->first];
 					}
 					++allCounts[j->first];
@@ -767,7 +837,7 @@ private:
 			const vector<unsigned> &sig, ID value) {
 		unsigned evaluatedSeeds = 0;
 		cout << header << ' ' << comment << ' ' << evaluatedSeeds << ' '
-				<< base64_chars[value % 64] << ' ' << value << endl;
+		<< base64_chars[value % 64] << ' ' << value << endl;
 		cout << seq << endl;
 		cout << vectToStr(sig, seq) << endl;
 		cout << vectToStr(sig, hitsPattern, seq);
