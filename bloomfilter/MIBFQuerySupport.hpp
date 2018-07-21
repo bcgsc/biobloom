@@ -80,6 +80,7 @@ public:
 		unsigned bestCount = 0;
 		unsigned secondBestCount = 0;
 		bool candidateFound = false;
+		assert(minCount.size());
 
 		while (itr != itr.end() && !candidateFound) {
 			candidateFound = updateCountsSeeds(itr, minCount, bestCount,
@@ -341,7 +342,7 @@ private:
 		unsigned misses = m_miBF.atRank(*itr, m_rankPos, m_hits, m_maxMiss);
 		if (misses <= m_maxMiss) {
 			candidateFound = updatesCounts(minCount, bestCount, secondBestCount,
-					extraFrame);
+					extraFrame, misses);
 		}
 		return candidateFound;
 	}
@@ -365,6 +366,13 @@ private:
 		for (unsigned i = 0; i < m_miBF.getHashNum(); ++i) {
 			if (m_hits[i]) {
 				T resultRaw = m_miBF.getData(m_rankPos[i]);
+//				assert(resultRaw);
+//				assert(minCount.size());
+//				assert(bestCount == 0);
+//				assert(secondBestCount == 0);
+//				assert(extraFrame == 0);
+//				assert(misses < m_miBF.getHashNum());
+//				assert(satCount == 0);
 				++m_evalCount;
 				bool saturated = false;
 				T result = resultRaw;

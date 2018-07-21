@@ -224,6 +224,7 @@ public:
 			{
 				kseq_t readBuffer[s_bulkSize];
 				memset(&readBuffer, 0, sizeof(kseq_t) * s_bulkSize);
+				string outBuffer;
 				if (omp_get_thread_num() == 0) {
 					//file reading init
 					gzFile fp;
@@ -242,15 +243,14 @@ public:
 						}
 						if (s_bulkSize == size) {
 							//try to insert, if cannot queue is full
-							if (!workQueue.try_enqueue_bulk(ptok, readBuffer,
+							while (!workQueue.try_enqueue_bulk(ptok, readBuffer,
 									size)) {
-								//join in to work since queue is full
-								for (unsigned i = 0; i < size; ++i) {
-									filterSingleRead(readBuffer[i], support, readsOutput, resSummary);
-//									assert(readBuffer[i].seq.l); //work
-//									assert(support.getSatCount() == 0);
-//									assert(resSummary.updateSummaryData(vector<MIBFQuerySupport<ID>::QueryResult>()));
-//									assert(readsOutput.good());
+								//try to work
+								if (kseq_read(seq) >= 0) {
+									filterSingleRead(*seq, support, readsOutput,
+											resSummary, outBuffer);
+								} else {
+									break;
 								}
 							}
 							size = 0;
@@ -268,11 +268,8 @@ public:
 									readBuffer, s_bulkSize);
 							if (num) {
 								for (unsigned i = 0; i < num; ++i) {
-									filterSingleRead(readBuffer[i], support, readsOutput, resSummary);
-//									assert(readBuffer[i].seq.l); //work
-//									assert(support.getSatCount() == 0);
-//									assert(resSummary.updateSummaryData(vector<MIBFQuerySupport<ID>::QueryResult>()));
-//									assert(readsOutput.good());
+									filterSingleRead(readBuffer[i], support,
+											readsOutput, resSummary, outBuffer);
 								}
 							}
 						}
@@ -289,11 +286,8 @@ public:
 									readBuffer, s_bulkSize);
 							if (num) {
 								for (unsigned i = 0; i < num; ++i) {
-									filterSingleRead(readBuffer[i], support, readsOutput, resSummary);
-//									assert(readBuffer[i].seq.l); //work
-//									assert(support.getSatCount() == 0);
-//									assert(resSummary.updateSummaryData(vector<MIBFQuerySupport<ID>::QueryResult>()));
-//									assert(readsOutput.good());
+									filterSingleRead(readBuffer[i], support,
+											readsOutput, resSummary, outBuffer);
 								}
 							}
 						}
@@ -496,88 +490,110 @@ private:
 		return result;
 	}
 
-	void filterSingleRead(const kseq_t &read, MIBFQuerySupport<ID> &support,
-			ofstream &readsOutput, ResultsManager<ID> &resSummary) {
-		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
-				classify(support, read.seq.s);
-		resSummary.updateSummaryData(signifResults);
-//		assert(support.getSatCount() == 0);
-//		assert(resSummary.updateSummaryData(vector<MIBFQuerySupport<ID>::QueryResult>()));
-//		assert(read.name.l);
-//		assert(readsOutput.good());
+	void appendResults(const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults,
+			string &outStr) {
+		outStr += "\t";
+		for (unsigned i = 0; i < signifResults.size(); ++i) {
+			if (i != 0) {
+				outStr += ";";
+			}
+			outStr += m_fullIDs[signifResults[i].id];
+			outStr += ",";
+			outStr += std::to_string((unsigned) signifResults[i].nonSatFrameCount);
+			outStr += ",";
+			outStr += std::to_string((unsigned) signifResults[i].solidCount);
+			outStr += ",";
+			outStr += std::to_string((unsigned) signifResults[i].count);
+			outStr += ",";
+			outStr += std::to_string((unsigned) signifResults[i].nonSatCount);
+			outStr += ",";
+			outStr += std::to_string((unsigned) signifResults[i].totalNonSatCount);
+			outStr += ",";
+			outStr += std::to_string((unsigned) signifResults[i].totalCount);
+			outStr += ",";
+			outStr += std::to_string((unsigned) signifResults[i].frameProb);
+		}
+	}
 
-#pragma omp critical(outputFiles)
+	void printResult(const kseq_t &read, ofstream &output,
+			string &outStr, MIBFQuerySupport<ID> &support,
+			const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults) {
+		outStr.clear();
 		if (opt::outputType == opt::FASTA) {
-			readsOutput << ">" << read.name.s;
+			outStr += ">";
+			outStr += read.name.s;
 			if(read.comment.l) {
-				readsOutput << " " << read.comment.s;
+				outStr += " ";
+				outStr += read.comment.s;
 			}
 			if (!signifResults.empty()) {
 				unsigned i = 0;
-				readsOutput << "\t"
-				<< m_fullIDs[signifResults[i].id];
-				for (++i; i < signifResults.size(); ++i) {
-					readsOutput
-					<< m_fullIDs[signifResults[i].id];
+				outStr += "\t";
+				outStr += m_fullIDs[signifResults[i].id];
+				if(signifResults.size() > 1) {
+					appendResults(signifResults, outStr);
 				}
 			}
-			readsOutput << "\n" << read.seq.s << "\n";
+			outStr += "\n";
+			outStr += read.seq.s;
 		} else if (opt::outputType == opt::FASTQ) {
-			readsOutput << "@" << read.name.s;
+			outStr += "@";
+			outStr += read.name.s;
 			if(read.comment.l) {
-				readsOutput << " " << read.comment.s;
+				outStr += " ";
+				outStr += read.comment.s;
 			}
 			if (!signifResults.empty()) {
 				unsigned i = 0;
-				readsOutput << "\t"
-				<< m_fullIDs[signifResults[i].id];
-				for (++i; i < signifResults.size(); ++i) {
-					readsOutput
-					<< m_fullIDs[signifResults[i].id];
+				outStr += "\t";
+				outStr += m_fullIDs[signifResults[i].id];
+				if(signifResults.size() > 1) {
+					appendResults(signifResults, outStr);
 				}
 			}
-			readsOutput << "\n" << read.seq.s << "\n+" << read.qual.s << "\n";
+			outStr += "\n";
+			outStr += read.seq.s;
+			outStr += "\n+";
+			outStr += read.qual.s;
 		}
 		else {
 			if (signifResults.empty()) {
-				readsOutput << "*\t" << read.name.s;
+				outStr += "*\t";
+				outStr += read.name.s;
 				if(read.comment.l) {
-					readsOutput << " " << read.comment.s;
+					outStr += " ";
+					outStr += read.comment.s;
 				}
 			} else {
 				unsigned i = 0;
-				readsOutput << m_fullIDs[signifResults[i].id] << "\t" << read.name.s;
+				outStr += m_fullIDs[signifResults[i].id];
+				outStr += "\t";
+				outStr += read.name.s;
 				if(read.comment.l) {
-					readsOutput << " " << read.comment.s;
+					outStr += " ";
+					outStr += read.comment.s;
 				}
-				readsOutput << "\t" << support.getSatCount() << "\t";
+				outStr += "\t";
+				outStr += std::to_string(support.getSatCount());
+				outStr += "\t";
 				if (signifResults.size() == 1) {
-					readsOutput << "*";
+					outStr += "*";
 				} else {
-					for (++i; i < signifResults.size(); ++i) {
-						if (i != 1) {
-							readsOutput << ";";
-						}
-						readsOutput << m_fullIDs[signifResults[i].id];
-					}
+					appendResults(signifResults, outStr);
 				}
-				readsOutput << "\t";
-				for (i = 0; i < signifResults.size(); ++i) {
-					if (i != 0) {
-						readsOutput << ";";
-					}
-					readsOutput << m_fullIDs[signifResults[i].id] << ","
-					<< signifResults[i].nonSatFrameCount << ","
-					<< signifResults[i].solidCount << ","
-					<< signifResults[i].count << ","
-					<< signifResults[i].nonSatCount << ","
-					<< signifResults[i].totalNonSatCount << ","
-					<< signifResults[i].totalCount << ","
-					<< signifResults[i].frameProb;
-				}
-				readsOutput << "\n";
 			}
 		}
+		outStr += "\n";
+#pragma omp critical(outputFiles)
+		output << outStr;
+	}
+
+	void filterSingleRead(const kseq_t &read, MIBFQuerySupport<ID> &support,
+			ofstream &readsOutput, ResultsManager<ID> &resSummary, string &outStr) {
+		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
+		classify(support, read.seq.s);
+		resSummary.updateSummaryData(signifResults);
+		printResult(read, readsOutput, outStr, support, signifResults);
 	}
 
 	/*
@@ -594,6 +610,7 @@ private:
 				for (size_t i = 1; i < m_fullIDs.size(); ++i) {
 					(*m_minCount[frameCount])[i] = getMinCount(frameCount,
 							m_perFrameProb[i]);
+//					cout << (*m_minCount[frameCount])[i] << "\t"<< frameCount << "\t"<<m_perFrameProb[i] << endl;
 				}
 			}
 		}
