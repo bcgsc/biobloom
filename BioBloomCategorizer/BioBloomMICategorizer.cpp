@@ -117,6 +117,9 @@ void printHelpDialog()
 
 int main(int argc, char *argv[])
 {
+	//make stdout print faster
+	std::cout.sync_with_stdio(false);
+
 	//switch statement variable
 	int c;
 
@@ -283,8 +286,6 @@ int main(int argc, char *argv[])
 		cerr << "-r should be greater than -c" << endl;
 		exit(1);
 	}
-
-
 
 	//Check needed options
 	if (inputFiles.size() == 0) {
