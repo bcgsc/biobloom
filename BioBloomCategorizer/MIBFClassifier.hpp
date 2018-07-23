@@ -353,8 +353,7 @@ public:
 		{
 			pair<kseq_t, kseq_t> readBuffer[s_bulkSize];
 			memset(&readBuffer, 0, sizeof(pair<kseq_t, kseq_t>) * s_bulkSize);
-			string outBuffer1;
-			string outBuffer2;
+			string outBuffer;
 			if (omp_get_thread_num() == 0) {
 				//file reading init
 				gzFile fp1 = gzopen(file1.c_str(), "r");
@@ -380,7 +379,7 @@ public:
 							//try to work
 							if ((kseq_read(seq1) >= 0) && (kseq_read(seq2) >= 0)) {
 								filterPairedRead(*seq1, *seq2, support,
-										resSummary, outBuffer1, outBuffer2);
+										resSummary, outBuffer);
 							} else {
 								break;
 							}
@@ -392,7 +391,7 @@ public:
 				for (unsigned i = 0; i < size; ++i) {
 					filterPairedRead(readBuffer[i].first,
 							readBuffer[i].second, support,
-							resSummary, outBuffer1, outBuffer2);
+							resSummary, outBuffer);
 				}
 				if (workQueue.size_approx()) {
 					moodycamel::ConsumerToken ctok(workQueue);
@@ -404,7 +403,7 @@ public:
 							for (unsigned i = 0; i < num; ++i) {
 								filterPairedRead(readBuffer[i].first,
 										readBuffer[i].second, support,
-										resSummary, outBuffer1, outBuffer2);
+										resSummary, outBuffer);
 							}
 						}
 					}
@@ -425,7 +424,7 @@ public:
 							for (unsigned i = 0; i < num; ++i) {
 								filterPairedRead(readBuffer[i].first,
 										readBuffer[i].second, support,
-										resSummary, outBuffer1, outBuffer2);
+										resSummary, outBuffer);
 							}
 						}
 					}
@@ -474,6 +473,7 @@ private:
 		return result;
 	}
 
+	//Relies on short string optimization
 	void appendResults(const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults,
 			string &outStr) {
 		outStr += "\t";
@@ -501,7 +501,6 @@ private:
 
 	void formatOutStr(const kseq_t &read, string &outStr, MIBFQuerySupport<ID> &support,
 			const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults) {
-		outStr.clear();
 		if (opt::outputType == opt::FASTA) {
 			outStr += ">";
 			outStr += read.name.s;
@@ -547,6 +546,9 @@ private:
 					outStr += " ";
 					outStr += read.comment.s;
 				}
+				outStr += "\t";
+				outStr += std::to_string(support.getSatCount());
+				outStr += "\t*";
 			} else {
 				unsigned i = 0;
 				outStr += m_fullIDs[signifResults[i].id];
@@ -573,20 +575,22 @@ private:
 		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
 		classify(support, read.seq.s);
 		resSummary.updateSummaryData(signifResults);
+		outStr.clear();
 		formatOutStr(read, outStr, support, signifResults);
-#pragma omp critical(cout)
+//#pragma omp critical(cout)
 		cout << outStr;
 	}
 
 	void filterPairedRead(const kseq_t &read1, const kseq_t &read2, MIBFQuerySupport<ID> &support,
-			ResultsManager<ID> &resSummary, string &outStr1, string &outStr2) {
+			ResultsManager<ID> &resSummary, string &outStr) {
 		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
 		classify(support, read1.seq.s, read2.seq.s);
+		outStr.clear();
 		resSummary.updateSummaryData(signifResults);
-		formatOutStr(read1, outStr1, support, signifResults);
-		formatOutStr(read2, outStr2, support, signifResults);
-#pragma omp critical(cout)
-		cout << outStr1 << outStr2;
+		formatOutStr(read1, outStr, support, signifResults);
+		formatOutStr(read2, outStr, support, signifResults);
+//#pragma omp critical(cout)
+		cout << outStr;
 	}
 
 	/*
