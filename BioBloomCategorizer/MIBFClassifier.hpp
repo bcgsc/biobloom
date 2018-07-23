@@ -201,8 +201,6 @@ public:
 			outputName = opt::outputPrefix + "_reads.fa";
 		}
 
-		ofstream readsOutput(outputName);
-
 		//print out header info and initialize variables
 		ResultsManager<ID> resSummary(m_fullIDs, false);
 
@@ -247,7 +245,7 @@ public:
 									size)) {
 								//try to work
 								if (kseq_read(seq) >= 0) {
-									filterSingleRead(*seq, support, readsOutput,
+									filterSingleRead(*seq, support,
 											resSummary, outBuffer);
 								} else {
 									break;
@@ -259,7 +257,7 @@ public:
 					//finish off remaining work
 					for (unsigned i = 0; i < size; ++i) {
 						filterSingleRead(readBuffer[i], support,
-								readsOutput, resSummary, outBuffer);
+								resSummary, outBuffer);
 					}
 					if (workQueue.size_approx()) {
 						moodycamel::ConsumerToken ctok(workQueue);
@@ -270,7 +268,7 @@ public:
 							if (num) {
 								for (unsigned i = 0; i < num; ++i) {
 									filterSingleRead(readBuffer[i], support,
-											readsOutput, resSummary, outBuffer);
+											resSummary, outBuffer);
 								}
 							}
 						}
@@ -288,7 +286,7 @@ public:
 							if (num) {
 								for (unsigned i = 0; i < num; ++i) {
 									filterSingleRead(readBuffer[i], support,
-											readsOutput, resSummary, outBuffer);
+											resSummary, outBuffer);
 								}
 							}
 						}
@@ -304,7 +302,7 @@ public:
 		cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
 				<< endl;
 
-		Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
+		ofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
 		summaryOutput << resSummary.getResultsSummary(m_numRead);
 		summaryOutput.close();
 		cout.flush();
@@ -335,8 +333,6 @@ public:
 		} else if (opt::outputType == opt::FASTA) {
 			outputName = opt::outputPrefix + "_reads.fa";
 		}
-
-		ofstream readsOutput(outputName);
 
 		if (opt::verbose) {
 			cerr << "Filtering Start" << "\n";
@@ -383,7 +379,7 @@ public:
 								size)) {
 							//try to work
 							if ((kseq_read(seq1) >= 0) && (kseq_read(seq2) >= 0)) {
-								filterPairedRead(*seq1, *seq2, support, readsOutput,
+								filterPairedRead(*seq1, *seq2, support,
 										resSummary, outBuffer1, outBuffer2);
 							} else {
 								break;
@@ -395,7 +391,7 @@ public:
 				//finish off remaining work
 				for (unsigned i = 0; i < size; ++i) {
 					filterPairedRead(readBuffer[i].first,
-							readBuffer[i].second, support, readsOutput,
+							readBuffer[i].second, support,
 							resSummary, outBuffer1, outBuffer2);
 				}
 				if (workQueue.size_approx()) {
@@ -407,7 +403,7 @@ public:
 						if (num) {
 							for (unsigned i = 0; i < num; ++i) {
 								filterPairedRead(readBuffer[i].first,
-										readBuffer[i].second, support, readsOutput,
+										readBuffer[i].second, support,
 										resSummary, outBuffer1, outBuffer2);
 							}
 						}
@@ -428,7 +424,7 @@ public:
 						if (num) {
 							for (unsigned i = 0; i < num; ++i) {
 								filterPairedRead(readBuffer[i].first,
-										readBuffer[i].second, support, readsOutput,
+										readBuffer[i].second, support,
 										resSummary, outBuffer1, outBuffer2);
 							}
 						}
@@ -440,9 +436,8 @@ public:
 				<< endl;
 		kseq_destroy(kseq1);
 		kseq_destroy(kseq2);
-		readsOutput.close();
 
-		Dynamicofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
+		ofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
 		summaryOutput << resSummary.getResultsSummary(m_numRead);
 		summaryOutput.close();
 		cout.flush();
@@ -563,9 +558,8 @@ private:
 				}
 				outStr += "\t";
 				outStr += std::to_string(support.getSatCount());
-				outStr += "\t";
 				if (signifResults.size() == 1) {
-					outStr += "*";
+					outStr += "\t*";
 				} else {
 					appendResults(signifResults, outStr);
 				}
@@ -575,26 +569,24 @@ private:
 	}
 
 	void filterSingleRead(const kseq_t &read, MIBFQuerySupport<ID> &support,
-			ofstream &readsOutput, ResultsManager<ID> &resSummary, string &outStr) {
+			ResultsManager<ID> &resSummary, string &outStr) {
 		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
 		classify(support, read.seq.s);
 		resSummary.updateSummaryData(signifResults);
 		formatOutStr(read, outStr, support, signifResults);
-#pragma omp critical(readsOutput)
-		readsOutput << outStr;
+#pragma omp critical(cout)
+		cout << outStr;
 	}
 
 	void filterPairedRead(const kseq_t &read1, const kseq_t &read2, MIBFQuerySupport<ID> &support,
-			ofstream &readsOutput, ResultsManager<ID> &resSummary, string &outStr1, string &outStr2) {
+			ResultsManager<ID> &resSummary, string &outStr1, string &outStr2) {
 		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
 		classify(support, read1.seq.s, read2.seq.s);
 		resSummary.updateSummaryData(signifResults);
 		formatOutStr(read1, outStr1, support, signifResults);
 		formatOutStr(read2, outStr2, support, signifResults);
-#pragma omp critical(readsOutput)
-		readsOutput << outStr1;
-#pragma omp critical(readsOutput)
-		readsOutput << outStr2;
+#pragma omp critical(cout)
+		cout << outStr1 << outStr2;
 	}
 
 	/*
@@ -606,17 +598,23 @@ private:
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 #pragma omp critical(m_minCount)
 			if (m_minCount.find(frameCount) == m_minCount.end()) {
-				m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
+				boost::shared_ptr<vector<unsigned>> ptr(
 						new vector<unsigned>(m_fullIDs.size()));
+				vector<size_t> count(m_fullIDs.size());
+						m_filter.getIDCounts(count);
 				for (size_t i = 1; i < m_fullIDs.size(); ++i) {
 					(*m_minCount[frameCount])[i] = getMinCount(frameCount,
 							m_perFrameProb[i]);
-//					cout << (*m_minCount[frameCount])[i] << "\t"<< frameCount << "\t"<<m_perFrameProb[i] << endl;
+//					cout << m_fullIDs[i] << "\t" << count[i] << "\t"
+//							<< (*m_minCount[frameCount])[i] << "\t"
+//							<< frameCount << "\t"<<m_perFrameProb[i] << endl;
 				}
+				m_minCount[frameCount] = ptr;
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
-			stHashIterator itr(seq, m_filter.getSeedValues(), m_filter.getHashNum(), m_filter.getKmerSize());
+			stHashIterator itr(seq, m_filter.getSeedValues(),
+					m_filter.getHashNum(), m_filter.getKmerSize());
 			return support.query(itr, *m_minCount[frameCount]);
 		} else {
 			ntHashIterator itr(seq, m_filter.getHashNum(),
