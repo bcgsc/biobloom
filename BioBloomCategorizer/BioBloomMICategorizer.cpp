@@ -103,7 +103,7 @@ void printHelpDialog()
 	"  -a, --frameMatches=N   Min number seed matches needed in a frame to match [1]\n"
 	"                         Ignored if k-mers used when indexing.\n"
 	"  -m, --multi=N          Multi Match threshold.[2]\n"
-	"  -r, --streak=N         Number of additional hits needed to skip classification. [20]\n"
+	"  -r, --streak=N         Number of additional hits needed to skip classification. [10]\n"
 	"  -c, --minNoSat         Minimum count of non saturated matches. Increasing this value\n"
 	"                         will filter out repetitive or low quality sequences.[0]\n"
 	"  -b, --bestHitAgree     Filters out all matches where best hit is ambiguous because\n"
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 	int OPT_VERSION = 0;
 
 	opt::score = pow(10.0,-10.0);
-	opt::streakThreshold = 20;
+	opt::streakThreshold = 10;
 
 	vector<string> inputFiles;
 
