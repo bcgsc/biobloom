@@ -40,7 +40,7 @@ using namespace boost::math;
 static const std::string base64_chars =
 		"!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 
-const static size_t s_bulkSize = 256;
+const static size_t s_bulkSize = 32;
 
 class MIBFClassifier {
 public:
@@ -258,7 +258,8 @@ public:
 					}
 					//finish off remaining work
 					for (unsigned i = 0; i < size; ++i) {
-						assert(readBuffer[i].seq.l); //work
+						filterSingleRead(readBuffer[i], support,
+								readsOutput, resSummary, outBuffer);
 					}
 					if (workQueue.size_approx()) {
 						moodycamel::ConsumerToken ctok(workQueue);
@@ -329,123 +330,111 @@ public:
 		//results summary object
 		ResultsManager<ID> resSummary(m_fullIDs, false);
 		string outputName = opt::outputPrefix + "_reads.tsv";
-
-		//TODO output fasta?
 		if (opt::outputType == opt::FASTQ) {
 			outputName = opt::outputPrefix + "_reads.fq";
 		} else if (opt::outputType == opt::FASTA) {
 			outputName = opt::outputPrefix + "_reads.fa";
 		}
 
-		Dynamicofstream readsOutput(outputName + opt::filePostfix);
+		ofstream readsOutput(outputName);
 
 		if (opt::verbose) {
 			cerr << "Filtering Start" << "\n";
 		}
+
+		moodycamel::ConcurrentQueue<pair<kseq_t, kseq_t>> workQueue(
+				opt::threads * s_bulkSize);
+
 		double startTime = omp_get_wtime();
-		int l1, l2;
+		bool good = true;
+
 		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
 				m_perFrameProb, opt::multiThresh, opt::streakThreshold,
 				m_allowedMiss, opt::minCountNonSatCount,
 				opt::bestHitCountAgree);
-#pragma omp parallel private(l1, l2, rec1, rec2) firstprivate(support)
-		for (;;) {
-#pragma omp critical(kseq)
-			{
-				l1 = kseq_read(kseq1);
-				if (l1 >= 0) {
-					rec1.seq = string(kseq1->seq.s, kseq1->seq.l);
-					rec1.header = string(kseq1->name.s, kseq1->name.l);
-					rec1.qual = string(kseq1->qual.s, kseq1->qual.l);
-					rec1.comment = string(kseq1->comment.s, kseq1->comment.l);
+
+#pragma omp parallel firstprivate(support)
+		{
+			pair<kseq_t, kseq_t> readBuffer[s_bulkSize];
+			memset(&readBuffer, 0, sizeof(pair<kseq_t, kseq_t>) * s_bulkSize);
+			string outBuffer1;
+			string outBuffer2;
+			if (omp_get_thread_num() == 0) {
+				//file reading init
+				gzFile fp1 = gzopen(file1.c_str(), "r");
+				gzFile fp2 = gzopen(file2.c_str(), "r");
+				kseq_t *seq1 = kseq_init(fp1);
+				kseq_t *seq2 = kseq_init(fp2);
+
+				//per thread token
+				moodycamel::ProducerToken ptok(workQueue);
+
+				unsigned size = 0;
+				while ((kseq_read(seq1) >= 0) && (kseq_read(seq2) >= 0)) {
+					cpy_kseq(&(readBuffer[size++].first), seq1);
+					cpy_kseq(&(readBuffer[size++].second), seq2);
+					if (++m_numRead % opt::fileInterval == 0) {
+						cerr << "Currently Reading Read Number: "
+								<< m_numRead << endl;
+					}
+					if (s_bulkSize == size) {
+						//try to insert, if cannot queue is full
+						while (!workQueue.try_enqueue_bulk(ptok, readBuffer,
+								size)) {
+							//try to work
+							if ((kseq_read(seq1) >= 0) && (kseq_read(seq2) >= 0)) {
+								filterPairedRead(*seq1, *seq2, support, readsOutput,
+										resSummary, outBuffer1, outBuffer2);
+							} else {
+								break;
+							}
+						}
+						size = 0;
+					}
 				}
-				l2 = kseq_read(kseq2);
-				if (l2 >= 0) {
-					rec2.seq = string(kseq2->seq.s, kseq2->seq.l);
-					rec2.header = string(kseq2->name.s, kseq2->name.l);
-					rec2.qual = string(kseq2->qual.s, kseq2->qual.l);
-					rec2.comment = string(kseq2->comment.s, kseq2->comment.l);
+				//finish off remaining work
+				for (unsigned i = 0; i < size; ++i) {
+					filterPairedRead(readBuffer[i].first,
+							readBuffer[i].second, support, readsOutput,
+							resSummary, outBuffer1, outBuffer2);
+				}
+				if (workQueue.size_approx()) {
+					moodycamel::ConsumerToken ctok(workQueue);
+					//join in if others are still not finished
+					while (workQueue.size_approx()) {
+						size_t num = workQueue.try_dequeue_bulk(ctok,
+								readBuffer, s_bulkSize);
+						if (num) {
+							for (unsigned i = 0; i < num; ++i) {
+								filterPairedRead(readBuffer[i].first,
+										readBuffer[i].second, support, readsOutput,
+										resSummary, outBuffer1, outBuffer2);
+							}
+						}
+					}
+				}
+#pragma omp atomic update
+				good &= false;
+				kseq_destroy(seq1);
+				kseq_destroy(seq2);
+				gzclose(fp1);
+				gzclose(fp2);
+			} else {
+				moodycamel::ConsumerToken ctok(workQueue);
+				while (good) {
+					if (workQueue.size_approx() >= s_bulkSize) {
+						size_t num = workQueue.try_dequeue_bulk(ctok,
+								readBuffer, s_bulkSize);
+						if (num) {
+							for (unsigned i = 0; i < num; ++i) {
+								filterPairedRead(readBuffer[i].first,
+										readBuffer[i].second, support, readsOutput,
+										resSummary, outBuffer1, outBuffer2);
+							}
+						}
+					}
 				}
 			}
-			if (l1 >= 0 && l2 >= 0) {
-#pragma omp critical(totalReads)
-				{
-					++m_numRead;
-					if (m_numRead % opt::fileInterval == 0) {
-						cerr << "Currently Reading Read Number: " << m_numRead
-								<< endl;
-					}
-				}
-
-				const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
-						classify(support, rec1.seq, rec2.seq);
-				resSummary.updateSummaryData(signifResults);
-
-#pragma omp critical(outputFiles)
-				if (opt::outputType == opt::FASTA) {
-					readsOutput << ">" << rec1.header << " " << rec1.comment;
-					if (!signifResults.empty()) {
-						unsigned i = 0;
-						readsOutput << "\t" << m_fullIDs[signifResults[i].id];
-						for (++i; i < signifResults.size(); ++i) {
-							readsOutput << m_fullIDs[signifResults[i].id];
-						}
-					}
-					readsOutput << "\n" << rec1.seq << "\n";
-					readsOutput << ">" << rec2.header << " " << rec2.comment;
-					readsOutput << "\n" << rec2.seq << "\n";
-				} else if (opt::outputType == opt::FASTQ) {
-					readsOutput << "@" << rec1.header << " " << rec1.comment;
-					if (!signifResults.empty()) {
-						unsigned i = 0;
-						readsOutput << "\t" << m_fullIDs[signifResults[i].id];
-						for (++i; i < signifResults.size(); ++i) {
-							readsOutput << m_fullIDs[signifResults[i].id];
-						}
-					}
-					readsOutput << "\n" << rec1.seq << "\n+\n" << rec1.qual
-							<< "\n";
-					readsOutput << "@" << rec2.header << " " << rec2.comment;
-					readsOutput << "\n" << rec2.seq << "\n+\n" << rec2.qual
-							<< "\n";
-				} else {
-					if (signifResults.empty()) {
-						readsOutput << "*\t" << rec1.header << " "
-								<< rec1.comment << "\t0\t*\n";
-					} else {
-						unsigned i = 0;
-						readsOutput << m_fullIDs[signifResults[i].id] << "\t"
-								<< rec1.header << " " << rec1.comment << "\t"
-								<< support.getSatCount() << "\t";
-						if (signifResults.size() == 1) {
-							readsOutput << "*";
-						} else {
-							for (++i; i < signifResults.size(); ++i) {
-								if (i != 0) {
-									readsOutput << ";";
-								}
-								readsOutput << m_fullIDs[signifResults[i].id];
-							}
-						}
-						readsOutput << "\t";
-						for (i = 0; i < signifResults.size(); ++i) {
-							if (i != 0) {
-								readsOutput << ";";
-							}
-							readsOutput << m_fullIDs[signifResults[i].id] << ","
-									<< signifResults[i].nonSatFrameCount << ","
-									<< signifResults[i].nonSatCount << ","
-									<< signifResults[i].count << ","
-									<< signifResults[i].solidCount << ","
-									<< signifResults[i].totalCount << ","
-									<< signifResults[i].totalNonSatCount << ","
-									<< signifResults[i].frameProb;
-						}
-						readsOutput << "\n";
-					}
-				}
-			} else
-				break;
 		}
 		cerr << "Classification time (s): " << (omp_get_wtime() - startTime)
 				<< endl;
@@ -515,8 +504,7 @@ private:
 		}
 	}
 
-	void printResult(const kseq_t &read, ofstream &output,
-			string &outStr, MIBFQuerySupport<ID> &support,
+	void formatOutStr(const kseq_t &read, string &outStr, MIBFQuerySupport<ID> &support,
 			const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults) {
 		outStr.clear();
 		if (opt::outputType == opt::FASTA) {
@@ -584,8 +572,6 @@ private:
 			}
 		}
 		outStr += "\n";
-#pragma omp critical(outputFiles)
-		output << outStr;
 	}
 
 	void filterSingleRead(const kseq_t &read, MIBFQuerySupport<ID> &support,
@@ -593,7 +579,22 @@ private:
 		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
 		classify(support, read.seq.s);
 		resSummary.updateSummaryData(signifResults);
-		printResult(read, readsOutput, outStr, support, signifResults);
+		formatOutStr(read, outStr, support, signifResults);
+#pragma omp critical(readsOutput)
+		readsOutput << outStr;
+	}
+
+	void filterPairedRead(const kseq_t &read1, const kseq_t &read2, MIBFQuerySupport<ID> &support,
+			ofstream &readsOutput, ResultsManager<ID> &resSummary, string &outStr1, string &outStr2) {
+		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
+		classify(support, read1.seq.s, read2.seq.s);
+		resSummary.updateSummaryData(signifResults);
+		formatOutStr(read1, outStr1, support, signifResults);
+		formatOutStr(read2, outStr2, support, signifResults);
+#pragma omp critical(readsOutput)
+		readsOutput << outStr1;
+#pragma omp critical(readsOutput)
+		readsOutput << outStr2;
 	}
 
 	/*
@@ -652,47 +653,6 @@ private:
 			ntHashIterator itr2(seq2, m_filter.getHashNum(),
 					m_filter.getKmerSize());
 			return support.query(itr1, itr2, *m_minCount[frameCount]);
-		}
-	}
-
-	inline void printPairToFile(const FaRec rec1, const FaRec rec2,
-			Dynamicofstream &outputFile) {
-		if (opt::outputType == opt::FASTA) {
-#pragma omp critical(outputFiles)
-			{
-				outputFile << ">" << rec1.header << "\n" << rec1.seq << "\n";
-				outputFile << ">" << rec2.header << "\n" << rec2.seq << "\n";
-			}
-		} else {
-#pragma omp critical(outputFiles)
-			{
-				outputFile << "@" << rec1.header << "\n" << rec1.seq << "\n+\n"
-				<< rec1.qual << "\n";
-				outputFile << "@" << rec2.header << "\n" << rec2.seq << "\n+\n"
-				<< rec2.qual << "\n";
-			}
-		}
-	}
-
-	inline void printPairToFile(unsigned outputFileIndex, const FaRec rec1,
-			const FaRec rec2, vector<Dynamicofstream*> &outputFiles1,
-			vector<Dynamicofstream*> &outputFiles2) {
-		if (opt::outputType == opt::FASTA) {
-#pragma omp critical(outputFiles)
-			{
-				(*outputFiles1[outputFileIndex]) << ">" << rec1.header << "\n"
-				<< rec1.seq << "\n";
-				(*outputFiles2[outputFileIndex]) << ">" << rec2.header << "\n"
-				<< rec2.seq << "\n";
-			}
-		} else {
-#pragma omp critical(outputFiles)
-			{
-				(*outputFiles1[outputFileIndex]) << "@" << rec1.header << "\n"
-				<< rec1.seq << "\n+\n" << rec1.qual << "\n";
-				(*outputFiles2[outputFileIndex]) << "@" << rec2.header << "\n"
-				<< rec2.seq << "\n+\n" << rec2.qual << "\n";
-			}
 		}
 	}
 
