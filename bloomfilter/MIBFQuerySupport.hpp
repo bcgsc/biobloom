@@ -80,7 +80,6 @@ public:
 		unsigned bestCount = 0;
 		unsigned secondBestCount = 0;
 		bool candidateFound = false;
-		assert(minCount.size());
 
 		while (itr != itr.end() && !candidateFound) {
 			candidateFound = updateCountsSeeds(itr, minCount, bestCount,
