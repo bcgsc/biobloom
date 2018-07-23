@@ -209,17 +209,16 @@ public:
 		moodycamel::ConcurrentQueue<kseq_t> workQueue(
 				opt::threads * s_bulkSize);
 
-		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
-				m_perFrameProb, opt::multiThresh, opt::streakThreshold,
-				m_allowedMiss, opt::minCountNonSatCount,
-				opt::bestHitCountAgree);
-
 		double startTime = omp_get_wtime();
 		for (vector<string>::const_iterator it = inputFiles.begin();
 				it != inputFiles.end(); ++it) {
 			bool good = true;
-#pragma omp parallel firstprivate(support)
+#pragma omp parallel
 			{
+				MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
+						m_perFrameProb, opt::multiThresh, opt::streakThreshold,
+						m_allowedMiss, opt::minCountNonSatCount,
+						opt::bestHitCountAgree);
 				kseq_t readBuffer[s_bulkSize];
 				memset(&readBuffer, 0, sizeof(kseq_t) * s_bulkSize);
 				string outBuffer;
@@ -577,7 +576,7 @@ private:
 		resSummary.updateSummaryData(signifResults);
 		outStr.clear();
 		formatOutStr(read, outStr, support, signifResults);
-//#pragma omp critical(cout)
+#pragma omp critical(cout)
 		cout << outStr;
 	}
 
@@ -589,7 +588,7 @@ private:
 		resSummary.updateSummaryData(signifResults);
 		formatOutStr(read1, outStr, support, signifResults);
 		formatOutStr(read2, outStr, support, signifResults);
-//#pragma omp critical(cout)
+#pragma omp critical(cout)
 		cout << outStr;
 	}
 
