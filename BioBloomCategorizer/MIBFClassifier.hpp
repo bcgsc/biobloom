@@ -604,9 +604,9 @@ private:
 			for (size_t i = 1; i < m_fullIDs.size(); ++i) {
 				(*m_minCount[frameCount])[i] = getMinCount(frameCount,
 						m_perFrameProb[i]);
-				cout << m_fullIDs[i] << "\t" << count[i] << "\t"
-				<< (*m_minCount[frameCount])[i] << "\t"
-				<< frameCount << "\t"<<m_perFrameProb[i] << endl;
+//				cout << m_fullIDs[i] << "\t" << count[i] << "\t"
+//				<< (*m_minCount[frameCount])[i] << "\t"
+//				<< frameCount << "\t"<<m_perFrameProb[i] << endl;
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
