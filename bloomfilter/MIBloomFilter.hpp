@@ -351,10 +351,9 @@ public:
 	 * Returns false if unable to insert hashes values
 	 * Inserts hash functions in random order
 	 */
-	bool insert(const size_t *hashes, T value, unsigned max) {
+	bool insert(const size_t *hashes, T value, unsigned max, bool &saturated = true) {
 		unsigned count = 0;
 		std::vector<unsigned> hashOrder;
-		bool saturated = true;
 		//for random number generator seed
 		size_t randValue = value;
 
@@ -418,27 +417,31 @@ public:
 		}
 	}
 
-//	/*
-//	 * Return the position of a hash values
-//	 */
-//	vector<size_t> atPos(const size_t *hashes, unsigned &finished, unsigned maxMiss = 0){
-//		vector<size_t> rankPos(m_hashNum);
-//		unsigned misses = 0;
-//		for (unsigned i = 0; i < m_hashNum; ++i) {
-//			size_t pos = hashes[i] % m_bv.size();
-//			if (m_bv[pos]) {
-//				rankPos[i] = m_rankSupport(pos);
-//			} else {
-//				++misses;
-//				if (misses > maxMiss) {
-//					finished = i;
-//					return rankPos;
-//				}
-//			}
-//		}
-//		finished = m_hashNum;
-//		return rankPos;
-//	}
+	inline vector<T> at(const size_t *hashes, bool &saturated,
+			unsigned maxMiss = 0) {
+		vector<T> results(m_hashNum);
+		unsigned misses = 0;
+		for (unsigned i = 0; i < m_hashNum; ++i) {
+			size_t pos = hashes[i] % m_bv.size();
+			if (m_bv[pos] == 0) {
+				++misses;
+				saturated = false;
+				if (misses > maxMiss) {
+					return vector<T>();
+				}
+			} else {
+				size_t rankPos = m_rankSupport(pos);
+				T tempResult = m_data[rankPos];
+				if (tempResult > s_mask) {
+					results[i] = m_data[rankPos] & s_antiMask;
+				} else {
+					results[i] = m_data[rankPos];
+					saturated = false;
+				}
+			}
+		}
+		return results;
+	}
 
 	/*
 	 * Populates rank pos vector. Boolean vector is use to confirm if hits are good
@@ -476,32 +479,6 @@ public:
 		}
 		return true;
 	}
-
-//	/*
-//	 * No saturation masking
-//	 */
-//	vector<T> at(const size_t *hashes, unsigned maxMiss = 0) {
-//		vector<T> results(m_hashNum);
-//		vector<size_t> rankPos(m_hashNum);
-//		vector<bool> hits;
-//		unsigned misses = 0;
-//		for (unsigned i = 0; i < m_hashNum; ++i) {
-//			size_t pos = hashes[i] % m_bv.size();
-//			if (m_bv[pos] == 0) {
-//				++misses;
-//				if (misses > maxMiss) {
-//					return vector<T>();
-//				}
-//			} else {
-//				rankPos[i] = m_rankSupport(pos);
-//			}
-//		}
-//		for (unsigned i = 0; i < m_hashNum; ++i){
-//			results[i] = m_data[rankPos[i]];
-//		}
-//		return results;
-//	}
-
 
 	vector<size_t> getRankPos(const size_t *hashes) const{
 		vector<size_t> rankPos(m_hashNum);
@@ -559,31 +536,6 @@ public:
 		}
 		return saturatedCounts;
 	}
-
-//	size_t getIDCounts(vector<size_t> &counts) const {
-//		vector<vector<size_t>> allCounts(omp_get_num_threads(),
-//				vector<size_t>(counts.size(), 0));
-//		size_t saturatedCounts = 0;
-//#pragma omp parallel for
-//		for (size_t i = 0; i < m_dSize; ++i) {
-//			T data = m_data[i];
-//			if(data > s_mask){
-//				++allCounts[omp_get_thread_num()][data & s_antiMask];
-//#pragma omp atomic update
-//				++saturatedCounts;
-//			}
-//			else{
-//				++allCounts[omp_get_thread_num()][data];
-//			}
-//		}
-//		for (size_t i = 0; i < counts.size(); ++i) {
-//			for (size_t j = 0; j < allCounts.size(); ++j) {
-//				counts[i] += allCounts[j][i];
-//			}
-//		}
-//
-//		return saturatedCounts;
-//	}
 
 	size_t getPop() const {
 		size_t index = m_bv.size() - 1;
