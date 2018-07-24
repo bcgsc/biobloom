@@ -24,8 +24,6 @@
 #include <limits>
 #include <sdsl/bit_vector_il.hpp>
 #include <sdsl/rank_support.hpp>
-#include "Options.h"
-#include "Common/Options.h"
 #include <omp.h>
 #include <algorithm>    // std::random_shuffle
 
@@ -615,7 +613,7 @@ public:
 	 * Returns first abnormal ID or value of maxVal if no abnormal IDs are found
 	 * For debugging
 	 */
-	ID checkValues(T maxVal) const {
+	T checkValues(T maxVal) const {
 		for (size_t i = 0; i < m_dSize; ++i) {
 			if ((m_data[i] & s_antiMask) > maxVal) {
 				return m_data[i];
@@ -651,7 +649,7 @@ public:
 		return results;
 	}
 
-	ID getData(size_t rank) const{
+	T getData(size_t rank) const{
 		return m_data[rank];
 	}
 

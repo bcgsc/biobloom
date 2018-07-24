@@ -25,7 +25,7 @@
 using namespace std;
 using boost::math::binomial;
 
-//T = ID type, H = rolling hash itr
+//T = T type, H = rolling hash itr
 template<typename T>
 class MIBFQuerySupport {
 public:
@@ -69,12 +69,7 @@ public:
 	 */
 	const vector<QueryResult> &query(stHashIterator &itr,
 			const vector<unsigned> &minCount) {
-		//reset reusable values
-		m_candidateMatches.clear();
-		std::fill(m_counts.begin(), m_counts.end(), CountResult());
-		m_signifResults.clear();
-		m_satCount = 0;
-		m_evalCount = 0;
+		init();
 
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
@@ -96,12 +91,7 @@ public:
 	 */
 	const vector<QueryResult> &query(ntHashIterator &itr,
 			const vector<unsigned> &minCount) {
-		//reset reusable values
-		m_candidateMatches.clear();
-		std::fill(m_counts.begin(), m_counts.end(), CountResult());
-		m_signifResults.clear();
-		m_satCount = 0;
-		m_evalCount = 0;
+		init();
 
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
@@ -119,11 +109,7 @@ public:
 
 	const vector<QueryResult> &query(stHashIterator &itr1, stHashIterator &itr2,
 			const vector<unsigned> &minCount) {
-		m_candidateMatches.clear();
-		std::fill(m_counts.begin(), m_counts.end(), CountResult());
-		m_signifResults.clear();
-		m_satCount = 0;
-		m_evalCount = 0;
+		init();
 
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
@@ -144,11 +130,7 @@ public:
 
 	const vector<QueryResult> &query(ntHashIterator &itr1, ntHashIterator &itr2,
 			const vector<unsigned> &minCount) {
-		m_candidateMatches.clear();
-		std::fill(m_counts.begin(), m_counts.end(), CountResult());
-		m_signifResults.clear();
-		m_satCount = 0;
-		m_evalCount = 0;
+		init();
 
 		unsigned extraFrame = 0;
 		unsigned bestCount = 0;
@@ -201,7 +183,7 @@ public:
 	 */
 	//TODO saturation not handle correctly
 	inline vector<unsigned> getMatchSignature(const string &seq,
-			unsigned &evaluatedSeeds, vector<vector<pair<ID, bool> > > &hitsPattern) {
+			unsigned &evaluatedSeeds, vector<vector<pair<T, bool> > > &hitsPattern) {
 		vector<unsigned> matchPos;
 		matchPos.reserve(seq.size() - m_miBF.getKmerSize());
 
@@ -210,21 +192,21 @@ public:
 					m_miBF.getKmerSize());
 			while (itr != itr.end()) {
 				if (m_miBF.atRank(*itr, m_rankPos, m_hits, m_maxMiss)) {
-					vector<ID> results = m_miBF.getData(m_rankPos);
-					vector<pair<ID, bool>> processedResults(results.size(),
-							pair<ID, bool>(0, false));
+					vector<T> results = m_miBF.getData(m_rankPos);
+					vector<pair<T, bool>> processedResults(results.size(),
+							pair<T, bool>(0, false));
 					for (unsigned i = 0; i < m_miBF.getHashNum(); ++i) {
 						if (m_hits[i]) {
-							ID tempResult = results[i];
-							if (tempResult > MIBloomFilter<ID>::s_mask) {
-								processedResults[i] = pair<ID, bool>(
+							T tempResult = results[i];
+							if (tempResult > MIBloomFilter<T>::s_mask) {
+								processedResults[i] = pair<T, bool>(
 										tempResult
-												& MIBloomFilter<ID>::s_antiMask,
+												& MIBloomFilter<T>::s_antiMask,
 										true);
 							} else {
-								processedResults[i] = pair<ID, bool>(
+								processedResults[i] = pair<T, bool>(
 										tempResult
-												& MIBloomFilter<ID>::s_antiMask,
+												& MIBloomFilter<T>::s_antiMask,
 										false);
 							}
 						}
@@ -240,21 +222,21 @@ public:
 					m_miBF.getKmerSize());
 			while (itr != itr.end()) {
 				if (m_miBF.atRank(*itr, m_rankPos)) {
-					vector<ID> results = m_miBF.getData(m_rankPos);
-					vector<pair<ID, bool>> processedResults(results.size(),
-							pair<ID, bool>(0, false));
+					vector<T> results = m_miBF.getData(m_rankPos);
+					vector<pair<T, bool>> processedResults(results.size(),
+							pair<T, bool>(0, false));
 					if (results.size() > 0) {
 						for (unsigned i = 0; i < m_miBF.getHashNum(); ++i) {
-							ID tempResult = results[i];
-							if (tempResult > MIBloomFilter<ID>::s_mask) {
-								processedResults[i] = pair<ID, bool>(
+							T tempResult = results[i];
+							if (tempResult > MIBloomFilter<T>::s_mask) {
+								processedResults[i] = pair<T, bool>(
 										tempResult
-												& MIBloomFilter<ID>::s_antiMask,
+												& MIBloomFilter<T>::s_antiMask,
 										true);
 							} else {
-								processedResults[i] = pair<ID, bool>(
+								processedResults[i] = pair<T, bool>(
 										tempResult
-												& MIBloomFilter<ID>::s_antiMask,
+												& MIBloomFilter<T>::s_antiMask,
 										false);
 							}
 						}
@@ -356,6 +338,14 @@ private:
 		}
 		++m_evalCount;
 		return candidateFound;
+	}
+
+	void init(){
+		m_candidateMatches.clear();
+		std::fill(m_counts.begin(), m_counts.end(), CountResult());
+		m_signifResults.clear();
+		m_satCount = 0;
+		m_evalCount = 0;
 	}
 
 	bool updatesCounts(const vector<unsigned> &minCount, unsigned &bestCount,
