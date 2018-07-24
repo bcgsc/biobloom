@@ -209,6 +209,8 @@ public:
 		moodycamel::ConcurrentQueue<kseq_t> workQueue(
 				opt::threads * s_bulkSize);
 
+		typedef std::vector<kseq_t>::iterator iter_t;
+
 		double startTime = omp_get_wtime();
 		for (vector<string>::const_iterator it = inputFiles.begin();
 				it != inputFiles.end(); ++it) {
@@ -219,8 +221,8 @@ public:
 						m_perFrameProb, opt::multiThresh, opt::streakThreshold,
 						m_allowedMiss, opt::minCountNonSatCount,
 						opt::bestHitCountAgree);
-				kseq_t readBuffer[s_bulkSize];
-				memset(&readBuffer, 0, sizeof(kseq_t) * s_bulkSize);
+				std::vector <kseq_t> readBuffer;
+				readBuffer.reserve(s_bulkSize);
 				string outBuffer;
 				if (omp_get_thread_num() == 0) {
 					//file reading init
@@ -233,23 +235,30 @@ public:
 
 					unsigned size = 0;
 					while (kseq_read(seq) >= 0) {
-						cpy_kseq(&readBuffer[size++], seq);
+						readBuffer.push_back(kseq_t()); // Don't like this, need to reallocate memory twice
+						cpy_kseq(&readBuffer[size++], seq); //TODO Make proper copy constructor for kseq?
 						if (++m_numRead % opt::fileInterval == 0) {
 							cerr << "Currently Reading Read Number: "
 									<< m_numRead << endl;
 						}
 						if (s_bulkSize == size) {
 							//try to insert, if cannot queue is full
-							while (!workQueue.try_enqueue_bulk(ptok, readBuffer,
+							while (!workQueue.try_enqueue_bulk(ptok,
+									std::move_iterator < iter_t > (readBuffer.begin()),
 									size)) {
 								//try to work
 								if (kseq_read(seq) >= 0) {
+									if (++m_numRead % opt::fileInterval == 0) {
+										cerr << "Currently Reading Read Number: "
+												<< m_numRead << endl;
+									}
 									filterSingleRead(*seq, support,
 											resSummary, outBuffer);
 								} else {
 									break;
 								}
 							}
+							readBuffer.clear();
 							size = 0;
 						}
 					}
@@ -263,7 +272,8 @@ public:
 						//join in if others are still not finished
 						while (workQueue.size_approx()) {
 							size_t num = workQueue.try_dequeue_bulk(ctok,
-									readBuffer, s_bulkSize);
+									std::move_iterator < iter_t > (readBuffer.begin()),
+									s_bulkSize);
 							if (num) {
 								for (unsigned i = 0; i < num; ++i) {
 									filterSingleRead(readBuffer[i], support,
@@ -281,13 +291,15 @@ public:
 					while (good) {
 						if (workQueue.size_approx() >= s_bulkSize) {
 							size_t num = workQueue.try_dequeue_bulk(ctok,
-									readBuffer, s_bulkSize);
+									std::move_iterator < iter_t > (readBuffer.begin()),
+									s_bulkSize);
 							if (num) {
 								for (unsigned i = 0; i < num; ++i) {
 									filterSingleRead(readBuffer[i], support,
 											resSummary, outBuffer);
 								}
 							}
+							readBuffer.clear();
 						}
 					}
 				}
@@ -340,18 +352,19 @@ public:
 		moodycamel::ConcurrentQueue<pair<kseq_t, kseq_t>> workQueue(
 				opt::threads * s_bulkSize);
 
+		typedef std::vector<pair<kseq_t, kseq_t>>::iterator iter_t;
+
 		double startTime = omp_get_wtime();
 		bool good = true;
 
-		MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
-				m_perFrameProb, opt::multiThresh, opt::streakThreshold,
-				m_allowedMiss, opt::minCountNonSatCount,
-				opt::bestHitCountAgree);
-
-#pragma omp parallel firstprivate(support)
+#pragma omp parallel
 		{
-			pair<kseq_t, kseq_t> readBuffer[s_bulkSize];
-			memset(&readBuffer, 0, sizeof(pair<kseq_t, kseq_t>) * s_bulkSize);
+			vector<pair<kseq_t, kseq_t>> readBuffer;
+			readBuffer.reserve(s_bulkSize);
+			MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
+					m_perFrameProb, opt::multiThresh, opt::streakThreshold,
+					m_allowedMiss, opt::minCountNonSatCount,
+					opt::bestHitCountAgree);
 			string outBuffer;
 			if (omp_get_thread_num() == 0) {
 				//file reading init
@@ -365,6 +378,7 @@ public:
 
 				unsigned size = 0;
 				while ((kseq_read(seq1) >= 0) && (kseq_read(seq2) >= 0)) {
+					readBuffer.push_back(pair<kseq_t,kseq_t>(kseq_t(),kseq_t()));
 					cpy_kseq(&(readBuffer[size++].first), seq1);
 					cpy_kseq(&(readBuffer[size++].second), seq2);
 					if (++m_numRead % opt::fileInterval == 0) {
@@ -373,8 +387,13 @@ public:
 					}
 					if (s_bulkSize == size) {
 						//try to insert, if cannot queue is full
-						while (!workQueue.try_enqueue_bulk(ptok, readBuffer,
+						while (!workQueue.try_enqueue_bulk(ptok,
+								std::move_iterator < iter_t > (readBuffer.begin()),
 								size)) {
+							if (++m_numRead % opt::fileInterval == 0) {
+								cerr << "Currently Reading Read Number: "
+										<< m_numRead << endl;
+							}
 							//try to work
 							if ((kseq_read(seq1) >= 0) && (kseq_read(seq2) >= 0)) {
 								filterPairedRead(*seq1, *seq2, support,
@@ -383,6 +402,7 @@ public:
 								break;
 							}
 						}
+						readBuffer.clear();
 						size = 0;
 					}
 				}
@@ -397,7 +417,8 @@ public:
 					//join in if others are still not finished
 					while (workQueue.size_approx()) {
 						size_t num = workQueue.try_dequeue_bulk(ctok,
-								readBuffer, s_bulkSize);
+								std::move_iterator < iter_t > (readBuffer.begin()),
+								s_bulkSize);
 						if (num) {
 							for (unsigned i = 0; i < num; ++i) {
 								filterPairedRead(readBuffer[i].first,
@@ -418,7 +439,8 @@ public:
 				while (good) {
 					if (workQueue.size_approx() >= s_bulkSize) {
 						size_t num = workQueue.try_dequeue_bulk(ctok,
-								readBuffer, s_bulkSize);
+								std::move_iterator < iter_t > (readBuffer.begin()),
+								s_bulkSize);
 						if (num) {
 							for (unsigned i = 0; i < num; ++i) {
 								filterPairedRead(readBuffer[i].first,
