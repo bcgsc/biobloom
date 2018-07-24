@@ -515,8 +515,6 @@ private:
 			outStr += std::to_string((unsigned) signifResults[i].totalNonSatCount);
 			outStr += ",";
 			outStr += std::to_string((unsigned) signifResults[i].totalCount);
-			outStr += ",";
-			outStr += std::to_string((unsigned) signifResults[i].frameProb);
 		}
 	}
 
