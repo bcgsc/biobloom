@@ -351,11 +351,13 @@ public:
 	 * Returns false if unable to insert hashes values
 	 * Inserts hash functions in random order
 	 */
-	bool insert(const size_t *hashes, T value, unsigned max, bool &saturated = true) {
+	bool insert(const size_t *hashes, T value, unsigned max) {
 		unsigned count = 0;
 		std::vector<unsigned> hashOrder;
 		//for random number generator seed
 		size_t randValue = value;
+
+		bool saturated = true;
 
 		//check values and if value set
 		for (unsigned i = 0; i < m_hashNum; ++i) {
