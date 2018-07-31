@@ -623,7 +623,7 @@ private:
 		formatOutStr(read, outStr, support, signifResults);
 #pragma omp critical(cout)
 		{
-			cout << outStr << endl;
+			cout << outStr;
 			cout.flush();
 		}
 	}
