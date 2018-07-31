@@ -59,7 +59,7 @@ AC_LANG([C++])	#sets the auto conf to look for c++ headers
 AC_CHECK_HEADERS([boost/property_tree/ptree.hpp])
 AC_CHECK_HEADERS([boost/property_tree/ini_parser.hpp])
 AC_CHECK_HEADERS([btl_bloomfilter/BloomFilter.hpp])
-AX_CHECK_ZLIB
+AC_CHECK_HEADERS([zlib.h])
 
 AC_CHECK_HEADERS([google/dense_hash_map])
 if test $ac_cv_header_google_dense_hash_map != yes; then
