@@ -6,7 +6,7 @@ biobloomcategorizer_CPPFLAGS = -I$(top_srcdir)/BioBloomCategorizer \
 	-I$(top_srcdir)/Common \
 	-I$(top_srcdir)
 	
-biobloomcategorizer_LDADD = $(top_builddir)/Common/libcommon.a \
+biobloomcategorizer_LDADD = $(top_builddir)/Common/libcommon.a -lz \
 	-lsdsl
 	
 biobloomcategorizer_LDFLAGS = $(OPENMP_CXXFLAGS)
