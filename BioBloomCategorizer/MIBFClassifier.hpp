@@ -225,6 +225,8 @@ public:
 			} else {
 				moodycamel::ConcurrentQueue<kseq_t> workQueue(
 						opt::threads * s_bulkSize);
+//				moodycamel::ConcurrentQueue<kseq_t> writeQueue(
+//						opt::threads * s_bulkSize);
 				bool good = true;
 				typedef std::vector<kseq_t>::iterator iter_t;
 #pragma omp parallel
@@ -306,7 +308,26 @@ public:
 						good = false;
 						kseq_destroy(seq);
 						gzclose(fp);
-					} else {
+					}
+//					//writer
+//					else if(omp_get_thread_num() == 1){
+//						moodycamel::ConsumerToken ctok(workQueue);
+//						while (good & writeQueue.size_approx()) {
+//							if (workQueue.size_approx() >= s_bulkSize) {
+//								size_t num = workQueue.try_dequeue_bulk(ctok, readBuffer.begin(),
+//										s_bulkSize);
+//								if (num) {
+//									for (unsigned i = 0; i < num; ++i) {
+//										//------------------------WORK CODE START---------------------------------------
+//										filterSingleRead(readBuffer[i], support,
+//												resSummary, outBuffer);
+//										//------------------------WORK CODE END-----------------------------------------
+//									}
+//								}
+//							}
+//						}
+//					}
+					else {
 						moodycamel::ConsumerToken ctok(workQueue);
 						while (good) {
 							if (workQueue.size_approx() >= s_bulkSize) {
@@ -621,11 +642,10 @@ private:
 		resSummary.updateSummaryData(signifResults);
 		outStr.clear();
 		formatOutStr(read, outStr, support, signifResults);
-#pragma omp critical(cout)
-		{
+//#pragma omp critical(cout)
+//		{
 			cout << outStr;
-			cout.flush();
-		}
+//		}
 	}
 
 	void filterPairedRead(const kseq_t &read1, const kseq_t &read2, MIBFQuerySupport<ID> &support,
@@ -636,11 +656,7 @@ private:
 		resSummary.updateSummaryData(signifResults);
 		formatOutStr(read1, outStr, support, signifResults);
 		formatOutStr(read2, outStr, support, signifResults);
-#pragma omp critical(cout)
-		{
-			cout << outStr;
-			cout.flush();
-		}
+		cout << outStr;
 	}
 
 	/*
