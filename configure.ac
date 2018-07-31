@@ -22,10 +22,11 @@ AC_CHECK_LIB([dl], [dlopen])
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
 
-# Set compiler flags.
-# make sure -O3 by default for speed
+# Set compiler flags. (TODO Probably doing some bad stuff here)
 AC_SUBST(CPPFLAGS,"-O3 -std=c++11 $CPPFLAGS")
 AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra -Werror $AM_CXXFLAGS")
+AC_SUBST(CXXFLAGS, "-O3 $CXXFLAGS")
+AC_SUBST(CFLAGS, "-O3 $CXXFLAGS")
 
 # Options to configure.
 # Boost
@@ -58,7 +59,7 @@ AC_LANG([C++])	#sets the auto conf to look for c++ headers
 AC_CHECK_HEADERS([boost/property_tree/ptree.hpp])
 AC_CHECK_HEADERS([boost/property_tree/ini_parser.hpp])
 AC_CHECK_HEADERS([btl_bloomfilter/BloomFilter.hpp])
-AC_CHECK_HEADERS([zlib.h])
+AX_CHECK_ZLIB
 
 AC_CHECK_HEADERS([google/dense_hash_map])
 if test $ac_cv_header_google_dense_hash_map != yes; then
