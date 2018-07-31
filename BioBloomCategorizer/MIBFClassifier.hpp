@@ -40,7 +40,7 @@ using namespace boost::math;
 static const std::string base64_chars =
 		"!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 
-const static size_t s_bulkSize = 32;
+const static size_t s_bulkSize = 256;
 
 class MIBFClassifier {
 public:
@@ -206,100 +206,121 @@ public:
 
 		cerr << "Filtering Start" << endl;
 
-		moodycamel::ConcurrentQueue<kseq_t> workQueue(
-				opt::threads * s_bulkSize);
-
-		typedef std::vector<kseq_t>::iterator iter_t;
-
 		double startTime = omp_get_wtime();
 		for (vector<string>::const_iterator it = inputFiles.begin();
 				it != inputFiles.end(); ++it) {
-			bool good = true;
-#pragma omp parallel
-			{
+			if (opt::threads == 1) {
+				gzFile fp;
+				fp = gzopen(it->c_str(), "r");
+				kseq_t *seq = kseq_init(fp);
+				string outBuffer;
 				MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
 						m_perFrameProb, opt::multiThresh, opt::streakThreshold,
 						m_allowedMiss, opt::minCountNonSatCount,
 						opt::bestHitCountAgree);
-				std::vector <kseq_t> readBuffer;
-				readBuffer.reserve(s_bulkSize);
-				string outBuffer;
-				if (omp_get_thread_num() == 0) {
-					//file reading init
-					gzFile fp;
-					fp = gzopen(it->c_str(), "r");
-					kseq_t *seq = kseq_init(fp);
+				while (kseq_read(seq) >= 0) {
+					filterSingleRead(*seq, support, resSummary,
+							outBuffer);
+				}
+			} else {
+				moodycamel::ConcurrentQueue<kseq_t> workQueue(
+						opt::threads * s_bulkSize);
+				bool good = true;
+				typedef std::vector<kseq_t>::iterator iter_t;
+#pragma omp parallel
+				{
+					std::vector<kseq_t> readBuffer;
+					readBuffer.reserve(s_bulkSize);
+					string outBuffer;
+					MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
+							m_perFrameProb, opt::multiThresh, opt::streakThreshold,
+							m_allowedMiss, opt::minCountNonSatCount,
+							opt::bestHitCountAgree);
+					if (omp_get_thread_num() == 0) {
+						//file reading init
+						gzFile fp;
+						fp = gzopen(it->c_str(), "r");
+						kseq_t *seq = kseq_init(fp);
 
-					//per thread token
-					moodycamel::ProducerToken ptok(workQueue);
+						//per thread token
+						moodycamel::ProducerToken ptok(workQueue);
 
-					unsigned size = 0;
-					while (kseq_read(seq) >= 0) {
-						readBuffer.push_back(kseq_t()); // Don't like this, need to reallocate memory twice
-						cpy_kseq(&readBuffer[size++], seq); //TODO Make proper copy constructor for kseq?
-						if (++m_numRead % opt::fileInterval == 0) {
-							cerr << "Currently Reading Read Number: "
-									<< m_numRead << endl;
-						}
-						if (s_bulkSize == size) {
-							//try to insert, if cannot queue is full
-							while (!workQueue.try_enqueue_bulk(ptok,
-									std::move_iterator < iter_t > (readBuffer.begin()),
-									size)) {
-								//try to work
-								if (kseq_read(seq) >= 0) {
-									if (++m_numRead % opt::fileInterval == 0) {
-										cerr << "Currently Reading Read Number: "
-												<< m_numRead << endl;
+						unsigned size = 0;
+						while (kseq_read(seq) >= 0) {
+							readBuffer.push_back(kseq_t()); // Don't like this, need to reallocate memory twice
+							cpy_kseq(&readBuffer[size++], seq); //TODO Make proper copy constructor for kseq?
+							if (++m_numRead % opt::fileInterval == 0) {
+								cerr << "Currently Reading Read Number: "
+										<< m_numRead << endl;
+							}
+							if (s_bulkSize == size) {
+								//try to insert, if cannot queue is full
+								while (!workQueue.try_enqueue_bulk(ptok,
+										std::move_iterator < iter_t
+												> (readBuffer.begin()), size)) {
+									//try to work
+									if (kseq_read(seq) >= 0) {
+										if (++m_numRead % opt::fileInterval
+												== 0) {
+											cerr
+													<< "Currently Reading Read Number: "
+													<< m_numRead << endl;
+										}
+										//------------------------WORK CODE START---------------------------------------
+										filterSingleRead(*seq, support,
+												resSummary, outBuffer);
+										//------------------------WORK CODE END-----------------------------------------
+									} else {
+										break;
 									}
-									filterSingleRead(*seq, support,
-											resSummary, outBuffer);
-								} else {
-									break;
+								}
+								//reset buffer
+								readBuffer.clear();
+								size = 0;
+							}
+						}
+						//finish off remaining work
+						for (unsigned i = 0; i < size; ++i) {
+							//------------------------WORK CODE START---------------------------------------
+							filterSingleRead(readBuffer[i], support, resSummary,
+									outBuffer);
+							//------------------------WORK CODE END-----------------------------------------
+						}
+						readBuffer.clear();
+						if (workQueue.size_approx()) {
+							moodycamel::ConsumerToken ctok(workQueue);
+							//join in if others are still not finished
+							while (workQueue.size_approx()) {
+								size_t num = workQueue.try_dequeue_bulk(ctok, readBuffer.begin(),
+										s_bulkSize);
+								if (num) {
+									for (unsigned i = 0; i < num; ++i) {
+										//------------------------WORK CODE START---------------------------------------
+										filterSingleRead(readBuffer[i], support,
+												resSummary, outBuffer);
+										//------------------------WORK CODE END-----------------------------------------
+									}
 								}
 							}
-							readBuffer.clear();
-							size = 0;
 						}
-					}
-					//finish off remaining work
-					for (unsigned i = 0; i < size; ++i) {
-						filterSingleRead(readBuffer[i], support,
-								resSummary, outBuffer);
-					}
-					if (workQueue.size_approx()) {
+						good = false;
+						kseq_destroy(seq);
+						gzclose(fp);
+					} else {
 						moodycamel::ConsumerToken ctok(workQueue);
-						//join in if others are still not finished
-						while (workQueue.size_approx()) {
-							size_t num = workQueue.try_dequeue_bulk(ctok,
-									std::move_iterator < iter_t > (readBuffer.begin()),
-									s_bulkSize);
-							if (num) {
-								for (unsigned i = 0; i < num; ++i) {
-									filterSingleRead(readBuffer[i], support,
-											resSummary, outBuffer);
+						while (good) {
+							if (workQueue.size_approx() >= s_bulkSize) {
+								size_t num = workQueue.try_dequeue_bulk(ctok, readBuffer.begin(),
+										s_bulkSize);
+								if (num) {
+									for (unsigned i = 0; i < num; ++i) {
+										//------------------------WORK CODE START---------------------------------------
+										filterSingleRead(readBuffer[i], support,
+												resSummary, outBuffer);
+										//------------------------WORK CODE END-----------------------------------------
+									}
 								}
 							}
-						}
-					}
-#pragma omp atomic update
-					good &= false;
-					kseq_destroy(seq);
-					gzclose(fp);
-				} else {
-					moodycamel::ConsumerToken ctok(workQueue);
-					while (good) {
-						if (workQueue.size_approx() >= s_bulkSize) {
-							size_t num = workQueue.try_dequeue_bulk(ctok,
-									std::move_iterator < iter_t > (readBuffer.begin()),
-									s_bulkSize);
-							if (num) {
-								for (unsigned i = 0; i < num; ++i) {
-									filterSingleRead(readBuffer[i], support,
-											resSummary, outBuffer);
-								}
-							}
-							readBuffer.clear();
 						}
 					}
 				}
@@ -591,13 +612,20 @@ private:
 
 	void filterSingleRead(const kseq_t &read, MIBFQuerySupport<ID> &support,
 			ResultsManager<ID> &resSummary, string &outStr) {
+//		assert(read.seq.l);
+//		assert(support.getSatCount() == 0);
+//		assert(resSummary.getMultiMatchIndex());
+//		assert(outStr.empty());
 		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
-		classify(support, read.seq.s);
+				classify(support, read.seq.s);
 		resSummary.updateSummaryData(signifResults);
 		outStr.clear();
 		formatOutStr(read, outStr, support, signifResults);
 #pragma omp critical(cout)
-		cout << outStr;
+		{
+			cout << outStr << endl;
+			cout.flush();
+		}
 	}
 
 	void filterPairedRead(const kseq_t &read1, const kseq_t &read2, MIBFQuerySupport<ID> &support,
@@ -609,7 +637,10 @@ private:
 		formatOutStr(read1, outStr, support, signifResults);
 		formatOutStr(read2, outStr, support, signifResults);
 #pragma omp critical(cout)
-		cout << outStr;
+		{
+			cout << outStr;
+			cout.flush();
+		}
 	}
 
 	/*
