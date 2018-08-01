@@ -39,7 +39,7 @@ public:
 					0), m_evalCount(0), m_rankPos(miBF.getHashNum()), m_hits(
 					miBF.getHashNum(), true), m_counts(
 					vector<CountResult>(perFrameProb.size(),
-							{ 0, 0, 0, 0, 0, 0 })) {
+							{ 0, 0, 0, 0, 0, 0, 0 })), m_totalReads(0) {
 		//this should always be a small array
 		m_seenSet.reserve(miBF.getHashNum());
 	}
@@ -62,6 +62,7 @@ public:
 		uint16_t totalNonSatCount;
 		uint16_t nonSatFrameCount;
 		uint16_t solidCount;
+		size_t readCount; //determines if count should be reset
 	};
 
 	/*
@@ -104,6 +105,7 @@ public:
 			++itr;
 		}
 		summarizeCandiates(bestCount);
+
 		return m_signifResults;
 	}
 
@@ -125,6 +127,7 @@ public:
 			++itr;
 		}
 		summarizeCandiates(bestCount);
+
 		return m_signifResults;
 	}
 
@@ -146,6 +149,7 @@ public:
 			++itr;
 		}
 		summarizeCandiates(bestCount);
+
 		return m_signifResults;
 	}
 
@@ -159,17 +163,15 @@ public:
 
 	//debugging functions:
 
-	void printAllCounts(const vector<string> &ids){
-		for(size_t i = 0; i< m_counts.size(); ++i){
-			if(m_counts[i].totalCount > 0)
-			{
-			cout << i << "\t" << ids[i] << "\t" << m_counts[i].nonSatFrameCount <<
-					"\t" << m_counts[i].count <<
-					"\t" << m_counts[i].solidCount <<
-					"\t" << m_counts[i].nonSatCount <<
-					"\t" << m_counts[i].totalNonSatCount <<
-					"\t" << m_counts[i].totalCount <<
-					"\n";
+	void printAllCounts(const vector<string> &ids) {
+		for (size_t i = 0; i < m_counts.size(); ++i) {
+			if (m_counts[i].totalCount > 0) {
+				cout << i << "\t" << ids[i] << "\t"
+						<< m_counts[i].nonSatFrameCount << "\t"
+						<< m_counts[i].count << "\t" << m_counts[i].solidCount
+						<< "\t" << m_counts[i].nonSatCount << "\t"
+						<< m_counts[i].totalNonSatCount << "\t"
+						<< m_counts[i].totalCount << "\n";
 			}
 		}
 	}
@@ -315,6 +317,8 @@ private:
 	vector<T> m_candidateMatches;
 	vector<T> m_seenSet;
 
+	//Number of reads processed by object
+	size_t m_totalReads;
 
 	bool updateCountsSeeds(const stHashIterator &itr,
 			const vector<unsigned> &minCount, unsigned &bestCount,
@@ -342,10 +346,10 @@ private:
 
 	void init(){
 		m_candidateMatches.clear();
-		std::fill(m_counts.begin(), m_counts.end(), CountResult());
 		m_signifResults.clear();
 		m_satCount = 0;
 		m_evalCount = 0;
+		++m_totalReads;
 	}
 
 	bool updatesCounts(const vector<unsigned> &minCount, unsigned &bestCount,
@@ -355,22 +359,23 @@ private:
 		for (unsigned i = 0; i < m_miBF.getHashNum(); ++i) {
 			if (m_hits[i]) {
 				T resultRaw = m_miBF.getData(m_rankPos[i]);
-//				assert(resultRaw);
-//				assert(minCount.size());
-//				assert(bestCount == 0);
-//				assert(secondBestCount == 0);
-//				assert(extraFrame == 0);
-//				assert(misses < m_miBF.getHashNum());
-//				assert(satCount == 0);
 				++m_evalCount;
 				bool saturated = false;
 				T result = resultRaw;
+
 				//check for saturation
 				if (result > m_miBF.s_mask) {
 					result &= m_miBF.s_antiMask;
 					saturated = true;
 					satCount++;
+					//detemines if count should be reset
+					if(m_totalReads != m_counts[result].readCount){
+						m_counts[result] = {0,0,0,0,0,0, m_totalReads};
+					}
 				} else {
+					if(m_totalReads != m_counts[result].readCount) {
+						m_counts[result] = {0,0,0,0,0,0, m_totalReads};
+					}
 					++m_counts[result].totalNonSatCount;
 				}
 				++m_counts[result].totalCount;
