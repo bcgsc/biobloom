@@ -89,6 +89,7 @@ public:
 		if (opt::verbose) {
 			cerr << "Filter loading complete" << endl;
 		}
+		probCalcCount = 0;
 	}
 
 	void filterDebug(const vector<string> &inputFiles) {
@@ -225,8 +226,6 @@ public:
 			} else {
 				moodycamel::ConcurrentQueue<kseq_t> workQueue(
 						opt::threads * s_bulkSize);
-//				moodycamel::ConcurrentQueue<kseq_t> writeQueue(
-//						opt::threads * s_bulkSize);
 				bool good = true;
 				typedef std::vector<kseq_t>::iterator iter_t;
 #pragma omp parallel
@@ -309,24 +308,6 @@ public:
 						kseq_destroy(seq);
 						gzclose(fp);
 					}
-//					//writer
-//					else if(omp_get_thread_num() == 1){
-//						moodycamel::ConsumerToken ctok(workQueue);
-//						while (good & writeQueue.size_approx()) {
-//							if (workQueue.size_approx() >= s_bulkSize) {
-//								size_t num = workQueue.try_dequeue_bulk(ctok, readBuffer.begin(),
-//										s_bulkSize);
-//								if (num) {
-//									for (unsigned i = 0; i < num; ++i) {
-//										//------------------------WORK CODE START---------------------------------------
-//										filterSingleRead(readBuffer[i], support,
-//												resSummary, outBuffer);
-//										//------------------------WORK CODE END-----------------------------------------
-//									}
-//								}
-//							}
-//						}
-//					}
 					else {
 						moodycamel::ConsumerToken ctok(workQueue);
 						while (good) {
@@ -350,6 +331,7 @@ public:
 
 		cerr << "Classification time (s): " << (omp_get_wtime() - startTime)
 				<< endl;
+		cerr << probCalcCount << endl;
 
 		cerr << "Total Reads:" << m_numRead << endl;
 		cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
@@ -514,6 +496,8 @@ private:
 	double m_rateSaturated;
 	unsigned m_allowedMiss;
 
+	size_t probCalcCount;
+
 	bool fexists(const string &filename) const {
 		ifstream ifile(filename.c_str());
 		return ifile.good();
@@ -633,19 +617,12 @@ private:
 
 	void filterSingleRead(const kseq_t &read, MIBFQuerySupport<ID> &support,
 			ResultsManager<ID> &resSummary, string &outStr) {
-//		assert(read.seq.l);
-//		assert(support.getSatCount() == 0);
-//		assert(resSummary.getMultiMatchIndex());
-//		assert(outStr.empty());
 		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
 				classify(support, read.seq.s);
 		resSummary.updateSummaryData(signifResults);
 		outStr.clear();
 		formatOutStr(read, outStr, support, signifResults);
-//#pragma omp critical(cout)
-//		{
-			cout << outStr;
-//		}
+		cout << outStr;
 	}
 
 	void filterPairedRead(const kseq_t &read1, const kseq_t &read2, MIBFQuerySupport<ID> &support,
@@ -667,16 +644,12 @@ private:
 		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
 #pragma omp critical(minCount)
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
+			++probCalcCount;
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>> (
 					new vector<unsigned>(m_fullIDs.size()));
-			vector<size_t> count(m_fullIDs.size());
-			m_filter.getIDCounts(count);
 			for (size_t i = 1; i < m_fullIDs.size(); ++i) {
 				(*m_minCount[frameCount])[i] = getMinCount(frameCount,
 						m_perFrameProb[i]);
-//				cout << m_fullIDs[i] << "\t" << count[i] << "\t"
-//				<< (*m_minCount[frameCount])[i] << "\t"
-//				<< frameCount << "\t"<<m_perFrameProb[i] << endl;
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
