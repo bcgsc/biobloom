@@ -89,7 +89,6 @@ public:
 		if (opt::verbose) {
 			cerr << "Filter loading complete" << endl;
 		}
-		probCalcCount = 0;
 	}
 
 	void filterDebug(const vector<string> &inputFiles) {
@@ -331,7 +330,6 @@ public:
 
 		cerr << "Classification time (s): " << (omp_get_wtime() - startTime)
 				<< endl;
-		cerr << probCalcCount << endl;
 
 		cerr << "Total Reads:" << m_numRead << endl;
 		cerr << "Writing file: " << opt::outputPrefix.c_str() << "_summary.tsv"
@@ -495,9 +493,6 @@ private:
 	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>>m_minCount;
 	double m_rateSaturated;
 	unsigned m_allowedMiss;
-
-	size_t probCalcCount;
-
 	bool fexists(const string &filename) const {
 		ifstream ifile(filename.c_str());
 		return ifile.good();
@@ -644,7 +639,6 @@ private:
 		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
 #pragma omp critical(minCount)
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
-			++probCalcCount;
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>> (
 					new vector<unsigned>(m_fullIDs.size()));
 			for (size_t i = 1; i < m_fullIDs.size(); ++i) {
