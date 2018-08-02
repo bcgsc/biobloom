@@ -19,7 +19,9 @@
 #include "btl_bloomfilter/ntHashIterator.hpp"
 #include "bloomfilter/MIBFQuerySupport.hpp"
 #include <iostream>
-#include <BioBloomClassifier.h>
+#include "Common/Options.h"
+#include "ResultsManager.hpp"
+//#include <BioBloomClassifier.h>
 #include <tuple>
 #include "Common/concurrentqueue.h"
 
@@ -343,30 +345,8 @@ public:
 
 	void filterPair(const string &file1, const string &file2) {
 
-		gzFile fp1, fp2;
-		fp1 = gzopen(file1.c_str(), "r");
-		if (fp1 == NULL) {
-			cerr << "file " << file1.c_str() << " cannot be opened" << endl;
-			exit(1);
-		}
-		fp2 = gzopen(file2.c_str(), "r");
-		if (fp2 == NULL) {
-			cerr << "file " << file2.c_str() << " cannot be opened" << endl;
-			exit(1);
-		}
-		kseq_t *kseq1 = kseq_init(fp1);
-		kseq_t *kseq2 = kseq_init(fp2);
-		FaRec rec1, rec2;
-
 		//results summary object
 		ResultsManager<ID> resSummary(m_fullIDs, false);
-		string outputName = opt::outputPrefix + "_reads.tsv";
-		if (opt::outputType == opt::FASTQ) {
-			outputName = opt::outputPrefix + "_reads.fq";
-		} else if (opt::outputType == opt::FASTA) {
-			outputName = opt::outputPrefix + "_reads.fa";
-		}
-
 		if (opt::verbose) {
 			cerr << "Filtering Start" << "\n";
 		}
@@ -401,7 +381,7 @@ public:
 				unsigned size = 0;
 				while ((kseq_read(seq1) >= 0) && (kseq_read(seq2) >= 0)) {
 					readBuffer.push_back(pair<kseq_t,kseq_t>(kseq_t(),kseq_t()));
-					cpy_kseq(&(readBuffer[size++].first), seq1);
+					cpy_kseq(&(readBuffer[size].first), seq1);
 					cpy_kseq(&(readBuffer[size++].second), seq2);
 					if (++m_numRead % opt::fileInterval == 0) {
 						cerr << "Currently Reading Read Number: "
@@ -476,8 +456,6 @@ public:
 		}
 		cerr << "Classification time (s): " << (omp_get_wtime() - startTime)
 				<< endl;
-		kseq_destroy(kseq1);
-		kseq_destroy(kseq2);
 
 		ofstream summaryOutput(opt::outputPrefix + "_summary.tsv");
 		summaryOutput << resSummary.getResultsSummary(m_numRead);
