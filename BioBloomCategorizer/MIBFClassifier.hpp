@@ -530,9 +530,7 @@ private:
 				unsigned i = 0;
 				outStr += "\t";
 				outStr += m_fullIDs[signifResults[i].id];
-				if(signifResults.size() > 1) {
-					appendResults(signifResults, outStr);
-				}
+				appendResults(signifResults, outStr);
 			}
 			outStr += "\n";
 			outStr += read.seq.s;
@@ -547,9 +545,7 @@ private:
 				unsigned i = 0;
 				outStr += "\t";
 				outStr += m_fullIDs[signifResults[i].id];
-				if(signifResults.size() > 1) {
-					appendResults(signifResults, outStr);
-				}
+				appendResults(signifResults, outStr);
 			}
 			outStr += "\n";
 			outStr += read.seq.s;
@@ -578,11 +574,7 @@ private:
 				}
 				outStr += "\t";
 				outStr += std::to_string(support.getSatCount());
-				if (signifResults.size() == 1) {
-					outStr += "\t*";
-				} else {
-					appendResults(signifResults, outStr);
-				}
+				appendResults(signifResults, outStr);
 			}
 		}
 		outStr += "\n";
