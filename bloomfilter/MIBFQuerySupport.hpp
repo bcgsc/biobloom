@@ -451,6 +451,11 @@ private:
 						result) == m_candidateMatches.end()) {
 					m_candidateMatches.push_back(result);
 				}
+				if (m_counts[result].nonSatFrameCount > bestNonSatCount) {
+					bestNonSatCount = m_counts[result].nonSatFrameCount;
+				} else if (m_counts[result].nonSatFrameCount > secondBestNonSatCount) {
+					secondBestNonSatCount = m_counts[result].nonSatFrameCount;
+				}
 			}
 		}
 		if (bestNonSatCount <= secondBestNonSatCount + m_extraCount) {
