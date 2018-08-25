@@ -73,16 +73,17 @@ public:
 		init();
 
 		unsigned extraFrame = 0;
+		unsigned bestNonSatCount = 0;
+		unsigned secondBestNonSatCount = 0;
 		unsigned bestCount = 0;
-		unsigned secondBestCount = 0;
 		bool candidateFound = false;
 
 		while (itr != itr.end() && !candidateFound) {
-			candidateFound = updateCountsSeeds(itr, minCount, bestCount,
-					secondBestCount, extraFrame);
+			candidateFound = updateCountsSeeds(itr, minCount, bestNonSatCount,
+					secondBestNonSatCount, bestCount, extraFrame);
 			++itr;
 		}
-		summarizeCandiates(bestCount);
+		summarizeCandiates(bestNonSatCount);
 
 		return m_signifResults;
 	}
@@ -95,16 +96,17 @@ public:
 		init();
 
 		unsigned extraFrame = 0;
+		unsigned bestNonSatCount = 0;
+		unsigned secondBestNonSatCount = 0;
 		unsigned bestCount = 0;
-		unsigned secondBestCount = 0;
 		bool candidateFound = false;
 
 		while (itr != itr.end() && !candidateFound) {
-			candidateFound = updateCountsKmer(itr, minCount, bestCount,
-					secondBestCount, extraFrame);
+			candidateFound = updateCountsKmer(itr, minCount, bestNonSatCount,
+					secondBestNonSatCount, bestCount, extraFrame);
 			++itr;
 		}
-		summarizeCandiates(bestCount);
+		summarizeCandiates(bestNonSatCount);
 
 		return m_signifResults;
 	}
@@ -114,19 +116,22 @@ public:
 		init();
 
 		unsigned extraFrame = 0;
-		unsigned bestCount = 0;
 		unsigned frameCount = 0;
-		unsigned secondBestCount = 0;
+		unsigned bestNonSatCount = 0;
+		unsigned secondBestNonSatCount = 0;
+		unsigned bestCount = 0;
 		bool candidateFound = false;
 
-		while ((itr1 != itr1.end() && itr2 != itr2.end()) && !candidateFound) {
-			stHashIterator &itr = frameCount % 2 == 0 && itr1 != itr1.end() ? itr1 :
-						frameCount % 2 == 1 && itr2 != itr2.end() ? itr2 : itr1;
-			candidateFound = updateCountsSeeds(itr, minCount, bestCount,
-					secondBestCount, extraFrame);
+		while ((itr1 != itr1.end() || itr2 != itr2.end()) && !candidateFound) {
+			stHashIterator &itr =
+					frameCount % 2 == 0 && itr1 != itr1.end() ? itr1 :
+					frameCount % 2 == 1 && itr2 != itr2.end() ? itr2 : itr1;
+			candidateFound = updateCountsSeeds(itr, minCount, bestNonSatCount,
+					secondBestNonSatCount, bestCount, extraFrame);
 			++itr;
+			++frameCount;
 		}
-		summarizeCandiates(bestCount);
+		summarizeCandiates(bestNonSatCount);
 
 		return m_signifResults;
 	}
@@ -136,19 +141,22 @@ public:
 		init();
 
 		unsigned extraFrame = 0;
-		unsigned bestCount = 0;
 		unsigned frameCount = 0;
-		unsigned secondBestCount = 0;
+		unsigned bestNonSatCount = 0;
+		unsigned secondBestNonSatCount = 0;
+		unsigned bestCount = 0;
 		bool candidateFound = false;
 
-		while ((itr1 != itr1.end() && itr2 != itr2.end()) && !candidateFound) {
-			ntHashIterator &itr = frameCount % 2 == 0 && itr1 != itr1.end() ? itr1 :
-						frameCount % 2 == 1 && itr2 != itr2.end() ? itr2 : itr1;
-			candidateFound = updateCountsKmer(itr, minCount, bestCount,
-					secondBestCount, extraFrame);
+		while ((itr1 != itr1.end() || itr2 != itr2.end()) && !candidateFound) {
+			ntHashIterator &itr =
+					frameCount % 2 == 0 && itr1 != itr1.end() ? itr1 :
+					frameCount % 2 == 1 && itr2 != itr2.end() ? itr2 : itr1;
+			candidateFound = updateCountsKmer(itr, minCount, bestNonSatCount,
+					secondBestNonSatCount, bestCount, extraFrame);
 			++itr;
+			++frameCount;
 		}
-		summarizeCandiates(bestCount);
+		summarizeCandiates(bestNonSatCount);
 
 		return m_signifResults;
 	}
@@ -321,24 +329,26 @@ private:
 	size_t m_totalReads;
 
 	bool updateCountsSeeds(const stHashIterator &itr,
-			const vector<unsigned> &minCount, unsigned &bestCount,
-			unsigned &secondBestCount, unsigned &extraFrame) {
+			const vector<unsigned> &minCount, unsigned &bestNonSatCount,
+			unsigned &secondBestNonSatCount, unsigned &bestCount,
+			unsigned &extraFrame) {
 		bool candidateFound = false;
 		unsigned misses = m_miBF.atRank(*itr, m_rankPos, m_hits, m_maxMiss);
 		if (misses <= m_maxMiss) {
-			candidateFound = updatesCounts(minCount, bestCount, secondBestCount,
-					extraFrame, misses);
+			candidateFound = updatesCounts(minCount, bestNonSatCount,
+					secondBestNonSatCount, bestCount, extraFrame);
 		}
 		return candidateFound;
 	}
 
 	bool updateCountsKmer(const ntHashIterator &itr,
-			const vector<unsigned> &minCount, unsigned &bestCount,
-			unsigned &secondBestCount, unsigned &extraFrame) {
+			const vector<unsigned> &minCount, unsigned &bestNonSatCount,
+			unsigned &secondBestNonSatCount, unsigned &bestCount,
+			unsigned &extraFrame) {
 		bool candidateFound = false;
 		if (m_miBF.atRank(*itr, m_rankPos)) {
-			candidateFound = updatesCounts(minCount, bestCount, secondBestCount,
-					extraFrame);
+			candidateFound = updatesCounts(minCount, bestNonSatCount,
+					secondBestNonSatCount, bestCount, extraFrame);
 		}
 		++m_evalCount;
 		return candidateFound;
@@ -352,8 +362,9 @@ private:
 		++m_totalReads;
 	}
 
-	bool updatesCounts(const vector<unsigned> &minCount, unsigned &bestCount,
-			unsigned &secondBestCount, unsigned &extraFrame, unsigned misses = 0){
+	bool updatesCounts(const vector<unsigned> &minCount,
+			unsigned &bestNonSatCount, unsigned &secondBestNonSatCount,
+			unsigned &bestCount, unsigned &extraFrame, unsigned misses = 0) {
 		m_seenSet.clear();
 		unsigned satCount = 0;
 		for (unsigned i = 0; i < m_miBF.getHashNum(); ++i) {
@@ -411,7 +422,7 @@ private:
 		}
 		for (typename vector<T>::iterator itr = m_seenSet.begin();
 				itr != m_seenSet.end(); ++itr) {
-			T result = *itr &= m_miBF.s_antiMask;
+			T result = *itr;
 			if (result > m_miBF.s_mask) {
 				//if not saturated version already exists
 				if (find(m_seenSet.begin(), m_seenSet.end(), result)
@@ -423,19 +434,29 @@ private:
 			if (m_counts[result].count >= minCount[result]) {
 				if (find(m_candidateMatches.begin(), m_candidateMatches.end(),
 						result) == m_candidateMatches.end()) {
-					m_candidateMatches.push_back(*itr);
+					m_candidateMatches.push_back(result);
 				}
-				if (m_counts[result].nonSatFrameCount > bestCount) {
-					bestCount = m_counts[result].nonSatFrameCount;
-				} else if (m_counts[result].nonSatFrameCount > secondBestCount) {
-					secondBestCount = m_counts[result].nonSatFrameCount;
+				if (m_counts[result].nonSatFrameCount > bestNonSatCount) {
+					bestNonSatCount = m_counts[result].nonSatFrameCount;
+				} else if (m_counts[result].nonSatFrameCount > secondBestNonSatCount) {
+					secondBestNonSatCount = m_counts[result].nonSatFrameCount;
+				}
+				if (m_counts[result].count > bestCount) {
+					bestCount = m_counts[result].count;
+				}
+			}
+			else if (m_candidateMatches.size() && m_counts[result].count >= bestCount) {
+				bestCount = m_counts[result].count;
+				if (find(m_candidateMatches.begin(), m_candidateMatches.end(),
+						result) == m_candidateMatches.end()) {
+					m_candidateMatches.push_back(result);
 				}
 			}
 		}
-		if (bestCount <= secondBestCount + m_extraCount) {
+		if (bestNonSatCount <= secondBestNonSatCount + m_extraCount) {
 			extraFrame = 0;
 		}
-		if (bestCount > secondBestCount) {
+		if (bestNonSatCount > secondBestNonSatCount) {
 			if (m_extraFrameLimit < extraFrame++) {
 				return true;
 			}
@@ -458,7 +479,7 @@ private:
 			for (typename vector<T>::const_iterator candidate =
 					m_candidateMatches.begin();
 					candidate != m_candidateMatches.end(); candidate++) {
-				CountResult resultCount = m_counts[*candidate];
+				const CountResult &resultCount = m_counts[*candidate];
 				if (bestCount <= resultCount.nonSatFrameCount + m_extraCount) {
 					QueryResult result;
 					result.id = *candidate;
