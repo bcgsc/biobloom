@@ -221,18 +221,27 @@ public:
 						m_allowedMiss, opt::minCountNonSatCount,
 						opt::bestHitCountAgree);
 				while (kseq_read(seq) >= 0) {
-					filterSingleRead(*seq, support, resSummary,
-							outBuffer);
+					filterSingleRead(*seq, support, resSummary, outBuffer);
 				}
 			} else {
 				moodycamel::ConcurrentQueue<kseq_t> workQueue(
 						opt::threads * s_bulkSize);
+				moodycamel::ConcurrentQueue<kseq_t> recycleQueue(
+						opt::threads * s_bulkSize);
 				bool good = true;
 				typedef std::vector<kseq_t>::iterator iter_t;
+
+				//fill recycleQueue with empty objects
+				{
+					std::vector<kseq_t> buffer(opt::threads * s_bulkSize, kseq_t());
+					recycleQueue.enqueue_bulk(
+							std::move_iterator<iter_t>(buffer.begin()),
+							buffer.size());
+				}
+
 #pragma omp parallel
 				{
-					std::vector<kseq_t> readBuffer;
-					readBuffer.reserve(s_bulkSize);
+					std::vector<kseq_t> readBuffer(s_bulkSize);
 					string outBuffer;
 					MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
 							m_perFrameProb, opt::multiThresh, opt::streakThreshold,
@@ -247,15 +256,29 @@ public:
 						//per thread token
 						moodycamel::ProducerToken ptok(workQueue);
 
+						//tokens for recycle queue
+						moodycamel::ConsumerToken rctok(recycleQueue);
+						moodycamel::ProducerToken rptok(recycleQueue);
+
+						unsigned dequeueSize = recycleQueue.try_dequeue_bulk(
+								rctok,
+								std::move_iterator<iter_t>(readBuffer.begin()),
+								s_bulkSize);
+						while (dequeueSize == 0) {
+							dequeueSize = recycleQueue.try_dequeue_bulk(rctok,
+									std::move_iterator<iter_t>(
+											readBuffer.begin()), s_bulkSize);
+						}
+
 						unsigned size = 0;
 						while (kseq_read(seq) >= 0) {
-							readBuffer.push_back(kseq_t()); // Don't like this, need to reallocate memory twice
-							cpy_kseq(&readBuffer[size++], seq); //TODO Make proper copy constructor for kseq?
+//							readBuffer.push_back(kseq_t());
+							cpy_kseq(&readBuffer[size++], seq);
 							if (++m_numRead % opt::fileInterval == 0) {
 								cerr << "Currently Reading Read Number: "
 										<< m_numRead << endl;
 							}
-							if (s_bulkSize == size) {
+							if (dequeueSize == size) {
 								//try to insert, if cannot queue is full
 								while (!workQueue.try_enqueue_bulk(ptok,
 										std::move_iterator < iter_t
@@ -269,39 +292,68 @@ public:
 													<< m_numRead << endl;
 										}
 										//------------------------WORK CODE START---------------------------------------
-										filterSingleRead(*seq, support,
-												resSummary, outBuffer);
+										filterSingleRead(*seq, support, resSummary, outBuffer);
 										//------------------------WORK CODE END-----------------------------------------
 									} else {
 										break;
 									}
 								}
 								//reset buffer
-								readBuffer.clear();
+								dequeueSize = recycleQueue.try_dequeue_bulk(
+										rctok,
+										std::move_iterator<iter_t>(
+												readBuffer.begin()),
+										s_bulkSize);
+								while (dequeueSize == 0) {
+									//try to work
+									if (kseq_read(seq) >= 0) {
+										if (++m_numRead % opt::fileInterval
+												== 0) {
+											cerr
+													<< "Currently Reading Read Number: "
+													<< m_numRead << endl;
+										}
+										//------------------------WORK CODE START---------------------------------------
+										filterSingleRead(*seq, support, resSummary, outBuffer);
+										//------------------------WORK CODE END-----------------------------------------
+									} else {
+										break;
+									}
+									dequeueSize = recycleQueue.try_dequeue_bulk(
+											rctok,
+											std::move_iterator<iter_t>(
+													readBuffer.begin()),
+											s_bulkSize);
+								}
 								size = 0;
 							}
 						}
 						//finish off remaining work
 						for (unsigned i = 0; i < size; ++i) {
 							//------------------------WORK CODE START---------------------------------------
-							filterSingleRead(readBuffer[i], support, resSummary,
-									outBuffer);
+							filterSingleRead(readBuffer[i], support, resSummary, outBuffer);
 							//------------------------WORK CODE END-----------------------------------------
 						}
-						readBuffer.clear();
+						assert(recycleQueue.enqueue_bulk(rptok,
+								std::move_iterator<iter_t>(readBuffer.begin()),
+								size));
 						if (workQueue.size_approx()) {
 							moodycamel::ConsumerToken ctok(workQueue);
 							//join in if others are still not finished
 							while (workQueue.size_approx()) {
-								size_t num = workQueue.try_dequeue_bulk(ctok, readBuffer.begin(),
+								size_t num = workQueue.try_dequeue_bulk(ctok,
+										std::move_iterator<iter_t>(
+												readBuffer.begin()),
 										s_bulkSize);
 								if (num) {
 									for (unsigned i = 0; i < num; ++i) {
 										//------------------------WORK CODE START---------------------------------------
-										filterSingleRead(readBuffer[i], support,
-												resSummary, outBuffer);
+										filterSingleRead(readBuffer[i], support, resSummary, outBuffer);
 										//------------------------WORK CODE END-----------------------------------------
 									}
+									assert(recycleQueue.enqueue_bulk(rptok,
+											std::move_iterator<iter_t>(readBuffer.begin()),
+											num));
 								}
 							}
 						}
@@ -311,17 +363,22 @@ public:
 					}
 					else {
 						moodycamel::ConsumerToken ctok(workQueue);
+						moodycamel::ProducerToken rptok(recycleQueue);
 						while (good) {
 							if (workQueue.size_approx() >= s_bulkSize) {
-								size_t num = workQueue.try_dequeue_bulk(ctok, readBuffer.begin(),
+								size_t num = workQueue.try_dequeue_bulk(ctok,
+										std::move_iterator<iter_t>(
+												readBuffer.begin()),
 										s_bulkSize);
 								if (num) {
 									for (unsigned i = 0; i < num; ++i) {
 										//------------------------WORK CODE START---------------------------------------
-										filterSingleRead(readBuffer[i], support,
-												resSummary, outBuffer);
+										filterSingleRead(readBuffer[i], support, resSummary, outBuffer);
 										//------------------------WORK CODE END-----------------------------------------
 									}
+									assert(recycleQueue.enqueue_bulk(rptok,
+											std::move_iterator<iter_t>(readBuffer.begin()),
+											num));
 								}
 							}
 						}
@@ -354,15 +411,24 @@ public:
 		moodycamel::ConcurrentQueue<pair<kseq_t, kseq_t>> workQueue(
 				opt::threads * s_bulkSize);
 
+		moodycamel::ConcurrentQueue<pair<kseq_t, kseq_t>> recycleQueue(
+				opt::threads * s_bulkSize);
 		typedef std::vector<pair<kseq_t, kseq_t>>::iterator iter_t;
+
+		//fill recycleQueue with empty objects
+		{
+			std::vector<pair<kseq_t, kseq_t>> buffer(opt::threads * s_bulkSize);
+			recycleQueue.enqueue_bulk(
+					std::move_iterator<iter_t>(buffer.begin()),
+					buffer.size());
+		}
 
 		double startTime = omp_get_wtime();
 		bool good = true;
 
 #pragma omp parallel
 		{
-			vector<pair<kseq_t, kseq_t>> readBuffer;
-			readBuffer.reserve(s_bulkSize);
+			vector<pair<kseq_t, kseq_t>> readBuffer(s_bulkSize);
 			MIBFQuerySupport<ID> support = MIBFQuerySupport<ID>(m_filter,
 					m_perFrameProb, opt::multiThresh, opt::streakThreshold,
 					m_allowedMiss, opt::minCountNonSatCount,
@@ -378,6 +444,21 @@ public:
 				//per thread token
 				moodycamel::ProducerToken ptok(workQueue);
 
+				//tokens for recycle queue
+				moodycamel::ConsumerToken rctok(recycleQueue);
+				moodycamel::ProducerToken rptok(recycleQueue);
+
+				unsigned dequeueSize = recycleQueue.try_dequeue_bulk(
+						rctok,
+						std::move_iterator<iter_t>(readBuffer.begin()),
+						s_bulkSize);
+
+				while (dequeueSize == 0) {
+					dequeueSize = recycleQueue.try_dequeue_bulk(rctok,
+							std::move_iterator<iter_t>(
+									readBuffer.begin()), s_bulkSize);
+				}
+
 				unsigned size = 0;
 				while ((kseq_read(seq1) >= 0) && (kseq_read(seq2) >= 0)) {
 					readBuffer.push_back(pair<kseq_t,kseq_t>(kseq_t(),kseq_t()));
@@ -387,24 +468,53 @@ public:
 						cerr << "Currently Reading Read Number: "
 								<< m_numRead << endl;
 					}
-					if (s_bulkSize == size) {
+					if (dequeueSize == size) {
 						//try to insert, if cannot queue is full
 						while (!workQueue.try_enqueue_bulk(ptok,
 								std::move_iterator < iter_t > (readBuffer.begin()),
 								size)) {
-							if (++m_numRead % opt::fileInterval == 0) {
-								cerr << "Currently Reading Read Number: "
-										<< m_numRead << endl;
-							}
 							//try to work
 							if ((kseq_read(seq1) >= 0) && (kseq_read(seq2) >= 0)) {
+								if (++m_numRead % opt::fileInterval == 0) {
+									cerr << "Currently Reading Read Number: "
+											<< m_numRead << endl;
+								}
 								filterPairedRead(*seq1, *seq2, support,
 										resSummary, outBuffer);
 							} else {
 								break;
 							}
 						}
-						readBuffer.clear();
+						//reset buffer
+						dequeueSize = recycleQueue.try_dequeue_bulk(
+								rctok,
+								std::move_iterator<iter_t>(
+										readBuffer.begin()),
+								s_bulkSize);
+						while (dequeueSize == 0) {
+							//try to work
+							if ((kseq_read(seq1) >= 0) && (kseq_read(seq2) >= 0)) {
+								filterPairedRead(*seq1, *seq2, support,
+										resSummary, outBuffer);
+								if (++m_numRead % opt::fileInterval
+										== 0) {
+									cerr
+											<< "Currently Reading Read Number: "
+											<< m_numRead << endl;
+								}
+								//------------------------WORK CODE START---------------------------------------
+								filterPairedRead(*seq1, *seq2, support,
+										resSummary, outBuffer);
+								//------------------------WORK CODE END-----------------------------------------
+							} else {
+								break;
+							}
+							dequeueSize = recycleQueue.try_dequeue_bulk(
+									rctok,
+									std::move_iterator<iter_t>(
+											readBuffer.begin()),
+									s_bulkSize);
+						}
 						size = 0;
 					}
 				}
@@ -413,6 +523,9 @@ public:
 					filterPairedRead(readBuffer[i].first,
 							readBuffer[i].second, support,
 							resSummary, outBuffer);
+					assert(recycleQueue.enqueue_bulk(rptok,
+							std::move_iterator<iter_t>(readBuffer.begin()),
+							size));
 				}
 				if (workQueue.size_approx()) {
 					moodycamel::ConsumerToken ctok(workQueue);
@@ -427,6 +540,9 @@ public:
 										readBuffer[i].second, support,
 										resSummary, outBuffer);
 							}
+							assert(recycleQueue.enqueue_bulk(rptok,
+									std::move_iterator<iter_t>(readBuffer.begin()),
+									num));
 						}
 					}
 				}
@@ -438,6 +554,7 @@ public:
 				gzclose(fp2);
 			} else {
 				moodycamel::ConsumerToken ctok(workQueue);
+				moodycamel::ProducerToken rptok(recycleQueue);
 				while (good) {
 					if (workQueue.size_approx() >= s_bulkSize) {
 						size_t num = workQueue.try_dequeue_bulk(ctok,
@@ -449,6 +566,9 @@ public:
 										readBuffer[i].second, support,
 										resSummary, outBuffer);
 							}
+							assert(recycleQueue.enqueue_bulk(rptok,
+									std::move_iterator<iter_t>(readBuffer.begin()),
+									num));
 						}
 					}
 				}
