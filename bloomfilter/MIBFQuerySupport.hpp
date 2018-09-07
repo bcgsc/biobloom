@@ -424,8 +424,8 @@ private:
 				itr != m_seenSet.end(); ++itr) {
 			T result = *itr;
 			if (result > m_miBF.s_mask) {
-				//if not saturated version already exists
-				if (find(m_seenSet.begin(), m_seenSet.end(), result)
+				//if non-saturated version already exists
+				if (find(m_seenSet.begin(), m_seenSet.end(), result & m_miBF.s_antiMask)
 						== m_seenSet.end()) {
 					continue;
 				}
