@@ -336,7 +336,7 @@ private:
 		unsigned misses = m_miBF.atRank(*itr, m_rankPos, m_hits, m_maxMiss);
 		if (misses <= m_maxMiss) {
 			candidateFound = updatesCounts(minCount, bestNonSatCount,
-					secondBestNonSatCount, bestCount, extraFrame);
+					secondBestNonSatCount, bestCount, extraFrame, misses);
 		}
 		return candidateFound;
 	}
