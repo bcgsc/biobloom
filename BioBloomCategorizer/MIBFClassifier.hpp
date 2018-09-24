@@ -357,7 +357,8 @@ public:
 								}
 							}
 						}
-						good = false;
+#pragma omp atomic update
+						good &= false;
 						kseq_destroy(seq);
 						gzclose(fp);
 					}
