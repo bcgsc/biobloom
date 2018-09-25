@@ -446,13 +446,13 @@ public:
 #pragma omp parallel for schedule(dynamic)
 				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 					gzFile fp;
-//					if (opt::verbose) {
-//#pragma omp critical(stderr)
-//						cerr << "Opening: "
-//								<< (j % 2 ?
-//										m_fileNames[i] : m_fileNames[i] + ".rv")
-//								<< endl;
-//					}
+					if (opt::verbose) {
+#pragma omp critical(stderr)
+						cerr << "Opening: "
+								<< (j % 2 ?
+										m_fileNames[i] : m_fileNames[i] + ".rv")
+								<< endl;
+					}
 					fp = j % 2 ?
 							gzopen(m_fileNames[i].c_str(), "r") :
 							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
@@ -534,6 +534,17 @@ public:
 
 		//save filter
 		miBFBV->store(filePrefix + ".bf");
+
+		if(opt::verbose > 1){
+			vector<size_t> counts(m_ids.size(), 0);
+//			cerr << counts.size() << endl;
+			miBFBV->getIDCounts(counts);
+			size_t count = 0;
+			for(vector<size_t>::iterator itr = ++counts.begin(); itr != counts.end(); ++itr){
+				cout << ++count << "\t" << *itr << endl;
+			}
+		}
+
 		return miBFBV;
 	}
 
