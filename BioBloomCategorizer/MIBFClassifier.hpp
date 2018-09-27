@@ -227,13 +227,14 @@ public:
 				moodycamel::ConcurrentQueue<kseq_t> workQueue(
 						opt::threads * s_bulkSize);
 				moodycamel::ConcurrentQueue<kseq_t> recycleQueue(
-						opt::threads * s_bulkSize);
+						opt::threads * s_bulkSize * 2);
 				bool good = true;
 				typedef std::vector<kseq_t>::iterator iter_t;
 
 				//fill recycleQueue with empty objects
 				{
-					std::vector<kseq_t> buffer(opt::threads * s_bulkSize, kseq_t());
+					std::vector<kseq_t> buffer(opt::threads * s_bulkSize * 2,
+							kseq_t());
 					recycleQueue.enqueue_bulk(
 							std::move_iterator<iter_t>(buffer.begin()),
 							buffer.size());
@@ -413,12 +414,12 @@ public:
 				opt::threads * s_bulkSize);
 
 		moodycamel::ConcurrentQueue<pair<kseq_t, kseq_t>> recycleQueue(
-				opt::threads * s_bulkSize);
+				opt::threads * s_bulkSize * 2);
 		typedef std::vector<pair<kseq_t, kseq_t>>::iterator iter_t;
 
 		//fill recycleQueue with empty objects
 		{
-			std::vector<pair<kseq_t, kseq_t>> buffer(opt::threads * s_bulkSize);
+			std::vector<pair<kseq_t, kseq_t>> buffer(opt::threads * s_bulkSize * 2);
 			recycleQueue.enqueue_bulk(
 					std::move_iterator<iter_t>(buffer.begin()),
 					buffer.size());
