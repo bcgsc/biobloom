@@ -81,8 +81,8 @@ void printHelpDialog()
 	const char dialog[] =
 	"Usage: biobloomcategorizer [OPTION]... -f \"[FILTER1]...\" [FILE]...\n"
 	"biobloomcategorizer [OPTION]... -e -f \"[FILTER1]...\" [FILE1.fq] [FILE2.fq]\n"
-	"Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or\n"
-	"BAM format and compressed with gz, bz2 or xz and may be tarred.\n"
+	"biobloomcategorizer [OPTION]... -e -f \"[FILTER1]...\" [SMARTFILE.fq]\n"
+	"Categorize Sequences. The input format may be FASTA, FASTQ, and compressed gz.\n"
 	"\n"
 	"  -p, --prefix=N         Output prefix to use. Otherwise will output to current\n"
 	"                         directory.\n"
@@ -367,23 +367,18 @@ int main(int argc, char *argv[])
 		optind++;
 	}
 
-	bool pairedBAMSAM = false;
+	bool smartPair = false;
 
 	//check validity of inputs for paired end mode
 	if (paired) {
-		if (inputFiles.size() == 1
-				&& (inputFiles[0].substr(inputFiles[0].size() - 4) == ".bam"
-						|| inputFiles[0].substr(inputFiles[0].size() - 4)
-								== ".sam"))
+		if (inputFiles.size() == 1)
 		{
-			pairedBAMSAM = true;
-		} else if (inputFiles.size() == 2) {
-			pairedBAMSAM = false;
+			smartPair = true;
 		}
-		else if (fileListFilename == "") {
+		else {
 			cerr << "Usage of paired end mode:\n"
 					<< "BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [FILEPAIR1] [FILEPAIR2]\n"
-					<< "or BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [PAIREDBAMSAM]\n"
+					<< "or BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [SMARTPAIR]\n"
 					<< endl;
 			exit(1);
 		}
@@ -487,14 +482,14 @@ int main(int argc, char *argv[])
 			bbc.setInclusive();
 		}
 		if (opt::outputType != "") {
-			if (pairedBAMSAM) {
+			if (smartPair) {
 				bbc.filterPairPrint(inputFiles[0], opt::outputType);
 			} else {
 				bbc.filterPairPrint(inputFiles[0], inputFiles[1],
 						opt::outputType);
 			}
 		} else {
-			if (pairedBAMSAM) {
+			if (smartPair) {
 				bbc.filterPair(inputFiles[0]);
 			} else if (fileListFilename != "") {
 				string line;
