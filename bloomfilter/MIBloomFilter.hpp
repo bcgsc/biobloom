@@ -53,10 +53,10 @@ static vector<vector<unsigned> > parseSeedString(
 ///*
 // * Returns an a filter size large enough to maintain an occupancy specified
 // */
-//inline size_t calcOptimalSize(size_t entries, unsigned hashNum,
+//inline uint64_t calcOptimalSize(uint64_t entries, unsigned hashNum,
 //		double occupancy) {
 //	assert(hashNum > 0);
-//	return size_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
+//	return uint64_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
 //}
 
 ///*
@@ -65,9 +65,9 @@ static vector<vector<unsigned> > parseSeedString(
 // * given the number of hash functions
 // * see http://en.wikipedia.org/wiki/Bloom_filter
 // */
-//inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double fpr)
+//inline uint64_t calcOptimalSize(uint64_t entries, unsigned hashNum, double fpr)
 //{
-//	size_t non64ApproxVal = size_t(
+//	uint64_t non64ApproxVal = uint64_t(
 //			-double(entries) * double(hashNum)
 //					/ log(1.0 - pow(fpr, double(1 / (double(hashNum))))));
 //
@@ -77,14 +77,14 @@ static vector<vector<unsigned> > parseSeedString(
 /*
  * Returns an a filter size large enough to maintain an occupancy specified
  */
-inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double occupancy) {
+inline uint64_t calcOptimalSize(uint64_t entries, unsigned hashNum, double occupancy) {
 	assert(hashNum > 0);
-	return size_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
+	return uint64_t(-double(entries) * double(hashNum) / log(1.0 - occupancy));
 }
 
-//inline size_t calcOptimalSize(size_t entries, unsigned hashNum, double fpr,
+//inline uint64_t calcOptimalSize(uint64_t entries, unsigned hashNum, double fpr,
 //		unsigned allowedMiss) {
-//	size_t non64ApproxVal = size_t(
+//	uint64_t non64ApproxVal = uint64_t(
 //			-double(entries) * double(hashNum)
 //					/ log(1.0 - pow(fpr, double(1 / (double(hashNum-allowedMiss))))));
 //	return non64ApproxVal + (64 - non64ApproxVal % 64);
@@ -114,8 +114,8 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	/*
 	 * Constructor using a prebuilt bitvector
 	 */
-	MIBloomFilter<T>(size_t expectedElemNum, double fpr, unsigned hashNum,
-			unsigned kmerSize, sdsl::bit_vector &bv, size_t unique,
+	MIBloomFilter<T>(uint64_t expectedElemNum, double fpr, unsigned hashNum,
+			unsigned kmerSize, sdsl::bit_vector &bv, uint64_t unique,
 			const vector<string> seeds = vector<string>(0)) :
 			m_dSize(0), m_dFPR(fpr), m_nEntry(unique), m_tEntry(
 					expectedElemNum), m_hashNum(hashNum), m_kmerSize(kmerSize), m_sseeds(
@@ -216,7 +216,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 
 				long int lCurPos = ftell(file);
 				fseek(file, 0, 2);
-				size_t fileSize = ftell(file) - header.hlen;
+				uint64_t fileSize = ftell(file) - header.hlen;
 				fseek(file, lCurPos, 0);
 				if (fileSize != m_dSize * sizeof(T)) {
 					cerr << "Error: " << filterFilePath
@@ -226,7 +226,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 					exit(1);
 				}
 
-				size_t countRead = fread(m_data, fileSize, 1, file);
+				uint64_t countRead = fread(m_data, fileSize, 1, file);
 				if (countRead != 1 && fclose(file) != 0) {
 					cerr << "file \"" << filterFilePath
 							<< "\" could not be read." << endl;
@@ -300,10 +300,10 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
 	 * ONLY REPLACE VALUE if it is larger than current value (deterministic)
 	 */
-	inline void insert(std::vector<size_t> const &hashes, T value) {
+	inline void insert(std::vector<uint64_t> const &hashes, T value) {
 		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < hashes.size(); ++i) {
-			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
+		for (uint64_t i = 0; i < hashes.size(); ++i) {
+			uint64_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
 			setIfGreater(&m_data[pos], value);
 		}
 	}
@@ -312,10 +312,10 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
 	 * ONLY REPLACE VALUE if it is larger than current value (deterministic)
 	 */
-	inline void insert(const size_t *hashes, T value) {
+	inline void insert(const uint64_t *hashes, T value) {
 		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < m_hashNum; ++i) {
-			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
+		for (uint64_t i = 0; i < m_hashNum; ++i) {
+			uint64_t pos = m_rankSupport(hashes[i] % m_bv.size());
 			setIfGreater(&m_data[pos], value);
 		}
 	}
@@ -325,11 +325,11 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * ALWAYS SETS VALUE
 	 * NOT DETERMINSTIC
 	 */
-	inline void insert(std::vector<size_t> const &hashes, T value,
+	inline void insert(std::vector<uint64_t> const &hashes, T value,
 			boost::numeric::ublas::matrix<unsigned> &mat) {
 		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < hashes.size(); ++i) {
-			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
+		for (uint64_t i = 0; i < hashes.size(); ++i) {
+			uint64_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
 			setVal(&m_data[pos], value, mat);
 		}
 	}
@@ -339,11 +339,11 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * ALWAYS SETS VALUE
 	 * NOT DETERMINSTIC
 	 */
-	inline void insert(const size_t *hashes, T value,
+	inline void insert(const uint64_t *hashes, T value,
 			boost::numeric::ublas::matrix<unsigned> &mat) {
 		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < m_hashNum; ++i) {
-			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
+		for (uint64_t i = 0; i < m_hashNum; ++i) {
+			uint64_t pos = m_rankSupport(hashes[i] % m_bv.size());
 			setVal(&m_data[pos], value, mat);
 		}
 	}
@@ -352,11 +352,11 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
 	 * Replaces values according to collisionID hashtable (for thread safety)
 	 */
-	inline void insert(std::vector<size_t> const &hashes, T value,
+	inline void insert(std::vector<uint64_t> const &hashes, T value,
 			const vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
 		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < hashes.size(); ++i) {
-			size_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
+		for (uint64_t i = 0; i < hashes.size(); ++i) {
+			uint64_t pos = m_rankSupport(hashes.at(i) % m_bv.size());
 			setVal(&m_data[pos], value, colliIDs);
 		}
 	}
@@ -365,11 +365,11 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Accepts a list of precomputed hash values. Faster than rehashing each time.
 	 * Replaces values according to collisionID hashtable (for thread safety)
 	 */
-	inline void insert(const size_t *hashes, T value,
+	inline void insert(const uint64_t *hashes, T value,
 			const vector<boost::shared_ptr<google::dense_hash_map<T, T> > > &colliIDs) {
 		//iterates through hashed values adding it to the filter
-		for (size_t i = 0; i < m_hashNum; ++i) {
-			size_t pos = m_rankSupport(hashes[i] % m_bv.size());
+		for (uint64_t i = 0; i < m_hashNum; ++i) {
+			uint64_t pos = m_rankSupport(hashes[i] % m_bv.size());
 			setVal(&m_data[pos], value, colliIDs);
 		}
 	}
@@ -378,10 +378,10 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Mutates value vector to contain values in bloom map
 	 * Assumes vector is the size of hashes
 	 */
-	inline void query(std::vector<size_t> const &hashes,
+	inline void query(std::vector<uint64_t> const &hashes,
 			vector<T> &values) const {
 		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
+			uint64_t pos = hashes.at(i) % m_bv.size();
 			if (m_bv[pos] == 0) {
 				values[i] = 0;
 				continue;
@@ -394,9 +394,9 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Mutates value vector to contain values in bloom map
 	 * Assumes vector is the size of hashes
 	 */
-	inline void query(const size_t *hashes, vector<T> &values) const {
+	inline void query(const uint64_t *hashes, vector<T> &values) const {
 		for (unsigned i = 0; i < m_hashNum; ++i) {
-			size_t pos = hashes[i] % m_bv.size();
+			uint64_t pos = hashes[i] % m_bv.size();
 			if (m_bv[pos] == 0) {
 				values[i] = 0;
 				continue;
@@ -409,10 +409,10 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Returns the smallest possible id assigned in set of IDs
 	 * or 0 is it does not match anything
 	 */
-	inline T at(const size_t *hashes, unsigned maxMiss, unsigned &misses) {
+	inline T at(const uint64_t *hashes, unsigned maxMiss, unsigned &misses) {
 		T result = numeric_limits<T>::max();
 		for (unsigned i = 0; i < m_hashNum; ++i) {
-			size_t pos = hashes[i] % m_bv.size();
+			uint64_t pos = hashes[i] % m_bv.size();
 			if (m_bv[pos] == 0) {
 				++misses;
 				if (misses > maxMiss) {
@@ -420,7 +420,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 				}
 			}
 			else {
-				size_t rankPos = m_rankSupport(pos);
+				uint64_t rankPos = m_rankSupport(pos);
 				T currID = m_data[rankPos];
 				if (currID < result) {
 					result = currID;
@@ -434,10 +434,10 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Returns the smallest possible id assigned in set of IDs
 	 * or 0 is it does not match anything
 	 */
-	inline T at(const vector<size_t> &hashes, unsigned maxMiss, unsigned &misses) {
+	inline T at(const vector<uint64_t> &hashes, unsigned maxMiss, unsigned &misses) {
 		T result = numeric_limits<T>::max();
 		for (unsigned i = 0; i < m_hashNum; ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
+			uint64_t pos = hashes.at(i) % m_bv.size();
 			if (m_bv[pos] == 0) {
 				++misses;
 				if (misses > maxMiss) {
@@ -445,7 +445,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 				}
 			}
 			else {
-				size_t rankPos = m_rankSupport(pos);
+				uint64_t rankPos = m_rankSupport(pos);
 				T currID = m_data[rankPos];
 				if (currID < result) {
 					result = currID;
@@ -461,7 +461,7 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Returns numeric_limits<T>::max() on completely ambiguous collision
 	 * Returns 0 on if missing element
 	 */
-	T atBest(std::vector<size_t> const &hashes, unsigned missMin) const {
+	T atBest(std::vector<uint64_t> const &hashes, unsigned missMin) const {
 		google::dense_hash_map<T, unsigned> tmpHash;
 		tmpHash.set_empty_key(0);
 		unsigned maxCount = 0;
@@ -469,12 +469,12 @@ enum Type {MIBFMVAL, MIBFCOLL};
 		T value = 0;
 
 		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
+			uint64_t pos = hashes.at(i) % m_bv.size();
 			if(m_bv[pos] == 0){
 				++miss;
 				continue;
 			}
-			size_t rankPos = m_rankSupport(pos);
+			uint64_t rankPos = m_rankSupport(pos);
 			if (tmpHash.find(m_data[rankPos]) != tmpHash.end()) {
 				++tmpHash[m_data[rankPos]];
 			} else {
@@ -503,13 +503,13 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Uses colliIDs to resolve ambiguities
 	 */
 	//TODO optimize
-	inline vector<T> at(const size_t *hashes,
+	inline vector<T> at(const uint64_t *hashes,
 			const vector<boost::shared_ptr<vector<T> > > &colliIDs,
 			unsigned maxMiss, unsigned &misses) {
 		vector<T> results;
 		results.reserve(m_hashNum);
 		for (unsigned i = 0; i < m_hashNum; ++i) {
-			size_t pos = hashes[i] % m_bv.size();
+			uint64_t pos = hashes[i] % m_bv.size();
 			if (m_bv[pos] == 0) {
 				++misses;
 				if (misses > maxMiss) {
@@ -521,9 +521,9 @@ enum Type {MIBFMVAL, MIBFCOLL};
 		google::dense_hash_map<T, unsigned> tmpHash;
 		tmpHash.set_empty_key(0);
 		for (unsigned i = 0; i < m_hashNum; ++i) {
-			size_t pos = hashes[i] % m_bv.size();
+			uint64_t pos = hashes[i] % m_bv.size();
 			if (m_bv[pos] != 0) {
-				size_t rankPos = m_rankSupport(pos);
+				uint64_t rankPos = m_rankSupport(pos);
 				T currID = m_data[rankPos];
 				if (currID
 						!= std::numeric_limits<T>::max() && colliIDs[currID] != NULL) {
@@ -573,13 +573,13 @@ enum Type {MIBFMVAL, MIBFCOLL};
 	 * Uses colliIDs to resolve ambiguities
 	 */
 	//TODO optimize
-	inline vector<T> at(std::vector<size_t> const &hashes,
+	inline vector<T> at(std::vector<uint64_t> const &hashes,
 			const vector<boost::shared_ptr<vector<T> > > &colliIDs,
 			unsigned maxMiss, unsigned &misses) const {
 		vector<T> results;
 		results.reserve(hashes.size());
 		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
+			uint64_t pos = hashes.at(i) % m_bv.size();
 			if (m_bv[pos] == 0) {
 				++misses;
 				if (misses > maxMiss) {
@@ -591,9 +591,9 @@ enum Type {MIBFMVAL, MIBFCOLL};
 		google::dense_hash_map<T, unsigned> tmpHash;
 		tmpHash.set_empty_key(0);
 		for (unsigned i = 0; i < hashes.size(); ++i) {
-			size_t pos = hashes.at(i) % m_bv.size();
+			uint64_t pos = hashes.at(i) % m_bv.size();
 			if (m_bv[pos] != 0) {
-				size_t rankPos = m_rankSupport(pos);
+				uint64_t rankPos = m_rankSupport(pos);
 				T currID = m_data[rankPos];
 				if (currID
 						!= std::numeric_limits<T>::max() && colliIDs[currID] != NULL) {
@@ -679,15 +679,15 @@ enum Type {MIBFMVAL, MIBFCOLL};
 		return calcFPR_numInserted(m_nEntry);
 	}
 
-	inline size_t getPop() const {
-		size_t index = m_bv.size() - 1;
+	inline uint64_t getPop() const {
+		uint64_t index = m_bv.size() - 1;
 		while (m_bv[index] == 0) {
 			--index;
 		}
 		return m_rankSupport(index - 1) + 1;
 	}
 
-	inline size_t getUniqueEntries() const {
+	inline uint64_t getUniqueEntries() const {
 		return m_nEntry;
 	}
 
@@ -748,7 +748,7 @@ private:
 	 * Calculate FPR based on hash functions, size and number of entries
 	 * see http://en.wikipedia.org/wiki/Bloom_filter
 	 */
-	inline double calcFPR_numInserted(size_t numEntr) const {
+	inline double calcFPR_numInserted(uint64_t numEntr) const {
 		return pow(
 				1.0
 						- pow(1.0 - 1.0 / double(m_bv.size()),
@@ -842,7 +842,7 @@ private:
 	}
 
 	//size of bitvector
-	size_t m_dSize;
+	uint64_t m_dSize;
 
 	sdsl::bit_vector_il<BLOCKSIZE> m_bv;
 	T* m_data;
