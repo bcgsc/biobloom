@@ -15,16 +15,26 @@
 #include "Common/SeqEval.h"
 #include <zlib.h>
 #include <iostream>
-#include "Common/kseq.h"
 #include "ResultsManager.hpp"
 #include "BioBloomCategorizer/Options.h"
+#ifndef KSEQ_INIT_NEW
+#define KSEQ_INIT_NEW
+#include "Common/kseq.h"
 KSEQ_INIT(gzFile, gzread)
+#endif /*KSEQ_INIT_NEW*/
 
 using namespace std;
 
 /** for modes of filtering */
 enum mode {
 	ORDERED, BESTHIT, STD, SCORES
+};
+
+struct FaRec {
+	string header;
+	string seq;
+	string qual;
+	string comment;
 };
 
 ///** for modes of printing out files */
@@ -94,13 +104,6 @@ private:
 
 	bool m_stdout;
 	bool m_inclusive;
-
-	struct FaRec {
-		string header;
-		string comment;
-		string seq;
-		string qual;
-	};
 
 	void loadFilters(const vector<string> &filterFilePaths);
 	void evaluateReadStd(const string &rec, vector<unsigned> &hits);

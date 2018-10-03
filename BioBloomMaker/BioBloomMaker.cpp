@@ -19,7 +19,6 @@
 #if _OPENMP
 # include <omp.h>
 #endif
-#include "BloomMapGenerator.h"
 
 using namespace std;
 
@@ -61,7 +60,8 @@ void printHelpDialog() {
 		"  -p, --file_prefix=N    Filter prefix and filter ID. Required option.\n"
 		"  -o, --output_dir=N     Output location of the filter and filter info files.\n"
 		"  -h, --help             Display this dialog.\n"
-		"  -v  --version          Display version information.\n"
+		"      --version          Display version information.\n"
+		"  -v  --verbose          Display verbose output.\n"
 		"  -t, --threads=N        The number of threads to use.\n"
 		"\nBloom filter options:\n"
 		"  -f, --fal_pos_rate=N   Maximum false positive rate to use in filter. [0.0075]\n"
@@ -73,13 +73,6 @@ void printHelpDialog() {
 		"                         progressive mode.\n"
 		"  -n, --num_ele=N        Set the number of expected elements. If set to 0 number\n"
 		"                         is determined from sequences sizes within files. [0]\n"
-		"\nMultiIndex Bloom filter options\n"
-		"  -m, --multi_index      Generate a MultiIndex Bloom Filter. Experimental\n"
-		"  -S, --seed_str=N       Generate a miBF using multiple spaced seeds instead of\n"
-		"                         kmers. Expects list of seed 1s & 0s separated by spaces.\n"
-		"  -F, --by_file          For miBF, assign IDs by file rather than by fasta header\n"
-		"  -c, --colli_id         Compute k-mer collision IDs for miBF. Experimental\n"
-		"  -C, --colli_analysis   Compute k-mer collision matrix. Experimental\n"
 		"\nOptions for progressive filters:\n"
 		"  -r, --progressive=N    Progressive filter creation. The score threshold is\n"
 		"                         specified by N, which may be either a floating point\n"
@@ -109,6 +102,11 @@ void printHelpDialog() {
 	exit(0);
 }
 
+enum {
+	OPT_VERSION
+};
+
+
 int main(int argc, char *argv[]) {
 
 	bool die = false;
@@ -132,17 +130,11 @@ int main(int argc, char *argv[]) {
 			"file_prefix", required_argument, NULL, 'p' }, {
 			"output_dir", required_argument, NULL, 'o' }, {
 			"help", no_argument, NULL, 'h' }, {
-			"version", no_argument, NULL, 'v' }, {
 			"threads", required_argument, NULL, 't' }, {
 			"fal_pos_rate", required_argument, NULL, 'f' }, {
-			"multi_index", no_argument, NULL, 'm' }, {
-			"seed_str", required_argument, NULL, 'S' }, {
 			"hash_num", required_argument, NULL, 'g' }, {
 			"kmer_size", required_argument, NULL, 'k' }, {
 			"num_ele", required_argument, NULL, 'n' }, {
-			"by_file", no_argument, NULL, 'F' }, {
-			"colli_id", no_argument, NULL, 'c' }, {
-			"colli_analysis", no_argument, NULL, 'C' }, {
 			"progressive", required_argument, NULL, 'r' }, {
 			"subtract",	required_argument, NULL, 's' }, {
 			"no_rep_kmer", no_argument, NULL, 'd' }, {
@@ -153,11 +145,13 @@ int main(int argc, char *argv[]) {
 			"inclusive", no_argument, NULL, 'i' }, {
 			"print_reads", no_argument, NULL, 'P' }, {
 			"interval",	required_argument, NULL, 'I' }, {
+			"verbose", no_argument, NULL, 'v' }, {
+			"version", no_argument, NULL, OPT_VERSION }, {
 			NULL, 0, NULL, 0 } };
-			
+
 	//actual checking step
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:n:t:Pr:ib:e:l:da:I:FcCS:m",
+	while ((c = getopt_long(argc, argv, "f:p:o:k:n:g:hvs:t:Pr:ib:e:l:da:I:",
 			long_options, &option_index)) != -1) {
 		switch (c) {
 		case 'f': {
@@ -190,27 +184,6 @@ int main(int argc, char *argv[]) {
 				cerr << "Error - Invalid parameter! t: " << optarg << endl;
 				exit(EXIT_FAILURE);
 			}
-			break;
-		}
-		case 'm': {
-			opt::filterType = BLOOMMAP;
-			break;
-		}
-		case 'S': {
-			opt::sseeds = convertInputString(optarg);
-			opt::kmerSize = opt::sseeds[0].size();
-			break;
-		}
-		case 'F': {
-			opt::idByFile = true;
-			break;
-		}
-		case 'c': {
-			opt::colliIDs = true;
-			break;
-		}
-		case 'C': {
-			opt::colliAnalysis = true;
 			break;
 		}
 		case 'i': {
@@ -266,7 +239,7 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 		case 'v': {
-			printVersion();
+			opt::verbose++;
 			break;
 		}
 		case 's': {
@@ -342,13 +315,9 @@ int main(int argc, char *argv[]) {
 			}
 			break;
 		}
-		case 'a': {
-			stringstream convert(optarg);
-			if (!(convert >> opt::allowMisses)) {
-				cerr << "Error - Invalid parameter! a: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
+		case OPT_VERSION:{
+			printVersion();
+			exit(EXIT_SUCCESS);
 		}
 		default: {
 			die = true;
@@ -390,8 +359,17 @@ int main(int argc, char *argv[]) {
 
 	//set number of hash functions used
 	if (opt::hashNum == 0) {
-		//get optimal number of hash functions
-		opt::hashNum = BloomFilterInfo::calcOptimalHashNum(opt::fpr);
+		if (opt::filterType == BLOOMMAP) {
+			if (!opt::sseeds.empty()) {
+				opt::hashNum = opt::sseeds.size();
+			} else {
+				cerr << "Please pick number of hash values (-g)\n";
+				exit(1);
+			}
+		} else {
+			//get optimal number of hash functions
+			opt::hashNum = BloomFilterInfo::calcOptimalHashNum(opt::fpr);
+		}
 	}
 
 	string file1 = "";
@@ -431,16 +409,6 @@ int main(int argc, char *argv[]) {
 			cerr << "Score threshold = " << progressive << endl;
 			break;
 		}
-	}
-
-	if (opt::filterType == BLOOMMAP) {
-		if(!opt::sseeds.empty()){
-			opt::hashNum = opt::sseeds.size();
-		}
-		BloomMapGenerator filterGen(inputFiles, opt::kmerSize, entryNum);
-		filterGen.generate(outputDir + filterPrefix, opt::fpr);
-		cerr << "Bloom Map Creation Complete." << endl;
-		return 0;
 	}
 
 	if(!opt::sseeds.empty()){

@@ -11,7 +11,6 @@
 #include <vector>
 #include <sys/stat.h>
 #include "BioBloomClassifier.h"
-#include "BloomMapClassifier.h"
 #include "config.h"
 #include "Common/Options.h"
 #include "Common/SeqEval.h"
@@ -111,16 +110,12 @@ void printHelpDialog()
 	"  -l, --file_list=N      A file of list of file pairs to run in parallel.\n"
 	"  -v, --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
+	"      --verbose          Display verbose output\n"
 	"  -I, --interval         the interval to report file processing status [10000000]\n"
 	"Advanced options:\n"
-//	"  -m, --min_hit=N        Minimum Hit Threshold Value. The absolute hit number\n"
-//	"                         needed over initial tiling of read to continue. Higher\n"
-//	"                         values decrease runtime but lower sensitivity.[0]\n"
 	"  -r, --streak=N         The number of hits tiling in second pass needed to jump\n"
 	"                         Several tiles upon a miss. Small values decrease\n"
 	"                         runtime but decrease sensitivity. [3]\n"
-//	"  -o, --min_hit_only     Use only initial pass filtering to evaluate reads. Fast\n"
-//	"                         but low specificity, use only on long reads (>100bp).\n"
 	"  -c, --ordered          Use ordered filtering. Order of filters matters\n"
 	"                         (filters listed first have higher priority). Only taken\n"
 	"                         advantage of when k-mer sizes and number of hash\n"
@@ -129,13 +124,6 @@ void printHelpDialog()
 	"                         filter listed by -f. Reads are outputed in fastq,\n"
 	"                         and if paired will output will be interlaced.\n"
 	"  -n, --inverse          Inverts the output of -d (everything but first filter).\n"
-	"Options for multi index bloom filters:\n"
-	"  -D, --delta            Max Number of matches between second best hit and best\n"
-	"                         hit before it is considered significantly matching to\n"
-	"                         best hit (not a multimatch). [0]\n"
-	"  -G, --max_group        Max groups size when using collision ids. [inf]\n"
-	"  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for\n"
-	"                         miBFs.[0]\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
 	cerr << dialog << endl;
@@ -176,8 +164,6 @@ int main(int argc, char *argv[])
 		"interval",	required_argument, NULL, 'I' }, {
 		"threads", required_argument, NULL, 't' }, {
 		"allowed_miss", required_argument, NULL, 'a' }, {
-		"delta", required_argument, NULL, 'D' }, {
-		"max_group", required_argument, NULL, 'G' }, {
 		"gz_output", no_argument, NULL, 'g' }, {
 		"fq", no_argument, &fastq, 1 }, {
 		"fa", no_argument, &fasta, 1 }, {
@@ -187,27 +173,20 @@ int main(int argc, char *argv[])
 		"streak", required_argument, NULL, 'r' }, {
 		"min_hit_only", no_argument, NULL, 'o' }, {
 		"ordered", no_argument, NULL, 'c' }, {
-		"stdout_filter", required_argument, NULL, 'd' }, {
+		"stdout_filter", no_argument, NULL, 'd' }, {
 		"inverse", required_argument, NULL, 'n' }, {
 		"with_score", no_argument, NULL, 'w' }, {
+		"verbose", no_argument, &opt::verbose, 1 }, {
 		NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:m:p:hegl:vs:r:t:cdiwI:a:D:G:n:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:hegl:vs:r:t:cdiwI:n:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
 		switch (c) {
-		case 'm': {
-			stringstream convert(optarg);
-			if (!(convert >> opt::minHit)) {
-				cerr << "Error - Invalid parameter! m: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
 		case 's': {
 			stringstream convert(optarg);
 			unsigned matchLen;
@@ -270,30 +249,6 @@ int main(int argc, char *argv[])
 			opt::inclusive = true;
 			break;
 		}
-		case 'a': {
-			stringstream convert(optarg);
-			if (!(convert >> opt::allowMisses)) {
-				cerr << "Error - Invalid parameter! a: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
-		case 'D': {
-			stringstream convert(optarg);
-			if (!(convert >> opt::delta)) {
-				cerr << "Error - Invalid parameter! D: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
-		case 'G': {
-			stringstream convert(optarg);
-			if (!(convert >> opt::maxGroupSize)) {
-				cerr << "Error - Invalid parameter! G: " << optarg << endl;
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
 		case 't': {
 			stringstream convert(optarg);
 			if (!(convert >> opt::threads)) {
@@ -319,10 +274,6 @@ int main(int argc, char *argv[])
 			printVersion();
 			break;
 		}
-//		case 'o': {
-//			minHitOnly = true;
-//			break;
-//		}
 		case 'r': {
 			stringstream convert(optarg);
 			if (!(convert >> opt::streakThreshold)) {
@@ -410,13 +361,13 @@ int main(int argc, char *argv[])
 				<< endl;
 		exit(1);
 	} else if (fastq) {
-		opt::outputType = "fq";
+		opt::outputType = opt::FASTQ;
 	} else if (fasta) {
-		opt::outputType = "fa";
+		opt::outputType = opt::FASTA;
 	}
 
 	//-w option cannot be used without output method
-	if (withScore && opt::outputType == "") {
+	if (withScore && opt::outputType == opt::NONE) {
 		cerr << "Error: -w option cannot be used without output method" << endl;
 		exit(1);
 	}
@@ -446,20 +397,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if(opt::filterType == BLOOMMAP){
-		if(opt::outputType == ""){
-			opt::outputType = "fa";
-		}
-		BloomMapClassifier BMC(filterFilePaths[0]);
-		if (paired) {
-			BMC.filterPair(inputFiles[0], inputFiles[1]);
-		} else {
-			BMC.filter(inputFiles);
-		}
-		//load filters
-		return 0;
-	}
-
 	//load filters
 	BioBloomClassifier bbc(filterFilePaths, opt::score, opt::outputPrefix, opt::filePostfix,
 			withScore);
@@ -468,11 +405,16 @@ int main(int argc, char *argv[])
 		bbc.setStdout();
 	}
 
-	if (collab && opt::minHit) {
-		cerr << "Error: -m -c outputs types cannot be both set" << endl;
-		exit(1);
-	} else if (collab) {
+	if (collab) {
 		bbc.setOrderedFilter();
+	}
+
+	string outputType = "";
+	if (opt::FASTA == opt::outputType) {
+		outputType == "fa";
+	}
+	if (opt::FASTQ == opt::outputType) {
+		outputType == "fq";
 	}
 
 	//filtering step
@@ -481,12 +423,13 @@ int main(int argc, char *argv[])
 		if (opt::inclusive) {
 			bbc.setInclusive();
 		}
-		if (opt::outputType != "") {
+		if (opt::outputType) {
+
 			if (smartPair) {
-				bbc.filterPairPrint(inputFiles[0], opt::outputType);
+				bbc.filterPairPrint(inputFiles[0], outputType);
 			} else {
 				bbc.filterPairPrint(inputFiles[0], inputFiles[1],
-						opt::outputType);
+						outputType);
 			}
 		} else {
 			if (smartPair) {
@@ -515,8 +458,8 @@ int main(int argc, char *argv[])
 			}
 		}
 	} else {
-		if (opt::outputType != "") {
-			bbc.filterPrint(inputFiles, opt::outputType);
+		if (opt::outputType != opt::NONE) {
+			bbc.filterPrint(inputFiles, outputType);
 		} else {
 			bbc.filter(inputFiles);
 		}

@@ -5,7 +5,7 @@ namespace opt {
 	bool colourSpace;
 
 	/** Verbose output */
-	int verbose;
+	int verbose = 0;
 
 	unsigned streakThreshold = 3;
 	unsigned threads = 1;
@@ -14,10 +14,7 @@ namespace opt {
 	const ID EMPTY = 0;
 	const ID COLLI = std::numeric_limits<ID>::max();
 	std::vector<std::string> sseeds;
-	unsigned allowMisses = 0;
 
-	bool colliIDs = false;
-	bool colliAnalysis = false;
 	bool idByFile = false;
 
 	double baitThreshold = -1;
@@ -28,6 +25,7 @@ namespace opt {
 
 	unsigned fileInterval = 10000000;
 	double fpr = 0.0078125;
+//	double occupancy = 0.5;
 	bool noRep = false;
 	
 	std::string prefix = "";

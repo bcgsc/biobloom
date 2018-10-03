@@ -15,12 +15,20 @@ bool inclusive = false;
 double score = 0.15;
 string outputPrefix = "";
 string filePostfix = "";
-string outputType = "";
+OutType outputType = NONE;
 bool minHitOnly = false;
-unsigned minHit = 0;
-unsigned delta = 0;
 unsigned maxGroupSize = std::numeric_limits<unsigned>::max();
+int debug = 0;
+unsigned multiThresh = 2;
 bool inverse = false;
+
+std::string filtersFile = "";
+bool paired = false;
+bool stdout = false;
+bool bestHitCountAgree = false;
+
+unsigned minCountNonSatCount = 0;
+unsigned frameMatches = 0;
 }
 
 

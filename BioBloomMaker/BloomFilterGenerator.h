@@ -17,7 +17,11 @@
 #include <zlib.h>
 #include <omp.h>
 #include "Common/Options.h"
+#ifndef KSEQ_INIT_NEW
+#define KSEQ_INIT_NEW
+#include "Common/kseq.h"
 KSEQ_INIT(gzFile, gzread)
+#endif /*KSEQ_INIT_NEW*/
 
 using namespace std;
 
