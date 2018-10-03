@@ -1,7 +1,8 @@
 
+
 # BioBloom Tools User Manual - Multi-Index Bloom Filter sequence classifier
 
-Multi-Index Bloom Filters (miBF) allow for efficent classification of a many targets. The use of miBFs is recommend if classifying against >100 targets as `biobloomcategorizer` cannot scale to this many targets.
+Multi-Index Bloom Filters (miBF) allow for efficent classification of a many targets. The use of miBFs is recommend if classifying against >100 targets as `biobloomcategorizer` cannot scale to this many targets. It also also for higher sensitivity through the use of spaced seeds.
 
 A preprint is available [here](TODO):
 ### Note additional dependencies: [seqtk](https://github.com/lh3/seqtk)
@@ -105,7 +106,7 @@ Advanced options:
 Report bugs to <cjustin@bcgsc.ca>.
 ```
 ### Notes:
-It is suggested that sequences of fixed length be used in the same run. It should not be problem if the a few different sizes are but we do not recommend a set of sequences with all different lengths. This is due to limitations on our current implementation relating to the false postive rate calcuations (please email cjustin@bcgsc.ca for more details).
+We suggested that sequences being classified be of fixed length in the same run. It should not be problem if the a few different sizes (e.g. 2 different sizes in barcode trimmed Chromium data) are but we do not recommend a set of sequences with all different lengths. This is due to limitations on our current implementation relating to the false postive rate calcuations (please email cjustin@bcgsc.ca for more details). It may be possible to optimize the code for variable lengths.
 
 <a name="3"></a>
 ## 3. Output files
@@ -163,10 +164,10 @@ We provided multimaps if a sequence is sufficently similar two multiple indexed 
 For every entry in the same spaced seed, we only allow for one reference sequence to talk ownership of it. Thus, if a sequences is shared between multiple classes it is randomly assigned to be owned by one the references. In a similar vein, random collisions can occur which will also lead to one of the references to take ownership. We have measures in place to tollerate these events by attempting to fairly distributing collisions and marking entries as "saturated" if they occur in the same locus, which works well against random collisions. However, it is suggested to minimize using very similar reference sequence in the same miBF or to group them together. Another option is to increase the specificity of the seeds used (use longer, denser spaced seeds).
 
 ### What are the memory requirements?
-The memory required to use this datastructure is dependent on the number of spaced seeds used and the size of the reference used in the file. Other lesser factor include the occupancy of the Bloom filter. The number of bits per basepair with default settings and 3 spaced seeds is around 5 bytes.
+The memory required to use this datastructure is dependent on the number of spaced seeds used and the size of the reference used in the file. Other lesser factor include the occupancy of the Bloom filter. Compared to normal BBT expect memory usage to be 3-4 times higher. The number of bits per basepair with default settings and 3 spaced seeds is around 5 bytes.
 
 ### Is there a limit to number of sequences I can index a time?
 You can currently index a maximum of 32768 sequences at a time.
 
 ### Anything else I should know?
-The more sequences you index, the better the specifity and sensivity of the method because adding more sequences helps to reduce the FPR of other sequences in the filter. For example, if filtering for viruses in a patient sample, it may be helpful to add human sequences as they will reduce the FPR of the viral sequences in the filter, thus requiring fewer seed hits to be considered a match.
+The more sequences you index, the better the specifity and sensivity of the method because adding more sequences helps to reduce the FPR of other sequences in the filter. For example, if filtering for viruses in a patient sample, it may be helpful to add human sequences as they will reduce the FPR of the viral sequences in the filter, thus requiring fewer seed hits to be considered a match (higher sensitivity).
