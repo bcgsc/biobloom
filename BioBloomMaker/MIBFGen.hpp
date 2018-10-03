@@ -244,7 +244,7 @@ public:
 			 * Critical IDs are need for partial hits and always replace existing IDs
 			 */
 			//TODO since since is known (getPopSaturated()) possible to use sd-bitvector?
-			typedef google::sparse_hash_map<size_t, pair<ID,ID>> SatMap;
+			typedef google::sparse_hash_map<uint64_t, pair<ID,ID>> SatMap;
 			SatMap satMap(miBFBV->getPopSaturated());
 			const ID criticalCount = m_nameToID.size() + 1;
 
@@ -278,7 +278,7 @@ public:
 						}
 						if (l >= 0) {
 							//get positions
-							typedef google::dense_hash_set<size_t> SatSet;
+							typedef google::dense_hash_set<uint64_t> SatSet;
 							SatSet satVal;
 							satVal.set_empty_key(miBFBV->size());
 							SatSet critVal;
@@ -305,7 +305,7 @@ public:
 										tempItr->second.second++;
 										//each position^ID combination is unique
 										//is this random enough ont is own?
-										size_t randomSeed = *itr ^ id;
+										uint64_t randomSeed = *itr ^ id;
 										ID randomNum = std::hash<ID> { }(
 												randomSeed)
 												% tempItr->second.second;
@@ -356,7 +356,7 @@ public:
 						}
 						if (l >= 0) {
 							//get positions
-							typedef google::dense_hash_set<size_t> SatSet;
+							typedef google::dense_hash_set<uint64_t> SatSet;
 							SatSet satVal;
 							satVal.set_empty_key(miBFBV->size());
 							SatSet critVal;
@@ -382,7 +382,7 @@ public:
 										tempItr->second.second++;
 										//each position^ID combination is unique
 										//is this random enough ont is own?
-										size_t randomSeed = *itr ^ id;
+										uint64_t randomSeed = *itr ^ id;
 										ID randomNum = std::hash<ID> { }(
 												randomSeed)
 												% tempItr->second.second;
@@ -702,13 +702,13 @@ private:
 	 * Critical values ideally should never be mutated
 	 */
 	inline void recordSaturation(const MIBloomFilter<ID> &miBF, ID id,
-			const string &seq, google::dense_hash_set<size_t> &saturatedValues,
-			google::dense_hash_set<size_t> &criticalValues) {
+			const string &seq, google::dense_hash_set<uint64_t> &saturatedValues,
+			google::dense_hash_set<uint64_t> &criticalValues) {
 		if (miBF.getSeedValues().empty()) {
 			ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
 			while (itr != itr.end()) {
 				//for each set of hash values, check for saturation
-				vector<size_t> rankPos = miBF.getRankPos(*itr);
+				vector<uint64_t> rankPos = miBF.getRankPos(*itr);
 				vector<ID> results = miBF.getData(rankPos);
 				bool saturated = true;
 				for (unsigned i = 0; i < opt::hashNum; ++i) {
@@ -742,7 +742,7 @@ private:
 			stHashIterator itr(seq, miBF.getSeedValues(), opt::hashNum, miBF.getKmerSize());
 			while (itr != itr.end()) {
 				//for each set of hash values, check for saturation
-				vector<size_t> rankPos = miBF.getRankPos(*itr);
+				vector<uint64_t> rankPos = miBF.getRankPos(*itr);
 				vector<ID> results = miBF.getData(rankPos);
 				bool saturated = true;
 				for (unsigned i = 0; i < opt::hashNum; ++i) {
@@ -789,8 +789,8 @@ private:
 			for (ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
 					itr != itr.end(); ++itr) {
 				unsigned colliCount = 0;
-				for (size_t i = 0; i < opt::hashNum; ++i) {
-					size_t pos = (*itr)[i] % bv.size();
+				for (unsigned i = 0; i < opt::hashNum; ++i) {
+					uint64_t pos = (*itr)[i] % bv.size();
 					uint64_t *dataIndex = bv.data() + (pos >> 6);
 					uint64_t bitMaskValue = (uint64_t) 1 << (pos & 0x3F);
 					colliCount += __sync_fetch_and_or(dataIndex, bitMaskValue)
@@ -805,8 +805,8 @@ private:
 			for (stHashIterator itr(seq, seedVal, opt::hashNum, m_kmerSize);
 					itr != itr.end(); ++itr) {
 				unsigned colliCount = 0;
-				for (size_t i = 0; i < seedVal.size(); ++i) {
-					size_t pos = (*itr)[i] % bv.size();
+				for (unsigned i = 0; i < seedVal.size(); ++i) {
+					uint64_t pos = (*itr)[i] % bv.size();
 					uint64_t *dataIndex = bv.data() + (pos >> 6);
 					uint64_t bitMaskValue = (uint64_t) 1 << (pos & 0x3F);
 					colliCount += __sync_fetch_and_or(dataIndex, bitMaskValue)
