@@ -14,10 +14,10 @@
 #include <google/dense_hash_map>
 #include <google/dense_hash_set>
 #include <vector>
-#include "bloomfilter/MIBloomFilter.hpp"
+#include "btl_bloomfilter/MIBloomFilter.hpp"
 #include "btl_bloomfilter/stHashIterator.hpp"
 #include "btl_bloomfilter/ntHashIterator.hpp"
-#include "bloomfilter/MIBFQuerySupport.hpp"
+#include "btl_bloomfilter/MIBFQuerySupport.hpp"
 #include <iostream>
 #include "Common/Options.h"
 #include "ResultsManager.hpp"

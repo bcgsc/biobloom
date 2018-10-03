@@ -2,7 +2,6 @@ SUBDIRS = \
 	Common \
 	BioBloomMaker \
 	BioBloomCategorizer \
-	bloomfilter \
 	Tests
 
 dist_doc_DATA = \
