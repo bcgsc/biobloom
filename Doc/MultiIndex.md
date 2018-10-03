@@ -1,5 +1,3 @@
-
-
 # BioBloom Tools User Manual - Multi-Index Bloom Filter sequence classifier
 
 Multi-Index Bloom Filters (miBF) allow for efficent classification of a many targets. The use of miBFs is recommend if classifying against >100 targets as `biobloomcategorizer` cannot scale to this many targets. It also also for higher sensitivity through the use of spaced seeds.
