@@ -16,7 +16,7 @@ This tool is free for academic use ([BCCA licence](COPYING)).
 
 We have a commercial licence also, please contact us (prebstein at bccancer dot bc dot ca) if you wish to use the tools for commercial uses.
 
-Any questions, comments and suggestions can be directed to [@JustinChu](https://github.com/JustinChu) or emailed to cjustin at bcgsc dot ca.
+Any questions, comments and suggestions can be directed to [@JustinChu](https://github.com/JustinChu) or emailed to cjustin@bcgsc.ca.
 
 ### Affiliations:
 Canada’s Michael Smith Genome Sciences Centre, BC Cancer Agency, Vancouver BC Canada V5Z 4S6
