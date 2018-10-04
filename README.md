@@ -203,7 +203,7 @@ BBT does not create temporary files so scratch space is not needed.
 If used in an job based automated cluster environment where users have their own allocated storage they should make sure they have space for the output bloom filter. When categorizing reads they should make sure they have space for the output (if they want the reads `--fa` or `--fq`) which will be roughly the size of the input files since all they are doing is partitioning the reads the reads.
 
 #### CPU:
-There is no cpu minimum speed or number of cores, though it will run faster with more and faster cpus. In terms of a maximum, speed can become I/O bound quickly. When using only a few bloom filters(<5) in BBC the number of cores (>4) may not matter too much, but you will get better performance with multiple threads if more bloom filters are used at the same time. Also BBM does not yet fully support threads (though if critically needed I think I could implement this fully - contact me).
+There is no cpu minimum speed or number of cores, though it will run faster with more and faster cpus. In terms of a maximum, speed can become I/O bound quickly. When using only a few bloom filters(<5) in BBC the number of cores (>4) may not matter too much, but you will get better performance with multiple threads if more bloom filters are used at the same time.
 
 <a name="6"></a>
 ## 6. Advanced options and Best Practices
@@ -352,7 +352,5 @@ There are multiple ways to speed up biobloomcategorizer. Here are a few options:
 The `--ordered` option, other than priotizing the first filters in the list (specified by `-f`), will have an added benefit of speeding up the program by avoiding some evaluations if a match is already found. Furthermore, because of this speed up, this option maybe appropriate even in situations where no hierarchy is desired (filters must be unrelated in this case).
 
 In biobloomcategorizer set a min hit threshold (`-m`) >0. This will use a faster rescreening categorization algorithm that uses jumping k-mer tiles to prescreen reads. This will decrease sensitivity but will increase speed. Large values will further decrease sensitivity.
-
-Finally if speed is still an issue, using the min hit threshold only (`-o`) option will use only this screening method and not use the standard sliding tiles algorithm at all. This will greatly increase speed at the expense of sensitivity and specificity. This may be appropriate if your reads are long (>150bp), paired and have minimal read errors. If this method is used, it is recommended that you use an `-m` of at least 2 or 3.
 
 
