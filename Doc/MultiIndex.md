@@ -100,7 +100,9 @@ Advanced options:
   -c, --minNoSat         Minimum count of non saturated matches. Increasing this value
                          will filter out repetitive or low quality sequences.[0]
   -b, --bestHitAgree     Filters out all matches where best hit is ambiguous because
-                         match count metrics do not agree.  --debug                debug filter output mode.
+                         match count metrics do not agree.
+      --debug            debug filter output mode.
+      
 Report bugs to <cjustin@bcgsc.ca>.
 ```
 ### Notes:
