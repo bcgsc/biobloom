@@ -124,6 +124,7 @@ void printHelpDialog()
 	"                         filter listed by -f. Reads are outputed in fastq,\n"
 	"                         and if paired will output will be interlaced.\n"
 	"  -n, --inverse          Inverts the output of -d (everything but first filter).\n"
+	"\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
 	cerr << dialog << endl;
