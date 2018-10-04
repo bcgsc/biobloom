@@ -2,7 +2,7 @@
 
 BioBloom Tools (BBT) provides the means to create filters for a given reference and then to categorize sequences. This methodology is faster than alignment but does not provide mapping locations. BBT was initially intended to be used for pre-processing and QC applications like contamination detection, but is flexible to accommodate other purposes. This tool is intended to be a pipeline component to replace costly alignment steps.
 
-[Multi-index Bloom filters Manual] (Doc/MultiIndex.md) - See here if classifying to many (>100 targets) different references at the same time
+[Multi-index Bloom filters Manual](Doc/MultiIndex.md) - See here if classifying to many (>100 targets) different references at the same time
 
 Relevant [paper](http://bioinformatics.oxfordjournals.org/content/30/23/3402.long):
 
