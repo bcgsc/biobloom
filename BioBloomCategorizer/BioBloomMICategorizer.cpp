@@ -107,8 +107,9 @@ void printHelpDialog()
 	"  -c, --minNoSat         Minimum count of non saturated matches. Increasing this value\n"
 	"                         will filter out repetitive or low quality sequences.[0]\n"
 	"  -b, --bestHitAgree     Filters out all matches where best hit is ambiguous because\n"
-	"                         match count metrics do not agree."
-	"  --debug                debug filter output mode.\n"
+	"                         match count metrics do not agree.\n"
+	"      --debug            debug filter output mode.\n"
+	"\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
 	cerr << dialog << endl;
