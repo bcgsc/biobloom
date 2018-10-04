@@ -85,8 +85,7 @@ If your boost library headers are not in your PATH you can specify their locatio
 <a name="2"></a>
 ## 2. Generating Bloom Filters from Reference Sequences with Biobloommaker
 
-After you have your FastA file and index, a `.bf` file with corresponding information text 
-file can be created by running the command:
+After you have your FastA file a `.bf` file with corresponding information text file can be created by running the command:
 ```bash
 ./biobloommaker –p input input1.fasta input2.fasta
 ```
@@ -101,7 +100,7 @@ Two files will be generated binary Bloom filter file (`.bf`) and an information 
 <a name="3"></a>
 ## 3. Classifying and Analyzing Sequences with Biobloomcategorizer
 
-Once you have filters created, you can use them with Biobloomcategorizer to categorize sequences. The file formats that can be used are the following: SAM, BAM, FastQ, FastA and qseq. To read BAM files samtools must be in your path. Gzip and Bz2 compression is also handled if your system has gzip and `bunzip2` installed.
+Once you have filters created, you can use them with Biobloomcategorizer to categorize sequences. The file formats that can be used are the following: FastQ, FastA. If the input is compressed it is recommended to pipe the input in using [process subsititution](http://tldp.org/LDP/abs/html/process-sub.html).
 
 Before starting make sure the listed `.bf` file is in the same directory as its corresponding information `.txt` file.
 
@@ -224,6 +223,17 @@ into a bloom filter.
   -o, --output_dir=N     Output location of the filter and filter info files.
   -h, --help             Display this dialog.
   -v  --version          Display version information.
+Usage: biobloommaker -p [FILTERID] [OPTION]... [FILE]...
+Usage: biobloommaker -p [FILTERID] -r 0.2 [FILE]... [FASTQ1] [FASTQ2] 
+Creates a bf and txt file from a list of fasta files. The input sequences are
+cut into a k-mers with a sliding window and their hash signatures are inserted
+into a bloom filter.
+
+  -p, --file_prefix=N    Filter prefix and filter ID. Required option.
+  -o, --output_dir=N     Output location of the filter and filter info files.
+  -h, --help             Display this dialog.
+      --version          Display version information.
+  -v  --verbose          Display verbose output.
   -t, --threads=N        The number of threads to use.
 
 Bloom filter options:
@@ -236,14 +246,6 @@ Bloom filter options:
                          progressive mode.
   -n, --num_ele=N        Set the number of expected elements. If set to 0 number
                          is determined from sequences sizes within files. [0]
-
-MultiIndex Bloom filter options
-  -m, --multi_index      Generate a MultiIndex Bloom Filter. Experimental
-  -S, --seed_str=N       Generate a miBF using multiple spaced seeds instead of
-                         kmers. Expects list of seed 1s & 0s separated by spaces.
-  -F, --by_file          For miBF, assign IDs by file rather than by fasta header
-  -c, --colli_id         Compute k-mer collision IDs for miBF. Experimental
-  -C, --colli_analysis   Compute k-mer collision matrix. Experimental
 
 Options for progressive filters:
   -r, --progressive=N    Progressive filter creation. The score threshold is
@@ -276,8 +278,8 @@ Report bugs to <cjustin@bcgsc.ca>.
 ```
 Usage: biobloomcategorizer [OPTION]... -f "[FILTER1]..." [FILE]...
 biobloomcategorizer [OPTION]... -e -f "[FILTER1]..." [FILE1.fq] [FILE2.fq]
-Categorize Sequences. The input format may be FASTA, FASTQ, qseq, export, SAM or
-BAM format and compressed with gz, bz2 or xz and may be tarred.
+biobloomcategorizer [OPTION]... -e -f "[FILTER1]..." [SMARTFILE.fq]
+Categorize Sequences. The input format may be FASTA, FASTQ, and compressed gz.
 
   -p, --prefix=N         Output prefix to use. Otherwise will output to current
                          directory.
@@ -304,8 +306,9 @@ BAM format and compressed with gz, bz2 or xz and may be tarred.
       --chastity         Discard and do not evaluate unchaste reads.
       --no-chastity      Do not discard unchaste reads. [default]
   -l, --file_list=N      A file of list of file pairs to run in parallel.
-  -v  --version          Display version information.
+  -v, --version          Display version information.
   -h, --help             Display this dialog.
+      --verbose          Display verbose output
   -I, --interval         the interval to report file processing status [10000000]
 Advanced options:
   -r, --streak=N         The number of hits tiling in second pass needed to jump
@@ -318,13 +321,8 @@ Advanced options:
   -d, --stdout_filter    Outputs all matching reads to stdout for the first
                          filter listed by -f. Reads are outputed in fastq,
                          and if paired will output will be interlaced.
-Options for multi index bloom filters:
-  -D, --delta            Max Number of matches between second best hit and best
-                         hit before it is considered significantly matching to
-                         best hit (not a multimatch). [0]
-  -G, --max_group        Max groups size when using collision ids. [inf]
-  -a, --allowed_miss=N   Allowed misses in a bloom filter query, only works for
-                         miBFs.[0]
+  -n, --inverse          Inverts the output of -d (everything but first filter).
+  
 Report bugs to <cjustin@bcgsc.ca>.
 ```
 
