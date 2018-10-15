@@ -29,7 +29,7 @@ A `<prefix>.bf`, `<prefix>.bf.sdsl` and `<prefix>_ids.txt` can be created by run
 
 The options above are the bare minimum options you must use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. You can also use the `--help` parameter for a listing of the options. Indeed, the multiple space seeds used in this example may not be optimal for your purposes. By default, each header in the file will be indexed as a seperate entry.
 
-###Help dialog of biobloommimaker:
+### Help dialog of biobloommimaker:
 
 ```
 Usage: biobloommimaker -p [FILTERID] [OPTION]... [FILE]...
@@ -71,7 +71,7 @@ After execution, a `<prefix>_summary.tsv` (by default the prefix is empty) will 
 
 The options above are the bare minimum options you must use to run the program, but it likely that you will need to add additional options for your needs. For example, a fasta output (with the classification in the read header) can be outputed with `--fa` rather that outputting a tsv file. You can also use the `--help` parameter for a listing of the options. Indeed, the multiple space seeds used in this example may not be optimal for your purposes. By default, each header in the file will be indexed as a seperate entry.
 
-###Help dialog of biobloommicategorizer:
+### Help dialog of biobloommicategorizer:
 
 ```
 Usage: biobloommicategorizer [OPTION]... -f [FILTER] [FILE]...
