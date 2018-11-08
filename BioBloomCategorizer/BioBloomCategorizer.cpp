@@ -323,11 +323,9 @@ int main(int argc, char *argv[])
 
 	//check validity of inputs for paired end mode
 	if (paired) {
-		if (inputFiles.size() == 1)
-		{
+		if (inputFiles.size() == 1) {
 			smartPair = true;
-		}
-		else {
+		} else if (inputFiles.size() != 2) {
 			cerr << "Usage of paired end mode:\n"
 					<< "BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [FILEPAIR1] [FILEPAIR2]\n"
 					<< "or BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [SMARTPAIR]\n"
