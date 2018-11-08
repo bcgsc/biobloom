@@ -529,8 +529,8 @@ void BioBloomClassifier::filterPair(const string &file) {
 				}
 			}
 			if (pairFound) {
-				FaRec &rec1 = rec;
-				FaRec &rec2 = *itr->second;
+				FaRec &rec1 = *itr->second;
+				FaRec &rec2 = rec;
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
@@ -654,8 +654,8 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 				}
 			}
 			if (pairFound) {
-				FaRec &rec1 = rec;
-				FaRec &rec2 = *itr->second;
+				FaRec &rec1 = *itr->second;
+				FaRec &rec2 = rec;
 #pragma omp critical(totalReads)
 				{
 					++totalReads;
