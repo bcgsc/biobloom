@@ -2,7 +2,7 @@
 
 Multi-Index Bloom Filters (miBF) allow for efficent classification of a many targets. The use of miBFs is recommend if classifying against >100 targets as `biobloomcategorizer` cannot scale to this many targets. It also also for higher sensitivity through the use of spaced seeds.
 
-A preprint is available [here](TODO):
+A preprint is available [here](https://www.biorxiv.org/content/biorxiv/early/2018/10/05/434795.full.pdf):
 ### Note additional dependencies: [seqtk](https://github.com/lh3/seqtk)
 Table of Contents
 ------
@@ -29,7 +29,7 @@ A `<prefix>.bf`, `<prefix>.bf.sdsl` and `<prefix>_ids.txt` can be created by run
 
 The options above are the bare minimum options you must use to run the program, but it is possible to customize many aspects of your filter that can drastically change performance depending on your needs. You can also use the `--help` parameter for a listing of the options. Indeed, the multiple space seeds used in this example may not be optimal for your purposes. By default, each header in the file will be indexed as a seperate entry.
 
-###Help dialog of biobloommimaker:
+### Help dialog of biobloommimaker:
 
 ```
 Usage: biobloommimaker -p [FILTERID] [OPTION]... [FILE]...
@@ -71,7 +71,7 @@ After execution, a `<prefix>_summary.tsv` (by default the prefix is empty) will 
 
 The options above are the bare minimum options you must use to run the program, but it likely that you will need to add additional options for your needs. For example, a fasta output (with the classification in the read header) can be outputed with `--fa` rather that outputting a tsv file. You can also use the `--help` parameter for a listing of the options. Indeed, the multiple space seeds used in this example may not be optimal for your purposes. By default, each header in the file will be indexed as a seperate entry.
 
-###Help dialog of biobloommicategorizer:
+### Help dialog of biobloommicategorizer:
 
 ```
 Usage: biobloommicategorizer [OPTION]... -f [FILTER] [FILE]...
