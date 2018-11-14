@@ -828,27 +828,7 @@ private:
 		}
 	}
 
-	inline void writeReverseFile(const string &fileName,
-			const string &newFileName) const {
-		gzFile fp;
-		ofstream out = ofstream(newFileName.c_str());
-		fp = gzopen(fileName.c_str(), "r");
-		kseq_t *seq = kseq_init(fp);
-		int l;
-		for (;;) {
-			l = kseq_read(seq);
-			if (l >= 0) {
-
-			} else {
-				kseq_destroy(seq);
-				break;
-			}
-		}
-		gzclose(fp);
-	}
-
 	//TODO move these functions to a common util class?
-
 	/*
 	 * Get RSS
 	 */
