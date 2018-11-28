@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 		"min_hit_only", no_argument, NULL, 'o' }, {
 		"ordered", no_argument, NULL, 'c' }, {
 		"stdout_filter", no_argument, NULL, 'd' }, {
-		"inverse", required_argument, NULL, 'n' }, {
+		"inverse", no_argument, NULL, 'n' }, {
 		"with_score", no_argument, NULL, 'w' }, {
 		"verbose", no_argument, &opt::verbose, 1 }, {
 		NULL, 0, NULL, 0 } };
