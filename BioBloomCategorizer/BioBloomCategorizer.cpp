@@ -152,6 +152,7 @@ int main(int argc, char *argv[])
 	//advanced options
 	bool collab = false;
 
+	string outputType = "";
 	string fileListFilename = "";
 
 	//long form arguments
@@ -361,8 +362,10 @@ int main(int argc, char *argv[])
 		exit(1);
 	} else if (fastq) {
 		opt::outputType = opt::FASTQ;
+		outputType = "fq";
 	} else if (fasta) {
 		opt::outputType = opt::FASTA;
+		outputType = "fa";
 	}
 
 	//-w option cannot be used without output method
@@ -408,22 +411,13 @@ int main(int argc, char *argv[])
 		bbc.setOrderedFilter();
 	}
 
-	string outputType = "";
-	if (opt::FASTA == opt::outputType) {
-		outputType == "fa";
-	}
-	if (opt::FASTQ == opt::outputType) {
-		outputType == "fq";
-	}
-
 	//filtering step
 	//create directory structure if it does not exist
 	if (paired) {
 		if (opt::inclusive) {
 			bbc.setInclusive();
 		}
-		if (opt::outputType) {
-
+		if (outputType != "") {
 			if (smartPair) {
 				bbc.filterPairPrint(inputFiles[0], outputType);
 			} else {
@@ -457,7 +451,7 @@ int main(int argc, char *argv[])
 			}
 		}
 	} else {
-		if (opt::outputType != opt::NONE) {
+		if (outputType != "") {
 			bbc.filterPrint(inputFiles, outputType);
 		} else {
 			bbc.filter(inputFiles);
