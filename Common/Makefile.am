@@ -8,7 +8,7 @@ libcommon_a_SOURCES = \
 	gzstream.C gzstream.h \
 	Options.cpp Options.h \
 	SeqEval.h SeqEval.cpp \
-	kseq.h \
+	kseq.h kseq_util.h \
 	concurrentqueue.h \
 	StringUtil.h
 	
