@@ -9,5 +9,6 @@ libcommon_a_SOURCES = \
 	Options.cpp Options.h \
 	SeqEval.h SeqEval.cpp \
 	kseq.h \
+	concurrentqueue.h \
 	StringUtil.h
 	
