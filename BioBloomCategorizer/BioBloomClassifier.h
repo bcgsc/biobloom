@@ -122,7 +122,16 @@ private:
 
 	inline void printSingle(const FaRec &rec, double score, unsigned filterID) {
 		if (m_stdout) {
-			if (filterID == 0 && !opt::inverse) {
+			if (opt::inverse) {
+				if (filterID != 0) {
+#pragma omp critical(cout)
+					{
+						cout << "@" << rec.header << " " << rec.comment << "\n" << rec.seq << "\n+\n"
+								<< rec.qual << "\n";
+					}
+				}
+			}
+			else if (filterID == 0) {
 				if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
 					{
@@ -135,12 +144,6 @@ private:
 						cout << "@" << rec.header << " " << rec.comment << "\n" << rec.seq << "\n+\n"
 								<< rec.qual << "\n";
 					}
-				}
-			} else if (filterID != 0) {
-#pragma omp critical(cout)
-				{
-					cout << "@" << rec.header << " " << rec.comment << "\n" << rec.seq << "\n+\n"
-							<< rec.qual << "\n";
 				}
 			}
 		}
@@ -216,7 +219,20 @@ private:
 	inline void printPair(const FaRec &rec1, const FaRec &rec2, double score1,
 			double score2, unsigned filterID) {
 		if (m_stdout) {
-			if (filterID == 0 && !opt::inverse) {
+			if (opt::inverse) {
+				if (filterID != 0) {
+#pragma omp critical(cout)
+					{
+						cout << "@" << rec1.header << " " << rec1.comment
+								<< "\n" << rec1.seq << "\n+\n" << rec1.qual
+								<< "\n";
+						cout << "@" << rec2.header << " " << rec2.comment
+								<< "\n" << rec2.seq << "\n+\n" << rec2.qual
+								<< "\n";
+					}
+				}
+			}
+			else if (filterID == 0) {
 				if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
 					{
@@ -249,7 +265,20 @@ private:
 	inline void printPair(const kseq_t * rec1, const kseq_t * rec2,
 			double score1, double score2, unsigned filterID) {
 		if (m_stdout) {
-			if (filterID == 0 && !opt::inverse) {
+			if (opt::inverse) {
+				if (filterID != 0) {
+#pragma omp critical(cout)
+					{
+						cout << "@" << rec1->name.s << " " << rec1->comment.s
+								<< "\n" << rec1->seq.s << "\n+\n"
+								<< rec1->qual.s << "\n";
+						cout << "@" << rec2->name.s << " " << rec2->comment.s
+								<< "\n" << rec2->seq.s << "\n+\n"
+								<< rec2->qual.s << "\n";
+					}
+				}
+			}
+			else if (filterID == 0) {
 				if (m_mode == BESTHIT) {
 #pragma omp critical(cout)
 					{
@@ -268,14 +297,6 @@ private:
 						cout << "@" << rec2->name.s << " " << rec2->comment.s << "\n" << rec2->seq.s
 								<< "\n+\n" << rec2->qual.s << "\n";
 					}
-				}
-			} else if (filterID != 0) {
-#pragma omp critical(cout)
-				{
-					cout << "@" << rec1->name.s << " " << rec1->comment.s << "\n" << rec1->seq.s
-							<< "\n+\n" << rec1->qual.s << "\n";
-					cout << "@" << rec2->name.s << " " << rec2->comment.s << "\n" << rec2->seq.s
-							<< "\n+\n" << rec2->qual.s << "\n";
 				}
 			}
 		}
