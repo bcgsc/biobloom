@@ -250,14 +250,6 @@ private:
 								<< "\n+\n" << rec2.qual << "\n";
 					}
 				}
-			} else if (filterID != 0) {
-#pragma omp critical(cout)
-				{
-					cout << "@" << rec1.header << " " << rec1.comment << "\n" << rec1.seq
-							<< "\n+\n" << rec1.qual << "\n";
-					cout << "@" << rec2.header << " " << rec2.comment << "\n" << rec2.seq
-							<< "\n+\n" << rec2.qual << "\n";
-				}
 			}
 		}
 	}
