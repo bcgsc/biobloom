@@ -43,14 +43,15 @@ fi
 AC_ARG_WITH(sdsl, AS_HELP_STRING([--with-sdsl=PATH],
 			[specify directory for the sdsl header files]))
 if test "$with_sdsl" -a -d "$with_sdsl"; then
-	sdsl_cppflags="-isystem$with_sdsl"
+	sdsl_cppflags="-isystem$with_sdsl/include"
+	sdsl_ldflags="-L$with_sdsl/lib"
 fi
 
 # Find the absolute paths.
 srcdir=$(cd $srcdir; pwd)
 
 # Set compiler flags.
-AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $sparsehash_cppflags $sdsl_cppflags $CPPFLAGS")
+AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $sparsehash_cppflags $sdsl_cppflags $sdsl_ldflags $CPPFLAGS")
 
 # Checks for header files.
 AC_LANG([C++])	#sets the auto conf to look for c++ headers
