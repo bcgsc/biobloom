@@ -64,7 +64,6 @@ If cloning directly from the repository make sure you get the required submodule
 ```bash
 git submodule update --init
 ```
-
 If cloning directly from the repository run:
 ```bash
 ./autogen.sh
@@ -81,13 +80,17 @@ If your boost library headers are not in your PATH you can specify their locatio
 ```bash
 ./configure –-with-boost=/boost/path --prefix=/BBT/PATH && make install
 ```
+Alternatively, if you have linuxbrew/homebrew you can run:
+```bash
+./configure –-with-boost=/boost/path --prefix=/BBT/PATH && make install
+```
 
 <a name="2"></a>
 ## 2. Generating Bloom Filters from Reference Sequences with Biobloommaker
 
 After you have your FastA file a `.bf` file with corresponding information text file can be created by running the command:
 ```bash
-./biobloommaker –p input input1.fasta input2.fasta
+brew install biobloomtools
 ```
 `-p` is the prefix for the files being created, it also acts as an ID for the filter.
 
