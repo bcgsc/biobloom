@@ -52,7 +52,7 @@ srcdir=$(cd $srcdir; pwd)
 
 # Set compiler flags.
 AC_SUBST(CPPFLAGS,"-I$srcdir $boost_cppflags $sparsehash_cppflags $sdsl_cppflags $CPPFLAGS")
-AC_SUBST(LDFLAGS,"-L$sdsl_ldflags $LDFLAGS")
+AC_SUBST(LDFLAGS,"$sdsl_ldflags $LDFLAGS")
 
 # Checks for header files.
 AC_LANG([C++])	#sets the auto conf to look for c++ headers
