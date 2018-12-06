@@ -6,7 +6,6 @@
  */
 
 #include "Common/Dynamicofstream.h"
-#include "Common/Uncompress.h"
 #include <iostream>
 #include <fstream>
 #include <string>

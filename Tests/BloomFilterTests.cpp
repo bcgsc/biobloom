@@ -100,7 +100,7 @@ int main() {
 	//memory leak tests
 	BloomFilter* filter3 = new BloomFilter(filterSize, 5, 20);
 
-	int tempMem = memory_usage() - memUsage;
+	size_t tempMem = memory_usage() - memUsage;
 
 	cout << memory_usage() - memUsage << "kb" << endl;
 	delete(filter3);
