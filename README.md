@@ -151,7 +151,7 @@ These are general use cases you can use to run the program, but it is possible t
 
 #### ii. Categorized Sequence FastA/FastQ Files
 
-* In the output directory there will be files for every filter used in addition to `multiMatch` and `noMatch` files. The reads will be categorized in these locations based on the threshold (`-m` and `-t`) values used.
+* In the output directory there will be files for every filter used in addition to `multiMatch` and `noMatch` files. The reads will be categorized in these locations based on the threshold `-s` values used.
 * Reads outputted will have a value (e.g. `/1`) appended to the end of each ID to denote pair information about the read.
 
 <a name="5"></a>
@@ -355,7 +355,4 @@ In biobloommaker decreasing the false positive rate (`-f`) and increasing the k-
 There are multiple ways to speed up biobloomcategorizer. Here are a few options:
 
 The `--ordered` option, other than priotizing the first filters in the list (specified by `-f`), will have an added benefit of speeding up the program by avoiding some evaluations if a match is already found. Furthermore, because of this speed up, this option maybe appropriate even in situations where no hierarchy is desired (filters must be unrelated in this case).
-
-In biobloomcategorizer set a min hit threshold (`-m`) >0. This will use a faster rescreening categorization algorithm that uses jumping k-mer tiles to prescreen reads. This will decrease sensitivity but will increase speed. Large values will further decrease sensitivity.
-
 
