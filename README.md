@@ -103,7 +103,8 @@ Two files will be generated binary Bloom filter file (`.bf`) and an information 
 <a name="3"></a>
 ## 3. Classifying and Analyzing Sequences with Biobloomcategorizer
 
-**Important Note:** Bloom filters in versions of bbt where the second number of the version is incremented, will not be compatible, and will result in undefined/meaningless behavior. For example a filter created in 2.0.12 will work with 2.0.13 but not 2.1.X or 2.2.X. We do not produce an error message at present regarding this, but are in the process of addressing this.
+**Important Note:** Bloom filters in versions of bbt where the second number of the version is incremented, will not be compatible, and will result in undefined/meaningless behavior. For example a filter created in 2.0.12 will work with 2.0.13 but not 2.1.X or 2.2.X 
+etc. We do not produce an error message at present regarding this prior to 2.3.0.
 
 Once you have filters created, you can use them with Biobloomcategorizer to categorize sequences. The file formats that can be used are the following: FastQ, FastA. If the input is compressed it is recommended to pipe the input in using [process subsititution](http://tldp.org/LDP/abs/html/process-sub.html).
 
