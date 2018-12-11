@@ -496,8 +496,6 @@ public:
 						while (dequeueSize == 0) {
 							//try to work
 							if ((kseq_read(seq1) >= 0) && (kseq_read(seq2) >= 0)) {
-								filterPairedRead(*seq1, *seq2, support,
-										resSummary, outBuffer);
 								if (++m_numRead % opt::fileInterval
 										== 0) {
 									cerr
