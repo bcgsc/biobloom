@@ -2,7 +2,8 @@ check_PROGRAMS = BloomFilterTests \
 	BloomFilterCategorizerTests \
 	BloomFilterMakerTests \
 	BloomFilterInfoTests \
-	SeqEvalTests
+	SeqEvalTests \
+	ntHashTests
 
 BloomFilterTests_LDADD = $(top_builddir)/Common/libcommon.a -lz
 BloomFilterTests_SOURCES = BloomFilterTests.cpp
@@ -26,3 +27,6 @@ BloomFilterCategorizerTests_CPPFLAGS = -I$(top_srcdir)/BioBloomCategorizer \
 SeqEvalTests_LDADD = $(top_builddir)/Common/libcommon.a
 SeqEvalTests_SOURCES = SeqEvalTests.cpp
 SeqEvalTests_CPPFLAGS = -I$(top_srcdir)/Common
+
+ntHashTests_SOURCES = ntHashTests.cpp
+ntHashTests_CPPFLAGS = -I$(top_srcdir)/Common
