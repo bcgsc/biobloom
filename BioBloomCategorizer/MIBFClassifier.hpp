@@ -47,7 +47,7 @@ const static size_t s_bulkSize = 256;
 class MIBFClassifier {
 public:
 	MIBFClassifier(const string &filterFile) :
-			m_filter(MIBloomFilter<ID>(filterFile)), m_numRead(0) {
+			m_filter(MIBloomFilter<ID>(filterFile)), m_numRead(0), m_processedCount(0) {
 		//load in ID file
 		string idFile = (filterFile).substr(0, (filterFile).length() - 3)
 				+ "_ids.txt";
@@ -338,10 +338,10 @@ public:
 						assert(recycleQueue.enqueue_bulk(rptok,
 								std::move_iterator<iter_t>(readBuffer.begin()),
 								size));
-						if (workQueue.size_approx()) {
+						if (workQueue.size_approx() || m_processedCount != m_numRead ) {
 							moodycamel::ConsumerToken ctok(workQueue);
 							//join in if others are still not finished
-							while (workQueue.size_approx()) {
+							while (workQueue.size_approx() || m_processedCount != m_numRead) {
 								size_t num = workQueue.try_dequeue_bulk(ctok,
 										std::move_iterator<iter_t>(
 												readBuffer.begin()),
@@ -550,10 +550,10 @@ public:
 										std::move_iterator<iter_t>(
 												readBuffer.begin()), size));
 					}
-					if (workQueue.size_approx()) {
+					if (workQueue.size_approx() || m_processedCount != m_numRead) {
 						moodycamel::ConsumerToken ctok(workQueue);
 						//join in if others are still not finished
-						while (workQueue.size_approx()) {
+						while (workQueue.size_approx() || m_processedCount != m_numRead) {
 							size_t num = workQueue.try_dequeue_bulk(ctok,
 									std::move_iterator<iter_t>(
 											readBuffer.begin()), s_bulkSize);
@@ -616,9 +616,11 @@ private:
 	size_t m_numRead;
 	vector<string> m_fullIDs;
 	vector<double> m_perFrameProb;
-	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>>m_minCount;
+	google::dense_hash_map<unsigned, boost::shared_ptr<vector<unsigned>>> m_minCount;
 	double m_rateSaturated;
 	unsigned m_allowedMiss;
+	size_t m_processedCount;
+
 	bool fexists(const string &filename) const {
 		ifstream ifile(filename.c_str());
 		return ifile.good();
@@ -732,6 +734,8 @@ private:
 			ResultsManager<ID> &resSummary, string &outStr) {
 		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
 				classify(support, read.seq.s);
+#pragma omp atomic
+		++m_processedCount;
 		resSummary.updateSummaryData(signifResults);
 		outStr.clear();
 		formatOutStr(read, outStr, support, signifResults);
@@ -742,6 +746,8 @@ private:
 			ResultsManager<ID> &resSummary, string &outStr) {
 		const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults =
 				classify(support, read1.seq.s, read2.seq.s);
+#pragma omp atomic
+		++m_processedCount;
 		outStr.clear();
 		resSummary.updateSummaryData(signifResults);
 		formatOutStr(read1, outStr, support, signifResults);
