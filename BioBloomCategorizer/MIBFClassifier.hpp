@@ -338,10 +338,10 @@ public:
 						assert(recycleQueue.enqueue_bulk(rptok,
 								std::move_iterator<iter_t>(readBuffer.begin()),
 								size));
-						if (workQueue.size_approx() || m_processedCount != m_numRead ) {
+						if (m_processedCount < m_numRead ) {
 							moodycamel::ConsumerToken ctok(workQueue);
 							//join in if others are still not finished
-							while (workQueue.size_approx() || m_processedCount != m_numRead) {
+							while (m_processedCount < m_numRead) {
 								size_t num = workQueue.try_dequeue_bulk(ctok,
 										std::move_iterator<iter_t>(
 												readBuffer.begin()),
@@ -550,10 +550,10 @@ public:
 										std::move_iterator<iter_t>(
 												readBuffer.begin()), size));
 					}
-					if (workQueue.size_approx() || m_processedCount != m_numRead) {
+					if (m_processedCount < m_numRead ) {
 						moodycamel::ConsumerToken ctok(workQueue);
 						//join in if others are still not finished
-						while (workQueue.size_approx() || m_processedCount != m_numRead) {
+						while (m_processedCount < m_numRead) {
 							size_t num = workQueue.try_dequeue_bulk(ctok,
 									std::move_iterator<iter_t>(
 											readBuffer.begin()), s_bulkSize);
