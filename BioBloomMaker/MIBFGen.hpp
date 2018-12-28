@@ -241,9 +241,9 @@ public:
 			/*
 			 * pair<ID,ID> first ID stores the currentID, and ID stores the current observation count
 			 * If the second ID exceeds max possible count, the ID is a critical ID
-			 * Critical IDs are need for partial hits and always replace existing IDs
+			 * Critical IDs are needed for partial hits and always replace existing IDs
 			 */
-			//TODO since since is known (getPopSaturated()) possible to use sd-bitvector?
+			//TODO since size is known (getPopSaturated()) possible to use sd-bitvector?
 			typedef google::sparse_hash_map<uint64_t, pair<ID,ID>> SatMap;
 			SatMap satMap(miBFBV->getPopSaturated());
 			const ID criticalCount = m_nameToID.size() + 1;
