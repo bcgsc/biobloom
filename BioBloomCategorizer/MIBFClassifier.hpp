@@ -207,6 +207,7 @@ public:
 		ResultsManager<ID> resSummary(m_fullIDs, false);
 
 		cerr << "Filtering Start" << endl;
+		unsigned count = 0;
 
 		double startTime = omp_get_wtime();
 		for (vector<string>::const_iterator it = inputFiles.begin();
@@ -296,7 +297,7 @@ public:
 										filterSingleRead(*seq, support, resSummary, outBuffer);
 										//------------------------WORK CODE END-----------------------------------------
 									} else {
-										break;
+										goto fileEmpty;
 									}
 								}
 								//reset buffer
@@ -318,7 +319,7 @@ public:
 										filterSingleRead(*seq, support, resSummary, outBuffer);
 										//------------------------WORK CODE END-----------------------------------------
 									} else {
-										break;
+										goto fileEmpty;
 									}
 									dequeueSize = recycleQueue.try_dequeue_bulk(
 											rctok,
@@ -329,6 +330,7 @@ public:
 								size = 0;
 							}
 						}
+						fileEmpty:
 						//finish off remaining work
 						for (unsigned i = 0; i < size; ++i) {
 							//------------------------WORK CODE START---------------------------------------
@@ -356,6 +358,16 @@ public:
 											std::move_iterator<iter_t>(readBuffer.begin()),
 											num));
 								}
+								else if(count > 10000000){
+#pragma omp critical(stderr)
+									cerr << omp_get_thread_num() << " " << m_processedCount << " " << m_numRead << " "
+											<< recycleQueue.size_approx() << " " << workQueue.size_approx() << endl;
+									sleep(1);
+								}
+								else{
+#pragma omp atomic update
+									count++;
+								}
 							}
 						}
 #pragma omp atomic update
@@ -372,6 +384,10 @@ public:
 										std::move_iterator<iter_t>(
 												readBuffer.begin()),
 										s_bulkSize);
+								if(count > 10000000){
+									cerr << "in " << omp_get_thread_num() << " " << m_processedCount << " " << m_numRead << " "
+											<< recycleQueue.size_approx() << " " << workQueue.size_approx() << " " << num << endl;
+								}
 								if (num) {
 									for (unsigned i = 0; i < num; ++i) {
 										//------------------------WORK CODE START---------------------------------------
@@ -382,6 +398,12 @@ public:
 											std::move_iterator<iter_t>(readBuffer.begin()),
 											num));
 								}
+							}
+							if(count > 10000000){
+#pragma omp critical(stderr)
+								cerr<< "out " << omp_get_thread_num() << " " << m_processedCount << " " << m_numRead << " "
+										<< recycleQueue.size_approx() << " " << workQueue.size_approx() << endl;
+								break;
 							}
 						}
 					}
@@ -508,7 +530,7 @@ public:
 									filterPairedRead(*seq1, *seq2, support,
 											resSummary, outBuffer);
 								} else {
-									break;
+									goto fileEmpty;
 								}
 							}
 							//reset buffer
@@ -529,7 +551,7 @@ public:
 											resSummary, outBuffer);
 									//------------------------WORK CODE END-----------------------------------------
 								} else {
-									break;
+									goto fileEmpty;
 								}
 								dequeueSize = recycleQueue.try_dequeue_bulk(
 										rctok,
@@ -540,6 +562,7 @@ public:
 							size = 0;
 						}
 					}
+					fileEmpty:
 					//finish off remaining work
 					for (unsigned i = 0; i < size; ++i) {
 						filterPairedRead(readBuffer[i].first,
