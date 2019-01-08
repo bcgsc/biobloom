@@ -113,7 +113,7 @@ public:
 					m_perFrameProb, opt::multiThresh, opt::streakThreshold,
 					m_allowedMiss, opt::minCountNonSatCount,
 					opt::bestHitCountAgree);
-#pragma omp parallel private(l) firstprivate(support)
+//#pragma omp parallel private(l) firstprivate(support)
 			for (string sequence;;) {
 				string name;
 				string qual;
@@ -146,7 +146,7 @@ public:
 					ID idIndex = evalRead(hitsPattern, evaluatedSeeds, pVal,
 							maxCount, signifResults, signifValues,
 							fullSignifCounts, pVals);
-					classify(support, sequence);
+					const vector<MIBFQuerySupport<ID>::QueryResult> &signifResults2 = classify(support, sequence);
 
 					const string &fullID = m_fullIDs.at(idIndex);
 					unsigned tempCount = 0;
@@ -162,7 +162,11 @@ public:
 					}
 
 #pragma omp critical(cout)
-					if (tempCount > 0) {
+					{
+						string outStr;
+						outStr.clear();
+						formatOutStr(*seq, outStr, support, signifResults2);
+						cout << outStr;
 						cout << m_numRead << "\tCorrectName:" << name
 								<< "\tPredictedName:" << fullID << "\tpVal:"
 								<< log10(pVal) * (-10.0) << "\t" << endl;
