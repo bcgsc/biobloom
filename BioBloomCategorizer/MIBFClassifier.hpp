@@ -722,7 +722,7 @@ private:
 			}
 			outStr += "\n";
 			outStr += read.seq.s;
-			outStr += "\n+";
+			outStr += "\n+\n";
 			outStr += read.qual.s;
 		}
 		else {
