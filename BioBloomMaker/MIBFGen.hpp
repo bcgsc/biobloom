@@ -42,8 +42,7 @@ class MIBFGen {
 public:
 	MIBFGen(vector<string> const &filenames, unsigned kmerSize,
 			size_t numElements = 0) :
-			m_kmerSize(kmerSize), m_expectedEntries(numElements), m_totalEntries(
-					0), m_fileNames(filenames), m_failedInsert(0) {
+			m_kmerSize(kmerSize), m_expectedEntries(numElements), m_fileNames(filenames), m_failedInsert(0) {
 		//Instantiate dense hash map
 		m_ids.push_back(""); //first entry is empty
 		//dense hash maps take POD, and strings need to live somewhere
@@ -153,23 +152,31 @@ public:
 			time = omp_get_wtime();
 			cerr << "Populating values of miBF" << endl;
 		}
-		//first pass
-		unsigned j = 1;
+
+		//record memory before
+		size_t memKB = getRSS();
 		if (opt::verbose)
-			cerr << "Pass " << j << endl;
+			cerr << "Mem usage (kB): " << memKB << endl;
+
+		//use single value Reservoir sampling
+		/*
+		 * pair<ID,ID> first ID stores the currentID, and ID stores the current observation count
+		 * If the second ID exceeds max possible count, the ID is a critical ID
+		 * Critical IDs are needed for partial hits and always replace existing IDs
+		 */
+		//TODO since size is known (getPopSaturated()) possible to use sd-bitvector?
+		vector<ID> counts(miBFBV->getPop(), 0);
+		if (opt::verbose)
+			cerr << "Pass normalize" << endl;
 		if (opt::idByFile) {
 #pragma omp parallel for schedule(dynamic)
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 				gzFile fp;
-//				if (opt::verbose) {
-//#pragma omp critical(stderr)
-//					cerr << "Opening: "
-//							<< (j % 2 ? m_fileNames[i] : m_fileNames[i] + ".rv")
-//							<< endl;
-//				}
-				fp = j % 2 ?
-						gzopen(m_fileNames[i].c_str(), "r") :
-						gzopen((m_fileNames[i] + ".rv").c_str(), "r");
+				fp = gzopen(m_fileNames[i].c_str(), "r");
+				if(opt::verbose){
+#pragma omp critical(stderr)
+					cerr << "Opening " << m_fileNames[i] << endl;
+				}
 				kseq_t *seq = kseq_init(fp);
 				int l;
 				for (;;) {
@@ -183,7 +190,80 @@ public:
 						}
 					}
 					if (l >= 0) {
-						loadSeq(*miBFBV, name, sequence, j);
+						//get positions
+						typedef google::dense_hash_set<uint64_t> SatSet;
+						SatSet satVal;
+						satVal.set_empty_key(miBFBV->size());
+						ID id = m_nameToID[name];
+						if (opt::verbose) {
+#pragma omp critical(stderr)
+							cerr << "Recording Hash Positions "
+									<< m_fileNames[i] << endl;
+						}
+
+						recordPos(*miBFBV, sequence, satVal);
+
+						if (opt::verbose) {
+#pragma omp critical(stderr)
+							cerr << "Reservoir sampling positions "
+									<< m_fileNames[i] << endl;
+						}
+						for (SatSet::iterator itr = satVal.begin();
+								itr != satVal.end(); itr++) {
+							uint64_t randomSeed = *itr ^ id;
+							uint64_t rank = miBFBV->getRankPos(*itr);
+							ID count = __sync_add_and_fetch(&counts[rank], 1);
+							ID randomNum = std::hash<ID> { }(randomSeed)
+									% count;
+							if (randomNum == count - 1) {
+								miBFBV->setData(rank, id);
+							} else {
+								//make sure value is set
+								miBFBV->setDataIfEmpty(rank, id);
+							}
+						}
+					} else {
+						break;
+					}
+				}
+				kseq_destroy(seq);
+				gzclose(fp);
+				if(opt::verbose){
+#pragma omp critical(stderr)
+					cerr << "Finished processing " << m_fileNames[i] << endl;
+				}
+			}
+			//apply saturation
+			if(opt::verbose){
+				cerr << "Applying saturation" << endl;
+			}
+#pragma omp parallel for schedule(dynamic)
+			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+				gzFile fp;
+				fp = gzopen(m_fileNames[i].c_str(), "r");
+				if(opt::verbose){
+#pragma omp critical(stderr)
+					cerr << "Opening " << m_fileNames[i] << endl;
+				}
+				kseq_t *seq = kseq_init(fp);
+				int l;
+				for (;;) {
+					string sequence, name;
+					{
+						l = kseq_read(seq);
+						if (l >= 0) {
+							sequence = string(seq->seq.s, seq->seq.l);
+							name = m_fileNames[i].substr(
+									m_fileNames[i].find_last_of("/") + 1);
+						}
+					}
+					if (l >= 0) {
+						//get positions
+						typedef google::dense_hash_set<uint64_t> SatSet;
+						SatSet satVal;
+						satVal.set_empty_key(miBFBV->size());
+						ID id = m_nameToID[name];
+						setSatIfMissing(*miBFBV, id, sequence, counts);
 					} else {
 						break;
 					}
@@ -194,13 +274,7 @@ public:
 		} else {
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 				gzFile fp;
-				if (opt::verbose)
-					cerr << "Opening: "
-							<< (j % 2 ? m_fileNames[i] : m_fileNames[i] + ".rv")
-							<< endl;
-				fp = j % 2 ?
-						gzopen(m_fileNames[i].c_str(), "r") :
-						gzopen((m_fileNames[i] + ".rv").c_str(), "r");
+				fp = gzopen(m_fileNames[i].c_str(), "r");
 				kseq_t *seq = kseq_init(fp);
 				int l;
 #pragma omp parallel private(l)
@@ -215,7 +289,71 @@ public:
 						}
 					}
 					if (l >= 0) {
-						loadSeq(*miBFBV, name, sequence, j);
+						typedef google::dense_hash_set<uint64_t> SatSet;
+						SatSet satVal;
+						satVal.set_empty_key(miBFBV->size());
+						ID id = m_nameToID[name];
+
+						if (opt::verbose) {
+#pragma omp critical(stderr)
+							cerr << "Recording Hash Positions "
+									<< m_fileNames[i] << endl;
+						}
+
+						recordPos(*miBFBV, sequence, satVal);
+
+						if (opt::verbose) {
+#pragma omp critical(stderr)
+							cerr << "Reservoir sampling positions "
+									<< m_fileNames[i] << endl;
+						}
+
+						for (SatSet::iterator itr = satVal.begin();
+								itr != satVal.end(); itr++) {
+							uint64_t randomSeed = *itr ^ id;
+							uint64_t rank = miBFBV->getRankPos(*itr);
+							ID count = __sync_add_and_fetch(&counts[rank], 1);
+							ID randomNum = std::hash<ID> { }(randomSeed)
+									% count;
+							if (randomNum == count - 1) {
+								miBFBV->setData(rank, id);
+							}
+						}
+					} else {
+						break;
+					}
+				}
+				kseq_destroy(seq);
+				gzclose(fp);
+			}
+			//apply saturation
+			if(opt::verbose){
+				cerr << "Applying saturation" << endl;
+			}
+			//another pass through references
+			//if target frame does not have a single representative, mark frame as saturated
+			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
+				gzFile fp;
+				fp = gzopen(m_fileNames[i].c_str(), "r");
+				kseq_t *seq = kseq_init(fp);
+				int l;
+#pragma omp parallel private(l)
+				for (;;) {
+					string sequence, name;
+#pragma omp critical(seq)
+					{
+						l = kseq_read(seq);
+						if (l >= 0) {
+							sequence = string(seq->seq.s, seq->seq.l);
+							name = string(seq->name.s, seq->name.l);
+						}
+					}
+					if (l >= 0) {
+						typedef google::dense_hash_set<uint64_t> SatSet;
+						SatSet satVal;
+						satVal.set_empty_key(miBFBV->size());
+						ID id = m_nameToID[name];
+						setSatIfMissing(*miBFBV, id, sequence, counts);
 					} else {
 						break;
 					}
@@ -224,300 +362,7 @@ public:
 				gzclose(fp);
 			}
 		}
-		if (opt::verbose){
-			cerr << "Finishing Pass " << j << " " << omp_get_wtime() - time
-					<< "s" << endl;
-			time = omp_get_wtime();
-		}
 
-		//second pass saturation normalization special
-		{
-			//record memory before
-			size_t memKB = getRSS();
-			if (opt::verbose)
-				cerr << "Mem usage (kB): " << memKB << endl;
-
-			//use single value Reservoir sampling
-			/*
-			 * pair<ID,ID> first ID stores the currentID, and ID stores the current observation count
-			 * If the second ID exceeds max possible count, the ID is a critical ID
-			 * Critical IDs are needed for partial hits and always replace existing IDs
-			 */
-			//TODO since size is known (getPopSaturated()) possible to use sd-bitvector?
-			typedef google::sparse_hash_map<uint64_t, pair<ID,ID>> SatMap;
-			SatMap satMap(miBFBV->getPopSaturated());
-			const ID criticalCount = m_nameToID.size() + 1;
-
-			if (opt::verbose)
-				cerr << "Pass normalize" << endl;
-			if (opt::idByFile) {
-#pragma omp parallel for schedule(dynamic)
-				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-					gzFile fp;
-					if (opt::verbose) {
-//#pragma omp critical(stderr)
-//						cerr << "Opening: "
-//								<< (j % 2 ?
-//										m_fileNames[i] : m_fileNames[i] + ".rv")
-//								<< endl;
-					}
-					fp = j % 2 ?
-							gzopen(m_fileNames[i].c_str(), "r") :
-							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
-					kseq_t *seq = kseq_init(fp);
-					int l;
-					for (;;) {
-						string sequence, name;
-						{
-							l = kseq_read(seq);
-							if (l >= 0) {
-								sequence = string(seq->seq.s, seq->seq.l);
-								name = m_fileNames[i].substr(
-										m_fileNames[i].find_last_of("/") + 1);
-							}
-						}
-						if (l >= 0) {
-							//get positions
-							typedef google::dense_hash_set<uint64_t> SatSet;
-							SatSet satVal;
-							satVal.set_empty_key(miBFBV->size());
-							SatSet critVal;
-							critVal.set_empty_key(miBFBV->size());
-							ID id = m_nameToID[name];
-							recordSaturation(*miBFBV, id, sequence, satVal,
-									critVal);
-#pragma omp critical(satMap)
-							{
-								//set critial IDs
-								for (SatSet::iterator itr = critVal.begin();
-										itr != critVal.end(); itr++) {
-									satMap[*itr] = pair<ID, ID>(id,
-											criticalCount);
-								}
-								for (SatSet::iterator itr = satVal.begin();
-										itr != satVal.end(); itr++) {
-									SatMap::iterator tempItr = satMap.find(
-											*itr);
-									if (tempItr == satMap.end()) {
-										satMap[*itr] = pair<ID, ID>(id, 1);
-									} else if (tempItr->second.second
-											!= criticalCount) {
-										tempItr->second.second++;
-										//each position^ID combination is unique
-										//is this random enough ont is own?
-										uint64_t randomSeed = *itr ^ id;
-										ID randomNum = std::hash<ID> { }(
-												randomSeed)
-												% tempItr->second.second;
-										if (randomNum
-												== tempItr->second.second - 1) {
-											tempItr->second.first = id;
-										}
-									}
-								}
-							}
-						} else {
-							break;
-						}
-					}
-//					if (opt::verbose) {
-//#pragma omp critical(stderr)
-//						cerr << "Closing: "
-//								<< (j % 2 ?
-//										m_fileNames[i] : m_fileNames[i] + ".rv")
-//								<< endl;
-//					}
-					kseq_destroy(seq);
-					gzclose(fp);
-				}
-			} else {
-				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-					gzFile fp;
-//					if (opt::verbose)
-//						cerr << "Opening: "
-//								<< (j % 2 ?
-//										m_fileNames[i] : m_fileNames[i] + ".rv")
-//								<< endl;
-					fp = j % 2 ?
-							gzopen(m_fileNames[i].c_str(), "r") :
-							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
-					kseq_t *seq = kseq_init(fp);
-					int l;
-#pragma omp parallel private(l)
-					for (;;) {
-						string sequence, name;
-#pragma omp critical(seq)
-						{
-							l = kseq_read(seq);
-							if (l >= 0) {
-								sequence = string(seq->seq.s, seq->seq.l);
-								name = string(seq->name.s, seq->name.l);
-							}
-						}
-						if (l >= 0) {
-							//get positions
-							typedef google::dense_hash_set<uint64_t> SatSet;
-							SatSet satVal;
-							satVal.set_empty_key(miBFBV->size());
-							SatSet critVal;
-							critVal.set_empty_key(miBFBV->size());
-							ID id = m_nameToID[name];
-							recordSaturation(*miBFBV, id, sequence, satVal,
-									critVal);
-#pragma omp critical(satMap)
-							{
-								//set critial IDs
-								for (SatSet::iterator itr = critVal.begin();
-										itr != critVal.end(); itr++) {
-									satMap[*itr] = pair<ID, ID>(id, criticalCount);
-								}
-								for (SatSet::iterator itr = satVal.begin();
-										itr != satVal.end(); itr++) {
-									SatMap::iterator tempItr = satMap.find(
-											*itr);
-									if (tempItr == satMap.end()) {
-										satMap[*itr] = pair<ID, ID>(id, 1);
-									} else if (tempItr->second.second
-											!= criticalCount) {
-										tempItr->second.second++;
-										//each position^ID combination is unique
-										//is this random enough ont is own?
-										uint64_t randomSeed = *itr ^ id;
-										ID randomNum = std::hash<ID> { }(
-												randomSeed)
-												% tempItr->second.second;
-										if (randomNum
-												== tempItr->second.second - 1) {
-											tempItr->second.first = id;
-										}
-									}
-								}
-							}
-						} else {
-							break;
-						}
-					}
-					kseq_destroy(seq);
-					gzclose(fp);
-				}
-			}
-
-			if (opt::verbose){
-				cerr << "Finishing temporary saturation " << omp_get_wtime() - time
-						<< "s" << endl;
-				time = omp_get_wtime();
-			}
-
-
-			//mutate the saturatedID to random set of saturated IDs
-#pragma omp parallel
-			for (SatMap::iterator itr = satMap.begin(); itr != satMap.end();
-					++itr) {
-				//if part of critical list do nothing
-				if (itr->second.second != criticalCount) {
-					miBFBV->setData(itr->first, itr->second.first | MIBloomFilter<ID>::s_mask);
-				}
-			}
-//			ID check = miBFBV->checkValues(m_nameToID.size());
-//			if (m_nameToID.size() != check) {
-//				cerr << check << " ID found " << (check
-//						& MIBloomFilter<ID>::s_antiMask)
-//								<< " (after masking), max possible ID is "
-//								<< m_nameToID.size() << endl;
-//				exit(1);
-//			}
-			if (opt::verbose){
-				cerr << "Finishing normalization stage " << omp_get_wtime() - time
-						<< "s" << endl;
-				time = omp_get_wtime();
-			}
-
-			//record memory after
-			if (opt::verbose)
-				cerr << "Mem usage of support datastructure (kB): " << (getRSS() - memKB) << endl;
-		}
-
-		//finish the rest
-		//j is the number of matches for that iteration possible
-		for (j++; j <= opt::hashNum; ++j) {
-			if (opt::verbose)
-				cerr << "Pass " << j << endl;
-			if (opt::idByFile) {
-#pragma omp parallel for schedule(dynamic)
-				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-					gzFile fp;
-					if (opt::verbose) {
-#pragma omp critical(stderr)
-						cerr << "Opening: "
-								<< (j % 2 ?
-										m_fileNames[i] : m_fileNames[i] + ".rv")
-								<< endl;
-					}
-					fp = j % 2 ?
-							gzopen(m_fileNames[i].c_str(), "r") :
-							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
-					kseq_t *seq = kseq_init(fp);
-					int l;
-					for (;;) {
-						string sequence, name;
-						{
-							l = kseq_read(seq);
-							if (l >= 0) {
-								sequence = string(seq->seq.s, seq->seq.l);
-								name = m_fileNames[i].substr(
-										m_fileNames[i].find_last_of("/") + 1);
-							}
-						}
-						if (l >= 0) {
-							loadSeq(*miBFBV, name, sequence, j);
-						} else {
-							break;
-						}
-					}
-					kseq_destroy(seq);
-					gzclose(fp);
-//#pragma omp critical(stderr)
-//					if (opt::verbose > 0) {
-//						cerr << "Saturation: " << miBFBV->getPopSaturated()
-//								<< " popNonZero: " << miBFBV->getPopNonZero()
-//								<< endl;
-//					}
-				}
-			} else {
-				for (unsigned i = 0; i < m_fileNames.size(); ++i) {
-					gzFile fp;
-					if (opt::verbose)
-						cerr << "Opening: "
-								<< (j % 2 ?
-										m_fileNames[i] : m_fileNames[i] + ".rv")
-								<< endl;
-					fp = j % 2 ?
-							gzopen(m_fileNames[i].c_str(), "r") :
-							gzopen((m_fileNames[i] + ".rv").c_str(), "r");
-					kseq_t *seq = kseq_init(fp);
-					int l;
-#pragma omp parallel private(l)
-					for (;;) {
-						string sequence, name;
-#pragma omp critical(seq)
-						{
-							l = kseq_read(seq);
-							if (l >= 0) {
-								sequence = string(seq->seq.s, seq->seq.l);
-								name = string(seq->name.s, seq->name.l);
-							}
-						}
-						if (l >= 0) {
-							loadSeq(*miBFBV, name, sequence, j);
-						} else {
-							break;
-						}
-					}
-					kseq_destroy(seq);
-					gzclose(fp);
-				}
-			}
-		}
 		cerr << "Outputting IDs file: " << filePrefix + "_ids.txt" << endl;
 		std::ofstream idFile;
 		idFile.open((filePrefix + "_ids.txt").c_str());
@@ -555,11 +400,11 @@ public:
 private:
 	unsigned m_kmerSize;
 	size_t m_expectedEntries;
-	size_t m_totalEntries;
+//	size_t m_totalEntries;
 	vector<string> m_fileNames;
 	vector<string> m_ids;
 	google::dense_hash_map<string, ID> m_nameToID;
-	unsigned m_regionSize;
+//	unsigned m_regionSize;
 	size_t m_failedInsert;
 
 	inline MIBloomFilter<ID> * generateBV(double fpr,
@@ -694,6 +539,129 @@ private:
 				++m_failedInsert;
 			}
 			++itr;
+		}
+	}
+
+	/*
+	 * Returns set of datavector index where saturation occurs for this ID
+	 * Critical values ideally should never be mutated
+	 */
+	void recordPos(const MIBloomFilter<ID> &miBF, const string &seq,
+			google::dense_hash_set<uint64_t> &values) {
+		if (miBF.getSeedValues().empty()) {
+			ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
+			while (itr != itr.end()) {
+				for (unsigned i = 0; i < opt::hashNum; ++i) {
+					values.insert((*itr)[i]);
+				}
+				++itr;
+			}
+		} else {
+			stHashIterator itr(seq, miBF.getSeedValues(), opt::hashNum, miBF.getKmerSize());
+			while (itr != itr.end()) {
+				for (unsigned i = 0; i < opt::hashNum; ++i) {
+					values.insert((*itr)[i]);
+				}
+				++itr;
+			}
+		}
+	}
+
+	inline void setSatIfMissing(MIBloomFilter<ID> &miBF, ID id,
+			const string &seq, vector<ID> &counts) {
+		if (miBF.getSeedValues().empty()) {
+			ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
+			while (itr != itr.end()) {
+				//for each set of hash values, check for saturation
+				vector<uint64_t> rankPos = miBF.getRankPos(*itr);
+				vector<ID> results = miBF.getData(rankPos);
+				vector<ID> replacementIDs(opt::hashNum);
+				bool valueFound = false;
+				vector<ID> seenSet(opt::hashNum);
+				for (unsigned i = 0; i < opt::hashNum; ++i) {
+					if (results[i] == id) {
+						valueFound = true;
+						break;
+					}
+					if (find(seenSet.begin(), seenSet.end(), results[i])
+							== seenSet.end()) {
+						seenSet.push_back(results[i]);
+					}
+					else{
+						replacementIDs.push_back(results[i]);
+					}
+				}
+				if (!valueFound) {
+					uint64_t replacementPos = counts.size();
+//					ID lowestCount = numeric_limits<ID>::max();
+					ID minCount = numeric_limits<ID>::min();
+					for (unsigned i = 0; i < opt::hashNum; ++i) {
+						if (find(replacementIDs.begin(), replacementIDs.end(),
+								results[i]) != replacementIDs.end()) {
+							if(minCount < counts[rankPos[i]]){
+								minCount = counts[rankPos[i]];
+								replacementPos = rankPos[i];
+							}
+						}
+					}
+					//mutate if possible
+					if (replacementPos != counts.size()) {
+						miBF.setData(replacementPos, id);
+#pragma omp atomic update
+						++counts[replacementPos];
+					}
+					else{
+						miBF.saturate(*itr);
+					}
+				}
+				++itr;
+			}
+		} else {
+			stHashIterator itr(seq, miBF.getSeedValues(), opt::hashNum, miBF.getKmerSize());
+			while (itr != itr.end()) {
+				//for each set of hash values, check for saturation
+				vector<uint64_t> rankPos = miBF.getRankPos(*itr);
+				vector<ID> results = miBF.getData(rankPos);
+				vector<ID> replacementIDs(opt::hashNum);
+				bool valueFound = false;
+				vector<ID> seenSet(opt::hashNum);
+				for (unsigned i = 0; i < opt::hashNum; ++i) {
+					if (results[i] == id) {
+						valueFound = true;
+						break;
+					}
+					if (find(seenSet.begin(), seenSet.end(), results[i])
+							== seenSet.end()) {
+						seenSet.push_back(results[i]);
+					}
+					else{
+						replacementIDs.push_back(results[i]);
+					}
+				}
+				if (!valueFound) {
+					uint64_t replacementPos = counts.size();
+					ID minCount = numeric_limits<ID>::min();
+					for (unsigned i = 0; i < opt::hashNum; ++i) {
+						if (find(replacementIDs.begin(), replacementIDs.end(),
+								results[i]) != replacementIDs.end()) {
+							if(minCount < counts[rankPos[i]]){
+								minCount = counts[rankPos[i]];
+								replacementPos = rankPos[i];
+							}
+						}
+					}
+					//mutate if possible
+					if (replacementPos != counts.size()) {
+						miBF.setData(replacementPos, id);
+#pragma omp atomic update
+						++counts[replacementPos];
+					}
+					else{
+						miBF.saturate(*itr);
+					}
+				}
+				++itr;
+			}
 		}
 	}
 
