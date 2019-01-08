@@ -28,7 +28,7 @@ bool stdout = false;
 bool bestHitCountAgree = false;
 
 unsigned minCountNonSatCount = 0;
-unsigned frameMatches = 0;
+unsigned frameMatches = 1;
 }
 
 
