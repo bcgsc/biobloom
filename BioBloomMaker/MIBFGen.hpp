@@ -217,9 +217,6 @@ public:
 									% count;
 							if (randomNum == count - 1) {
 								miBFBV->setData(rank, id);
-							} else {
-								//make sure value is set
-								miBFBV->setDataIfEmpty(rank, id);
 							}
 						}
 					} else {
@@ -579,25 +576,26 @@ private:
 				bool valueFound = false;
 				vector<ID> seenSet(opt::hashNum);
 				for (unsigned i = 0; i < opt::hashNum; ++i) {
-					if (results[i] == id) {
+					ID currentResult = results[i] & MIBloomFilter<ID>::s_antiMask;
+					if (currentResult == id) {
 						valueFound = true;
 						break;
 					}
-					if (find(seenSet.begin(), seenSet.end(), results[i])
+					if (find(seenSet.begin(), seenSet.end(), currentResult)
 							== seenSet.end()) {
-						seenSet.push_back(results[i]);
+						seenSet.push_back(currentResult);
 					}
 					else{
-						replacementIDs.push_back(results[i]);
+						replacementIDs.push_back(currentResult);
 					}
 				}
 				if (!valueFound) {
 					uint64_t replacementPos = counts.size();
-//					ID lowestCount = numeric_limits<ID>::max();
 					ID minCount = numeric_limits<ID>::min();
 					for (unsigned i = 0; i < opt::hashNum; ++i) {
+						ID currentResult = results[i] & MIBloomFilter<ID>::s_antiMask;
 						if (find(replacementIDs.begin(), replacementIDs.end(),
-								results[i]) != replacementIDs.end()) {
+								currentResult) != replacementIDs.end()) {
 							if(minCount < counts[rankPos[i]]){
 								minCount = counts[rankPos[i]];
 								replacementPos = rankPos[i];
@@ -626,24 +624,26 @@ private:
 				bool valueFound = false;
 				vector<ID> seenSet(opt::hashNum);
 				for (unsigned i = 0; i < opt::hashNum; ++i) {
-					if (results[i] == id) {
+					ID currentResult = results[i] & MIBloomFilter<ID>::s_antiMask;
+					if (currentResult == id) {
 						valueFound = true;
 						break;
 					}
-					if (find(seenSet.begin(), seenSet.end(), results[i])
+					if (find(seenSet.begin(), seenSet.end(), currentResult)
 							== seenSet.end()) {
-						seenSet.push_back(results[i]);
+						seenSet.push_back(currentResult);
 					}
 					else{
-						replacementIDs.push_back(results[i]);
+						replacementIDs.push_back(currentResult);
 					}
 				}
 				if (!valueFound) {
 					uint64_t replacementPos = counts.size();
 					ID minCount = numeric_limits<ID>::min();
 					for (unsigned i = 0; i < opt::hashNum; ++i) {
+						ID currentResult = results[i] & MIBloomFilter<ID>::s_antiMask;
 						if (find(replacementIDs.begin(), replacementIDs.end(),
-								results[i]) != replacementIDs.end()) {
+								currentResult) != replacementIDs.end()) {
 							if(minCount < counts[rankPos[i]]){
 								minCount = counts[rankPos[i]];
 								replacementPos = rankPos[i];
