@@ -280,8 +280,8 @@ int main(int argc, char *argv[])
 	}
 
 	//Streak should be larger than filtering threshold
-	if (opt::streakThreshold <= opt::minCountNonSatCount) {
-		cerr << "-r should be greater than -c" << endl;
+	if (opt::streakThreshold < opt::minCountNonSatCount) {
+		cerr << "-r should be greater or equalt to -c" << endl;
 		exit(1);
 	}
 
