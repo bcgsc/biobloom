@@ -25,7 +25,7 @@ extern OutType outputType;
 extern bool minHitOnly;
 extern unsigned maxGroupSize;
 extern int debug;
-extern unsigned multiThresh;
+extern double multiThresh;
 extern bool inverse;
 
 extern std::string filtersFile;
