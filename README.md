@@ -344,13 +344,15 @@ Memory usage is directly dependent on the filter size, which is in turn a functi
 
 ### C. How can I make my results more sensitive?
 
-In biobloomcategorizer try to decrease the score threshold (`-s`). If that still does not work, in biobloommaker try reducing the k-mer (`-k`) size to allow more tiles, which can help with sensitivity.
+In biobloomcategorizer try to decrease the score threshold (`-s`). If that still does not work, in biobloommaker try reducing the k-mer (`-k`) size to allow more tiles, which can help with sensitivity. Note that if `-k` is decreased to values that cause sequence collisions, this can cause non-specific classification (for most tasks `k`=16 is probably as low as you can go). 
 
 ### D. How can I make my results more specific?
 
 In biobloomcategorizer you can increase score threshold (`-s`).
 
-In biobloommaker decreasing the false positive rate (`-f`) and increasing the k-mer (`-k`) size to allow more tiles can help with specificity. Decreasing the filter false positive rate will increase memory usage.
+In biobloommaker decreasing the false positive rate (`-f`) can help with specificity. Decreasing the filter false positive rate will increase memory usage.
+
+Due to seqeunce collisions, increasing `-k` can improve the effective specificity because they can be used to obtain more unique sequence matches (higher k has higher complexity). There will be fewer frames to consider when increasing the k-mer which may slightly increase the chance of random false positives.
 
 ### E. How can I make the program faster?
 There are multiple ways to speed up biobloomcategorizer. Here are a few options:
