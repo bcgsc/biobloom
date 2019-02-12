@@ -82,7 +82,7 @@ If your boost library headers are not in your PATH you can specify their locatio
 ```
 Alternatively, if you have linuxbrew/homebrew you can run:
 ```bash
-./configure –-with-boost=/boost/path --prefix=/BBT/PATH && make install
+brew install biobloomtools
 ```
 
 <a name="2"></a>
@@ -90,7 +90,7 @@ Alternatively, if you have linuxbrew/homebrew you can run:
 
 After you have your FastA file a `.bf` file with corresponding information text file can be created by running the command:
 ```bash
-brew install biobloomtools
+./biobloommaker –p input input1.fasta input2.fasta
 ```
 `-p` is the prefix for the files being created, it also acts as an ID for the filter.
 
