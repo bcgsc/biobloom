@@ -35,5 +35,7 @@ extern bool bestHitCountAgree;
 
 extern unsigned minCountNonSatCount;
 extern unsigned frameMatches;
+
+extern bool hitOnly;
 }
 #endif

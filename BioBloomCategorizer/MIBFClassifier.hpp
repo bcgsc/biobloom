@@ -764,6 +764,9 @@ private:
 #pragma omp atomic
 		++m_processedCount;
 		resSummary.updateSummaryData(signifResults);
+		if(opt::hitOnly && signifResults.empty()){
+			return;
+		}
 		outStr.clear();
 		formatOutStr(read, outStr, support, signifResults);
 		cout << outStr;
@@ -775,6 +778,9 @@ private:
 				classify(support, read1.seq.s, read2.seq.s);
 #pragma omp atomic
 		++m_processedCount;
+		if(opt::hitOnly && signifResults.empty()) {
+			return;
+		}
 		outStr.clear();
 		resSummary.updateSummaryData(signifResults);
 		formatOutStr(read1, outStr, support, signifResults);

@@ -29,6 +29,8 @@ bool bestHitCountAgree = false;
 
 unsigned minCountNonSatCount = 0;
 unsigned frameMatches = 1;
+
+bool hitOnly = false;
 }
 
 

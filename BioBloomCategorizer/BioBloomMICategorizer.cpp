@@ -146,6 +146,7 @@ int main(int argc, char *argv[])
 		"fq", no_argument, &FASTQ, 1 }, {
 		"fa", no_argument, &FASTA, 1 }, {
 		"tsv", no_argument, &TSV, 1 }, {
+		"hitOnly", no_argument, NULL, 'i' }, {
 		"version", no_argument, &OPT_VERSION, 1 }, {
 		"multi", required_argument, NULL, 'm' }, {
 		"streak", required_argument, NULL, 'r' }, {
@@ -158,7 +159,7 @@ int main(int argc, char *argv[])
 		NULL, 0, NULL, 0 } };
 
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "p:f:es:hI:t:f:m:r:dnvc:a:b", long_options,
+	while ((c = getopt_long(argc, argv, "p:f:es:hI:t:f:m:r:dnvc:a:bi", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -248,6 +249,10 @@ int main(int argc, char *argv[])
 		}
 		case 'n': {
 			opt::inverse = true;
+			break;
+		}
+		case 'i': {
+			opt::hitOnly = true;
 			break;
 		}
 		case '?': {
