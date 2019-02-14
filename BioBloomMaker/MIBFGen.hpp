@@ -64,10 +64,6 @@ public:
 							<< endl;
 					exit(1);
 				}
-				if (!fexists(m_fileNames[i] + ".rv")) {
-					cerr << "Missing file " << m_fileNames[i] << ".rv" << endl;
-					exit(1);
-				}
 				if(opt::verbose){
 #pragma omp critical(stderr)
 					cerr << "Opening " << m_fileNames[i] << endl;
@@ -93,10 +89,6 @@ public:
 				if (fp == NULL) {
 					cerr << "file " << m_fileNames[i] << " cannot be opened"
 							<< endl;
-					exit(1);
-				}
-				if (!fexists(m_fileNames[i] + ".rv")) {
-					cerr << "Missing file " << m_fileNames[i] << ".rv" << endl;
 					exit(1);
 				}
 				kseq_t *seq = kseq_init(fp);
