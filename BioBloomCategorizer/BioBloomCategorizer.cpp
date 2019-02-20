@@ -107,7 +107,8 @@ void printHelpDialog()
 	"      --fq               Output categorized reads in Fastq files.\n"
 	"      --chastity         Discard and do not evaluate unchaste reads.\n"
 	"      --no-chastity      Do not discard unchaste reads. [default]\n"
-	"  -l, --file_list=N      A file of list of file pairs to run in parallel.\n"
+	"  -l, --file_list=N      A file of list of file pairs to run in parallel. Should\n"
+	"                         only be used when the number of input files is large.\n"
 	"  -v, --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
 	"      --verbose          Display verbose output\n"
@@ -326,7 +327,7 @@ int main(int argc, char *argv[])
 	if (paired) {
 		if (inputFiles.size() == 1) {
 			smartPair = true;
-		} else if (inputFiles.size() != 2) {
+		} else if (inputFiles.size() != 2 && fileListFilename.empty()) {
 			cerr << "Usage of paired end mode:\n"
 					<< "BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [FILEPAIR1] [FILEPAIR2]\n"
 					<< "or BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [SMARTPAIR]\n"
@@ -334,9 +335,13 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 	}
+	if (fileListFilename.empty() && inputFiles.size() > 0) {
+		cerr << "--file_list (-l) cannot be used with read files in specified in arguments"
+				<< endl;
+	}
 
 	//Check needed options
-	if (inputFiles.size() == 0 && fileListFilename == "") {
+	if (inputFiles.size() == 0 && fileListFilename.empty()) {
 		cerr << "Error: Need Input File" << endl;
 		die = true;
 	}
@@ -371,7 +376,7 @@ int main(int argc, char *argv[])
 	//-w option cannot be used without output method
 	if (withScore && opt::outputType == opt::NONE) {
 		cerr << "Error: -w option cannot be used without output method" << endl;
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	// -w option cannot be used with min match length arg to -s
@@ -379,29 +384,23 @@ int main(int argc, char *argv[])
 		cerr << "Error: -w option is not supported when using "
 			<< "minimum match length (positive integer arg "
 			<< "to -s)" << endl;
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	//check filters
 	for (vector<string>::const_iterator it = filterFilePaths.begin();
-			it != filterFilePaths.end(); ++it)
-	{
+			it != filterFilePaths.end(); ++it) {
 		//check if files exist
 		if (!fexists(*it)) {
 			cerr << "Error: " + (*it) + " File cannot be opened" << endl;
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		string infoFileName = (*it).substr(0, (*it).length() - 2) + "txt";
-		//TODO: error if filter types are mixed
-		if (!fexists(infoFileName) && opt::filterType != BLOOMMAP) {
-			cerr << "Multi Index Mode detected from lack of filter.txt files" << endl;
-			opt::filterType = BLOOMMAP;
-		}
 	}
 
 	//load filters
-	BioBloomClassifier bbc(filterFilePaths, opt::score, opt::outputPrefix, opt::filePostfix,
-			withScore);
+	BioBloomClassifier bbc(filterFilePaths, opt::score, opt::outputPrefix,
+			opt::filePostfix, withScore);
 
 	if (stdout) {
 		bbc.setStdout();
@@ -451,10 +450,31 @@ int main(int argc, char *argv[])
 			}
 		}
 	} else {
-		if (outputType != "") {
-			bbc.filterPrint(inputFiles, outputType);
+		if (fileListFilename != "") {
+			string line;
+			ifstream myfile(fileListFilename.c_str());
+			while (getline(myfile, line)) {
+				stringstream ss(line);
+				string fileName1 = "";
+				string fileName2 = "";
+				ss >> fileName1;
+				ss >> fileName2;
+				opt::fileList1.push_back(fileName1);
+				opt::fileList2.push_back(fileName2);
+			}
+			myfile.close();
+			cerr << "Using file list" << endl;
+			if (outputType != "") {
+				bbc.filterPrint(opt::fileList1, outputType);
+			} else {
+				bbc.filter(opt::fileList1);
+			}
 		} else {
-			bbc.filter(inputFiles);
+			if (outputType != "") {
+				bbc.filterPrint(inputFiles, outputType);
+			} else {
+				bbc.filter(inputFiles);
+			}
 		}
 	}
 }
