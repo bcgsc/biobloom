@@ -2,8 +2,10 @@
 
 Multi-Index Bloom Filters (miBF) allow for efficent classification of a many targets. The use of miBFs is recommend if classifying against >100 targets as `biobloomcategorizer` cannot scale to this many targets. It also also for higher sensitivity through the use of spaced seeds.
 
-A preprint is available [here](https://www.biorxiv.org/content/biorxiv/early/2018/10/05/434795.full.pdf):
-### Note additional dependencies: [seqtk](https://github.com/lh3/seqtk)
+## A preprint is available [here](https://www.biorxiv.org/content/biorxiv/early/2018/10/05/434795.full.pdf):
+Data and filter used for Read Binning experiments are found [here](http://www.bcgsc.ca/downloads/btl/bbt/Metagenomic_miBF)
+Data and filter used for Metagenomic classification experiments is found [here](http://www.bcgsc.ca/downloads/btl/bbt/CancerCensusGenes_miBF/)
+
 Table of Contents
 ------
 1. [Generating Multi-Index Bloom Filters from Reference Sequences with biobloommimaker](#1)
