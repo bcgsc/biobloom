@@ -211,8 +211,6 @@ public:
 		ResultsManager<ID> resSummary(m_fullIDs, false);
 
 		cerr << "Filtering Start" << endl;
-		unsigned count = 0;
-
 		double startTime = omp_get_wtime();
 		for (vector<string>::const_iterator it = inputFiles.begin();
 				it != inputFiles.end(); ++it) {
@@ -362,16 +360,6 @@ public:
 											std::move_iterator<iter_t>(readBuffer.begin()),
 											num));
 								}
-								else if(count > 10000000){
-#pragma omp critical(stderr)
-									cerr << omp_get_thread_num() << " " << m_processedCount << " " << m_numRead << " "
-											<< recycleQueue.size_approx() << " " << workQueue.size_approx() << endl;
-									sleep(1);
-								}
-								else{
-#pragma omp atomic update
-									count++;
-								}
 							}
 						}
 #pragma omp atomic update
@@ -388,10 +376,6 @@ public:
 										std::move_iterator<iter_t>(
 												readBuffer.begin()),
 										s_bulkSize);
-								if(count > 10000000){
-									cerr << "in " << omp_get_thread_num() << " " << m_processedCount << " " << m_numRead << " "
-											<< recycleQueue.size_approx() << " " << workQueue.size_approx() << " " << num << endl;
-								}
 								if (num) {
 									for (unsigned i = 0; i < num; ++i) {
 										//------------------------WORK CODE START---------------------------------------
@@ -402,12 +386,6 @@ public:
 											std::move_iterator<iter_t>(readBuffer.begin()),
 											num));
 								}
-							}
-							if(count > 10000000){
-#pragma omp critical(stderr)
-								cerr<< "out " << omp_get_thread_num() << " " << m_processedCount << " " << m_numRead << " "
-										<< recycleQueue.size_approx() << " " << workQueue.size_approx() << endl;
-								break;
 							}
 						}
 					}
