@@ -17,13 +17,6 @@ Table of Contents
 <a name="1"></a>
 ## 1. Generating Multi-Index Bloom Filters from Reference Sequences with biobloommimaker
 
-Before you can index your fasta files a reverse complement version of them must first be generated with the `util/genRV.sh` script:
-```bash
-util/genRV.sh input1.fa input2.fa 
-```
-it will output `<fasta>.rv` files for each fasta file listed.
-
-A `<prefix>.bf`, `<prefix>.bf.sdsl` and `<prefix>_ids.txt` can be created by running the command:
 ```bash
 ./biobloommimaker -p filterName -S "01111011100000011111101110000111100100000101001001011100011000010111101001100011 10101101001111010011100101110001111111111010010000110011001000100100011100001000 00010000111000100100010011001100001001011111111110001110100111001011110010110101 11000110010111101000011000111010010010100000100111100001110111111000000111011110" input1.fasta ...
 ```
