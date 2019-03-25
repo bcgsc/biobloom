@@ -771,7 +771,10 @@ private:
 	 */
 	//TODO: Reuse itr object
 	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq) {
-		unsigned frameCount = seq.size() - m_filter.getKmerSize() + 1;
+		unsigned frameCount = seq.size() >= m_filter.getKmerSize() ? seq.size() - m_filter.getKmerSize() + 1 : 0;
+		if(frameCount == 0){
+			return support.emptyResult();
+		}
 #pragma omp critical(minCount)
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>> (
@@ -798,7 +801,11 @@ private:
 	 */
 	inline const vector<MIBFQuerySupport<ID>::QueryResult> &classify(MIBFQuerySupport<ID> &support, const string &seq1,
 			const string &seq2) {
-		unsigned frameCount = seq1.size() + seq2.size() - (m_filter.getKmerSize() + 1)*2;
+		unsigned frameCount = seq1.size() >= m_filter.getKmerSize() ? seq1.size() - m_filter.getKmerSize() + 1 : 0 +
+				seq2.size() >= m_filter.getKmerSize() ? seq2.size() - m_filter.getKmerSize() + 1 : 0;
+		if(frameCount == 0){
+			return support.emptyResult();
+		}
 #pragma omp critical(m_minCount)
 		if (m_minCount.find(frameCount) == m_minCount.end()) {
 			m_minCount[frameCount] = boost::shared_ptr<vector<unsigned>>(
@@ -806,6 +813,9 @@ private:
 			for (size_t i = 1; i < m_fullIDs.size(); ++i) {
 				(*m_minCount[frameCount])[i] = getMinCount(frameCount,
 						m_perFrameProb[i]);
+				if(opt::debug) {
+					cerr << m_fullIDs[i] << "\t" <<  m_minCount[frameCount]->at(i) << endl;
+				}
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
