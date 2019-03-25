@@ -42,7 +42,7 @@ class MIBFGen {
 public:
 	MIBFGen(vector<string> const &filenames, unsigned kmerSize,
 			size_t numElements = 0) :
-			m_kmerSize(kmerSize), m_expectedEntries(numElements), m_fileNames(filenames), m_failedInsert(0) {
+			m_kmerSize(kmerSize), m_expectedEntries(numElements), m_fileNames(filenames) {
 		//Instantiate dense hash map
 		m_ids.push_back(""); //first entry is empty
 		//dense hash maps take POD, and strings need to live somewhere
@@ -357,10 +357,10 @@ public:
 		idFile.open((filePrefix + "_ids.txt").c_str());
 		writeIDs(idFile);
 		idFile.close();
-		cerr << "Failed to insert for set of multi-spaced seeds: "
-				<< m_failedInsert << endl;
+//		cerr << "Failed to insert for set of multi-spaced seeds: "
+//				<< m_failedInsert << endl;
 		cerr << "PopCount: " << miBFBV->getPop() << endl;
-		cerr << "PopNonZero: " << miBFBV->getPopNonZero() << endl;
+//		cerr << "PopNonZero: " << miBFBV->getPopNonZero() << endl;
 		cerr << "PopSaturated: " << miBFBV->getPopSaturated() << endl;
 		cerr << "PopCount Ratio: "
 				<< double(miBFBV->getPop()) / double(miBFBV->size()) << endl;
@@ -394,7 +394,7 @@ private:
 	vector<string> m_ids;
 	google::dense_hash_map<string, ID> m_nameToID;
 //	unsigned m_regionSize;
-	size_t m_failedInsert;
+//	size_t m_failedInsert;
 
 	inline MIBloomFilter<ID> * generateBV(double fpr,
 			const vector<vector<unsigned> > *ssVal = NULL) {
@@ -506,30 +506,30 @@ private:
 	}
 
 //helper methods
-	inline void loadSeq(MIBloomFilter<ID> &miBF, const string &name,
-			const string &seq, unsigned max = 1) {
-		ID id = m_nameToID[name];
-		if (miBF.getSeedValues().empty()) {
-			ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
-			insertTillEnd(miBF, max, itr, id);
-		} else {
-			stHashIterator itr(seq, miBF.getSeedValues(), opt::hashNum, miBF.getKmerSize());
-			insertTillEnd(miBF, max, itr, id);
-		}
-	}
+//	inline void loadSeq(MIBloomFilter<ID> &miBF, const string &name,
+//			const string &seq, unsigned max = 1) {
+//		ID id = m_nameToID[name];
+//		if (miBF.getSeedValues().empty()) {
+//			ntHashIterator itr(seq, opt::hashNum, m_kmerSize);
+//			insertTillEnd(miBF, max, itr, id);
+//		} else {
+//			stHashIterator itr(seq, miBF.getSeedValues(), opt::hashNum, miBF.getKmerSize());
+//			insertTillEnd(miBF, max, itr, id);
+//		}
+//	}
 
-	template<typename T>
-	inline void insertTillEnd(MIBloomFilter<ID> &miBF, unsigned max, T &itr,
-			ID id) {
-		while (itr != itr.end()) {
-			//Last iteration check if value was obliterated
-			if (!miBF.insert(*itr, id, max)) {
-#pragma omp atomic
-				++m_failedInsert;
-			}
-			++itr;
-		}
-	}
+//	template<typename T>
+//	inline void insertTillEnd(MIBloomFilter<ID> &miBF, unsigned max, T &itr,
+//			ID id) {
+//		while (itr != itr.end()) {
+//			//Last iteration check if value was obliterated
+//			if (!miBF.insert(*itr, id, max)) {
+//#pragma omp atomic
+//				++m_failedInsert;
+//			}
+//			++itr;
+//		}
+//	}
 
 	/*
 	 * Returns set of datavector index where saturation occurs for this ID
