@@ -17,13 +17,6 @@ Table of Contents
 <a name="1"></a>
 ## 1. Generating Multi-Index Bloom Filters from Reference Sequences with biobloommimaker
 
-Before you can index your fasta files a reverse complement version of them must first be generated with the `util/genRV.sh` script:
-```bash
-util/genRV.sh input1.fa input2.fa 
-```
-it will output `<fasta>.rv` files for each fasta file listed.
-
-A `<prefix>.bf`, `<prefix>.bf.sdsl` and `<prefix>_ids.txt` can be created by running the command:
 ```bash
 ./biobloommimaker -p filterName -S "01111011100000011111101110000111100100000101001001011100011000010111101001100011 10101101001111010011100101110001111111111010010000110011001000100100011100001000 00010000111000100100010011001100001001011111111110001110100111001011110010110101 11000110010111101000011000111010010010100000100111100001110111111000000111011110" input1.fasta ...
 ```
@@ -137,7 +130,7 @@ These files need to have the same prefix and be in the same directory for the fi
 ## 4. Multiple Spaced seeds
 The design of spaced seed use in BBT must be either palindromic or have another complementry seed. The design of seed depends on the degree of error tollerance needed, and the specificity of classification needed. For example, if similar sequences are indexed, then longer seed are recommended. If classifying to a divergent or highly erroreous sequence lower weight seeds are recommended.
 
-Here is an example of some of randomly generate the seed sets that can used in our tool:
+Here is an example of some of randomly generates seed sets that can be used in our tool:
 ```
 #seed 1: least specific, 3 seeds
 001100000010111000010100000000110011000101011000100010100001 010010101100000001000011001100001100110000100000001101010010 100001010001000110101000110011000000001010000111010000001100
