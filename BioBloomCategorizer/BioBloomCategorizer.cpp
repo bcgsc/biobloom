@@ -332,12 +332,13 @@ int main(int argc, char *argv[])
 					<< "BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [FILEPAIR1] [FILEPAIR2]\n"
 					<< "or BioBloomCategorizer [OPTION]... -f \"[FILTER1]...\" [SMARTPAIR]\n"
 					<< endl;
-			exit(1);
+			die = true;
 		}
 	}
-	if (fileListFilename.empty() && inputFiles.size() > 0) {
+	if (!fileListFilename.empty() && inputFiles.size() > 0) {
 		cerr << "--file_list (-l) cannot be used with read files in specified in arguments"
 				<< endl;
+		die = true;
 	}
 
 	//Check needed options
