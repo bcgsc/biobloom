@@ -182,21 +182,21 @@ inline bool evalRead(const string &rec, const BloomFilter &filter,
 inline double evalSingleScore(const string &rec, const BloomFilter &filter) {
 
 	double score = 0;
-	unsigned antiScore = 0;
+//	unsigned antiScore = 0;
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getHashNum(), filter.getKmerSize());
 	unsigned prevPos = 0;
-	if (filter.contains(*itr)) {
-		score += 0.5;
-		++streak;
-	}
-	prevPos = itr.pos();
-	++itr;
+//	if (filter.contains(*itr)) {
+//		score += 0.5;
+//		++streak;
+//	}
+//	prevPos = itr.pos();
+//	++itr;
 	while (itr != itr.end()) {
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
 		if (itr.pos() != prevPos + 1) {
-			antiScore += itr.pos() - prevPos - 1;
+//			antiScore += itr.pos() - prevPos - 1;
 			streak = 0;
 		}
 		if (filter.contains(*itr)) {
@@ -244,16 +244,18 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
 	unsigned prevPos = 0;
-	if (filter.contains(*itr)) {
-		if (subtract == NULL || !subtract->contains(*itr))
-			score += 0.5;
-		++streak;
-	} else {
-		if (antiThres <= ++antiScore)
-			return score;
+	if (itr != itr.end()) {
+		if (filter.contains(*itr)) {
+			if (subtract == NULL || !subtract->contains(*itr))
+				score += 0.5;
+			++streak;
+		} else {
+			if (antiThres <= ++antiScore)
+				return score;
+		}
+		prevPos = itr.pos();
+		++itr;
 	}
-	prevPos = itr.pos();
-	++itr;
 	while (itr != itr.end()) {
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
