@@ -12,7 +12,7 @@ Relevant [paper](http://bioinformatics.oxfordjournals.org/content/30/23/3402.lon
 > doi: [10.1093/bioinformatics/btu558](http://dx.doi.org/10.1093/bioinformatics/btu558)<br/>
 > PMID: [25143290](http://www.ncbi.nlm.nih.gov/pubmed/25143290)
 
-This tool is free for academic use ([GNU3 licence](LICENCES)).
+This tool is free for academic use ([GPL3 licence](LICENSE)).
 
 We have a commercial licence also, please contact us (prebstein at bccancer dot bc dot ca) if you wish to use the tools for commercial uses.
 
