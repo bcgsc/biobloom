@@ -93,6 +93,7 @@ void printHelpDialog()
 //	"  -d, --stdout           Outputs all matching reads to set of targets to stdout\n"
 //	"                         in fastq and if paired will output will be interlaced.\n"
 //	"  -n, --inverse          Inverts the output of -d.\n"
+	"  -i, --hitOnly          Return only results that hit the filter.\n"
 	"      --fa               Output categorized reads in Fasta output.\n"
 	"      --fq               Output categorized reads in Fastq output.\n"
 	"      --version          Display version information.\n"
