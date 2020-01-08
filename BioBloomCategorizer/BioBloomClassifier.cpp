@@ -513,23 +513,20 @@ void BioBloomClassifier::filterPair(const string &file) {
 			}
 		}
 		if (l >= 0) {
-			unordered_map<string, boost::shared_ptr<FaRec> >::iterator itr = unPairedReads.find(rec.header);
 			bool pairFound = false;
+			FaRec rec1;
 #pragma omp critical(unPairedReads)
 			{
-				if (unPairedReads.find(rec.header) != unPairedReads.end()) {
+				unordered_map<string, boost::shared_ptr<FaRec> >::iterator itr =
+						unPairedReads.find(rec.header);
+				if (itr != unPairedReads.end()) {
 					pairFound = true;
+					rec1 = *itr->second;
 				} else {
-					unPairedReads[rec.header] = boost::shared_ptr<FaRec>(
-							new FaRec());
-					unPairedReads[rec.header]->header = rec.header;
-					unPairedReads[rec.header]->seq = rec.seq;
-					unPairedReads[rec.header]->qual = rec.qual;
-					unPairedReads[rec.header]->comment = rec.comment;
+					unPairedReads[rec.header] = boost::shared_ptr<FaRec>(new FaRec(rec));
 				}
 			}
 			if (pairFound) {
-				FaRec &rec1 = *itr->second;
 				FaRec &rec2 = rec;
 #pragma omp critical(totalReads)
 				{
@@ -555,7 +552,8 @@ void BioBloomClassifier::filterPair(const string &file) {
 
 				//Evaluate hit data and record for summary
 				printPair(rec1, rec2, score1, score2, outputFileIndex);
-				unPairedReads.erase(itr->first);
+#pragma omp critical(unPairedReads)
+				unPairedReads.erase(rec.header);
 			}
 		} else
 			break;
@@ -642,19 +640,20 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 			}
 		}
 		if (l >= 0) {
-			unordered_map<string, boost::shared_ptr<FaRec> >::iterator itr = unPairedReads.find(rec.header);
 			bool pairFound = false;
+			FaRec rec1;
 #pragma omp critical(unPairedReads)
 			{
-				if (unPairedReads.find(rec.header) != unPairedReads.end()) {
+				unordered_map<string, boost::shared_ptr<FaRec> >::iterator itr =
+						unPairedReads.find(rec.header);
+				if (itr != unPairedReads.end()) {
 					pairFound = true;
+					rec1 = *itr->second;
 				} else {
-					boost::shared_ptr<FaRec> ptr(new FaRec(rec));
-					unPairedReads[ptr->header] = ptr;
+					unPairedReads[rec.header] = boost::shared_ptr<FaRec>(new FaRec(rec));
 				}
 			}
 			if (pairFound) {
-				FaRec &rec1 = *itr->second;
 				FaRec &rec2 = rec;
 #pragma omp critical(totalReads)
 				{
@@ -683,7 +682,8 @@ void BioBloomClassifier::filterPairPrint(const string &file,
 				printPairToFile(outputFileIndex, rec1, rec2, outputFiles1,
 						outputFiles2, outputType, score1, score2, scores1,
 						scores2, resSummary);
-				unPairedReads.erase(itr->first);
+#pragma omp critical(unPairedReads)
+				unPairedReads.erase(rec.header);
 			}
 		} else
 			break;
