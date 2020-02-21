@@ -17,6 +17,7 @@
  */
 namespace opt {
 enum OutType {NONE ,FASTQ, FASTA, TSV};
+
 extern bool inclusive;
 extern double score;
 extern std::string outputPrefix;
@@ -27,6 +28,8 @@ extern unsigned maxGroupSize;
 extern int debug;
 extern double multiThresh;
 extern bool inverse;
+
+extern double minFPR;
 
 extern std::string filtersFile;
 extern bool paired;

@@ -125,6 +125,11 @@ void printHelpDialog()
 	"                         filter listed by -f. Reads are outputed in fastq,\n"
 	"                         and if paired will output will be interlaced.\n"
 	"  -n, --inverse          Inverts the output of -d (everything but first filter).\n"
+	"  -S, --score_type=N     Can be set to 'harmonic' scoring or 'binomial' scoring.\n"
+	"                         harmonic scoring penalizes short runs of matches and\n"
+	"                         bionomial scoring computes the minimum number of k-mer\n"
+	"                         matches needed based on a minimum FPR (-s). [simple]\n"
+//	"  -m, --multi=N          Multi Match threshold. [1.0]\n"
 	"\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
 
@@ -166,26 +171,27 @@ int main(int argc, char *argv[])
 		"help", no_argument, NULL, 'h' }, {
 		"interval",	required_argument, NULL, 'I' }, {
 		"threads", required_argument, NULL, 't' }, {
-		"allowed_miss", required_argument, NULL, 'a' }, {
+//		"allowed_miss", required_argument, NULL, 'a' }, {
 		"gz_output", no_argument, NULL, 'g' }, {
 		"fq", no_argument, &fastq, 1 }, {
 		"fa", no_argument, &fasta, 1 }, {
 		"file_list", required_argument, NULL, 'l' }, {
 		"version", no_argument, NULL, 'v' }, {
-		"min_hit_thr", required_argument, NULL, 'm' }, {
+		"multi", required_argument, NULL, 'm' }, {
 		"streak", required_argument, NULL, 'r' }, {
 		"min_hit_only", no_argument, NULL, 'o' }, {
 		"ordered", no_argument, NULL, 'c' }, {
 		"stdout_filter", no_argument, NULL, 'd' }, {
 		"inverse", no_argument, NULL, 'n' }, {
 		"with_score", no_argument, NULL, 'w' }, {
+		"score_type", required_argument, NULL, 'S' }, {
 		"verbose", no_argument, &opt::verbose, 1 }, {
 		NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:hegl:vs:r:t:cdiwI:n", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:hegl:vs:r:t:cdiwI:nm:S:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -197,7 +203,7 @@ int main(int argc, char *argv[])
 			// length in bases
 			if ((convert >> matchLen) && matchLen > 1) {
 				opt::score = (unsigned)matchLen;
-				SeqEval::evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
+				opt::scoringMethod = opt::LENGTH;
 				cerr << "Min match length threshold: " << matchLen
 					<<" bp" << endl;
 			} else {
@@ -215,7 +221,6 @@ int main(int argc, char *argv[])
 						<< optarg << endl;
 					exit(EXIT_FAILURE);
 				}
-				SeqEval::evalMode = SeqEval::EVAL_STANDARD;
 				if (opt::score == 1)
 					cerr << "Running in 'best match' mode (no score threshold)"
 						<< endl;
@@ -295,6 +300,21 @@ int main(int argc, char *argv[])
 		}
 		case 'n': {
 			opt::inverse = true;
+			break;
+		}
+		case 'S': {
+			if (strcmp(optarg, "harmonic") == 0) {
+				opt::scoringMethod = opt::HARMONIC;
+			} else if (strcmp(optarg, "binomial") == 0) {
+				opt::scoringMethod = opt::BINOMIAL;
+			} else {
+				cerr << "scoring method not recognized. Valid strings: harmonic or binomial" << endl;
+				die = true;
+			}
+			break;
+		}
+		case 'm': {
+			opt::multiThresh = true;
 			break;
 		}
 		case 'w': {
@@ -381,7 +401,7 @@ int main(int argc, char *argv[])
 	}
 
 	// -w option cannot be used with min match length arg to -s
-	if (withScore && SeqEval::evalMode == SeqEval::EVAL_MIN_MATCH_LEN) {
+	if (withScore && opt::scoringMethod == opt::LENGTH) {
 		cerr << "Error: -w option is not supported when using "
 			<< "minimum match length (positive integer arg "
 			<< "to -s)" << endl;

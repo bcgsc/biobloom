@@ -266,7 +266,7 @@ int main(int argc, char *argv[]) {
 			// length in bases
 			if ((convert >> matchLen) && matchLen > 1) {
 				progressive = matchLen;
-				SeqEval::evalMode = SeqEval::EVAL_MIN_MATCH_LEN;
+				opt::scoringMethod = opt::LENGTH;
 			} else {
 				// not a positive integer > 1, so interpret as floating
 				// point score between 0 and 1
@@ -399,12 +399,12 @@ int main(int argc, char *argv[]) {
 			exit(1);
 		}
 		cerr << "Building Bloom filter in progressive mode. ";
-		switch (SeqEval::evalMode) {
-		case SeqEval::EVAL_MIN_MATCH_LEN:
+		switch (opt::scoringMethod) {
+		case opt::LENGTH:
 			cerr << "Min match length = " << (unsigned) round(progressive)
 					<< " bp" << endl;
 			break;
-		case SeqEval::EVAL_STANDARD:
+		case opt::SIMPLE:
 		default:
 			cerr << "Score threshold = " << progressive << endl;
 			break;

@@ -30,8 +30,13 @@ namespace opt {
 	extern unsigned fileInterval;
 	extern double fpr;
 	extern bool noRep;
-	
-	//options of BBM only
+
+	//options for normal BBT
+	enum ScoringMethod {SIMPLE, LENGTH, HARMONIC, BINOMIAL};
+	extern ScoringMethod scoringMethod;
+
+
+	//options for miBF only
 	//TODO: move to own header file
 	extern bool idByFile;
 //	extern double occupancy;

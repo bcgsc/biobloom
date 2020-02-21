@@ -1,11 +1,10 @@
 #include "Common/Options.h"
 
 namespace opt {
-	/** Colour space sequences */
-	bool colourSpace;
-
 	/** Verbose output */
 	int verbose = 0;
+
+	ScoringMethod scoringMethod = SIMPLE;
 
 	unsigned streakThreshold = 3;
 	unsigned threads = 1;

@@ -19,15 +19,11 @@
 #include "btl_bloomfilter/BloomFilter.hpp"
 #include "btl_bloomfilter/ntHashIterator.hpp"
 
+#include <boost/math/distributions/binomial.hpp>
+
 using namespace std;
 
 namespace SeqEval {
-
-enum EvalMode {
-	EVAL_STANDARD, EVAL_MIN_MATCH_LEN
-};
-
-extern EvalMode evalMode;
 
 inline double denormalizeScore(double score, unsigned kmerSize, size_t seqLen) {
 	assert(score >= 0 && score <= 1);
@@ -117,6 +113,168 @@ inline bool evalSingle(const string &rec, const BloomFilter &filter,
 	return false;
 }
 
+inline bool evalHarmonic(const string &rec, const BloomFilter &filter,
+		double threshold, const BloomFilter *subtract =
+		NULL) {
+
+	const double thres = denormalizeScore(threshold, filter.getKmerSize(),
+			rec.length());
+	const double antiThres = floor(
+			denormalizeScore(1.0 - threshold, filter.getKmerSize(),
+					rec.length()));
+
+	double score = 0;
+	unsigned antiScore = 0;
+	unsigned streak = 0;
+	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
+	unsigned prevPos = 0;
+	if (itr != itr.end()) {
+		if (filter.contains(*itr)) {
+			if (subtract == NULL || !subtract->contains(*itr))
+				score += 0.5;
+			if (thres <= score) {
+				return true;
+			}
+			++streak;
+		} else {
+			if (antiThres <= ++antiScore)
+				return false;
+		}
+		prevPos = itr.pos();
+		++itr;
+	}
+	while (itr != itr.end()) {
+		//check if k-mer has deviated/started again
+		//TODO try to terminate before itr has to re-init after skipping
+		if (itr.pos() != prevPos + 1) {
+			antiScore += itr.pos() - prevPos - 1;
+			if (antiThres <= antiScore) {
+				return false;
+			}
+			streak = 0;
+		}
+		if (filter.contains(*itr)) {
+			if (streak == 0) {
+				if (subtract == NULL || !subtract->contains(*itr))
+					score += 0.5;
+			} else {
+				if (subtract == NULL || !subtract->contains(*itr))
+					score += 1.0 - 1.0 / (1.0 + double(streak));
+			}
+			if (thres <= score) {
+				return true;
+			}
+			prevPos = itr.pos();
+			++itr;
+			++streak;
+		} else {
+			if (streak < opt::streakThreshold) {
+				if (antiThres <= ++antiScore)
+					return false;
+				prevPos = itr.pos();
+				++itr;
+			} else {
+				//TODO: Determine if faster to force re-init
+				unsigned skipEnd = itr.pos() + filter.getKmerSize();
+				//skip lookups
+				while (itr.pos() < skipEnd) {
+					if (antiThres <= ++antiScore)
+						return false;
+					prevPos = itr.pos();
+					++itr;
+				}
+			}
+			streak = 0;
+		}
+	}
+	return false;
+}
+
+/*
+ * Calculate minimum number of matches to classify sequences, accounting
+ * for false positive rate
+ */
+inline size_t calcMinCount(size_t frameLen, double bfFPR, double minFPR) {
+	using namespace boost::math::policies;
+	using namespace boost::math;
+	typedef boost::math::binomial_distribution<double,
+			policy<discrete_quantile<integer_round_up> > > binom_round_up;
+	binom_round_up bin(frameLen, bfFPR);
+	unsigned i = quantile(complement(bin, minFPR));
+	return i > 1 ? i : 1;
+}
+
+inline bool evalBinomial(const string &rec, const BloomFilter &filter,
+		double threshold, const BloomFilter *subtract =
+		NULL) {
+
+	const unsigned frameLen = rec.size() - filter.getKmerSize() + 1;
+	const unsigned thres = calcMinCount(frameLen, filter.getFPR(), threshold);
+	const unsigned antiThres = frameLen - thres;
+
+	unsigned score = 0;
+	unsigned antiScore = 0;
+	unsigned streak = 0;
+	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
+	unsigned prevPos = 0;
+	if (itr != itr.end()) {
+		if (filter.contains(*itr)) {
+			if (subtract == NULL || !subtract->contains(*itr))
+				score++;
+			if (thres <= score) {
+				return true;
+			}
+			++streak;
+		} else {
+			if (antiThres <= ++antiScore)
+				return false;
+		}
+		prevPos = itr.pos();
+		++itr;
+	}
+	while (itr != itr.end()) {
+		//check if k-mer has deviated/started again
+		//TODO try to terminate before itr has to re-init after skipping
+		if (itr.pos() != prevPos + 1) {
+			antiScore += itr.pos() - prevPos - 1;
+			if (antiThres <= antiScore) {
+				return false;
+			}
+			streak = 0;
+		}
+		if (filter.contains(*itr)) {
+			if (streak == 0) {
+				if (subtract == NULL || !subtract->contains(*itr))
+					++score;
+			}
+			if (thres <= score) {
+				return true;
+			}
+			prevPos = itr.pos();
+			++itr;
+			++streak;
+		} else {
+			if (streak < opt::streakThreshold) {
+				if (antiThres <= ++antiScore)
+					return false;
+				prevPos = itr.pos();
+				++itr;
+			} else {
+				unsigned skipEnd = itr.pos() + filter.getKmerSize();
+				//skip lookups
+				while (itr.pos() < skipEnd) {
+					if (antiThres <= ++antiScore)
+						return false;
+					prevPos = itr.pos();
+					++itr;
+				}
+			}
+			streak = 0;
+		}
+	}
+	return false;
+}
+
 /*
  * Evaluation algorithm based on minimum number of contiguous matching bases.
  */
@@ -159,11 +317,15 @@ inline bool evalMinMatchLen(const string &rec, const BloomFilter &filter,
 
 inline bool evalRead(const string &rec, const BloomFilter &filter,
 		double threshold, const BloomFilter *subtract = NULL) {
-	switch (evalMode) {
-	case EVAL_MIN_MATCH_LEN:
+	switch (opt::scoringMethod) {
+	case opt::LENGTH:
 		return evalMinMatchLen(rec, filter, (unsigned) round(threshold),
 				subtract);
-	case EVAL_STANDARD:
+	case opt::HARMONIC:
+		return evalHarmonic(rec, filter, threshold, subtract);
+	case opt::BINOMIAL:
+		return evalBinomial(rec, filter, threshold, subtract);
+	case opt::SIMPLE:
 	default:
 		return evalSingle(rec, filter, threshold, subtract);
 	}
@@ -181,6 +343,8 @@ inline bool evalRead(const string &rec, const BloomFilter &filter,
  */
 inline double evalSingleScore(const string &rec, const BloomFilter &filter) {
 
+	//currently only support default scoring method
+	assert(opt::scoringMethod == opt::SIMPLE);
 	double score = 0;
 //	unsigned antiScore = 0;
 	unsigned streak = 0;
@@ -235,10 +399,11 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 		double threshold, const BloomFilter *subtract =
 		NULL) {
 
+	//currently only support default scoring method
+
 	const double antiThres = floor(
 			denormalizeScore(1.0 - threshold, filter.getKmerSize(),
 					rec.length()));
-
 	double score = 0;
 	unsigned antiScore = 0;
 	unsigned streak = 0;

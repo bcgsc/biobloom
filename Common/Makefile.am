@@ -7,7 +7,7 @@ libcommon_a_SOURCES = \
 	Dynamicofstream.cpp Dynamicofstream.h \
 	gzstream.C gzstream.h \
 	Options.cpp Options.h \
-	SeqEval.h SeqEval.cpp \
+	SeqEval.h \
 	kseq.h kseq_util.h \
 	concurrentqueue.h \
 	StringUtil.h

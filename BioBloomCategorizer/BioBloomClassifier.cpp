@@ -1087,46 +1087,6 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths) {
 //	}
 //}
 
-/*
- * Ordered filtering method
- */
-void BioBloomClassifier::evaluateReadOrdered(const string &rec,
-		vector<unsigned> &hits) {
-	for (unsigned i = 0; i != m_filters.size(); ++i) {
-		if (SeqEval::evalRead(rec, *m_filters[i], m_scoreThreshold)) {
-			hits.push_back(i);
-			break;
-		}
-	}
-}
-
-/*
- * Collaborative filtering method
- * Assume filters use the same k-mer size
- */
-void BioBloomClassifier::evaluateReadOrderedPair(const string &rec1,
-		const string &rec2, vector<unsigned> &hits1, vector<unsigned> &hits2) {
-	for (unsigned i = 0; i != m_filters.size(); ++i) {
-		if (m_inclusive) {
-			if (SeqEval::evalRead(rec1, *m_filters[i], m_scoreThreshold)
-					|| SeqEval::evalRead(rec2, *m_filters[i],
-							m_scoreThreshold)) {
-				hits1.push_back(i);
-				hits2.push_back(i);
-				break;
-			}
-		} else {
-			if (SeqEval::evalRead(rec1, *m_filters[i], m_scoreThreshold)
-					&& SeqEval::evalRead(rec2, *m_filters[i],
-							m_scoreThreshold)) {
-				hits1.push_back(i);
-				hits2.push_back(i);
-				break;
-			}
-		}
-	}
-}
-
 ///*
 // * For a single read evaluate hits for a single hash signature
 // * Sections with ambiguity bases are treated as misses
@@ -1180,6 +1140,46 @@ void BioBloomClassifier::evaluateReadOrderedPair(const string &rec1,
 //		hits[*i] = tempHits.at(*i) >= m_minHit;
 //	}
 //}
+
+/*
+ * Ordered filtering method
+ */
+void BioBloomClassifier::evaluateReadOrdered(const string &rec,
+		vector<unsigned> &hits) {
+	for (unsigned i = 0; i != m_filters.size(); ++i) {
+		if (SeqEval::evalRead(rec, *m_filters[i], m_scoreThreshold)) {
+			hits.push_back(i);
+			break;
+		}
+	}
+}
+
+/*
+ * Collaborative filtering method
+ * Assume filters use the same k-mer size
+ */
+void BioBloomClassifier::evaluateReadOrderedPair(const string &rec1,
+		const string &rec2, vector<unsigned> &hits1, vector<unsigned> &hits2) {
+	for (unsigned i = 0; i != m_filters.size(); ++i) {
+		if (m_inclusive) {
+			if (SeqEval::evalRead(rec1, *m_filters[i], m_scoreThreshold)
+					|| SeqEval::evalRead(rec2, *m_filters[i],
+							m_scoreThreshold)) {
+				hits1.push_back(i);
+				hits2.push_back(i);
+				break;
+			}
+		} else {
+			if (SeqEval::evalRead(rec1, *m_filters[i], m_scoreThreshold)
+					&& SeqEval::evalRead(rec2, *m_filters[i],
+							m_scoreThreshold)) {
+				hits1.push_back(i);
+				hits2.push_back(i);
+				break;
+			}
+		}
+	}
+}
 
 void BioBloomClassifier::evaluateReadStd(const string &rec,
 		vector<unsigned> &hits) {
