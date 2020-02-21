@@ -17,7 +17,7 @@
 #include <cassert>
 #include "Common/Options.h"
 #include "btl_bloomfilter/BloomFilter.hpp"
-#include "btl_bloomfilter/ntHashIterator.hpp"
+#include "btl_bloomfilter/vendor/ntHashIterator.hpp"
 
 #include <boost/math/distributions/binomial.hpp>
 

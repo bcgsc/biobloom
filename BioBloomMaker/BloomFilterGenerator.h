@@ -10,7 +10,7 @@
 #include <boost/shared_ptr.hpp>
 #include <vector>
 #include "btl_bloomfilter/BloomFilter.hpp"
-#include "btl_bloomfilter/ntHashIterator.hpp"
+#include "btl_bloomfilter/vendor/ntHashIterator.hpp"
 #include "Common/SeqEval.h"
 #include "Common/kseq.h"
 #include <iostream>
