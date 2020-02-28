@@ -99,7 +99,9 @@ void printHelpDialog()
 	"                         number less than 1, and the minimum is 0 (highest\n"
 	"                         sensitivity). If set to 1, the best hit is used rather\n"
 	"                         than the threshold and the score will be appended to the\n"
-	"                         header of the output read. [0.15]\n"
+	"                         header of the output read. When using binomial scoring\n"
+	"                         this score becomes to the minimum -10*log(FPR) threshold\n"
+	"                         for a match. [0.15 for default, 100 for binomial]\n"
 	"  -w, --with_score       Output multimatches with scores in the order of filter.\n"
 	"  -t, --threads=N        The number of threads to use. [1]\n"
 	"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
@@ -112,7 +114,7 @@ void printHelpDialog()
 	"  -v, --version          Display version information.\n"
 	"  -h, --help             Display this dialog.\n"
 	"      --verbose          Display verbose output\n"
-	"  -I, --interval         the interval to report file processing status [10000000]\n"
+	"  -I, --interval         Interval to report file processing status [10000000]\n"
 	"Advanced options:\n"
 	"  -r, --streak=N         The number of hits tiling in second pass needed to jump\n"
 	"                         Several tiles upon a miss. Small values decrease\n"
@@ -161,6 +163,8 @@ int main(int argc, char *argv[])
 	string outputType = "";
 	string fileListFilename = "";
 
+	double binomialScore = 100;
+
 	//long form arguments
 	static struct option long_options[] = { {
 		"prefix", required_argument, NULL, 'p' }, {
@@ -198,35 +202,8 @@ int main(int argc, char *argv[])
 		switch (c) {
 		case 's': {
 			stringstream convert(optarg);
-			unsigned matchLen;
-			// if arg is a positive integer > 1, interpret as minimum match
-			// length in bases
-			if ((convert >> matchLen) && matchLen > 1) {
-				opt::score = (unsigned)matchLen;
-				opt::scoringMethod = opt::LENGTH;
-				cerr << "Min match length threshold: " << matchLen
-					<<" bp" << endl;
-			} else {
-				// not a positive integer > 1, so interpret as floating
-				// point score between 0 and 1
-				stringstream convert2(optarg);
-				if (!(convert2 >> opt::score)) {
-					cerr << "Error - Invalid set of bloom filter parameters! s: "
-						<< optarg << endl;
-					exit(EXIT_FAILURE);
-				}
-				if (opt::score < 0 || opt::score > 1) {
-					cerr << "Error - s must be a positive integer or a floating "
-						<< "point between 0 and 1. Input given:"
-						<< optarg << endl;
-					exit(EXIT_FAILURE);
-				}
-				if (opt::score == 1)
-					cerr << "Running in 'best match' mode (no score threshold)"
-						<< endl;
-				else
-					cerr << "Min score threshold: " << opt::score << endl;
-			}
+			convert >> opt::score;
+			binomialScore = opt::score;
 			break;
 		}
 		case 'f': {
@@ -406,6 +383,30 @@ int main(int argc, char *argv[])
 			<< "minimum match length (positive integer arg "
 			<< "to -s)" << endl;
 		exit(EXIT_FAILURE);
+	}
+
+	if (opt::scoringMethod == opt::BINOMIAL) {
+		opt::score = pow(10.0,-(binomialScore/10.0));
+		cerr << "FPR of a match: " << opt::score << endl;
+	} else {
+		unsigned matchLen = opt::score;
+		// if arg is a positive integer > 1, interpret as minimum match
+		// length in bases
+		if (matchLen > 1) {
+			opt::score = (unsigned) matchLen;
+			opt::scoringMethod = opt::LENGTH;
+			cerr << "Min match length threshold: " << matchLen << " bp" << endl;
+		}
+		if (opt::score < 0) {
+			cerr << "Error - s must be a positive integer or a floating "
+					<< "point between 0 and 1. Input given:" << optarg << endl;
+			exit(EXIT_FAILURE);
+		}
+		if (opt::score == 1) {
+			cerr << "Running in 'best match' mode (no score threshold)" << endl;
+		} else {
+			cerr << "Min score threshold: " << opt::score << endl;
+		}
 	}
 
 	//check filters
