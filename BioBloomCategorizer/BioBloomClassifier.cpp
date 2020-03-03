@@ -20,17 +20,11 @@
 
 BioBloomClassifier::BioBloomClassifier(const vector<string> &filterFilePaths,
 		double scoreThreshold, const string &prefix,
-		const string &outputPostFix, bool withScore) :
+		const string &outputPostFix) :
 		m_scoreThreshold(scoreThreshold), m_filterNum(filterFilePaths.size()), m_prefix(
-				prefix), m_postfix(outputPostFix), m_mode(STD), m_stdout(false), m_inclusive(
+				prefix), m_postfix(outputPostFix), m_stdout(false), m_inclusive(
 				false) {
 	loadFilters(filterFilePaths);
-	if (withScore) {
-		m_mode = SCORES;
-	}
-	if (m_scoreThreshold == 1) {
-		m_mode = BESTHIT;
-	}
 }
 
 /*
@@ -967,7 +961,13 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths) {
 		m_infoFiles.push_back(temp);
 		m_filters.push_back(new BloomFilter(*it));
 		m_filterOrder.push_back(temp->getFilterID());
-		cerr << "Loaded Filter: " + temp->getFilterID() << endl;
+		cerr << "Loaded Filter: " + temp->getFilterID();
+		if(opt::scoringMethod == opt::BINOMIAL){
+			cerr << endl;
+		}
+		else{
+			cerr << " FPR: " << m_filters.back()->getFPR() << endl;
+		}
 	}
 	cerr << "Filter Loading Complete." << endl;
 }

@@ -18,11 +18,17 @@
 namespace opt {
 enum OutType {NONE ,FASTQ, FASTA, TSV};
 
+/** for modes of filtering */
+enum FilteringMode {
+	STD, ORDERED, BESTHIT, SCORES
+};
+
 extern bool inclusive;
 extern double score;
 extern std::string outputPrefix;
 extern std::string filePostfix;
 extern OutType outputType;
+extern FilteringMode mode;
 extern bool minHitOnly;
 extern unsigned maxGroupSize;
 extern int debug;

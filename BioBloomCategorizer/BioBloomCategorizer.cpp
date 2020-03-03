@@ -97,11 +97,11 @@ void printHelpDialog()
 	"                         integer representing the minimum match length in bases.\n"
 	"                         If N is a floating point, the maximum threshold is any \n"
 	"                         number less than 1, and the minimum is 0 (highest\n"
-	"                         sensitivity). If set to 1, the best hit is used rather\n"
-	"                         than the threshold and the score will be appended to the\n"
-	"                         header of the output read. When using binomial scoring\n"
-	"                         this score becomes to the minimum -10*log(FPR) threshold\n"
-	"                         for a match. [0.15 for default, 100 for binomial]\n"
+	"                         sensitivity). When using binomial scoring this score\n"
+	"                         becomes to the minimum -10*log(FPR) threshold for a \n"
+	"                         match. [0.15 for default, 100 for binomial]\n"
+	"  -b, --best_hit         The best hit is used rather than the score (-s) threshold.\n"
+	"                         Score will be appended to the header of the output read.\n"
 	"  -w, --with_score       Output multimatches with scores in the order of filter.\n"
 	"  -t, --threads=N        The number of threads to use. [1]\n"
 	"  -g, --gz_output        Outputs all output files in compressed gzip.\n"
@@ -154,7 +154,6 @@ int main(int argc, char *argv[])
 
 	int fastq = 0;
 	int fasta = 0;
-	bool withScore = false;
 	bool stdout = false;
 
 	//advanced options
@@ -187,6 +186,7 @@ int main(int argc, char *argv[])
 		"ordered", no_argument, NULL, 'c' }, {
 		"stdout_filter", no_argument, NULL, 'd' }, {
 		"inverse", no_argument, NULL, 'n' }, {
+		"best_hit", no_argument, NULL, 'b' }, {
 		"with_score", no_argument, NULL, 'w' }, {
 		"score_type", required_argument, NULL, 'S' }, {
 		"verbose", no_argument, &opt::verbose, 1 }, {
@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:hegl:vs:r:t:cdiwI:nm:S:", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:hegl:vs:r:t:cdiwI:nm:S:b", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -295,7 +295,23 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'w': {
-			withScore = true;
+			if(opt::mode != opt::STD){
+				opt::mode = opt::SCORES;
+			}
+			else{
+				cerr << "scoring modes cannot be mixed with score mode" << endl;
+				die = true;
+			}
+			break;
+		}
+		case 'b': {
+			if(opt::mode != opt::STD){
+				opt::mode = opt::BESTHIT;
+			}
+			else{
+				cerr << "Different scoring modes cannot be mixed with best hit mode" << endl;
+				die = true;
+			}
 			break;
 		}
 		case '?': {
@@ -372,16 +388,8 @@ int main(int argc, char *argv[])
 	}
 
 	//-w option cannot be used without output method
-	if (withScore && opt::outputType == opt::NONE) {
+	if (opt::mode == opt::SCORES && opt::outputType == opt::NONE) {
 		cerr << "Error: -w option cannot be used without output method" << endl;
-		exit(EXIT_FAILURE);
-	}
-
-	// -w option cannot be used with min match length arg to -s
-	if (withScore && opt::scoringMethod == opt::LENGTH) {
-		cerr << "Error: -w option is not supported when using "
-			<< "minimum match length (positive integer arg "
-			<< "to -s)" << endl;
 		exit(EXIT_FAILURE);
 	}
 
@@ -397,15 +405,13 @@ int main(int argc, char *argv[])
 			opt::scoringMethod = opt::LENGTH;
 			cerr << "Min match length threshold: " << matchLen << " bp" << endl;
 		}
+		else{
+			cerr << "Min score threshold: " << opt::score << endl;
+		}
 		if (opt::score < 0) {
 			cerr << "Error - s must be a positive integer or a floating "
 					<< "point between 0 and 1. Input given:" << optarg << endl;
 			exit(EXIT_FAILURE);
-		}
-		if (opt::score == 1) {
-			cerr << "Running in 'best match' mode (no score threshold)" << endl;
-		} else {
-			cerr << "Min score threshold: " << opt::score << endl;
 		}
 	}
 
@@ -422,7 +428,7 @@ int main(int argc, char *argv[])
 
 	//load filters
 	BioBloomClassifier bbc(filterFilePaths, opt::score, opt::outputPrefix,
-			opt::filePostfix, withScore);
+			opt::filePostfix);
 
 	if (stdout) {
 		bbc.setStdout();

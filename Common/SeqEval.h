@@ -207,9 +207,12 @@ inline size_t calcMinCount(size_t frameLen, double bfFPR, double minFPR) {
 inline bool evalBinomial(const string &rec, const BloomFilter &filter,
 		double threshold, const BloomFilter *subtract =
 		NULL) {
-
+	if(rec.size() <  filter.getKmerSize()) {
+		return false;
+	}
 	const unsigned frameLen = rec.size() - filter.getKmerSize() + 1;
-	const unsigned thres = calcMinCount(frameLen, filter.getFPR(), threshold);
+	const unsigned thres = calcMinCount(frameLen, filter.getFPRPrecompute(), threshold);
+//	cerr << rec.size() << " " << thres << " " << frameLen << endl;
 	const unsigned antiThres = frameLen - thres;
 
 	unsigned score = 0;
@@ -400,7 +403,7 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 		NULL) {
 
 	//currently only support default scoring method
-
+	assert(opt::scoringMethod == opt::SIMPLE);
 	const double antiThres = floor(
 			denormalizeScore(1.0 - threshold, filter.getKmerSize(),
 					rec.length()));

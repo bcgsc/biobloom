@@ -16,6 +16,9 @@ double score = 0.15;
 string outputPrefix = "";
 string filePostfix = "";
 OutType outputType = NONE;
+
+FilteringMode mode = STD;
+
 bool minHitOnly = false;
 unsigned maxGroupSize = std::numeric_limits<unsigned>::max();
 int debug = 0;

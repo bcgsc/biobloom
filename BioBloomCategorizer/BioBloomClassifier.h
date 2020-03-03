@@ -25,11 +25,6 @@ KSEQ_INIT(gzFile, gzread)
 
 using namespace std;
 
-/** for modes of filtering */
-enum mode {
-	ORDERED, BESTHIT, STD, SCORES
-};
-
 struct FaRec {
 	string header;
 	string seq;
@@ -53,7 +48,7 @@ class BioBloomClassifier {
 public:
 	explicit BioBloomClassifier(const vector<string> &filterFilePaths,
 			double scoreThreshold, const string &outputPrefix,
-			const string &outputPostFix, bool withScore);
+			const string &outputPostFix);
 	void filter(const vector<string> &inputFiles);
 	void filterPrint(const vector<string> &inputFiles,
 			const string &outputType);
@@ -70,13 +65,13 @@ public:
 			const vector<string> &inputFiles2, const string &outputType);
 
 	void setOrderedFilter() {
-		if (m_mode == BESTHIT) {
+		if (opt::mode == opt::BESTHIT) {
 			cerr
 					<< "Best Hit mode and Ordered mode detected. Not yet supported."
 					<< endl;
 			exit(1);
 		}
-		m_mode = ORDERED;
+		opt::mode = opt::ORDERED;
 	}
 
 	void setInclusive() {
@@ -98,9 +93,6 @@ private:
 	const unsigned m_filterNum;
 	const string &m_prefix;
 	const string &m_postfix;
-
-	// modes of filtering
-	mode m_mode;
 
 	bool m_stdout;
 	bool m_inclusive;
@@ -132,7 +124,7 @@ private:
 				}
 			}
 			else if (filterID == 0) {
-				if (m_mode == BESTHIT) {
+				if (opt::mode == opt::BESTHIT) {
 #pragma omp critical(cout)
 					{
 						cout << "@" << rec.header << " " << rec.comment << " " << score << "\n"
@@ -154,7 +146,7 @@ private:
 			double score, vector<double> &scores,
 			const ResultsManager<unsigned> &rm) {
 		if (outputType == "fa") {
-			if (m_mode == SCORES && outputFileName == rm.getMultiMatchIndex()) {
+			if (opt::mode == opt::SCORES && outputFileName == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles[outputFileName]) << ">" << rec.header << " " << rec.comment;
@@ -164,7 +156,7 @@ private:
 					}
 					(*outputFiles[outputFileName]) << "\n" << rec.seq << "\n";
 				}
-			} else if (m_mode == BESTHIT) {
+			} else if (opt::mode == opt::BESTHIT) {
 				if (outputFileName == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
@@ -188,7 +180,7 @@ private:
 				}
 			}
 		} else {
-			if (m_mode == SCORES && outputFileName == rm.getMultiMatchIndex()) {
+			if (opt::mode == opt::SCORES && outputFileName == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles[outputFileName]) << "@" << rec.header << " " << rec.comment;
@@ -199,7 +191,7 @@ private:
 					(*outputFiles[outputFileName]) << "\n" << rec.seq << "\n+\n"
 							<< rec.qual << "\n";
 				}
-			} else if (m_mode == BESTHIT) {
+			} else if (opt::mode == opt::BESTHIT) {
 #pragma omp critical(outputFiles)
 				{
 					(*outputFiles[outputFileName]) << "@" << rec.header << " " << rec.comment << " "
@@ -233,7 +225,7 @@ private:
 				}
 			}
 			else if (filterID == 0) {
-				if (m_mode == BESTHIT) {
+				if (opt::mode == opt::BESTHIT) {
 #pragma omp critical(cout)
 					{
 						cout << "@" << rec1.header << " " << rec1.comment << " " << score1 << "\n"
@@ -271,7 +263,7 @@ private:
 				}
 			}
 			else if (filterID == 0) {
-				if (m_mode == BESTHIT) {
+				if (opt::mode == opt::BESTHIT) {
 #pragma omp critical(cout)
 					{
 						cout << "@" << rec1->name.s << " " << rec1->comment.s << " " << score1 << "\n"
@@ -300,7 +292,7 @@ private:
 			double score1, double score2, vector<double> &scores1,
 			vector<double> &scores2, const ResultsManager<unsigned> &rm) {
 		if (outputType == "fa") {
-			if (m_mode == SCORES
+			if (opt::mode == opt::SCORES
 					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
@@ -319,7 +311,7 @@ private:
 					(*outputFiles2[outputFileIndex]) << "\n" << rec2.seq
 							<< "\n";
 				}
-			} else if (m_mode == BESTHIT) {
+			} else if (opt::mode == opt::BESTHIT) {
 				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
@@ -355,7 +347,7 @@ private:
 				}
 			}
 		} else {
-			if (m_mode == SCORES
+			if (opt::mode == opt::SCORES
 					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
@@ -374,7 +366,7 @@ private:
 					(*outputFiles2[outputFileIndex]) << "\n" << rec2.seq
 							<< "\n+\n" << rec2.qual << "\n";
 				}
-			} else if (m_mode == BESTHIT) {
+			} else if (opt::mode == opt::BESTHIT) {
 				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
@@ -420,7 +412,7 @@ private:
 			double score1, double score2, vector<double> &scores1,
 			vector<double> &scores2, const ResultsManager<unsigned> &rm) {
 		if (outputType == "fa") {
-			if (m_mode == SCORES
+			if (opt::mode == opt::SCORES
 					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
@@ -439,7 +431,7 @@ private:
 					(*outputFiles2[outputFileIndex]) << "\n" << rec2->seq.s
 							<< "\n";
 				}
-			} else if (m_mode == BESTHIT) {
+			} else if (opt::mode == opt::BESTHIT) {
 				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
@@ -475,7 +467,7 @@ private:
 				}
 			}
 		} else {
-			if (m_mode == SCORES
+			if (opt::mode == opt::SCORES
 					&& outputFileIndex == rm.getMultiMatchIndex()) {
 #pragma omp critical(outputFiles)
 				{
@@ -494,7 +486,7 @@ private:
 					(*outputFiles2[outputFileIndex]) << "\n" << rec2->seq.s
 							<< "\n+\n" << rec2->qual.s << "\n";
 				}
-			} else if (m_mode == BESTHIT) {
+			} else if (opt::mode == opt::BESTHIT) {
 				if (outputFileIndex == rm.getMultiMatchIndex())
 #pragma omp critical(outputFiles)
 						{
@@ -538,8 +530,8 @@ private:
 
 	inline void evaluateRead(const string &rec, vector<unsigned> &hits,
 			double &score, vector<double> &scores) {
-		switch (m_mode) {
-		case ORDERED: {
+		switch (opt::mode) {
+		case opt::ORDERED: {
 			evaluateReadOrdered(rec, hits);
 			break;
 		}
@@ -547,11 +539,11 @@ private:
 //			evaluateReadMin(rec, hits);
 //			break;
 //		}
-		case BESTHIT: {
+		case opt::BESTHIT: {
 			score = evaluateReadBestHit(rec, hits, scores);
 			break;
 		}
-		case SCORES: {
+		case opt::SCORES: {
 			evaluateReadScore(rec, hits, scores);
 			break;
 		}
@@ -565,8 +557,8 @@ private:
 	inline void evaluateReadPair(const string &rec1, const string &rec2,
 			vector<unsigned> &hits1, vector<unsigned> &hits2, double &score1,
 			double &score2, vector<double> &scores1, vector<double> &scores2) {
-		switch (m_mode) {
-		case ORDERED: {
+		switch (opt::mode) {
+		case opt::ORDERED: {
 			evaluateReadOrderedPair(rec1, rec2, hits1, hits2);
 			break;
 		}
