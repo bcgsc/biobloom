@@ -295,17 +295,17 @@ int main(int argc, char *argv[])
 			break;
 		}
 		case 'w': {
-			if(opt::mode != opt::STD){
+			if(opt::mode == opt::STD){
 				opt::mode = opt::SCORES;
 			}
 			else{
-				cerr << "scoring modes cannot be mixed with score mode" << endl;
+				cerr << "Different scoring modes cannot be mixed with score mode" << endl;
 				die = true;
 			}
 			break;
 		}
 		case 'b': {
-			if(opt::mode != opt::STD){
+			if(opt::mode == opt::STD){
 				opt::mode = opt::BESTHIT;
 			}
 			else{
