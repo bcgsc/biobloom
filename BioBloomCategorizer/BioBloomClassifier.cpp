@@ -1198,7 +1198,7 @@ double BioBloomClassifier::evaluateReadBestHit(const string &rec,
 	double maxScore = 0;
 
 	for (unsigned i = 0; i < m_filters.size(); ++i) {
-		double score = SeqEval::evalSingleScore(rec, *m_filters[i]);
+		double score = SeqEval::evalScore(rec, *m_filters[i]);
 		if (maxScore < score) {
 			maxScore = score;
 			bestFilters.clear();

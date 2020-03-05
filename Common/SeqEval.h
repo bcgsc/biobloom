@@ -347,66 +347,70 @@ inline bool evalRead(const string &rec, const BloomFilter &filter,
 	return evalRead(rec, filter, threshold, &subtract);
 }
 
-/*
- * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
- * Returns score instead if just a match
- */
-inline double evalSingleScore(const string &rec, const BloomFilter &filter) {
-
-	//currently only support default scoring method
-	assert(opt::scoringMethod == opt::SIMPLE);
-	double score = 0;
-//	unsigned antiScore = 0;
-	unsigned streak = 0;
-	ntHashIterator itr(rec, filter.getHashNum(), filter.getKmerSize());
-	unsigned prevPos = 0;
-//	if (filter.contains(*itr)) {
-//		score += 0.5;
-//		++streak;
+///*
+// * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
+// * Returns score instead if just a match
+// */
+//inline double evalSingleScore(const string &rec, const BloomFilter &filter) {
+//
+//	//currently only support default scoring method
+//	assert(opt::scoringMethod == opt::SIMPLE);
+//	double score = 0;
+////	unsigned antiScore = 0;
+//	unsigned streak = 0;
+//	ntHashIterator itr(rec, filter.getHashNum(), filter.getKmerSize());
+//	unsigned prevPos = 0;
+////	if (filter.contains(*itr)) {
+////		score += 0.5;
+////		++streak;
+////	}
+////	prevPos = itr.pos();
+////	++itr;
+//	while (itr != itr.end()) {
+//		//check if k-mer has deviated/started again
+//		//TODO try to terminate before itr has to re-init after skipping
+//		if (itr.pos() != prevPos + 1) {
+////			antiScore += itr.pos() - prevPos - 1;
+//			streak = 0;
+//		}
+//		if (filter.contains(*itr)) {
+//			if (streak == 0) {
+//				score += 0.5;
+//			} else {
+//				++score;
+//			}
+//			prevPos = itr.pos();
+//			++itr;
+//			++streak;
+//		} else {
+//			if (streak < opt::streakThreshold) {
+//				streak = 0;
+//				prevPos = itr.pos();
+//				++itr;
+//			} else {
+//				unsigned skipEnd = itr.pos() + filter.getKmerSize();
+//				//skip lookups
+//				while (itr.pos() < skipEnd) {
+//					prevPos = itr.pos();
+//					++itr;
+//				}
+//			}
+//			streak = 0;
+//		}
 //	}
-//	prevPos = itr.pos();
-//	++itr;
-	while (itr != itr.end()) {
-		//check if k-mer has deviated/started again
-		//TODO try to terminate before itr has to re-init after skipping
-		if (itr.pos() != prevPos + 1) {
-//			antiScore += itr.pos() - prevPos - 1;
-			streak = 0;
-		}
-		if (filter.contains(*itr)) {
-			if (streak == 0) {
-				score += 0.5;
-			} else {
-				++score;
-			}
-			prevPos = itr.pos();
-			++itr;
-			++streak;
-		} else {
-			if (streak < opt::streakThreshold) {
-				streak = 0;
-				prevPos = itr.pos();
-				++itr;
-			} else {
-				unsigned skipEnd = itr.pos() + filter.getKmerSize();
-				//skip lookups
-				while (itr.pos() < skipEnd) {
-					prevPos = itr.pos();
-					++itr;
-				}
-			}
-			streak = 0;
-		}
-	}
-	return normalizeScore(score, filter.getKmerSize(), rec.length());
-}
+//	return normalizeScore(score, filter.getKmerSize(), rec.length());
+//}
 
 /*
  * Terminates early
  */
 inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
-		double threshold = 1, const BloomFilter *subtract =
+		double threshold = 0, const BloomFilter *subtract =
 		NULL) {
+	if(threshold == 0){
+		threshold = 1;
+	}
+
 	const double antiThres = floor(
 			denormalizeScore(1.0 - threshold, filter.getKmerSize(),
 					rec.length()));
@@ -472,8 +476,12 @@ inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
 }
 
 inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
-		double threshold = 1, const BloomFilter *subtract =
+		double threshold = 0, const BloomFilter *subtract =
 		NULL) {
+	if(threshold == 0){
+		threshold = 1;
+	}
+
 	const double thres = denormalizeScore(threshold, filter.getKmerSize(),
 			rec.length());
 	const double antiThres = floor(
@@ -548,7 +556,12 @@ inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
 }
 
 inline unsigned evalMinMatchLenScore(const string &rec, const BloomFilter &filter,
-		unsigned minMatchLen = 1, const BloomFilter *subtract = NULL) {
+		unsigned minMatchLen = 0, const BloomFilter *subtract = NULL) {
+
+	if(minMatchLen == 0){
+		minMatchLen = rec.size();
+	}
+
 	unsigned matchLen = 0;
 	size_t l = rec.length();
 
@@ -662,7 +675,7 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
  * Returns score instead if just a match
  */
 inline double evalScore(const string &rec, const BloomFilter &filter,
-		double threshold, const BloomFilter *subtract =
+		double threshold = 0, const BloomFilter *subtract =
 		NULL) {
 
 	switch (opt::scoringMethod) {

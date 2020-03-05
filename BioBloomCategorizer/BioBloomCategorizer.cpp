@@ -393,25 +393,30 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (opt::scoringMethod == opt::BINOMIAL) {
-		opt::score = pow(10.0,-(binomialScore/10.0));
-		cerr << "FPR of a match: " << opt::score << endl;
+	if (opt::mode == opt::BESTHIT) {
+		cerr << "Best Hit mode (no minimum threshold)" << endl;
 	} else {
-		unsigned matchLen = opt::score;
-		// if arg is a positive integer > 1, interpret as minimum match
-		// length in bases
-		if (matchLen > 1) {
-			opt::score = (unsigned) matchLen;
-			opt::scoringMethod = opt::LENGTH;
-			cerr << "Min match length threshold: " << matchLen << " bp" << endl;
-		}
-		else{
-			cerr << "Min score threshold: " << opt::score << endl;
-		}
-		if (opt::score < 0) {
-			cerr << "Error - s must be a positive integer or a floating "
-					<< "point between 0 and 1. Input given:" << optarg << endl;
-			exit(EXIT_FAILURE);
+		if (opt::scoringMethod == opt::BINOMIAL) {
+			opt::score = pow(10.0, -(binomialScore / 10.0));
+			cerr << "FPR of a match: " << opt::score << endl;
+		} else {
+			unsigned matchLen = opt::score;
+			// if arg is a positive integer > 1, interpret as minimum match
+			// length in bases
+			if (matchLen > 1) {
+				opt::score = (unsigned) matchLen;
+				opt::scoringMethod = opt::LENGTH;
+				cerr << "Min match length threshold: " << matchLen << " bp"
+						<< endl;
+			} else {
+				cerr << "Min score threshold: " << opt::score << endl;
+			}
+			if (opt::score < 0) {
+				cerr << "Error - s must be a positive integer or a floating "
+						<< "point between 0 and 1. Input given:" << optarg
+						<< endl;
+				exit(EXIT_FAILURE);
+			}
 		}
 	}
 
