@@ -963,11 +963,9 @@ void BioBloomClassifier::loadFilters(const vector<string> &filterFilePaths) {
 		m_filterOrder.push_back(temp->getFilterID());
 		cerr << "Loaded Filter: " + temp->getFilterID();
 		if(opt::scoringMethod == opt::BINOMIAL){
-			cerr << endl;
+			cerr << " FPR: " << m_filters.back()->getFPR();
 		}
-		else{
-			cerr << " FPR: " << m_filters.back()->getFPR() << endl;
-		}
+		cerr << endl;
 	}
 	cerr << "Filter Loading Complete." << endl;
 }
@@ -1225,15 +1223,22 @@ double BioBloomClassifier::evaluateReadBestHit(const string &rec,
  */
 void BioBloomClassifier::evaluateReadScore(const string &rec,
 		vector<unsigned> &hits, vector<double> &scores) {
-
+	vector<unsigned> matches;
 	for (unsigned i = 0; i < m_filters.size(); ++i) {
-		double score = SeqEval::evalSingleScore(rec, *m_filters[i],
-				m_scoreThreshold);
-		if (m_scoreThreshold > score) {
+		double score = SeqEval::evalScore(rec, *m_filters[i], m_scoreThreshold);
+		if (m_scoreThreshold >= score) {
 			hits.push_back(i);
 			scores.push_back(score);
+			matches.push_back(i);
 		} else {
 			scores.push_back(0);
+		}
+	}
+	//compute score for multimatches
+	if(matches.size() > 1){
+		for (unsigned i = 0; i < matches.size(); ++i) {
+			double score = SeqEval::evalScore(rec, *m_filters[matches[i]], 0);
+			scores[matches[i]] = score;
 		}
 	}
 }
