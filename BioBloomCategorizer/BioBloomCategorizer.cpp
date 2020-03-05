@@ -299,7 +299,7 @@ int main(int argc, char *argv[])
 				opt::mode = opt::SCORES;
 			}
 			else{
-				cerr << "Different scoring modes cannot be mixed with score mode" << endl;
+				cerr << "Filter scoring modes cannot be mixed with score mode" << endl;
 				die = true;
 			}
 			break;
@@ -309,7 +309,7 @@ int main(int argc, char *argv[])
 				opt::mode = opt::BESTHIT;
 			}
 			else{
-				cerr << "Different scoring modes cannot be mixed with best hit mode" << endl;
+				cerr << "Filter scoring modes cannot be mixed with best hit mode" << endl;
 				die = true;
 			}
 			break;

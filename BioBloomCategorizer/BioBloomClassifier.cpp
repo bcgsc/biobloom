@@ -1223,23 +1223,17 @@ double BioBloomClassifier::evaluateReadBestHit(const string &rec,
  */
 void BioBloomClassifier::evaluateReadScore(const string &rec,
 		vector<unsigned> &hits, vector<double> &scores) {
-	vector<unsigned> matches;
 	for (unsigned i = 0; i < m_filters.size(); ++i) {
-		double score = SeqEval::evalScore(rec, *m_filters[i], m_scoreThreshold);
-		if (m_scoreThreshold >= score) {
-			hits.push_back(i);
-			scores.push_back(score);
-			matches.push_back(i);
-		} else {
-			scores.push_back(0);
+		bool hit = SeqEval::evalRead(rec, *m_filters[i], m_scoreThreshold);
+		if (hit) {
+			hits.emplace_back(i);
 		}
 	}
 	//compute score for multimatches
-	if(matches.size() > 1){
-		for (unsigned i = 0; i < matches.size(); ++i) {
-			double score = SeqEval::evalScore(rec, *m_filters[matches[i]], 0);
-			scores[matches[i]] = score;
-		}
+	for (unsigned i = 0; i < m_filters.size(); ++i) {
+		double score = SeqEval::evalScore(rec, *m_filters[i], 0);
+		scores.emplace_back(log10(score)*-10.0);
+		cerr << i << " " << score << endl;
 	}
 }
 

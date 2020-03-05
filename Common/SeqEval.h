@@ -34,9 +34,7 @@ inline double normalizeScore(double score, unsigned kmerSize, size_t seqLen) {
 	return score / (seqLen - kmerSize + 1);
 }
 
-//TODO experiment with hashvalue storage functions
-
-inline bool evalSingle(const string &rec, const BloomFilter &filter,
+inline bool evalSimple(const string &rec, const BloomFilter &filter,
 		double threshold, const BloomFilter *subtract =
 		NULL) {
 
@@ -204,6 +202,15 @@ inline size_t calcMinCount(size_t frameLen, double bfFPR, double minFPR) {
 	return i > 1 ? i : 1;
 }
 
+inline double calcProbMatches(size_t frameLen, double bfFPR, size_t matches) {
+	using namespace boost::math::policies;
+	using namespace boost::math;
+	typedef boost::math::binomial_distribution<double,
+			policy<discrete_quantile<integer_round_up> > > binom_round_up;
+	binom_round_up bin(frameLen, bfFPR);
+	return cdf(bin, matches);
+}
+
 inline bool evalBinomial(const string &rec, const BloomFilter &filter,
 		double threshold, const BloomFilter *subtract =
 		NULL) {
@@ -212,7 +219,7 @@ inline bool evalBinomial(const string &rec, const BloomFilter &filter,
 	}
 	const unsigned frameLen = rec.size() - filter.getKmerSize() + 1;
 	const unsigned thres = calcMinCount(frameLen, filter.getFPRPrecompute(), threshold);
-//	cerr << rec.size() << " " << thres << " " << frameLen << endl;
+//	cerr << filter.getFilterSize() << " " << threshold << " " << rec.size() << " " << thres << " " << frameLen << endl;
 	const unsigned antiThres = frameLen - thres;
 
 	unsigned score = 0;
@@ -330,7 +337,7 @@ inline bool evalRead(const string &rec, const BloomFilter &filter,
 		return evalBinomial(rec, filter, threshold, subtract);
 	case opt::SIMPLE:
 	default:
-		return evalSingle(rec, filter, threshold, subtract);
+		return evalSimple(rec, filter, threshold, subtract);
 	}
 	assert(false);
 }
@@ -395,15 +402,11 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter) {
 }
 
 /*
- * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
- * Returns score instead if just a match
+ * Terminates early
  */
-inline double evalSingleScore(const string &rec, const BloomFilter &filter,
-		double threshold, const BloomFilter *subtract =
+inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
+		double threshold = 1, const BloomFilter *subtract =
 		NULL) {
-
-	//currently only support default scoring method
-	assert(opt::scoringMethod == opt::SIMPLE);
 	const double antiThres = floor(
 			denormalizeScore(1.0 - threshold, filter.getKmerSize(),
 					rec.length()));
@@ -419,7 +422,7 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 			++streak;
 		} else {
 			if (antiThres <= ++antiScore)
-				return score;
+				return normalizeScore(score, filter.getKmerSize(), rec.length());
 		}
 		prevPos = itr.pos();
 		++itr;
@@ -430,7 +433,7 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 		if (itr.pos() != prevPos + 1) {
 			antiScore += itr.pos() - prevPos - 1;
 			if (antiThres <= antiScore) {
-				return score;
+				return normalizeScore(score, filter.getKmerSize(), rec.length());
 			}
 			streak = 0;
 		}
@@ -448,7 +451,7 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 		} else {
 			if (streak < opt::streakThreshold) {
 				if (antiThres <= ++antiScore)
-					return score;
+					return normalizeScore(score, filter.getKmerSize(), rec.length());
 				prevPos = itr.pos();
 				++itr;
 			} else {
@@ -457,7 +460,7 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 				//skip lookups
 				while (itr.pos() < skipEnd) {
 					if (antiThres <= ++antiScore)
-						return score;
+						return normalizeScore(score, filter.getKmerSize(), rec.length());
 					prevPos = itr.pos();
 					++itr;
 				}
@@ -466,6 +469,214 @@ inline double evalSingleScore(const string &rec, const BloomFilter &filter,
 		}
 	}
 	return normalizeScore(score, filter.getKmerSize(), rec.length());
+}
+
+inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
+		double threshold = 1, const BloomFilter *subtract =
+		NULL) {
+	const double thres = denormalizeScore(threshold, filter.getKmerSize(),
+			rec.length());
+	const double antiThres = floor(
+			denormalizeScore(1.0 - threshold, filter.getKmerSize(),
+					rec.length()));
+
+	double score = 0;
+	unsigned antiScore = 0;
+	unsigned streak = 0;
+	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
+	unsigned prevPos = 0;
+	if (itr != itr.end()) {
+		if (filter.contains(*itr)) {
+			if (subtract == NULL || !subtract->contains(*itr))
+				score += 0.5;
+			if (thres <= score) {
+				return true;
+			}
+			++streak;
+		} else {
+			if (antiThres <= ++antiScore)
+				return false;
+		}
+		prevPos = itr.pos();
+		++itr;
+	}
+	while (itr != itr.end()) {
+		//check if k-mer has deviated/started again
+		//TODO try to terminate before itr has to re-init after skipping
+		if (itr.pos() != prevPos + 1) {
+			antiScore += itr.pos() - prevPos - 1;
+			if (antiThres <= antiScore) {
+				return normalizeScore(score, filter.getKmerSize(), rec.length());
+			}
+			streak = 0;
+		}
+		if (filter.contains(*itr)) {
+			if (streak == 0) {
+				if (subtract == NULL || !subtract->contains(*itr))
+					score += 0.5;
+			} else {
+				if (subtract == NULL || !subtract->contains(*itr))
+					score += 1.0 - 1.0 / (1.0 + double(streak));
+			}
+			if (thres <= score) {
+				return normalizeScore(score, filter.getKmerSize(), rec.length());
+			}
+			prevPos = itr.pos();
+			++itr;
+			++streak;
+		} else {
+			if (streak < opt::streakThreshold) {
+				if (antiThres <= ++antiScore)
+					return normalizeScore(score, filter.getKmerSize(), rec.length());
+				prevPos = itr.pos();
+				++itr;
+			} else {
+				//TODO: Determine if faster to force re-init
+				unsigned skipEnd = itr.pos() + filter.getKmerSize();
+				//skip lookups
+				while (itr.pos() < skipEnd) {
+					if (antiThres <= ++antiScore)
+						return normalizeScore(score, filter.getKmerSize(), rec.length());
+					prevPos = itr.pos();
+					++itr;
+				}
+			}
+			streak = 0;
+		}
+	}
+	return normalizeScore(score, filter.getKmerSize(), rec.length());
+}
+
+inline unsigned evalMinMatchLenScore(const string &rec, const BloomFilter &filter,
+		unsigned minMatchLen = 1, const BloomFilter *subtract = NULL) {
+	unsigned matchLen = 0;
+	size_t l = rec.length();
+
+	ntHashIterator itr(rec, filter.getHashNum(), filter.getKmerSize());
+	unsigned prevPos = 0;
+	while (itr != itr.end()) {
+		// quit early if there is no hope
+		if (l - itr.pos() + matchLen < minMatchLen)
+			return matchLen;
+
+		//check if k-mer has deviated/started again
+		//TODO try to terminate before itr has to re-init after skipping
+		if (itr.pos() != prevPos + 1) {
+			matchLen = 0;
+		}
+		if (filter.contains(*itr)) {
+			if (subtract == NULL || !subtract->contains(*itr)) {
+				if (matchLen == 0)
+					matchLen = filter.getKmerSize();
+				else
+					++matchLen;
+			}
+		} else {
+			matchLen = 0;
+		}
+		// if min match length reached
+		if (matchLen >= minMatchLen)
+			return matchLen;
+		prevPos = itr.pos();
+		++itr;
+	}
+	return matchLen;
+}
+
+inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
+		double threshold = 0, const BloomFilter *subtract =
+		NULL) {
+	if(rec.size() <  filter.getKmerSize()) {
+		return 0.0;
+	}
+	const unsigned frameLen = rec.size() - filter.getKmerSize() + 1;
+	const unsigned thres = calcMinCount(frameLen, filter.getFPRPrecompute(), threshold);
+//	cerr << filter.getFilterSize() << " " << threshold << " " << rec.size() << " " << thres << " " << frameLen << endl;
+	const unsigned antiThres = frameLen - thres;
+
+	unsigned score = 0;
+	unsigned antiScore = 0;
+	unsigned streak = 0;
+	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
+	unsigned prevPos = 0;
+	if (itr != itr.end()) {
+		if (filter.contains(*itr)) {
+			if (subtract == NULL || !subtract->contains(*itr))
+				score++;
+			if (thres <= score) {
+				return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
+			}
+			++streak;
+		} else {
+			if (antiThres <= ++antiScore)
+				return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
+		}
+		prevPos = itr.pos();
+		++itr;
+	}
+	while (itr != itr.end()) {
+		//check if k-mer has deviated/started again
+		//TODO try to terminate before itr has to re-init after skipping
+		if (itr.pos() != prevPos + 1) {
+			antiScore += itr.pos() - prevPos - 1;
+			if (antiThres <= antiScore) {
+				return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
+			}
+			streak = 0;
+		}
+		if (filter.contains(*itr)) {
+			if (streak == 0) {
+				if (subtract == NULL || !subtract->contains(*itr))
+					++score;
+			}
+			if (thres <= score) {
+				return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
+			}
+			prevPos = itr.pos();
+			++itr;
+			++streak;
+		} else {
+			if (streak < opt::streakThreshold) {
+				if (antiThres <= ++antiScore)
+					return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
+				prevPos = itr.pos();
+				++itr;
+			} else {
+				unsigned skipEnd = itr.pos() + filter.getKmerSize();
+				//skip lookups
+				while (itr.pos() < skipEnd) {
+					if (antiThres <= ++antiScore)
+						return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
+					prevPos = itr.pos();
+					++itr;
+				}
+			}
+			streak = 0;
+		}
+	}
+	return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
+}
+
+/*
+ * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
+ * Returns score instead if just a match
+ */
+inline double evalScore(const string &rec, const BloomFilter &filter,
+		double threshold, const BloomFilter *subtract =
+		NULL) {
+
+	switch (opt::scoringMethod) {
+	case opt::LENGTH:
+		return evalMinMatchLenScore(rec, filter, (unsigned) round(threshold),
+				subtract);
+	case opt::HARMONIC:
+		return evalHarmonicScore(rec, filter, threshold, subtract);
+	case opt::BINOMIAL:
+		return evalBinomialScore(rec, filter, threshold, subtract);
+	case opt::SIMPLE:
+	default:
+		return evalSimpleScore(rec, filter, threshold, subtract);
+	}
 }
 
 ///*
