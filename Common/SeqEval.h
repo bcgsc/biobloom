@@ -208,7 +208,7 @@ inline double calcProbMatches(size_t frameLen, double bfFPR, size_t matches) {
 	typedef boost::math::binomial_distribution<double,
 			policy<discrete_quantile<integer_round_up> > > binom_round_up;
 	binom_round_up bin(frameLen, bfFPR);
-	return cdf(bin, matches);
+	return cdf(complement(bin, matches));
 }
 
 inline bool evalBinomial(const string &rec, const BloomFilter &filter,
@@ -411,9 +411,6 @@ inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
 		threshold = 1;
 	}
 
-	const double antiThres = floor(
-			denormalizeScore(1.0 - threshold, filter.getKmerSize(),
-					rec.length()));
 	double score = 0;
 	unsigned antiScore = 0;
 	unsigned streak = 0;
@@ -424,9 +421,6 @@ inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
 			if (subtract == NULL || !subtract->contains(*itr))
 				score += 0.5;
 			++streak;
-		} else {
-			if (antiThres <= ++antiScore)
-				return normalizeScore(score, filter.getKmerSize(), rec.length());
 		}
 		prevPos = itr.pos();
 		++itr;
@@ -436,9 +430,6 @@ inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
 		//TODO try to terminate before itr has to re-init after skipping
 		if (itr.pos() != prevPos + 1) {
 			antiScore += itr.pos() - prevPos - 1;
-			if (antiThres <= antiScore) {
-				return normalizeScore(score, filter.getKmerSize(), rec.length());
-			}
 			streak = 0;
 		}
 		if (filter.contains(*itr)) {
@@ -454,8 +445,6 @@ inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
 			++streak;
 		} else {
 			if (streak < opt::streakThreshold) {
-				if (antiThres <= ++antiScore)
-					return normalizeScore(score, filter.getKmerSize(), rec.length());
 				prevPos = itr.pos();
 				++itr;
 			} else {
@@ -463,8 +452,6 @@ inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
 				unsigned skipEnd = itr.pos() + filter.getKmerSize();
 				//skip lookups
 				while (itr.pos() < skipEnd) {
-					if (antiThres <= ++antiScore)
-						return normalizeScore(score, filter.getKmerSize(), rec.length());
 					prevPos = itr.pos();
 					++itr;
 				}
@@ -484,9 +471,6 @@ inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
 
 	const double thres = denormalizeScore(threshold, filter.getKmerSize(),
 			rec.length());
-	const double antiThres = floor(
-			denormalizeScore(1.0 - threshold, filter.getKmerSize(),
-					rec.length()));
 
 	double score = 0;
 	unsigned antiScore = 0;
@@ -501,9 +485,6 @@ inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
 				return true;
 			}
 			++streak;
-		} else {
-			if (antiThres <= ++antiScore)
-				return false;
 		}
 		prevPos = itr.pos();
 		++itr;
@@ -513,9 +494,6 @@ inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
 		//TODO try to terminate before itr has to re-init after skipping
 		if (itr.pos() != prevPos + 1) {
 			antiScore += itr.pos() - prevPos - 1;
-			if (antiThres <= antiScore) {
-				return normalizeScore(score, filter.getKmerSize(), rec.length());
-			}
 			streak = 0;
 		}
 		if (filter.contains(*itr)) {
@@ -534,8 +512,6 @@ inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
 			++streak;
 		} else {
 			if (streak < opt::streakThreshold) {
-				if (antiThres <= ++antiScore)
-					return normalizeScore(score, filter.getKmerSize(), rec.length());
 				prevPos = itr.pos();
 				++itr;
 			} else {
@@ -543,8 +519,6 @@ inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
 				unsigned skipEnd = itr.pos() + filter.getKmerSize();
 				//skip lookups
 				while (itr.pos() < skipEnd) {
-					if (antiThres <= ++antiScore)
-						return normalizeScore(score, filter.getKmerSize(), rec.length());
 					prevPos = itr.pos();
 					++itr;
 				}
@@ -605,7 +579,6 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 	const unsigned frameLen = rec.size() - filter.getKmerSize() + 1;
 	const unsigned thres = calcMinCount(frameLen, filter.getFPRPrecompute(), threshold);
 //	cerr << filter.getFilterSize() << " " << threshold << " " << rec.size() << " " << thres << " " << frameLen << endl;
-	const unsigned antiThres = frameLen - thres;
 
 	unsigned score = 0;
 	unsigned antiScore = 0;
@@ -620,9 +593,6 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 				return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
 			}
 			++streak;
-		} else {
-			if (antiThres <= ++antiScore)
-				return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
 		}
 		prevPos = itr.pos();
 		++itr;
@@ -632,9 +602,6 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 		//TODO try to terminate before itr has to re-init after skipping
 		if (itr.pos() != prevPos + 1) {
 			antiScore += itr.pos() - prevPos - 1;
-			if (antiThres <= antiScore) {
-				return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
-			}
 			streak = 0;
 		}
 		if (filter.contains(*itr)) {
@@ -650,16 +617,12 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 			++streak;
 		} else {
 			if (streak < opt::streakThreshold) {
-				if (antiThres <= ++antiScore)
-					return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
 				prevPos = itr.pos();
 				++itr;
 			} else {
 				unsigned skipEnd = itr.pos() + filter.getKmerSize();
 				//skip lookups
 				while (itr.pos() < skipEnd) {
-					if (antiThres <= ++antiScore)
-						return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
 					prevPos = itr.pos();
 					++itr;
 				}
