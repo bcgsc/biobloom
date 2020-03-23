@@ -253,10 +253,8 @@ inline bool evalBinomial(const string &rec, const BloomFilter &filter,
 			streak = 0;
 		}
 		if (filter.contains(*itr)) {
-			if (streak == 0) {
-				if (subtract == NULL || !subtract->contains(*itr))
+			if (subtract == NULL || !subtract->contains(*itr))
 					++score;
-			}
 			if (thres <= score) {
 				return true;
 			}
@@ -605,10 +603,8 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 			streak = 0;
 		}
 		if (filter.contains(*itr)) {
-			if (streak == 0) {
-				if (subtract == NULL || !subtract->contains(*itr))
-					++score;
-			}
+			if (subtract == NULL || !subtract->contains(*itr))
+				++score;
 			if (thres <= score) {
 				return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
 			}
