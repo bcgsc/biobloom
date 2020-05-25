@@ -644,7 +644,7 @@ inline double evalScore(const string &rec, const BloomFilter &filter,
 	case opt::HARMONIC:
 		return evalHarmonicScore(rec, filter, threshold, subtract);
 	case opt::BINOMIAL:
-		return evalBinomialScore(rec, filter, threshold, subtract);
+		return log10(evalBinomialScore(rec, filter, threshold, subtract))*-10;
 	case opt::SIMPLE:
 	default:
 		return evalSimpleScore(rec, filter, threshold, subtract);
