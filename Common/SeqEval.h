@@ -572,7 +572,7 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 		double threshold = 0, const BloomFilter *subtract =
 		NULL) {
 	if(rec.size() <  filter.getKmerSize()) {
-		return 0.0;
+		return 1.0;
 	}
 	const unsigned frameLen = rec.size() - filter.getKmerSize() + 1;
 	const unsigned thres = calcMinCount(frameLen, filter.getFPRPrecompute(), threshold);
