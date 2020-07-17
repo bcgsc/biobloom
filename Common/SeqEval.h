@@ -399,15 +399,9 @@ inline bool evalRead(const string &rec, const BloomFilter &filter,
 //	return normalizeScore(score, filter.getKmerSize(), rec.length());
 //}
 
-/*
- * Terminates early
- */
 inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
-		double threshold = 0, const BloomFilter *subtract =
+		const BloomFilter *subtract =
 		NULL) {
-	if(threshold == 0){
-		threshold = 1;
-	}
 
 	double score = 0;
 	unsigned streak = 0;
@@ -459,15 +453,8 @@ inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
 }
 
 inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
-		double threshold = 0, const BloomFilter *subtract =
+		const BloomFilter *subtract =
 		NULL) {
-	if(threshold == 0){
-		threshold = 1;
-	}
-
-	const double thres = denormalizeScore(threshold, filter.getKmerSize(),
-			rec.length());
-
 	double score = 0;
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
@@ -476,9 +463,6 @@ inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
 		if (filter.contains(*itr)) {
 			if (subtract == NULL || !subtract->contains(*itr))
 				score += 0.5;
-			if (thres <= score) {
-				return true;
-			}
 			++streak;
 		}
 		prevPos = itr.pos();
@@ -497,9 +481,6 @@ inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
 			} else {
 				if (subtract == NULL || !subtract->contains(*itr))
 					score += 1.0 - 1.0 / (1.0 + double(streak));
-			}
-			if (thres <= score) {
-				return normalizeScore(score, filter.getKmerSize(), rec.length());
 			}
 			prevPos = itr.pos();
 			++itr;
@@ -523,23 +504,12 @@ inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
 	return normalizeScore(score, filter.getKmerSize(), rec.length());
 }
 
-inline unsigned evalMinMatchLenScore(const string &rec, const BloomFilter &filter,
-		unsigned minMatchLen = 0, const BloomFilter *subtract = NULL) {
-
-	if(minMatchLen == 0){
-		minMatchLen = rec.size();
-	}
-
+inline unsigned evalMinMatchLenScore(const string &rec,
+		const BloomFilter &filter, const BloomFilter *subtract = NULL) {
 	unsigned matchLen = 0;
-	size_t l = rec.length();
-
 	ntHashIterator itr(rec, filter.getHashNum(), filter.getKmerSize());
 	unsigned prevPos = 0;
 	while (itr != itr.end()) {
-		// quit early if there is no hope
-		if (l - itr.pos() + matchLen < minMatchLen)
-			return matchLen;
-
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
 		if (itr.pos() != prevPos + 1) {
@@ -555,9 +525,6 @@ inline unsigned evalMinMatchLenScore(const string &rec, const BloomFilter &filte
 		} else {
 			matchLen = 0;
 		}
-		// if min match length reached
-		if (matchLen >= minMatchLen)
-			return matchLen;
 		prevPos = itr.pos();
 		++itr;
 	}
@@ -565,15 +532,12 @@ inline unsigned evalMinMatchLenScore(const string &rec, const BloomFilter &filte
 }
 
 inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
-		double threshold = 0, const BloomFilter *subtract =
+		const BloomFilter *subtract =
 		NULL) {
 	if (rec.size() < filter.getKmerSize()) {
 		return 1.0;
 	}
 	const unsigned frameLen = rec.size() - filter.getKmerSize() + 1;
-	const unsigned thres = calcMinCount(frameLen, filter.getFPRPrecompute(),
-			threshold);
-
 	unsigned score = 0;
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
@@ -594,11 +558,6 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 					&& itr.pos() < (unsigned) r[i]) && filter.contains(*itr)) {
 				if (subtract == NULL || !subtract->contains(*itr))
 					score++;
-				if (thres <= score) {
-					free(r);
-					return calcProbMatches(frameLen, filter.getFPRPrecompute(),
-							score);
-				}
 				++streak;
 			}
 			prevPos = itr.pos();
@@ -617,11 +576,6 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 					&& itr.pos() < (unsigned) r[i]) && filter.contains(*itr)) {
 				if (subtract == NULL || !subtract->contains(*itr))
 					++score;
-				if (thres <= score) {
-					free(r);
-					return calcProbMatches(frameLen, filter.getFPRPrecompute(),
-							score);
-				}
 				prevPos = itr.pos();
 				++itr;
 				++streak;
@@ -647,10 +601,6 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 			if (filter.contains(*itr)) {
 				if (subtract == NULL || !subtract->contains(*itr))
 					score++;
-				if (thres <= score) {
-					return calcProbMatches(frameLen, filter.getFPRPrecompute(),
-							score);
-				}
 				++streak;
 			}
 			prevPos = itr.pos();
@@ -665,10 +615,6 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 			if (filter.contains(*itr)) {
 				if (subtract == NULL || !subtract->contains(*itr))
 					++score;
-				if (thres <= score) {
-					return calcProbMatches(frameLen, filter.getFPRPrecompute(),
-							score);
-				}
 				prevPos = itr.pos();
 				++itr;
 				++streak;
@@ -696,21 +642,19 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
  * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
  * Returns score instead if just a match
  */
-inline double evalScore(const string &rec, const BloomFilter &filter,
-		double threshold = 0, const BloomFilter *subtract =
+inline double evalScore(const string &rec, const BloomFilter &filter, const BloomFilter *subtract =
 		NULL) {
 
 	switch (opt::scoringMethod) {
 	case opt::LENGTH:
-		return evalMinMatchLenScore(rec, filter, (unsigned) round(threshold),
-				subtract);
+		return evalMinMatchLenScore(rec, filter, subtract);
 	case opt::HARMONIC:
-		return evalHarmonicScore(rec, filter, threshold, subtract);
+		return evalHarmonicScore(rec, filter, subtract);
 	case opt::BINOMIAL:
-		return log10(evalBinomialScore(rec, filter, threshold, subtract))*-10;
+		return log10(evalBinomialScore(rec, filter, subtract)) * -10;
 	case opt::SIMPLE:
 	default:
-		return evalSimpleScore(rec, filter, threshold, subtract);
+		return evalSimpleScore(rec, filter, subtract);
 	}
 }
 

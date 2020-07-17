@@ -1231,7 +1231,7 @@ void BioBloomClassifier::evaluateReadScore(const string &rec,
 	}
 	//compute score for multimatches
 	for (unsigned i = 0; i < m_filters.size(); ++i) {
-		double score = SeqEval::evalScore(rec, *m_filters[i], 0);
+		double score = SeqEval::evalScore(rec, *m_filters[i]);
 		scores.emplace_back(score);
 	}
 }
