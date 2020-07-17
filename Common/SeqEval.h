@@ -587,11 +587,12 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 		int i = 0;
 
 		if (itr != itr.end()) {
-			if(i < n && (unsigned)(r[i]>>32) == itr.pos()){
-				while (itr.pos() <= (unsigned)r[i]) {
-					++itr;
-				}
+			while (i < n && itr.pos() >= (unsigned) r[i]) {
 				++i;
+			}
+			if (i < n && itr.pos() >= (unsigned) (r[i] >> 32)
+					&& itr.pos() < (unsigned) r[i]) {
+				continue;
 			}
 			else if (filter.contains(*itr)) {
 				if (subtract == NULL || !subtract->contains(*itr))
@@ -612,11 +613,12 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 			if (itr.pos() != prevPos + 1) {
 				streak = 0;
 			}
-			if(i < n && (unsigned)(r[i]>>32) == itr.pos()){
-				while (itr.pos() <= (unsigned)r[i]) {
-					++itr;
-				}
+			while (i < n && itr.pos() >= (unsigned) r[i]) {
 				++i;
+			}
+			if (i < n && itr.pos() >= (unsigned) (r[i] >> 32)
+					&& itr.pos() < (unsigned) r[i]) {
+				continue;
 			}
 			else if (filter.contains(*itr)) {
 				if (subtract == NULL || !subtract->contains(*itr))
