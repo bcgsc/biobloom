@@ -586,17 +586,12 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 		r = sdust(0, (uint8_t*)rec.c_str(), -1, opt::dustK, opt::dustWindow, &n);
 		int i = 0;
 
-		unsigned currStartDust = r[i]>>32;
-		unsigned currEndDust = r[i];
-
 		if (itr != itr.end()) {
-			if(i < n && currStartDust == itr.pos()){
-				while (itr.pos() <= currEndDust) {
+			if(i < n && (unsigned)(r[i]>>32) == itr.pos()){
+				while (itr.pos() <= (unsigned)r[i]) {
 					++itr;
 				}
 				++i;
-				currStartDust = (int)(r[i]>>32);
-				currEndDust = (int)r[i];
 			}
 			else if (filter.contains(*itr)) {
 				if (subtract == NULL || !subtract->contains(*itr))
@@ -617,13 +612,11 @@ inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 			if (itr.pos() != prevPos + 1) {
 				streak = 0;
 			}
-			if(i < n && currStartDust == itr.pos()){
-				while (itr.pos() <= currEndDust) {
+			if(i < n && (unsigned)(r[i]>>32) == itr.pos()){
+				while (itr.pos() <= (unsigned)r[i]) {
 					++itr;
 				}
 				++i;
-				currStartDust = (int)(r[i]>>32);
-				currEndDust = (int)r[i];
 			}
 			else if (filter.contains(*itr)) {
 				if (subtract == NULL || !subtract->contains(*itr))
