@@ -35,7 +35,6 @@ namespace opt {
 	enum ScoringMethod {SIMPLE, LENGTH, HARMONIC, BINOMIAL};
 	extern ScoringMethod scoringMethod;
 
-
 	//options for miBF only
 	//TODO: move to own header file
 	extern bool idByFile;
@@ -48,6 +47,10 @@ namespace opt {
 	extern unsigned numEle;
 	extern std::string subtract;
 	extern double pScore;
+
+	extern bool dust;
+	extern unsigned dustK;
+	extern unsigned dustWindow;
 }
 
 #endif

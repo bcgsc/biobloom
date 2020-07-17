@@ -10,5 +10,6 @@ libcommon_a_SOURCES = \
 	SeqEval.h \
 	kseq.h kseq_util.h \
 	concurrentqueue.h \
-	StringUtil.h
+	StringUtil.h \
+	kalloc.h kdq.h kvec.h sdust.c sdust.h
 	

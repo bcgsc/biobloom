@@ -18,8 +18,8 @@
 #include "Common/Options.h"
 #include "btl_bloomfilter/BloomFilter.hpp"
 #include "btl_bloomfilter/vendor/ntHashIterator.hpp"
-
 #include <boost/math/distributions/binomial.hpp>
+#include "Common/sdust.h"
 
 using namespace std;
 
@@ -410,7 +410,6 @@ inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
 	}
 
 	double score = 0;
-	unsigned antiScore = 0;
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
 	unsigned prevPos = 0;
@@ -427,7 +426,6 @@ inline double evalSimpleScore(const string &rec, const BloomFilter &filter,
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
 		if (itr.pos() != prevPos + 1) {
-			antiScore += itr.pos() - prevPos - 1;
 			streak = 0;
 		}
 		if (filter.contains(*itr)) {
@@ -471,7 +469,6 @@ inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
 			rec.length());
 
 	double score = 0;
-	unsigned antiScore = 0;
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
 	unsigned prevPos = 0;
@@ -491,7 +488,6 @@ inline double evalHarmonicScore(const string &rec, const BloomFilter &filter,
 		//check if k-mer has deviated/started again
 		//TODO try to terminate before itr has to re-init after skipping
 		if (itr.pos() != prevPos + 1) {
-			antiScore += itr.pos() - prevPos - 1;
 			streak = 0;
 		}
 		if (filter.contains(*itr)) {
@@ -571,59 +567,137 @@ inline unsigned evalMinMatchLenScore(const string &rec, const BloomFilter &filte
 inline double evalBinomialScore(const string &rec, const BloomFilter &filter,
 		double threshold = 0, const BloomFilter *subtract =
 		NULL) {
-	if(rec.size() <  filter.getKmerSize()) {
+	if (rec.size() < filter.getKmerSize()) {
 		return 1.0;
 	}
 	const unsigned frameLen = rec.size() - filter.getKmerSize() + 1;
-	const unsigned thres = calcMinCount(frameLen, filter.getFPRPrecompute(), threshold);
-//	cerr << filter.getFilterSize() << " " << threshold << " " << rec.size() << " " << thres << " " << frameLen << endl;
+	const unsigned thres = calcMinCount(frameLen, filter.getFPRPrecompute(),
+			threshold);
 
 	unsigned score = 0;
-	unsigned antiScore = 0;
 	unsigned streak = 0;
 	ntHashIterator itr(rec, filter.getKmerSize(), filter.getKmerSize());
 	unsigned prevPos = 0;
-	if (itr != itr.end()) {
-		if (filter.contains(*itr)) {
-			if (subtract == NULL || !subtract->contains(*itr))
-				score++;
-			if (thres <= score) {
-				return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
+
+	//TODO: this is a prototype dusting operation. Can be better optimized by digging into sdust function
+	if (opt::dust) {
+		uint64_t *r;
+		int n;
+		r = sdust(0, (uint8_t*)rec.c_str(), -1, opt::dustK, opt::dustWindow, &n);
+		int i = 0;
+
+		unsigned currStartDust = r[i]>>32;
+		unsigned currEndDust = r[i];
+
+		if (itr != itr.end()) {
+			if(i < n && currStartDust == itr.pos()){
+				while (itr.pos() <= currEndDust) {
+					++itr;
+				}
+				++i;
+				currStartDust = (int)(r[i]>>32);
+				currEndDust = (int)r[i];
 			}
-			++streak;
-		}
-		prevPos = itr.pos();
-		++itr;
-	}
-	while (itr != itr.end()) {
-		//check if k-mer has deviated/started again
-		//TODO try to terminate before itr has to re-init after skipping
-		if (itr.pos() != prevPos + 1) {
-			antiScore += itr.pos() - prevPos - 1;
-			streak = 0;
-		}
-		if (filter.contains(*itr)) {
-			if (subtract == NULL || !subtract->contains(*itr))
-				++score;
-			if (thres <= score) {
-				return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);
+			else if (filter.contains(*itr)) {
+				if (subtract == NULL || !subtract->contains(*itr))
+					score++;
+				if (thres <= score) {
+					free(r);
+					return calcProbMatches(frameLen, filter.getFPRPrecompute(),
+							score);
+				}
+				++streak;
 			}
 			prevPos = itr.pos();
 			++itr;
-			++streak;
-		} else {
-			if (streak < opt::streakThreshold) {
-				prevPos = itr.pos();
-				++itr;
-			} else {
-				unsigned skipEnd = itr.pos() + filter.getKmerSize();
-				//skip lookups
-				while (itr.pos() < skipEnd) {
-					prevPos = itr.pos();
+		}
+		while (itr != itr.end()) {
+			//check if k-mer has deviated/started again
+			//TODO try to terminate before itr has to re-init after skipping
+			if (itr.pos() != prevPos + 1) {
+				streak = 0;
+			}
+			if(i < n && currStartDust == itr.pos()){
+				while (itr.pos() <= currEndDust) {
 					++itr;
 				}
+				++i;
+				currStartDust = (int)(r[i]>>32);
+				currEndDust = (int)r[i];
 			}
-			streak = 0;
+			else if (filter.contains(*itr)) {
+				if (subtract == NULL || !subtract->contains(*itr))
+					++score;
+				if (thres <= score) {
+					free(r);
+					return calcProbMatches(frameLen, filter.getFPRPrecompute(),
+							score);
+				}
+				prevPos = itr.pos();
+				++itr;
+				++streak;
+			} else {
+				if (streak < opt::streakThreshold) {
+					prevPos = itr.pos();
+					++itr;
+				} else {
+					unsigned skipEnd = itr.pos() + filter.getKmerSize();
+					//skip lookups
+					//TODO Add skip functionality to nthash (faster skip or reconstruct)
+					while (itr.pos() < skipEnd) {
+						prevPos = itr.pos();
+						++itr;
+					}
+				}
+				streak = 0;
+			}
+		}
+		free(r);
+	} else {
+		if (itr != itr.end()) {
+			if (filter.contains(*itr)) {
+				if (subtract == NULL || !subtract->contains(*itr))
+					score++;
+				if (thres <= score) {
+					return calcProbMatches(frameLen, filter.getFPRPrecompute(),
+							score);
+				}
+				++streak;
+			}
+			prevPos = itr.pos();
+			++itr;
+		}
+		while (itr != itr.end()) {
+			//check if k-mer has deviated/started again
+			//TODO try to terminate before itr has to re-init after skipping
+			if (itr.pos() != prevPos + 1) {
+				streak = 0;
+			}
+			if (filter.contains(*itr)) {
+				if (subtract == NULL || !subtract->contains(*itr))
+					++score;
+				if (thres <= score) {
+					return calcProbMatches(frameLen, filter.getFPRPrecompute(),
+							score);
+				}
+				prevPos = itr.pos();
+				++itr;
+				++streak;
+			} else {
+				if (streak < opt::streakThreshold) {
+					prevPos = itr.pos();
+					++itr;
+				} else {
+					unsigned skipEnd = itr.pos() + filter.getKmerSize();
+					//skip lookups
+					//TODO Add skip functionality to nthash (faster skip or reconstruct)
+					while (itr.pos() < skipEnd) {
+						prevPos = itr.pos();
+						++itr;
+					}
+				}
+				streak = 0;
+			}
 		}
 	}
 	return calcProbMatches(frameLen, filter.getFPRPrecompute(), score);

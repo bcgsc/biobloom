@@ -32,4 +32,9 @@ namespace opt {
 	unsigned hashNum = 0;
 	unsigned numEle = 0;
 	std::string subtract = "";
+
+	bool dust = true;
+	unsigned dustK = 20;
+	unsigned dustWindow = 64;
+
 }
