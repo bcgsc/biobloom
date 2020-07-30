@@ -49,7 +49,7 @@ namespace opt {
 	extern double pScore;
 
 	extern bool dust;
-	extern unsigned dustK;
+	extern unsigned dustT;
 	extern unsigned dustWindow;
 }
 

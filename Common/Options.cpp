@@ -34,7 +34,7 @@ namespace opt {
 	std::string subtract = "";
 
 	bool dust = false;
-	unsigned dustK = 20;
+	unsigned dustT = 20;
 	unsigned dustWindow = 64;
 
 }

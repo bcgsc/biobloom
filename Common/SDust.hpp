@@ -21,7 +21,7 @@ public:
 	}
 
 	SDust(const string &seq): m_currPos(0) {
-		m_results = (uint64_t*)sdust(0, (uint8_t*) seq.c_str(), seq.size(), opt::dustK,
+		m_results = (uint64_t*)sdust(0, (uint8_t*) seq.c_str(), seq.size(), opt::dustT,
 				opt::dustWindow, &m_resSize);
 	}
 
@@ -31,7 +31,7 @@ public:
 
 	void loadSeq(const string &seq) {
 		free(m_results);
-		m_results = (uint64_t*)sdust(0, (uint8_t*) seq.c_str(), seq.size(), opt::dustK,
+		m_results = (uint64_t*)sdust(0, (uint8_t*) seq.c_str(), seq.size(), opt::dustT,
 				opt::dustWindow, &m_resSize);
 	}
 
