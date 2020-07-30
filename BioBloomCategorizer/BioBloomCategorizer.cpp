@@ -131,6 +131,9 @@ void printHelpDialog()
 	"                         harmonic scoring penalizes short runs of matches and\n"
 	"                         bionomial scoring computes the minimum number of k-mer\n"
 	"                         matches needed based on a minimum FPR (-s). [simple]\n"
+	"  -D, --dust             Filter using dust."
+	"  -T, --T_dust           T parameter for dust. [20]"
+	"  -W, --window_dust      Window size for dust. [64]"
 //	"  -m, --multi=N          Multi Match threshold. [1.0]\n"
 	"\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
@@ -190,12 +193,15 @@ int main(int argc, char *argv[])
 		"with_score", no_argument, NULL, 'w' }, {
 		"score_type", required_argument, NULL, 'S' }, {
 		"verbose", no_argument, &opt::verbose, 1 }, {
+		"dust", no_argument, NULL, 'D' }, {
+		"T_dust", required_argument, NULL, 'T' }, {
+		"window_dust", required_argument, NULL, 'W' }, {
 		NULL, 0, NULL, 0 } };
 
 	//actual checking step
 	//Todo: add checks for duplicate options being set
 	int option_index = 0;
-	while ((c = getopt_long(argc, argv, "f:p:hegl:vs:r:t:cdiwI:nm:S:b", long_options,
+	while ((c = getopt_long(argc, argv, "f:p:hegl:vs:r:t:cdiwI:nm:S:bDT:W:", long_options,
 			&option_index)) != -1)
 	{
 		istringstream arg(optarg != NULL ? optarg : "");
@@ -312,6 +318,20 @@ int main(int argc, char *argv[])
 				cerr << "Filter scoring modes cannot be mixed with best hit mode" << endl;
 				die = true;
 			}
+			break;
+		}
+		case 'D': {
+			opt::dust = true;
+			break;
+		}
+		case 'T': {
+			stringstream convert(optarg);
+			convert >> opt::dustT;
+			break;
+		}
+		case 'W': {
+			stringstream convert(optarg);
+			convert >> opt::dustWindow;
 			break;
 		}
 		case '?': {
