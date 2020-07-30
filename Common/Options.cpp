@@ -33,7 +33,7 @@ namespace opt {
 	unsigned numEle = 0;
 	std::string subtract = "";
 
-	bool dust = true;
+	bool dust = false;
 	unsigned dustK = 20;
 	unsigned dustWindow = 64;
 
