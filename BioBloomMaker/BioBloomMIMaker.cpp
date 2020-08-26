@@ -16,6 +16,9 @@
 #include <fstream>
 #include <omp.h>
 #include "MIBFGen.hpp"
+#include "btl_bloomfilter/vendor/stHashIterator.hpp"
+#include "Common/sntHashIterator.hpp"
+#include "btl_bloomfilter/MIBFConstructSupport.hpp"
 
 using namespace std;
 
@@ -228,13 +231,27 @@ int main(int argc, char *argv[]) {
 	//set number of hash functions used
 	if (!opt::sseeds.empty()) {
 		opt::hashNum = opt::sseeds.size();
-	} else if (opt::hashNum == 0){
+		if (opt::verbose)
+			cerr << "Spaced Seeds Detected" << endl;
+	} else {
+		if (opt::verbose)
+			cerr << "K-mer mode detected" << endl;
+	}
+
+	if (opt::hashNum == 0){
 		cerr << "Please pick number of hash values (-g)\n";
 		exit(1);
 	}
 
-	MIBFGen filterGen(inputFiles, opt::kmerSize, opt::entryNum);
-	filterGen.generate(opt::prefix, opt::occupancy);
+	if (!opt::sseeds.empty()) {
+		MIBFGen filterGen(inputFiles, opt::kmerSize, opt::entryNum);
+		filterGen.generate<stHashIterator>(opt::prefix, opt::occupancy);
+	}
+	else{
+		MIBFGen filterGen(inputFiles, opt::kmerSize, opt::entryNum);
+		filterGen.generate<sntHashIterator>(opt::prefix, opt::occupancy);
+	}
+
 	if (opt::verbose) {
 		cerr << "Multi Index Bloom Filter Creation Complete." << endl;
 	}
