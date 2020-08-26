@@ -28,13 +28,11 @@ class sntHashIterator : public ntHashIterator
 
 	sntHashIterator(const std::string &seq,
 			const std::vector<std::vector<unsigned> > &seed, unsigned h,
-			unsigned k) :
-			ntHashIterator(seq, h, k) {
+			unsigned h2, unsigned k, size_t pos = 0) :
+			ntHashIterator(seq, h, k, pos) {
 		assert(seed.empty());
+		assert(h2 == 1);
 	}
 };
-
-
-
 
 #endif /* COMMON_SNTHASHITERATOR_HPP_ */

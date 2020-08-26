@@ -786,7 +786,7 @@ private:
 		}
 		if (m_filter.getSeedValues().size() > 0) {
 			stHashIterator itr(seq, m_filter.getSeedValues(),
-					m_filter.getHashNum(), m_filter.getKmerSize());
+					m_filter.getHashNum(), 1, m_filter.getKmerSize());
 			return support.query(itr, *m_minCount[frameCount]);
 		} else {
 			ntHashIterator itr(seq, m_filter.getHashNum(),
@@ -819,9 +819,9 @@ private:
 			}
 		}
 		if (m_filter.getSeedValues().size() > 0) {
-			stHashIterator itr1(seq1, m_filter.getSeedValues(), m_filter.getHashNum(),
+			stHashIterator itr1(seq1, m_filter.getSeedValues(), m_filter.getHashNum(), 1,
 					m_filter.getKmerSize());
-			stHashIterator itr2(seq2, m_filter.getSeedValues(), m_filter.getHashNum(),
+			stHashIterator itr2(seq2, m_filter.getSeedValues(), m_filter.getHashNum(), 1,
 					m_filter.getKmerSize());
 			return support.query(itr1, itr2, *m_minCount[frameCount]);
 		} else {
