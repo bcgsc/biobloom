@@ -11,5 +11,6 @@ libcommon_a_SOURCES = \
 	kseq.h kseq_util.h \
 	concurrentqueue.h \
 	StringUtil.h \
-	kalloc.h kdq.h kvec.h sdust.c sdust.h SDust.hpp
+	kalloc.h kdq.h kvec.h sdust.c sdust.h SDust.hpp \
+	sntHashIterator.hpp
 	
