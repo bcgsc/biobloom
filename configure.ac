@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(BIOBLOOMTOOLS, 2.3.3, cjustin@bcgsc.ca)
+AC_INIT(BIOBLOOMTOOLS, 2.3.4, cjustin@bcgsc.ca)
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([BioBloomMaker/BioBloomMaker.cpp])
 AC_CONFIG_HEADER([config.h])
@@ -23,7 +23,7 @@ AC_CHECK_LIB([dl], [dlopen])
 AC_TYPE_SIZE_T
 
 # Set compiler flags. (TODO Probably doing some bad stuff here)
-AC_SUBST(CPPFLAGS,"-std=c++11 $CPPFLAGS")
+AC_SUBST(CXXFLAGS,"-std=c++11 $CXXFLAGS")
 AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra -Werror $AM_CXXFLAGS")
 
 # Options to configure.
