@@ -131,9 +131,9 @@ void printHelpDialog()
 	"                         harmonic scoring penalizes short runs of matches and\n"
 	"                         bionomial scoring computes the minimum number of k-mer\n"
 	"                         matches needed based on a minimum FPR (-s). [simple]\n"
-	"  -D, --dust             Filter using dust."
-	"  -T, --T_dust           T parameter for dust. [20]"
-	"  -W, --window_dust      Window size for dust. [64]"
+	"  -D, --dust             Filter using dust.\n"
+	"  -T, --T_dust           T parameter for dust. [20]\n"
+	"  -W, --window_dust      Window size for dust. [64]\n"
 //	"  -m, --multi=N          Multi Match threshold. [1.0]\n"
 	"\n"
 	"Report bugs to <cjustin@bcgsc.ca>.";
