@@ -52,7 +52,6 @@ vector<string> convertInputString(const string &inputString)
 void printHelpDialog() {
 	static const char dialog[] =
 		"Usage: biobloommimaker -p [FILTERID] [OPTION]... [FILE]...\n"
-		"Usage: biobloommimaker -p [FILTERID] -r 0.2 [FILE]... [FASTQ1] [FASTQ2] \n"
 		"Creates a multi-index Bloom Filter from a list of fasta files.\n"
 		"\n"
 		"  -p, --file_prefix=N    Filter prefix and filter ID. Required option.\n"
