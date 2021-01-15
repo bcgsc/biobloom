@@ -28,5 +28,7 @@ SeqEvalTests_LDADD = $(top_builddir)/Common/libcommon.a
 SeqEvalTests_SOURCES = SeqEvalTests.cpp
 SeqEvalTests_CPPFLAGS = -I$(top_srcdir)/Common
 
+ntHashTests_LDADD = $(top_builddir)/Common/libcommon.a -lz
+ntHashTests_CXXFLAGS = $(AM_CXXFLAGS) $(OPENMP_CXXFLAGS)
 ntHashTests_SOURCES = ntHashTests.cpp
 ntHashTests_CPPFLAGS = -I$(top_srcdir)/Common

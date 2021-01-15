@@ -1,9 +1,19 @@
-#include <vector>
-#include "btl_bloomfilter/vendor/stHashIterator.hpp"
-#include "btl_bloomfilter/MIBloomFilter.hpp"
+/*
+ *      Author: cjustin
+ */
+
 #include <string>
+#include <assert.h>
+#include <vector>
 #include <iostream>
-#include <cassert>
+#include <fstream>
+#include <sstream>
+#include "btl_bloomfilter/MIBloomFilter.hpp"
+#include "btl_bloomfilter/vendor/stHashIterator.hpp"
+#include "Common/Options.h"
+#if _OPENMP
+# include <omp.h>
+#endif
 
 using namespace std;
 
@@ -14,9 +24,8 @@ int main()
 	ss.push_back("100001111");
 	string seqFW = "TCAAATCTAA";
 	string seqRV = "TTAGATTTGA";
-
-	stHashIterator itr1(seqFW, MIBloomFilter<unsigned>::parseSeedString(ss), ss.size(), ss[0].size());
-	stHashIterator itr2(seqRV, MIBloomFilter<unsigned>::parseSeedString(ss), ss.size(), ss[0].size());
+	stHashIterator itr1(seqFW, MIBloomFilter<ID>::parseSeedString(ss), ss.size(), 1, ss[0].size());
+	stHashIterator itr2(seqRV, MIBloomFilter<ID>::parseSeedString(ss), ss.size(), 1, ss[0].size());
 	cerr << (*itr1)[0] << " " << (*itr2)[1] << endl;
 	cerr << (*itr1)[1] << " " << (*itr2)[0] << endl;
 

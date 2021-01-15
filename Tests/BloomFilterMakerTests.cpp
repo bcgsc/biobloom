@@ -12,7 +12,7 @@
 #include <vector>
 #include <fstream>
 #include "btl_bloomfilter/BloomFilter.hpp"
-#include "btl_bloomfilter/ntHashIterator.hpp"
+#include "btl_bloomfilter/vendor/ntHashIterator.hpp"
 #include "omp.h"
 
 using namespace std;
