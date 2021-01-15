@@ -1,5 +1,6 @@
 #include <vector>
-#include "btl_bloomfilter/stHashIterator.hpp"
+#include "btl_bloomfilter/vendor/stHashIterator.hpp"
+#include "btl_bloomfilter/MIBloomFilter.hpp"
 #include <string>
 #include <iostream>
 #include <cassert>
@@ -14,8 +15,8 @@ int main()
 	string seqFW = "TCAAATCTAA";
 	string seqRV = "TTAGATTTGA";
 
-	stHashIterator itr1(seqFW, parseSeed(ss), ss.size(), ss[0].size());
-	stHashIterator itr2(seqRV, parseSeed(ss), ss.size(), ss[0].size());
+	stHashIterator itr1(seqFW, MIBloomFilter<unsigned>::parseSeedString(ss), ss.size(), ss[0].size());
+	stHashIterator itr2(seqRV, MIBloomFilter<unsigned>::parseSeedString(ss), ss.size(), ss[0].size());
 	cerr << (*itr1)[0] << " " << (*itr2)[1] << endl;
 	cerr << (*itr1)[1] << " " << (*itr2)[0] << endl;
 
