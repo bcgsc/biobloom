@@ -132,8 +132,7 @@ public:
 				opt::hashNum, occ, opt::sseeds);
 		vector<vector<unsigned> > ssVal;
 		if (!opt::sseeds.empty()) {
-			vector<vector<unsigned> > ssVal =
-					MIBloomFilter<ID>::parseSeedString(opt::sseeds);
+			ssVal =	MIBloomFilter<ID>::parseSeedString(opt::sseeds);
 		}
 		generateBV(miBFCS, ssVal);
 
@@ -369,6 +368,10 @@ private:
 		} else {
 			for (unsigned i = 0; i < m_fileNames.size(); ++i) {
 				gzFile fp;
+				if(opt::verbose){
+#pragma omp critical(stderr)
+					cerr << "Opening " << m_fileNames[i] << endl;
+				}
 				fp = gzopen(m_fileNames[i].c_str(), "r");
 				kseq_t *seq = kseq_init(fp);
 				int l;
