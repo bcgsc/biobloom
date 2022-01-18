@@ -1,3 +1,0 @@
-[submodule "btl_bloomfilter"]
-	path = btl_bloomfilter
-	url = https://github.com/bcgsc/btl_bloomfilter
