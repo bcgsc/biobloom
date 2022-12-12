@@ -80,6 +80,10 @@ If your boost library headers are not in your PATH you can specify their locatio
 ```bash
 ./configure –-with-boost=/boost/path --prefix=/BBT/PATH && make install
 ```
+BioBloomTools can be installed on linux using conda:
+```bash
+conda install -c bioconda -c conda-forge biobloomtools
+```
 Alternatively, if you have linuxbrew/homebrew you can run:
 ```bash
 brew install biobloomtools
