@@ -1,25 +1,25 @@
-trigger:
-- master
 
-displayName: Compile on Linux
-pool:
-  vmImage: 'ubuntu-latest'
+jobs:
+- job:
+  displayName: Compile on Linux
+  pool:
+    vmImage: 'ubuntu-latest'
 
-steps:
-  - script: echo "##vso[task.prependpath]$CONDA/bin"
-    displayName: Add conda to PATH
-  - script: conda create --yes --quiet --name bbt_CI
-    displayName: Create Anaconda environment
-  - script: |
-      source activate bbt_CI
-      conda install --yes --quiet --name bbt_CI -c conda-forge -c bioconda mamba
-      mamba install --yes --quiet -c conda-forge -c bioconda compilers boost-cpp zlib sparsehash sdsl-lite autoconf
-    displayName: Install Anaconda packages
-  - script: |
-      source activate bbt_CI
-      ./autogen.sh
-      ./configure --prefix=$(pwd)/bbt_build && make install
-      $(pwd)/bbt_build/bin/biobloommaker -h
-      $(pwd)/bbt_build/bin/biobloomcategorizer -h
-    displayName: Compile and test BBT
+  steps:
+    - script: echo "##vso[task.prependpath]$CONDA/bin"
+      displayName: Add conda to PATH
+    - script: conda create --yes --quiet --name bbt_CI
+      displayName: Create Anaconda environment
+    - script: |
+        source activate bbt_CI
+        conda install --yes --quiet --name bbt_CI -c conda-forge -c bioconda mamba
+        mamba install --yes --quiet -c conda-forge -c bioconda compilers boost-cpp zlib sparsehash sdsl-lite autoconf
+      displayName: Install Anaconda packages
+    - script: |
+        source activate bbt_CI
+        ./autogen.sh
+        ./configure --prefix=$(pwd)/bbt_build && make install
+        $(pwd)/bbt_build/bin/biobloommaker -h
+        $(pwd)/bbt_build/bin/biobloomcategorizer -h
+      displayName: Compile and test BBT
 
