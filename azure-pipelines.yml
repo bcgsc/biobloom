@@ -1,8 +1,3 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
 - master
 
@@ -10,10 +5,19 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+  - script: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+  - script: conda create --yes --quiet --name bbt_CI
+    displayName: Create Anaconda environment
+  - script: |
+      source activate bbt_CI
+      conda install --yes --quiet --name bbt_CI -c conda-forge -c bioconda mamba
+      mamba install --yes --quiet --name bbt_CI -c conda-forge -c bioconda compilers boost-cpp zlib sparsehash sdsl-lite autoconf
+    displayName: Install Anaconda packages
+  - script: |
+      ./autogen.sh
+      ./configure --prefix=$(pwd)/bbt_build && make install
+      $(pwd)/bbt_build/bin/biobloommaker -h
+      $(pwd)/bbt_build/bin/biobloomcategorizer -h
+    displayName: Compile and test BBT
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
