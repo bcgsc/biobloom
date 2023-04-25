@@ -20,6 +20,7 @@ jobs:
       displayName: Install Anaconda packages
     - script: |
         source activate bbt_CI
+        echo $CXXFLAGS
         ./autogen.sh
         ./configure --prefix=$(pwd)/bbt_build && make install
         $(pwd)/bbt_build/bin/biobloommaker -h
