@@ -78,7 +78,7 @@ To install BBT in a specified directory:
 ```
 If your boost library headers are not in your PATH you can specify their location:
 ```bash
-./configure –-with-boost=/boost/path --prefix=/BBT/PATH && make install
+./configure --with-boost=/boost/path --prefix=/BBT/PATH && make install
 ```
 BioBloomTools can be installed on linux using conda:
 ```bash
@@ -94,7 +94,7 @@ brew install biobloomtools
 
 After you have your FastA file a `.bf` file with corresponding information text file can be created by running the command:
 ```bash
-./biobloommaker –p input input1.fasta input2.fasta
+./biobloommaker -p input input1.fasta input2.fasta
 ```
 `-p` is the prefix for the files being created, it also acts as an ID for the filter.
 
@@ -116,7 +116,7 @@ Before starting make sure the listed `.bf` file is in the same directory as its 
 
 A `summary.tsv` file, `readStatus.tsv` summary file, and FastA files containing categorized reads can be generated with the following command:
 ```bash
-./biobloomcategorizer –-fa –p /output/prefix –f "filter1.bf filter2.bf filter3.bf" inputReads1.bam.bz2 inputreads2_qseq.txt
+./biobloomcategorizer --fa -p /output/prefix -f "filter1.bf filter2.bf filter3.bf" inputReads1.bam.bz2 inputreads2_qseq.txt
 ```
 `-p` is the output directory for the output files.
 `-f` is the filter(s) you used to categorize the sequences. You can specify as many as
@@ -125,7 +125,7 @@ you need.
 There are some advanced options open can use outlined in section 5. Notable option
 one can use is the paired end mode `-e`:
 ```bash
-./biobloomcategorizer -e –p /output/prefix –f "filter1.bf filter2.bf filter3.bf" inputReads1_1.fq inputreads1_2.fq
+./biobloomcategorizer -e -p /output/prefix -f "filter1.bf filter2.bf filter3.bf" inputReads1_1.fq inputreads1_2.fq
 ```
 `-e` will require that both reads match when making the call about what reference they belong in.
 
