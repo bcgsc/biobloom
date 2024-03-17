@@ -23,7 +23,7 @@ AC_CHECK_LIB([dl], [dlopen])
 AC_TYPE_SIZE_T
 
 # Set compiler flags. (TODO Probably doing some bad stuff here)
-AC_SUBST(CXXFLAGS,"-std=c++11 $CXXFLAGS")
+AC_SUBST(CXXFLAGS,"-std=c++17 $CXXFLAGS")
 AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra -Werror $AM_CXXFLAGS")
 
 # Options to configure.

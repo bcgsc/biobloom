@@ -1,0 +1,28 @@
+
+jobs:
+- job:
+  displayName: Compile on Linux
+  pool:
+    vmImage: 'ubuntu-latest'
+
+  steps:
+    - checkout: self
+      persistCredentials: true
+      submodules: true
+    - script: echo "##vso[task.prependpath]$CONDA/bin"
+      displayName: Add conda to PATH
+    - script: conda create --yes --quiet --name bbt_CI
+      displayName: Create Anaconda environment
+    - script: |
+        source activate bbt_CI
+        conda install --yes -c conda-forge -c bioconda mamba compilers
+        mamba install --yes -c conda-forge -c bioconda boost-cpp zlib sparsehash sdsl-lite autoconf
+      displayName: Install Anaconda packages
+    - script: |
+        source activate bbt_CI
+        ./autogen.sh
+        ./configure --prefix=$(pwd)/bbt_build CXXFLAGS='-Wno-unused-parameter' && make install
+        $(pwd)/bbt_build/bin/biobloommaker -h
+        $(pwd)/bbt_build/bin/biobloomcategorizer -h
+      displayName: Compile and test BBT
+
