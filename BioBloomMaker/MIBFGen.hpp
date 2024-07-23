@@ -109,6 +109,11 @@ public:
 			}
 		}
 
+		if(m_ids.size() >= ID(1 << (sizeof(ID) * 8 - 1))){
+			cerr << "Max Size: " << ID(1 << (sizeof(ID) * 8 - 1)) << " Required Size: " << m_ids.size()  << endl;
+			cerr << "Recompile with a larger integer for storing IDs." << endl;
+		}
+
 		//make saturation bit is not exceeded
 		assert(m_ids.size() < ID(1 << (sizeof(ID) * 8 - 1)));
 
