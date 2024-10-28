@@ -295,9 +295,11 @@ Categorize Sequences. The input format may be FASTA, FASTQ, and compressed gz.
                          integer representing the minimum match length in bases.
                          If N is a floating point, the maximum threshold is any 
                          number less than 1, and the minimum is 0 (highest
-                         sensitivity). If set to 1, the best hit is used rather
-                         than the threshold and the score will be appended to the
-                         header of the output read. [0.15]
+                         sensitivity). When using binomial scoring this score
+                         becomes to the minimum -10*log(FPR) threshold for a 
+                         match. [0.15 for default, 100 for binomial]
+  -b, --best_hit         The best hit is used rather than the score (-s) threshold.
+                         Score will be appended to the header of the output read.
   -w, --with_score       Output multimatches with scores in the order of filter.
   -t, --threads=N        The number of threads to use. [1]
   -g, --gz_output        Outputs all output files in compressed gzip.
@@ -305,11 +307,12 @@ Categorize Sequences. The input format may be FASTA, FASTQ, and compressed gz.
       --fq               Output categorized reads in Fastq files.
       --chastity         Discard and do not evaluate unchaste reads.
       --no-chastity      Do not discard unchaste reads. [default]
-  -l, --file_list=N      A file of list of file pairs to run in parallel.
+  -l, --file_list=N      A file of list of file pairs to run in parallel. Should
+                         only be used when the number of input files is large.
   -v, --version          Display version information.
   -h, --help             Display this dialog.
       --verbose          Display verbose output
-  -I, --interval         the interval to report file processing status [10000000]
+  -I, --interval         Interval to report file processing status [10000000]
 Advanced options:
   -r, --streak=N         The number of hits tiling in second pass needed to jump
                          Several tiles upon a miss. Small values decrease
@@ -322,6 +325,13 @@ Advanced options:
                          filter listed by -f. Reads are outputed in fastq,
                          and if paired will output will be interlaced.
   -n, --inverse          Inverts the output of -d (everything but first filter).
+  -S, --score_type=N     Can be set to 'harmonic' scoring or 'binomial' scoring.
+                         harmonic scoring penalizes short runs of matches and
+                         bionomial scoring computes the minimum number of k-mer
+                         matches needed based on a minimum FPR (-s). [simple]
+  -D, --dust             Filter using dust.
+  -T, --T_dust           T parameter for dust. [20]
+  -W, --window_dust      Window size for dust. [64]
   
 Report bugs to <cjustin@bcgsc.ca>.
 ```
