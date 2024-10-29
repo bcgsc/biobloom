@@ -295,9 +295,11 @@ Categorize Sequences. The input format may be FASTA, FASTQ, and compressed gz.
                          integer representing the minimum match length in bases.
                          If N is a floating point, the maximum threshold is any 
                          number less than 1, and the minimum is 0 (highest
-                         sensitivity). If set to 1, the best hit is used rather
-                         than the threshold and the score will be appended to the
-                         header of the output read. [0.15]
+                         sensitivity). When using binomial scoring this score
+                         becomes to the minimum -10*log(FPR) threshold for a 
+                         match. [0.15 for default, 100 for binomial]
+  -b, --best_hit         The best hit is used rather than the score (-s) threshold.
+                         Score will be appended to the header of the output read.
   -w, --with_score       Output multimatches with scores in the order of filter.
   -t, --threads=N        The number of threads to use. [1]
   -g, --gz_output        Outputs all output files in compressed gzip.
@@ -305,11 +307,12 @@ Categorize Sequences. The input format may be FASTA, FASTQ, and compressed gz.
       --fq               Output categorized reads in Fastq files.
       --chastity         Discard and do not evaluate unchaste reads.
       --no-chastity      Do not discard unchaste reads. [default]
-  -l, --file_list=N      A file of list of file pairs to run in parallel.
+  -l, --file_list=N      A file of list of file pairs to run in parallel. Should
+                         only be used when the number of input files is large.
   -v, --version          Display version information.
   -h, --help             Display this dialog.
       --verbose          Display verbose output
-  -I, --interval         the interval to report file processing status [10000000]
+  -I, --interval         Interval to report file processing status [10000000]
 Advanced options:
   -r, --streak=N         The number of hits tiling in second pass needed to jump
                          Several tiles upon a miss. Small values decrease
@@ -322,10 +325,16 @@ Advanced options:
                          filter listed by -f. Reads are outputed in fastq,
                          and if paired will output will be interlaced.
   -n, --inverse          Inverts the output of -d (everything but first filter).
+  -S, --score_type=N     Can be set to 'harmonic' scoring or 'binomial' scoring.
+                         harmonic scoring penalizes short runs of matches and
+                         bionomial scoring computes the minimum number of k-mer
+                         matches needed based on a minimum FPR (-s). [simple]
+  -D, --dust             Filter using dust.
+  -T, --T_dust           T parameter for dust. [20]
+  -W, --window_dust      Window size for dust. [64]
   
 Report bugs to <cjustin@bcgsc.ca>.
 ```
-
 ### A. How can distinguish between organisms that share lots of k-mer content?
 
 Using the `--with_score` (`-w`) in biobloomcategorizer will output the score of each filter (in the order specified with `-f`) in the header of the multimatch filter.
@@ -338,7 +347,9 @@ Memory usage is directly dependent on the filter size, which is in turn a functi
 
 ### C. How can I make my results more sensitive?
 
-In biobloomcategorizer try to decrease the score threshold (`-s`). If that still does not work, in biobloommaker try reducing the k-mer (`-k`) size to allow more tiles, which can help with sensitivity. Note that if `-k` is decreased to values that cause sequence collisions, this can cause non-specific classification (for most tasks `k`=16 is probably as low as you can go). 
+In biobloomcategorizer try to decrease the score threshold (`-s`). If that still does not work, in biobloommaker try reducing the k-mer (`-k`) size to allow more tiles, which can help with sensitivity. Note that if `-k` is decreased to values that cause sequence collisions, this can cause non-specific classification (for most tasks `k`=16 is probably as low as you can go).
+
+There are also alternative scoring methods. I would recommend using or experimenting with `-S 'binomial' -s 60` in biobloomcategorizer as probability-based scoring is more robust. See section F below for more information.
 
 ### D. How can I make my results more specific?
 
@@ -346,10 +357,19 @@ In biobloomcategorizer you can increase score threshold (`-s`).
 
 In biobloommaker decreasing the false positive rate (`-f`) can help with specificity. Decreasing the filter false positive rate will increase memory usage.
 
-Due to seqeunce collisions, increasing `-k` can improve the effective specificity because they can be used to obtain more unique sequence matches (higher k has higher complexity). There will be fewer frames to consider when increasing the k-mer which may slightly increase the chance of random false positives.
+Due to sequence collisions, increasing `-k` can improve the effective specificity because they can be used to obtain more unique sequence matches (a higher k has higher complexity). There will be fewer frames to consider when increasing the k-mer which may slightly increase the chance of random false positives.
+
+There is also a `--dust` filter option. This will omit k-mers that are low complexity from your classification. This may impact performance slightly and another option would be to mask out repeats in your reference files used to make filters.
+
+There are also alternative scoring methods. I would recommend using or experimenting with `-S 'binomial' -s 60` in biobloomcategorizer as probability-based scoring is more robust. See section F below for more information.
 
 ### E. How can I make the program faster?
 There are multiple ways to speed up biobloomcategorizer. Here are a few options:
 
 The `--ordered` option, other than priotizing the first filters in the list (specified by `-f`), will have an added benefit of speeding up the program by avoiding some evaluations if a match is already found. Furthermore, because of this speed up, this option maybe appropriate even in situations where no hierarchy is desired (filters must be unrelated in this case).
 
+### F. Binomial Scoring
+
+The `-S 'binomial'` scoring method is what the multi-index bloom filter code uses as default but can be used with regular BBT. It is a probability-based scoring method that simply calculates the probability that a read is a false positive assuming that all k-mers are unique to a genome but can be a false positive in a filter. In practice, especially if experimenting with non-Illumina data, this is more robust than the default scoring method. It may become the default scoring method for BBT in the future.
+
+The `-s` parameter changes when `-S 'binomial'` is set and becomes the minimum -10\*log(minimum false positive rate) threshold for a match. The parameter becomes like the minimum FPR, but with -10*log scaling so the parameter becomes manageable (similar MAPQ words in aligners like BWA). For example, `-s` 10 would mean you accept 10% of the matches to be false positives and -s 60 would mean you accept 1 out of 10^6 reads to be false positives hits. So setting it to 60 should work well in most cases.
